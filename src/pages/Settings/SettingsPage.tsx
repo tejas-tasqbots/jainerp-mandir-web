@@ -1,0 +1,351 @@
+import { useEffect, useState } from 'react'
+import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
+import { api, fmtPaise } from '../../lib/api'
+import { useProfileStore } from '../../store/profileStore'
+
+interface Requirement {
+  id: string
+  text: string
+  status: 'open' | 'in_progress' | 'done' | 'rejected'
+  note: string | null
+  raised_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export function SettingsPage() {
+  const { profile, fetchProfile } = useProfileStore()
+  const [tab, setTab] = useState<'profile' | 'subscription' | 'privacy'>('profile')
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [form, setForm] = useState({
+    name: '', address_line1: '', city: '', state: '', pincode: '', mobile: '', email: '', website: '',
+    gstin: '', pan: '', reg_80g_number: '', reg_12ab_number: '', upi_id: '', custom_receipt_footer: '',
+    show_80g_on_receipt: false, global_sync_enabled: false,
+  })
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
+  const [usage, setUsage] = useState<UsageData | null>(null)
+  const [reqText, setReqText] = useState('')
+  const [reqSent, setReqSent] = useState(false)
+  const [requirements, setRequirements] = useState<Requirement[]>([])
+
+  interface SubscriptionData {
+    subscription?: { plan_display?: string; billing_cycle?: string; status?: string; current_period_end?: string }
+    invoices?: { id: string; invoice_number?: string; period_start?: string; period_end?: string; total_paise?: number; status?: string; paid_at?: string }[]
+  }
+  interface UsageData {
+    limits?: { max_users?: number; max_receipts_per_month?: number; max_sms_per_month?: number }
+    current?: { users?: number; receipts_this_month?: number }
+  }
+
+  useEffect(() => {
+    if (profile) {
+      const p = profile as unknown as Record<string, string | boolean | undefined>
+      setForm({
+        name: profile.name || '',
+        address_line1: (p.address_line1 as string) || (profile.address as string) || '',
+        city: profile.city || '',
+        state: profile.state || '',
+        pincode: (p.pincode as string) || '',
+        mobile: profile.phone || (p.mobile as string) || '',
+        email: profile.email || '',
+        website: profile.website || '',
+        gstin: (p.gstin as string) || '',
+        pan: (p.pan as string) || '',
+        reg_80g_number: (p.reg_80g_number as string) || '',
+        reg_12ab_number: (p.reg_12ab_number as string) || '',
+        upi_id: (p.upi_id as string) || '',
+        custom_receipt_footer: (p.custom_receipt_footer as string) || '',
+        show_80g_on_receipt: Boolean(p.show_80g_on_receipt),
+        global_sync_enabled: profile.global_sync_enabled || false,
+      })
+    }
+  }, [profile])
+
+  useEffect(() => {
+    if (tab === 'subscription') loadSubscription()
+    if (tab === 'privacy') loadRequirements()
+  }, [tab])
+
+  async function loadRequirements() {
+    try {
+      const { data } = await api.get('/tenants/me/requirements')
+      setRequirements(data.data || [])
+    } catch { /* ignore */ }
+  }
+
+  async function loadSubscription() {
+    try {
+      const [subResp, usageResp] = await Promise.allSettled([
+        api.get('/tenants/me/subscription'),
+        api.get('/tenants/me/usage'),
+      ])
+      if (subResp.status === 'fulfilled') setSubscription(subResp.value.data.data || subResp.value.data)
+      if (usageResp.status === 'fulfilled') setUsage(usageResp.value.data.data || usageResp.value.data)
+    } catch { /* ignore */ }
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.patch('/tenants/me', {
+        name: form.name, address_line1: form.address_line1, city: form.city, state: form.state,
+        pincode: form.pincode, mobile: form.mobile, email: form.email, website: form.website,
+        gstin: form.gstin, pan: form.pan, reg_80g_number: form.reg_80g_number,
+        reg_12ab_number: form.reg_12ab_number, upi_id: form.upi_id,
+        custom_receipt_footer: form.custom_receipt_footer,
+        show_80g_on_receipt: form.show_80g_on_receipt,
+      })
+      await fetchProfile()
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleSync() {
+    const newVal = !form.global_sync_enabled
+    await api.patch('/tenants/me/privacy', { global_sync_enabled: newVal })
+    setForm(f => ({ ...f, global_sync_enabled: newVal }))
+    await fetchProfile()
+  }
+
+  async function sendRequirement(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await api.post('/tenants/me/requirements', { text: reqText })
+      setReqText('')
+      setReqSent(true)
+      setTimeout(() => setReqSent(false), 4000)
+      loadRequirements()
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <h1 className="text-xl font-bold text-navy-900">Settings</h1>
+
+      <div className="flex gap-2">
+        {[
+          { id: 'profile', label: 'Temple Profile' },
+          { id: 'privacy', label: 'Privacy & Sync' },
+          { id: 'subscription', label: 'Subscription & Usage' },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === t.id ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'profile' && (
+        <form onSubmit={save} className="card">
+          <div className="card-header"><h3 className="font-semibold text-sm">Temple / Mandir Profile</h3></div>
+          <div className="card-body space-y-5">
+            {success && (
+              <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">Settings saved successfully!</div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Temple / Mandir Name *</label>
+                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Mobile</label>
+                <input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Address</label>
+              <input className="form-input" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className="form-label">City</label><input className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+              <div><label className="form-label">State</label><input className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} /></div>
+              <div><label className="form-label">Pincode</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><label className="form-label">Website</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
+            </div>
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Registration & Compliance</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="form-label">PAN</label><input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} /></div>
+                <div><label className="form-label">GSTIN</label><input className="form-input uppercase" value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value.toUpperCase() }))} /></div>
+                <div><label className="form-label">80G Registration No.</label><input className="form-input" value={form.reg_80g_number} onChange={e => setForm(f => ({ ...f, reg_80g_number: e.target.value }))} /></div>
+                <div><label className="form-label">12AB Registration No.</label><input className="form-input" value={form.reg_12ab_number} onChange={e => setForm(f => ({ ...f, reg_12ab_number: e.target.value }))} /></div>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 pt-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Receipt Settings</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="form-label">UPI ID</label><input className="form-input" placeholder="temple@upi" value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} /></div>
+                <div className="flex items-center gap-3 mt-5">
+                  <input type="checkbox" id="show80g" checked={form.show_80g_on_receipt} onChange={e => setForm(f => ({ ...f, show_80g_on_receipt: e.target.checked }))} className="w-4 h-4" />
+                  <label htmlFor="show80g" className="text-sm">Show 80G details on receipts</label>
+                </div>
+              </div>
+              <div className="mt-3">
+                <label className="form-label">Custom Receipt Footer</label>
+                <textarea className="form-input" rows={2} value={form.custom_receipt_footer} onChange={e => setForm(f => ({ ...f, custom_receipt_footer: e.target.value }))} placeholder="Jai Jinendra! Thank you for your donation." />
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {tab === 'privacy' && (
+        <div className="space-y-4">
+          <div className="card">
+            <div className="card-header"><h3 className="font-semibold text-sm">Global Platform Sync</h3></div>
+            <div className="card-body">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-sm">Mirror transactions to Global Platform</p>
+                  <p className="text-xs text-slate-400 mt-0.5">When enabled, donations, seva bookings, and room bookings are visible to donors on the JainERP devotee portal.</p>
+                </div>
+                <button
+                  onClick={toggleSync}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer focus:outline-none ${form.global_sync_enabled ? 'bg-green-600' : 'bg-slate-200'}`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form.global_sync_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header"><h3 className="font-semibold text-sm">Raise a Requirement</h3></div>
+            <div className="card-body">
+              <p className="text-xs text-slate-500 mb-3">
+                Describe any feature, improvement, or customization you need. The Tasqbots team will review and respond.
+              </p>
+              {reqSent && <div className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Requirement sent to Tasqbots team!</div>}
+              <form onSubmit={sendRequirement} className="flex gap-3">
+                <textarea className="form-input flex-1" rows={2} value={reqText}
+                  onChange={e => setReqText(e.target.value)} placeholder="Describe the feature or improvement you need..." required />
+                <button type="submit" disabled={!reqText.trim()} className="btn-primary self-end">Send</button>
+              </form>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <ClipboardList size={14} /> My Requirements
+              </h3>
+              <span className="text-xs text-slate-400">{requirements.length} submitted</span>
+            </div>
+            {requirements.length === 0 ? (
+              <div className="card-body text-sm text-slate-400">No requirements raised yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead><tr><th>Requirement</th><th>Status</th><th>Note from Team</th><th>Raised On</th></tr></thead>
+                  <tbody>
+                    {requirements.map(r => (
+                      <tr key={r.id}>
+                        <td className="text-sm max-w-xs">{r.text}</td>
+                        <td>
+                          {r.status === 'done' ? <span className="badge-green">Done ✓</span>
+                            : r.status === 'in_progress' ? <span className="badge-blue">In Progress</span>
+                            : r.status === 'rejected' ? <span className="badge-red">Rejected</span>
+                            : <span className="badge-yellow">Open</span>}
+                        </td>
+                        <td className="text-xs text-slate-500">{r.note || '—'}</td>
+                        <td className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'subscription' && (
+        <div className="space-y-4">
+          {subscription?.subscription ? (
+            <div className="card">
+              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp size={14} /> Current Plan</h3></div>
+              <div className="card-body">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-400 text-xs">Plan</p>
+                    <p className="font-bold text-navy-900">{subscription.subscription.plan_display || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs">Status</p>
+                    <span className={subscription.subscription.status === 'active' ? 'badge-green' : 'badge-red'}>{subscription.subscription.status}</span>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-xs">Renews On</p>
+                    <p className="font-medium">{subscription.subscription.current_period_end ? new Date(subscription.subscription.current_period_end).toLocaleDateString('en-IN') : '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card"><div className="card-body text-slate-400 text-sm">No subscription data available.</div></div>
+          )}
+
+          {usage && (
+            <div className="card">
+              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><CreditCard size={14} /> Usage This Month</h3></div>
+              <div className="card-body">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  {[
+                    { label: 'Users', current: usage.current?.users, max: usage.limits?.max_users },
+                    { label: 'Receipts', current: usage.current?.receipts_this_month, max: usage.limits?.max_receipts_per_month },
+                    { label: 'SMS / Month', current: 0, max: usage.limits?.max_sms_per_month },
+                  ].map(({ label, current, max }) => (
+                    <div key={label}>
+                      <p className="text-xs text-slate-400 mb-1">{label}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-slate-100 rounded-full h-2">
+                          <div className="bg-brand-red h-2 rounded-full transition-all" style={{ width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%` }} />
+                        </div>
+                        <span className="text-xs font-medium">{current ?? 0} / {max ?? '∞'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {subscription?.invoices && subscription.invoices.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="card-header"><h3 className="font-semibold text-sm">Billing History</h3></div>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {subscription.invoices.map(inv => (
+                      <tr key={inv.id}>
+                        <td className="font-mono text-xs">{inv.invoice_number || inv.id.slice(0, 8)}</td>
+                        <td className="text-xs text-slate-500">{inv.period_start ? new Date(inv.period_start).toLocaleDateString('en-IN') : '—'} – {inv.period_end ? new Date(inv.period_end).toLocaleDateString('en-IN') : '—'}</td>
+                        <td className="font-semibold">{inv.total_paise ? `₹${fmtPaise(inv.total_paise)}` : '—'}</td>
+                        <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{inv.status}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

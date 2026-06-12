@@ -1,0 +1,223 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { api, fmtPaise } from '../../lib/api'
+import type { Event } from '../../types'
+
+const eventTypes = ['festival', 'pravachan', 'utsav', 'camp', 'yatra', 'bhajan', 'annadan', 'other']
+
+const emptyForm = {
+  name: '', event_type: 'festival',
+  start_date: new Date().toISOString().slice(0, 10),
+  end_date: new Date().toISOString().slice(0, 10),
+  estimated_budget: '', allow_registration: false, description: '',
+}
+
+export function EventsList() {
+  const navigate = useNavigate()
+  const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(emptyForm)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => { load() }, [statusFilter])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ limit: '50' })
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      const { data } = await api.get(`/events?${params}`)
+      setEvents(data.data || [])
+    } catch {
+      setEvents([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function openEdit(ev: Event) {
+    setEditId(ev.id)
+    setForm({
+      name: ev.name,
+      event_type: ev.event_type,
+      start_date: ev.start_date,
+      end_date: ev.end_date,
+      estimated_budget: ev.estimated_budget_paise ? String(ev.estimated_budget_paise / 100) : '',
+      allow_registration: ev.allow_registration,
+      description: ev.description || '',
+    })
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditId(null)
+    setForm(emptyForm)
+  }
+
+  async function submitForm(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const body = {
+        name: form.name,
+        event_type: form.event_type,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        estimated_budget_paise: form.estimated_budget ? Math.round(parseFloat(form.estimated_budget) * 100) : undefined,
+        allow_registration: form.allow_registration,
+        description: form.description || undefined,
+      }
+      if (editId) {
+        await api.patch(`/events/${editId}`, body)
+        closeForm()
+        load()
+      } else {
+        const { data } = await api.post('/events', body)
+        closeForm()
+        navigate(`/events/${data.data.id}`)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteEvent(id: string, name: string) {
+    if (!window.confirm(`Delete event "${name}"? This cannot be undone.`)) return
+    setDeletingId(id)
+    try {
+      await api.delete(`/events/${id}`)
+      load()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e.response?.data?.error?.message || 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  function statusBadge(s: string) {
+    if (s === 'planned') return <span className="badge-blue">Planned</span>
+    if (s === 'executing') return <span className="badge-yellow">Ongoing</span>
+    if (s === 'completed') return <span className="badge-green">Completed</span>
+    return <span className="badge-red">Cancelled</span>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-navy-900">Events</h1>
+        <button onClick={() => { setEditId(null); setForm(emptyForm); setShowForm(true) }} className="btn-primary btn-sm">
+          <Plus size={14} /> New Event
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card">
+          <div className="card-header flex items-center justify-between">
+            <h3 className="font-semibold text-sm">{editId ? 'Edit Event' : 'Create New Event'}</h3>
+            <button onClick={closeForm} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+          </div>
+          <form onSubmit={submitForm} className="card-body space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Event Name *</label>
+                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="form-label">Type</label>
+                <select className="form-select" value={form.event_type} onChange={e => setForm(f => ({ ...f, event_type: e.target.value }))}>
+                  {eventTypes.map(t => <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="form-label">Start Date</label>
+                <input type="date" className="form-input" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">End Date</label>
+                <input type="date" className="form-input" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Budget (₹)</label>
+                <input type="number" className="form-input" value={form.estimated_budget} onChange={e => setForm(f => ({ ...f, estimated_budget: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Description</label>
+              <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="reg" checked={form.allow_registration} onChange={e => setForm(f => ({ ...f, allow_registration: e.target.checked }))} className="w-4 h-4" />
+              <label htmlFor="reg" className="text-sm">Allow public registration</label>
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" disabled={saving} className="btn-primary btn-sm">
+                <Plus size={14} /> {saving ? 'Saving...' : (editId ? 'Update Event' : 'Create Event')}
+              </button>
+              <button type="button" onClick={closeForm} className="btn-secondary btn-sm">Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        {['all', 'planned', 'executing', 'completed', 'cancelled'].map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-3 py-1 text-xs rounded-md font-medium capitalize ${statusFilter === s ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr><th>Event</th><th>Type</th><th>Dates</th><th>Budget</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">Loading...</td></tr>
+              ) : events.length === 0 ? (
+                <tr><td colSpan={6} className="text-center py-8 text-slate-400">No events found</td></tr>
+              ) : events.map(ev => (
+                <tr key={ev.id} className="cursor-pointer" onClick={() => navigate(`/events/${ev.id}`)}>
+                  <td className="font-medium">{ev.name}</td>
+                  <td className="capitalize text-slate-600">{ev.event_type}</td>
+                  <td className="text-xs text-slate-500">
+                    {new Date(ev.start_date).toLocaleDateString('en-IN')} — {new Date(ev.end_date).toLocaleDateString('en-IN')}
+                  </td>
+                  <td>{ev.estimated_budget_paise ? `₹${fmtPaise(ev.estimated_budget_paise)}` : '—'}</td>
+                  <td>{statusBadge(ev.status)}</td>
+                  <td onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(ev)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title="Edit">
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => deleteEvent(ev.id, ev.name)}
+                        disabled={deletingId === ev.id}
+                        className="p-1 text-slate-400 hover:text-brand-red rounded"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

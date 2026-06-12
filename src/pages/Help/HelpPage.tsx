@@ -1,0 +1,204 @@
+import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, CheckCircle } from 'lucide-react'
+
+const topics = [
+  {
+    title: 'Recording a Donation',
+    steps: [
+      'Go to Donations → New Donation',
+      'Search for existing donor or add new donor details',
+      'Select donation category and enter amount + payment mode',
+      '80G eligibility is auto-checked (disabled for cash > ₹2000)',
+      'Save — receipt available via the Receipt icon (📄) in the list',
+      'To void a donation: click the 🚫 icon and enter a reason (admin only)',
+    ],
+  },
+  {
+    title: 'Boli (Pledge) Management',
+    steps: [
+      'Go to Boli Donations → New Boli (enter devotee name and pledged amount)',
+      'Status will be "Pledged" until payment is recorded',
+      'When devotee pays: click the "Pay" button on the boli entry',
+      'Enter amount and payment mode in the modal, then confirm',
+      'To waive remaining balance: click ⚠️ icon and enter a reason (admin only)',
+      'View intimation details via the 🔔 icon on any boli row',
+    ],
+  },
+  {
+    title: '80G Certificates & Form 10BD',
+    steps: [
+      'Go to Certificates & TDS page',
+      'Select the Financial Year (e.g. 2025-26)',
+      'Click "Load Eligible Donors" to see 80G-eligible donations',
+      'Click "Generate Form 10BD" to create IT-format entries',
+      'Download compliance reports from the Download Compliance Files section',
+      'Switch to TDS tab to view/export TDS deducted at source',
+    ],
+  },
+  {
+    title: 'Room Booking',
+    steps: [
+      'Go to Dharamshala → Rooms → New Booking',
+      'Select available room and enter guest details and dates',
+      'Enter advance amount if applicable',
+      'Booking appears in the list with "Booked" status',
+      'On arrival: click "Check-In" button',
+      'On departure: click "Check-Out"; to cancel: click ✕ icon',
+    ],
+  },
+  {
+    title: 'Prasad POS Counter',
+    steps: [
+      'Go to Prasad Counter — item grid shows all active items',
+      'Click items to add to cart; use +/- to adjust quantity',
+      'Cart shows subtotal, GST, and total automatically',
+      'Select payment mode and click Checkout to record the sale',
+      'Manage items via Prasad Counter → Manage Items (edit, adjust stock)',
+    ],
+  },
+  {
+    title: 'Bhojanshala Tokens',
+    steps: [
+      'Go to Bhojanshala page — select the date using the date picker',
+      'Click "Record Sale" to add a token sale (meal type, quantity, rate)',
+      'Summary cards show total tokens and collection for the day',
+      'To redeem tokens later: click "Redeem" on any sale row and enter quantity',
+    ],
+  },
+  {
+    title: 'Seva (Pooja) Bookings',
+    steps: [
+      'Go to Seva Donation → New Booking',
+      'Select seva type — amount fills automatically from the seva catalog',
+      'Enter devotee name, gotra, sankalp, and date',
+      'Booking list shows status; mark "Done" after the pooja is completed',
+    ],
+  },
+  {
+    title: 'Staff & User Management',
+    steps: [
+      'Go to Staff Management in the sidebar',
+      'To invite a new staff member: enter mobile, name, and role, then click "Send Invite"',
+      'Staff receives an OTP on their mobile to log in',
+      'To update role or deactivate: click "Edit" on the staff row',
+      'Roles: Admin > Accountant > Cashier > Priest > Volunteer > Viewer',
+    ],
+  },
+]
+
+const apiCoverage = [
+  { endpoint: 'POST /auth/send-otp, /verify-otp, /select-tenant', ui: 'Login Page — OTP flow', status: 'connected' },
+  { endpoint: 'GET/POST /donations, PATCH /:id/void, GET /:id/receipt', ui: 'Donations List + Add Donation', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH/DELETE /expenses', ui: 'Expenses List + Add + Edit + Delete', status: 'connected' },
+  { endpoint: 'GET/POST /donors, PATCH /donors/:id, GET /donors/:id/ledger', ui: 'Donor List + Profile (with edit)', status: 'connected' },
+  { endpoint: 'GET/POST /room-bookings, PATCH /:id/checkin, /checkout, /cancel', ui: 'Rooms List + New Booking', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /hall-bookings', ui: 'Hall Bookings List + Add', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /prasad/items, POST /:id/adjust-stock, POST/GET /prasad/sales', ui: 'Prasad Counter POS + Manage Items', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /seva-bookings', ui: 'Seva Bookings + Add', status: 'connected' },
+  { endpoint: 'POST/GET /bhojanshala/sales, PATCH /:id/redeem, GET /daily-summary', ui: 'Bhojanshala with Redeem Tokens', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /bolis, POST /:id/payments, POST /:id/waive, GET /:id/intimation', ui: 'Boli List + Pay + Waive + Intimation', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH/DELETE /events, GET /:id/registrations, POST /:id/announce', ui: 'Events List + Detail + Edit + Delete', status: 'connected' },
+  { endpoint: 'GET /dashboard', ui: 'Dashboard with KPIs and Charts', status: 'connected' },
+  { endpoint: 'GET /reports/daily-collection, /donation-register, /expense-register, /gst-summary', ui: 'Reports page with export', status: 'connected' },
+  { endpoint: 'GET /compliance/80g-certificates, POST /form-10bd/generate, GET /tds-report', ui: 'Certificates & TDS page', status: 'connected' },
+  { endpoint: 'GET/PATCH /tenants/me, PATCH /tenants/me/privacy, GET /subscription, /usage', ui: 'Settings — Profile + Subscription tabs', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /users', ui: 'Staff Management page', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /vendors, /priests, /employees, /volunteers', ui: 'Masters — Vendors, Priests, Employees', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /inventory-items', ui: 'Masters — Inventory', status: 'connected' },
+  { endpoint: 'GET /accounting/cash-book, /day-book, /income-expenditure, /balance-sheet', ui: 'Accounting module (11 pages)', status: 'connected' },
+  { endpoint: 'GET/POST /registers/lost-found, /visitor-counts', ui: 'Registers — Lost & Found, Visitor Count', status: 'connected' },
+]
+
+export function HelpPage() {
+  return (
+    <div className="space-y-6 max-w-5xl">
+      <h1 className="text-xl font-bold text-navy-900">User Guide & Help</h1>
+
+      {/* Quick guides */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
+            <HelpCircle size={15} /> Step-by-Step Guides
+          </h3>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-cols-2 gap-5">
+            {topics.map(topic => (
+              <div key={topic.title} className="border border-slate-100 rounded-lg p-4">
+                <h4 className="font-semibold text-sm text-navy-900 mb-3 flex items-center gap-2">
+                  <BookOpen size={13} className="text-brand-red flex-shrink-0" /> {topic.title}
+                </h4>
+                <ol className="space-y-1.5">
+                  {topic.steps.map((s, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-slate-600">
+                      <span className="w-4 h-4 bg-brand-red text-white rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold">{i+1}</span>
+                      {s}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* API Coverage Table */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
+            <CheckCircle size={15} /> API Connection Status
+          </h3>
+          <span className="badge-green">{apiCoverage.filter(a => a.status === 'connected').length} / {apiCoverage.length} endpoints connected</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead><tr><th>API Endpoint</th><th>Connected UI</th><th>Status</th></tr></thead>
+            <tbody>
+              {apiCoverage.map((a, i) => (
+                <tr key={i}>
+                  <td className="font-mono text-xs text-slate-600">{a.endpoint}</td>
+                  <td className="text-sm">{a.ui}</td>
+                  <td><span className="badge-green flex items-center gap-1"><CheckCircle size={10} /> Connected</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Support */}
+      <div className="card">
+        <div className="card-header"><h3 className="font-semibold text-sm">Support & Feedback</h3></div>
+        <div className="card-body">
+          <div className="grid grid-cols-3 gap-4">
+            <a href="tel:+911234567890" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
+              <div className="p-2 bg-green-100 rounded-lg"><Phone size={16} className="text-green-600" /></div>
+              <div>
+                <p className="font-medium text-sm">Call Support</p>
+                <p className="text-xs text-slate-400">Mon–Sat 9AM–6PM</p>
+              </div>
+            </a>
+            <a href="mailto:support@tasqbots.com" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
+              <div className="p-2 bg-blue-100 rounded-lg"><Mail size={16} className="text-blue-600" /></div>
+              <div>
+                <p className="font-medium text-sm">Email Support</p>
+                <p className="text-xs text-slate-400">support@tasqbots.com</p>
+              </div>
+            </a>
+            <a href="/settings" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors">
+              <div className="p-2 bg-orange-100 rounded-lg"><ExternalLink size={16} className="text-orange-600" /></div>
+              <div>
+                <p className="font-medium text-sm">Raise Requirement</p>
+                <p className="text-xs text-slate-400">Settings → Privacy &amp; Sync</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center text-xs text-slate-400 py-4">
+        <p>JainERP v2.0 — Powered by Tasqbots Technologies Pvt. Ltd.</p>
+        <p className="mt-1">© {new Date().getFullYear()} All rights reserved</p>
+      </div>
+    </div>
+  )
+}
