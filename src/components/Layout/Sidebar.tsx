@@ -12,6 +12,7 @@ interface NavItem {
   label: string
   icon: React.ReactNode
   to?: string
+  matchPrefix?: string
   children?: Array<{ label: string; to: string }>
 }
 
@@ -73,7 +74,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Staff Management', icon: <UserCog size={18} />, to: '/staff' },
-  { label: 'Settings', icon: <Settings size={18} />, to: '/settings' },
+  { label: 'Settings', icon: <Settings size={18} />, to: '/settings/profile', matchPrefix: '/settings' },
   { label: 'User Guide', icon: <HelpCircle size={18} />, to: '/help' },
 ]
 
@@ -121,6 +122,26 @@ function NavGroup({ item }: { item: NavItem }) {
   )
 }
 
+function SidebarLink({ item }: { item: NavItem }) {
+  const location = useLocation()
+  const isActive = item.matchPrefix
+    ? location.pathname.startsWith(item.matchPrefix)
+    : location.pathname === item.to
+  return (
+    <NavLink
+      to={item.to!}
+      className={`flex items-center gap-2 px-3 py-2.5 text-sm rounded-md transition-colors ${
+        isActive
+          ? 'bg-brand-red text-white font-semibold'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-navy-900'
+      }`}
+    >
+      <span className="flex-shrink-0">{item.icon}</span>
+      <span className="truncate">{item.label}</span>
+    </NavLink>
+  )
+}
+
 export function Sidebar() {
   const { profile } = useProfileStore()
 
@@ -140,20 +161,7 @@ export function Sidebar() {
           item.children ? (
             <NavGroup key={item.label} item={item} />
           ) : (
-            <NavLink
-              key={item.to}
-              to={item.to!}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2.5 text-sm rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-brand-red text-white font-semibold'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-navy-900'
-                }`
-              }
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              <span className="truncate">{item.label}</span>
-            </NavLink>
+            <SidebarLink key={item.to} item={item} />
           )
         )}
       </nav>

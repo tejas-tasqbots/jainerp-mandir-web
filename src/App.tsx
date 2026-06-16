@@ -42,7 +42,18 @@ import { ReportsHome } from './pages/Reports/ReportsHome'
 import { CertificatesPage } from './pages/Certificates/CertificatesPage'
 import { LostFoundPage } from './pages/Registers/LostFoundPage'
 import { VisitorCountPage } from './pages/Registers/VisitorCountPage'
-import { SettingsPage } from './pages/Settings/SettingsPage'
+import { SettingsLayout } from './pages/Settings/SettingsLayout'
+import { ProfileSettings } from './pages/Settings/ProfileSettings'
+import { UsersSettings } from './pages/Settings/UsersSettings'
+import { CategoriesSettings } from './pages/Settings/CategoriesSettings'
+import { BankAccountsSettings } from './pages/Settings/BankAccountsSettings'
+import { AccountingRulesSettings } from './pages/Settings/AccountingRulesSettings'
+import { ReceiptSettings } from './pages/Settings/ReceiptSettings'
+import { BackupRestorePage } from './pages/Settings/BackupRestorePage'
+import { LicensePage } from './pages/Settings/LicensePage'
+import { RoomsSettings } from './pages/Settings/RoomsSettings'
+import { HallsSettings } from './pages/Settings/HallsSettings'
+import { SevasSettings } from './pages/Settings/SevasSettings'
 import { HelpPage } from './pages/Help/HelpPage'
 import { useAuthStore } from './store/authStore'
 import { useProfileStore } from './store/profileStore'
@@ -156,8 +167,20 @@ export default function App() {
             <Route path="/registers/lost-found" element={<LostFoundPage />} />
             <Route path="/registers/visitor-count" element={<VisitorCountPage />} />
 
-            {/* Settings & Help */}
-            <Route path="/settings" element={<SettingsPage />} />
+            {/* Settings */}
+            <Route path="/settings" element={<SettingsLayout />}>
+              <Route path="profile" element={<ProfileSettings />} />
+              <Route path="users" element={<UsersSettings />} />
+              <Route path="rooms" element={<RoomsSettings />} />
+              <Route path="halls" element={<HallsSettings />} />
+              <Route path="sevas" element={<SevasSettings />} />
+              <Route path="categories" element={<CategoriesSettings />} />
+              <Route path="bank-accounts" element={<BankAccountsSettings />} />
+              <Route path="accounting-rules" element={<AccountingRulesSettings />} />
+              <Route path="receipt" element={<ReceiptSettings />} />
+              <Route path="backup" element={<BackupRestorePage />} />
+              <Route path="license" element={<LicensePage />} />
+            </Route>
             <Route path="/help" element={<HelpPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
