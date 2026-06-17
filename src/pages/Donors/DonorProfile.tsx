@@ -2,13 +2,27 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
-import type { Donor, Donation } from '../../types'
+import type { Donor } from '../../types'
+
+interface LedgerRow {
+  id: string
+  txn_type: 'donation' | 'boli' | 'seva'
+  invoice_no: string | null
+  amount_paise: number
+  payment_mode: string | null
+  detail: string | null
+  created_at: string
+  voided: boolean
+}
+
+interface LedgerTotals { donated_paise: number; receipts: number }
 
 export function DonorProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [donor, setDonor] = useState<Donor | null>(null)
-  const [ledger, setLedger] = useState<Donation[]>([])
+  const [ledger, setLedger] = useState<LedgerRow[]>([])
+  const [totals, setTotals] = useState<LedgerTotals | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -21,7 +35,7 @@ export function DonorProfile() {
     try {
       const [donorResp, ledgerResp] = await Promise.allSettled([
         api.get(`/donors/${id}`),
-        api.get(`/donors/${id}/ledger?limit=20`),
+        api.get(`/donors/${id}/ledger`),
       ])
       if (donorResp.status === 'fulfilled') {
         const d = donorResp.value.data.data
@@ -33,11 +47,15 @@ export function DonorProfile() {
           gotra: d.gotra || '',
           city: d.city || '',
           state: d.state || '',
-          address: d.address || '',
-          pan: d.pan || '',
+          address: d.address_line1 || '',
+          pan: d.pan_masked || '',
         })
       }
-      if (ledgerResp.status === 'fulfilled') setLedger(ledgerResp.value.data.data || [])
+      if (ledgerResp.status === 'fulfilled') {
+        const ld = ledgerResp.value.data.data
+        setLedger(ld?.transactions || [])
+        setTotals(ld?.totals || null)
+      }
     } finally {
       setLoading(false)
     }
@@ -55,7 +73,7 @@ export function DonorProfile() {
         gotra: form.gotra || undefined,
         city: form.city || undefined,
         state: form.state || undefined,
-        address: form.address || undefined,
+        address_line1: form.address || undefined,
         pan: form.pan || undefined,
       })
       setEditing(false)
@@ -63,6 +81,12 @@ export function DonorProfile() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const txnBadge = (type: string) => {
+    if (type === 'donation') return 'badge-green'
+    if (type === 'seva') return 'badge-blue'
+    return 'badge-gray'
   }
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-cta border-t-transparent rounded-full animate-spin" /></div>
@@ -139,7 +163,7 @@ export function DonorProfile() {
             <div className="card-header"><h3 className="font-semibold text-sm">Profile</h3></div>
             <div className="card-body space-y-3">
               {[
-                ['Mobile', donor.mobile],
+                ['Mobile', donor.mobile || '—'],
                 ['Email', donor.email || '—'],
                 ['PAN', donor.pan_masked || '—'],
                 ['Gotra', donor.gotra || '—'],
@@ -156,13 +180,18 @@ export function DonorProfile() {
 
           <div className="card">
             <div className="card-header"><h3 className="font-semibold text-sm">Giving Summary</h3></div>
-            <div className="card-body">
+            <div className="card-body space-y-3">
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-700">
-                  ₹{fmtPaise(donor.cumulative_amount_current_fy_paise || 0)}
+                  ₹{fmtPaise(totals?.donated_paise ?? donor.cumulative_amount_current_fy_paise ?? 0)}
                 </p>
-                <p className="text-sm text-slate-400 mt-1">Current FY total</p>
+                <p className="text-sm text-slate-400 mt-1">Total donated (donations only)</p>
               </div>
+              {totals && (
+                <div className="text-center text-sm text-slate-500">
+                  {totals.receipts} receipt{totals.receipts !== 1 ? 's' : ''} issued
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -175,18 +204,18 @@ export function DonorProfile() {
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
-              <tr><th>Invoice</th><th>Category</th><th>Amount</th><th>Mode</th><th>80G</th><th>Date</th></tr>
+              <tr><th>Type</th><th>Invoice</th><th>Details</th><th>Amount</th><th>Mode</th><th>Date</th></tr>
             </thead>
             <tbody>
               {ledger.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-8 text-slate-400">No transactions</td></tr>
               ) : ledger.map(tx => (
-                <tr key={tx.id}>
-                  <td className="font-mono text-xs text-brand-blue">{tx.invoice_no}</td>
-                  <td>{tx.category_name || '—'}</td>
+                <tr key={tx.id} className={tx.voided ? 'opacity-40 line-through' : ''}>
+                  <td><span className={`badge ${txnBadge(tx.txn_type)}`}>{tx.txn_type}</span></td>
+                  <td className="font-mono text-xs text-brand-blue">{tx.invoice_no || '—'}</td>
+                  <td>{tx.detail || '—'}</td>
                   <td className="font-semibold">₹{fmtPaise(tx.amount_paise)}</td>
-                  <td><span className="badge-gray">{tx.payment_mode}</span></td>
-                  <td>{tx.is_80g_eligible ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
+                  <td>{tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : '—'}</td>
                   <td className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
                 </tr>
               ))}
