@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
+import { usePaymentModes, useResourceNames } from '../../lib/useDropdownOptions'
 
 export function AddExpense() {
   const navigate = useNavigate()
@@ -22,10 +23,11 @@ export function AddExpense() {
     note: '',
   })
 
-  const expenseCategories = [
+  const expenseCategories = useResourceNames('expense-categories', [
     'Electricity', 'Water', 'Salary', 'Maintenance', 'Food & Supplies',
     'Decoration', 'Pooja Material', 'Printing', 'Transport', 'Other',
-  ]
+  ])
+  const paymentModes = usePaymentModes()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -107,10 +109,7 @@ export function AddExpense() {
               <label className="form-label">Payment Mode</label>
               <select className="form-select" value={form.payment_mode}
                 onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="cheque">Cheque</option>
-                <option value="netbanking">Net Banking</option>
+                {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
               </select>
             </div>
             <div>

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X, Search } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
+import { usePaymentModes } from '../../lib/useDropdownOptions'
 import type { DonationCategory, Donor } from '../../types'
 
 export function AddDonation() {
   const navigate = useNavigate()
+  const paymentModes = usePaymentModes()
   const [categories, setCategories] = useState<DonationCategory[]>([])
   const [donors, setDonors] = useState<Donor[]>([])
   const [donorSearch, setDonorSearch] = useState('')
@@ -27,7 +29,7 @@ export function AddDonation() {
   })
 
   useEffect(() => {
-    api.get('/donations/categories').then(r => setCategories(r.data.data || []))
+    api.get('/donation-categories', { params: { is_active: 'true' } }).then(r => setCategories(r.data.data || []))
   }, [])
 
   useEffect(() => {
@@ -158,11 +160,7 @@ export function AddDonation() {
               <label className="form-label">Payment Mode *</label>
               <select className="form-select" value={form.payment_mode}
                 onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="cheque">Cheque</option>
-                <option value="netbanking">Net Banking</option>
-                <option value="online">Online</option>
+                {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
               </select>
             </div>
           </div>

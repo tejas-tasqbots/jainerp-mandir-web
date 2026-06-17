@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { useProfileStore } from '../../store/profileStore'
+import { MasterEditor } from './MasterEditor'
 
 interface Requirement {
   id: string
@@ -15,7 +16,7 @@ interface Requirement {
 
 export function SettingsPage() {
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'profile' | 'masters' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -124,12 +125,13 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className={`space-y-6 ${tab === 'masters' ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <h1 className="text-xl font-bold text-navy-900">Settings</h1>
 
       <div className="flex gap-2">
         {[
           { id: 'profile', label: 'Temple Profile' },
+          { id: 'masters', label: 'Categories & Dropdowns' },
           { id: 'privacy', label: 'Privacy & Sync' },
           { id: 'subscription', label: 'Subscription & Usage' },
         ].map(t => (
@@ -201,6 +203,106 @@ export function SettingsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {tab === 'masters' && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Configure the dropdown options used across the app. Items are mandir-specific. Deactivating an
+            item hides it from new entries while keeping it on past records.
+          </p>
+
+          <MasterEditor
+            resource="donation-categories"
+            title="Donation Categories"
+            description="Shown when recording a donation."
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. General Donation' },
+              { key: 'is_80g_eligible', label: '80G Eligible', type: 'checkbox', default: true },
+              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="expense-categories"
+            title="Expense Categories"
+            description="Shown when recording an expense."
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Electricity' },
+              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="payment-modes"
+            title="Payment Modes"
+            description="Shown wherever a payment method is selected."
+            fields={[
+              { key: 'name', label: 'Display Name', required: true, placeholder: 'e.g. UPI' },
+              { key: 'code', label: 'Code', required: true, placeholder: 'e.g. upi' },
+              { key: 'requires_reference', label: 'Requires UTR / Ref', type: 'checkbox' },
+              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="services"
+            title="Sevas / Services"
+            description="Seva options and their default amounts."
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Abhishek' },
+              { key: 'name_hindi', label: 'Name (Hindi)', placeholder: 'अभिषेक' },
+              { key: 'price_paise', label: 'Amount (₹)', type: 'money', placeholder: '0.00', required: true },
+              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="gst-rates"
+            title="GST Rates"
+            description="GST percentages applied to taxable services (CGST + SGST for intra-state)."
+            fields={[
+              { key: 'service', label: 'Service / Label', required: true, placeholder: 'e.g. Hall Rent' },
+              { key: 'cgst', label: 'CGST (%)', type: 'number', placeholder: '9' },
+              { key: 'sgst', label: 'SGST (%)', type: 'number', placeholder: '9' },
+              { key: 'igst', label: 'IGST (%)', type: 'number', placeholder: '18' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="halls"
+            title="Halls"
+            description="Dharamshala halls available for booking."
+            statusField="is_available"
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Main Hall' },
+              { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="rooms"
+            title="Rooms"
+            description="Dharamshala rooms available for check-in."
+            statusField="is_available"
+            fields={[
+              { key: 'room_number', label: 'Room No.', required: true, placeholder: 'e.g. 101' },
+              { key: 'name', label: 'Name / Type', placeholder: 'e.g. AC Deluxe' },
+              { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
+            ]}
+          />
+
+          <MasterEditor
+            resource="vendors"
+            title="Vendors"
+            description="Vendors / payees used in expenses and creditors."
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'Vendor name' },
+              { key: 'mobile', label: 'Mobile', placeholder: '10-digit' },
+              { key: 'gstin', label: 'GSTIN', placeholder: 'Optional' },
+            ]}
+          />
+        </div>
       )}
 
       {tab === 'privacy' && (
