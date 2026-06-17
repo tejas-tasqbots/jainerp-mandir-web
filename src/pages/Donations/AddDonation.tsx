@@ -27,9 +27,7 @@ export function AddDonation() {
   })
 
   useEffect(() => {
-    api.get('/donations/categories')
-      .then(r => setCategories(r.data.data || []))
-      .catch(() => setError('Failed to load donation categories. Please refresh the page.'))
+    api.get('/donations/categories').then(r => setCategories(r.data.data || []))
   }, [])
 
   useEffect(() => {
