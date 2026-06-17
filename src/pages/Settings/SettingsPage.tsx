@@ -3,6 +3,11 @@ import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-r
 import { api, fmtPaise } from '../../lib/api'
 import { useProfileStore } from '../../store/profileStore'
 import { MasterEditor } from './MasterEditor'
+import { BankAccountsTab } from './tabs/BankAccountsTab'
+import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
+import { AccountingRulesTab } from './tabs/AccountingRulesTab'
+import { UsersTab } from './tabs/UsersTab'
+import { BackupTab } from './tabs/BackupTab'
 
 interface Requirement {
   id: string
@@ -16,7 +21,7 @@ interface Requirement {
 
 export function SettingsPage() {
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'masters' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'profile' | 'masters' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -125,13 +130,18 @@ export function SettingsPage() {
   }
 
   return (
-    <div className={`space-y-6 ${tab === 'masters' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <h1 className="text-xl font-bold text-navy-900">Settings</h1>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[
           { id: 'profile', label: 'Temple Profile' },
+          { id: 'accounts', label: 'Bank & Cash Accounts' },
+          { id: 'receipts', label: 'Receipt Settings' },
+          { id: 'accounting', label: 'Accounting Rules' },
           { id: 'masters', label: 'Categories & Dropdowns' },
+          { id: 'users', label: 'Users' },
+          { id: 'backup', label: 'Backup' },
           { id: 'privacy', label: 'Privacy & Sync' },
           { id: 'subscription', label: 'Subscription & Usage' },
         ].map(t => (
@@ -204,6 +214,12 @@ export function SettingsPage() {
           </div>
         </form>
       )}
+
+      {tab === 'accounts' && <BankAccountsTab />}
+      {tab === 'receipts' && <ReceiptSettingsTab />}
+      {tab === 'accounting' && <AccountingRulesTab />}
+      {tab === 'users' && <UsersTab />}
+      {tab === 'backup' && <BackupTab />}
 
       {tab === 'masters' && (
         <div className="space-y-4">

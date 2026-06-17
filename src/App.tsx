@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
@@ -47,6 +47,12 @@ import { HelpPage } from './pages/Help/HelpPage'
 import { useAuthStore } from './store/authStore'
 import { useProfileStore } from './store/profileStore'
 
+// True when running inside the Electron desktop shell (loaded over file://).
+const isDesktop =
+  typeof window !== 'undefined' &&
+  (Boolean((window as unknown as { electronAPI?: { isElectron?: boolean } }).electronAPI?.isElectron) ||
+    window.location.protocol === 'file:')
+
 function LoadingScreen() {
   return (
     <div className="flex items-center justify-center h-screen bg-slate-50">
@@ -75,8 +81,12 @@ export default function App() {
 
   if (initialising) return <LoadingScreen />
 
+  // Under file:// (Electron desktop) HTML5 history routing 404s on navigation —
+  // assets resolve relative to the filesystem root. Use hash routing there.
+  const Router = isDesktop ? HashRouter : BrowserRouter
+
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         {!isLoggedIn ? (
           <Route path="*" element={<LoginPage />} />
@@ -164,6 +174,6 @@ export default function App() {
           </Route>
         )}
       </Routes>
-    </BrowserRouter>
+    </Router>
   )
 }
