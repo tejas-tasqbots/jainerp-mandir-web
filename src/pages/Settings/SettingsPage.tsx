@@ -318,6 +318,22 @@ export function SettingsPage() {
               { key: 'gstin', label: 'GSTIN', placeholder: 'Optional' },
             ]}
           />
+
+          <MasterEditor
+            resource="prasad/items"
+            title="Prasad Items"
+            description="Items sold at the Prasad counter (POS). Go to Prasad → Manage Items to adjust stock levels."
+            statusField="is_available"
+            fields={[
+              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Ladoo' },
+              { key: 'name_hindi', label: 'Name (Hindi)', placeholder: 'लड्डू' },
+              { key: 'unit', label: 'Unit', placeholder: 'piece, kg, box…', default: 'piece' },
+              { key: 'price_paise', label: 'Price (₹)', type: 'money', required: true, placeholder: '0.00' },
+              { key: 'gst_rate', label: 'GST (%)', type: 'number', placeholder: '0', default: 0 },
+              { key: 'low_stock_threshold', label: 'Low Stock Alert', type: 'number', placeholder: '10', default: 10 },
+              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0', default: 0 },
+            ]}
+          />
         </div>
       )}
 

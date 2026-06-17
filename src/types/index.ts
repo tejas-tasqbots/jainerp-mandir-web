@@ -181,10 +181,14 @@ export interface HallBooking {
 export interface PrasadItem {
   id: string
   name: string
+  name_hindi?: string
+  unit?: string
   price_paise: number
   gst_rate: number
-  current_stock: number
-  is_active: boolean
+  stock_qty: number
+  low_stock_threshold?: number
+  is_available: boolean
+  sort_order?: number
 }
 
 export interface PrasadSaleItem {
