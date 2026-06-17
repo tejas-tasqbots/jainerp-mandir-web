@@ -7,7 +7,7 @@ const TEMPLATES = [
   {
     id: 'classic',
     label: 'Classic',
-    desc: 'Navy header, donor box, amount highlight',
+
     thumb: (color: string) => `
       <div style="font-family:sans-serif;font-size:6px;border-radius:3px;overflow:hidden;border:1px solid #e2e8f0">
         <div style="background:${color};color:#fff;padding:5px 7px">
@@ -32,7 +32,7 @@ const TEMPLATES = [
   {
     id: 'minimal',
     label: 'Minimal',
-    desc: 'Clean lines, no background colours',
+
     thumb: (color: string) => `
       <div style="font-family:sans-serif;font-size:6px;border:1px solid #d1d5db;border-radius:2px;padding:7px 8px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:5px;border-bottom:2px solid ${color};margin-bottom:5px">
@@ -53,7 +53,7 @@ const TEMPLATES = [
   {
     id: 'modern',
     label: 'Modern',
-    desc: 'Gradient hero, info cards, bold design',
+
     thumb: (color: string) => `
       <div style="font-family:sans-serif;font-size:6px;border-radius:4px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.1)">
         <div style="height:3px;background:linear-gradient(90deg,${color},${color}99)"></div>
@@ -76,7 +76,7 @@ const TEMPLATES = [
   {
     id: 'traditional',
     label: 'Traditional',
-    desc: 'Saffron border, 🕉, Sanskrit style',
+
     thumb: (_color: string) => `
       <div style="font-family:'Times New Roman',serif;font-size:6px;border:2px solid #c97b22;border-radius:2px;overflow:hidden">
         <div style="height:4px;background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22)"></div>
@@ -97,7 +97,7 @@ const TEMPLATES = [
   {
     id: 'elegant',
     label: 'Elegant',
-    desc: 'Serif typography, premium minimalist',
+
     thumb: (color: string) => `
       <div style="font-family:Georgia,serif;font-size:6px;border-radius:1px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 1px 6px rgba(0,0,0,.08)">
         <div style="height:3px;background:${color}"></div>
@@ -125,7 +125,7 @@ const TEMPLATES = [
   {
     id: 'temple',
     label: 'Temple',
-    desc: 'Two-column, coloured header bar, transaction block (Shri Ram style)',
+
     thumb: (color: string) => `
       <div style="font-family:sans-serif;font-size:6px;border:1.5px solid #ccc;overflow:hidden">
         <div style="background:${color};color:#fff;padding:5px 8px;display:flex;align-items:center;gap:5px">
@@ -159,7 +159,7 @@ const TEMPLATES = [
   {
     id: 'tabular',
     label: 'Tabular',
-    desc: 'Table format with description & amount columns (Saibaba style)',
+
     thumb: (color: string) => `
       <div style="font-family:sans-serif;font-size:6px;border:2px solid #333;overflow:hidden">
         <div style="text-align:center;padding:5px 6px;border-bottom:2px solid #333">
@@ -183,7 +183,7 @@ const TEMPLATES = [
   {
     id: 'acknowledgement',
     label: 'Acknowledgement',
-    desc: 'Formal letter with address block & Chief Accounts Officer (Tirumala style)',
+
     thumb: (color: string) => `
       <div style="font-family:'Times New Roman',serif;font-size:6px;border:2px double #333;overflow:hidden">
         <div style="text-align:center;padding:6px 8px;border-bottom:3px double #333">
@@ -212,7 +212,7 @@ const TEMPLATES = [
   {
     id: 'jain_tirth',
     label: 'Jain Tirth',
-    desc: 'Trust Receipt with Jain salutation, bank box, signature (Tally style)',
+
     thumb: (color: string) => `
       <div style="font-family:Arial,sans-serif;font-size:6px;border:2.5px solid #333;overflow:hidden">
         <div style="display:flex;gap:6px;align-items:flex-start;padding:5px 8px;border-bottom:2px solid #333">
@@ -449,7 +449,6 @@ export function ReceiptSettingsTab() {
                 <div className="w-24 flex-shrink-0" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
                 <div>
                   <p className="font-semibold text-sm">{t.label}</p>
-                  <p className="text-xs text-slate-400">{t.desc}</p>
                 </div>
               </button>
             ))}
