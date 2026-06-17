@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X, Search, UserPlus } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import { usePaymentModes } from '../../lib/useDropdownOptions'
 import type { DonationCategory, Donor } from '../../types'
 
@@ -122,8 +123,12 @@ export function AddDonation() {
       if (form.note) payload.note = form.note
 
       const { data } = await api.post('/donations', payload)
-      if (data.data?.receipt_cdn_url) window.open(data.data.receipt_cdn_url, '_blank')
+      const donationId = data.data?.id
       navigate('/donations')
+      if (donationId) {
+        // Print receipt after navigating (small delay so the page change doesn't block popup)
+        setTimeout(() => printDonationReceipt(donationId).catch(() => {}), 300)
+      }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
       setError(err.response?.data?.error?.message || 'Failed to save donation')

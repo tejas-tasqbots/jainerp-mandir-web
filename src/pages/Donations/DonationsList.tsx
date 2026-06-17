@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Download, Search, XCircle, Receipt, Ban } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import type { Donation } from '../../types'
 
 export function DonationsList() {
@@ -40,8 +41,17 @@ export function DonationsList() {
     return map[mode] || 'badge-gray'
   }
 
-  function openReceipt(id: string) {
-    window.open(`/api/v1/donations/${id}/receipt`, '_blank')
+  const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
+
+  async function openReceipt(id: string) {
+    setReceiptLoading(id)
+    try {
+      await printDonationReceipt(id)
+    } catch {
+      alert('Could not load receipt. Please try again.')
+    } finally {
+      setReceiptLoading(null)
+    }
   }
 
   async function confirmVoid() {
@@ -130,10 +140,11 @@ export function DonationsList() {
                     <div className="flex gap-1">
                       <button
                         onClick={() => openReceipt(d.id)}
-                        title="Download Receipt"
-                        className="p-1 text-slate-400 hover:text-brand-blue rounded"
+                        title="Print Receipt"
+                        disabled={receiptLoading === d.id}
+                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
                       >
-                        <Receipt size={14} />
+                        <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
                       </button>
                       {!d.is_voided && (
                         <button
