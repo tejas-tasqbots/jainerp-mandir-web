@@ -1,16 +1,31 @@
 import { api } from './api'
 
-interface ReceiptData {
+export interface ReceiptData {
   receipt_number: string
   date: string
   mandir: {
     name: string
     address: string
+    mobile?: string | null
+    email?: string | null
+    gstin?: string | null
+    pan?: string | null
     reg_80g_number?: string | null
     reg_12a_number?: string | null
-    pan?: string | null
+    reg_12ab_number?: string | null
+    upi_id?: string | null
+    bank_account_name?: string | null
+    bank_account_no?: string | null
+    bank_ifsc?: string | null
+    bank_name?: string | null
+    logo_cdn_url?: string | null
+    logo_base64?: string | null
+    show_logo?: boolean
     show_80g?: boolean
+    show_gstin?: boolean
     footer?: string | null
+    template?: string
+    primary_color?: string
   } | null
   donor: { name?: string | null; mobile?: string | null }
   category: string
@@ -27,85 +42,459 @@ function fmtRs(paise: number): string {
 function modeName(mode: string): string {
   const map: Record<string, string> = {
     cash: 'Cash', upi: 'UPI', cheque: 'Cheque',
-    netbanking: 'Net Banking', online: 'Online',
+    netbanking: 'Net Banking', online: 'Online / Card',
   }
   return map[mode] || mode
 }
 
-function buildHtml(r: ReceiptData): string {
+function amountInWords(paise: number): string {
+  const rupees = Math.floor(paise / 100)
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+  function convert(n: number): string {
+    if (n === 0) return ''
+    if (n < 20) return ones[n] + ' '
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '') + ' '
+    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred ' + convert(n % 100)
+    if (n < 100000) return convert(Math.floor(n / 1000)) + 'Thousand ' + convert(n % 1000)
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + 'Lakh ' + convert(n % 100000)
+    return convert(Math.floor(n / 10000000)) + 'Crore ' + convert(n % 10000000)
+  }
+
+  const words = convert(rupees).trim()
+  return words ? words + ' Rupees Only' : 'Zero Rupees'
+}
+
+function logoTag(mandir: ReceiptData['mandir']): string {
+  if (!mandir?.show_logo) return ''
+  const src = mandir.logo_base64 || mandir.logo_cdn_url
+  if (!src) return ''
+  return `<img class="logo" src="${src}" alt="Logo" />`
+}
+
+function regBlock(mandir: ReceiptData['mandir']): string {
+  if (!mandir?.show_80g) return ''
+  const parts: string[] = []
+  if (mandir.reg_80g_number) parts.push(`80G: <b>${mandir.reg_80g_number}</b>`)
+  if (mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
+  if (mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
+  if (mandir.pan) parts.push(`PAN: <b>${mandir.pan}</b>`)
+  if (!parts.length) return ''
+  return `<div class="reg-block">${parts.join(' &nbsp;|&nbsp; ')}</div>`
+}
+
+function paymentBlock(mandir: ReceiptData['mandir']): string {
+  const parts: string[] = []
+  if (mandir?.upi_id) parts.push(`UPI: <b>${mandir.upi_id}</b>`)
+  if (mandir?.bank_account_no) {
+    const bankLine = [mandir.bank_account_name, mandir.bank_account_no, mandir.bank_ifsc, mandir.bank_name].filter(Boolean).join(' | ')
+    parts.push(`Bank: <b>${bankLine}</b>`)
+  }
+  if (!parts.length) return ''
+  return `<div class="payment-block"><span class="pay-label">Payment Details:</span> ${parts.join(' &nbsp;&nbsp; ')}</div>`
+}
+
+function voidedBanner(is_voided: boolean): string {
+  return is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''
+}
+
+// ── TEMPLATE 1: Classic ─────────────────────────────────────────────────────
+function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: 'Arial', sans-serif; background:#f0f2f5; }
+    .page { max-width:700px; margin:24px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.12); }
+    .header { background:${color}; color:#fff; padding:24px 32px; display:flex; align-items:center; gap:20px; }
+    .logo { height:60px; width:auto; object-fit:contain; border-radius:4px; background:#fff; padding:4px; }
+    .header-text h1 { font-size:20px; font-weight:700; margin-bottom:3px; }
+    .header-text p { font-size:11px; opacity:.85; line-height:1.6; }
+    .receipt-badge { margin-left:auto; text-align:right; }
+    .receipt-badge .label { font-size:10px; opacity:.7; letter-spacing:1px; text-transform:uppercase; }
+    .receipt-badge .rno { font-size:18px; font-weight:700; font-family:monospace; }
+    .receipt-badge .date { font-size:11px; opacity:.8; margin-top:2px; }
+    .body { padding:28px 32px; }
+    ${voidedBanner(r.is_voided) ? '.voided { background:#fee2e2; border:2px solid #f87171; color:#991b1b; padding:10px; border-radius:6px; text-align:center; font-weight:700; font-size:13px; margin-bottom:20px; }' : ''}
+    .section-label { font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:${color}; margin-bottom:8px; }
+    .donor-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px 18px; margin-bottom:20px; }
+    .donor-name { font-size:18px; font-weight:700; color:#111; }
+    .donor-mobile { font-size:12px; color:#6b7280; margin-top:2px; }
+    .amount-box { background:${color}12; border:1.5px solid ${color}40; border-radius:6px; padding:16px 18px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; }
+    .amount-label { font-size:12px; color:${color}; font-weight:600; }
+    .amount-value { font-size:28px; font-weight:800; color:${color}; font-family:monospace; }
+    .amount-words { font-size:11px; color:#374151; margin-top:4px; font-style:italic; }
+    table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    td { padding:9px 12px; border-bottom:1px solid #f1f5f9; font-size:13px; }
+    td:first-child { color:#6b7280; font-weight:600; width:38%; }
+    td:last-child { color:#111; font-weight:500; }
+    .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+    .badge-green { background:#dcfce7; color:#15803d; }
+    .badge-red { background:#fee2e2; color:#991b1b; }
+    .reg-block { font-size:10.5px; color:#374151; border-top:1px dashed #e2e8f0; padding-top:10px; margin-top:4px; line-height:1.9; }
+    .payment-block { font-size:10.5px; color:#374151; padding-top:8px; line-height:1.9; }
+    .pay-label { font-weight:700; color:${color}; }
+    .footer-note { font-size:11px; color:#6b7280; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; text-align:center; font-style:italic; }
+    .print-hint { font-size:11px; color:#9ca3af; text-align:center; margin-top:14px; padding-bottom:8px; }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border-radius:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="header">
+      ${logoTag(mandir)}
+      <div class="header-text">
+        <h1>${mandir.name}</h1>
+        <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+      </div>
+      <div class="receipt-badge">
+        <div class="label">Donation Receipt</div>
+        <div class="rno">${r.receipt_number}</div>
+        <div class="date">${dateStr}</div>
+      </div>
+    </div>
+    <div class="body">
+      ${voidedBanner(r.is_voided)}
+      <div class="section-label">Received From</div>
+      <div class="donor-box">
+        <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
+        ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
+      </div>
+      <div class="amount-box">
+        <div>
+          <div class="amount-label">Donation Amount</div>
+          <div class="amount-words">${amountInWords(r.amount_paise)}</div>
+        </div>
+        <div class="amount-value">₹ ${fmtRs(r.amount_paise)}</div>
+      </div>
+      <table>
+        <tr><td>Category</td><td>${r.category || '—'}</td></tr>
+        <tr><td>Payment Mode</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>80G Eligible</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? 'Yes' : 'No'}</span></td></tr>
+      </table>
+      ${regBlock(mandir)}
+      ${paymentBlock(mandir)}
+      ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    </div>
+  </div>`
+}
+
+// ── TEMPLATE 2: Minimal ─────────────────────────────────────────────────────
+function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; }
+    .page { max-width:640px; margin:32px auto; padding:40px 44px; border:1px solid #d1d5db; }
+    .top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; padding-bottom:20px; border-bottom:2px solid ${color}; }
+    .logo { height:48px; width:auto; object-fit:contain; }
+    .mandir-info h1 { font-size:16px; font-weight:700; color:#111; }
+    .mandir-info p { font-size:10px; color:#6b7280; line-height:1.7; margin-top:2px; }
+    .rhs { text-align:right; }
+    .rhs .rtitle { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:${color}; font-weight:700; }
+    .rhs .rno { font-size:15px; font-weight:700; font-family:monospace; color:#111; margin-top:3px; }
+    .rhs .rdate { font-size:11px; color:#6b7280; margin-top:2px; }
+    ${voidedBanner(r.is_voided) ? '.voided{border:1px solid #f87171;background:#fff5f5;color:#b91c1c;padding:8px 12px;text-align:center;font-weight:700;font-size:12px;margin-bottom:20px;}' : ''}
+    .field { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:13px; }
+    .field .k { color:#6b7280; }
+    .field .v { font-weight:600; color:#111; text-align:right; }
+    .amount-row .k { font-weight:700; color:#111; font-size:15px; }
+    .amount-row .v { font-size:24px; font-weight:800; color:${color}; font-family:monospace; }
+    .words { font-size:10.5px; color:#6b7280; font-style:italic; text-align:right; padding-bottom:12px; border-bottom:1px solid #f3f4f6; margin-bottom:4px; }
+    .reg-block { font-size:10px; color:#6b7280; margin-top:20px; line-height:2; }
+    .payment-block { font-size:10px; color:#6b7280; line-height:2; }
+    .pay-label { color:${color}; font-weight:700; }
+    .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:24px; font-style:italic; }
+    .print-hint { font-size:10px; color:#d1d5db; text-align:center; margin-top:12px; }
+    @media print { .page{border:none;margin:0;padding:28px;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="top">
+      <div class="mandir-info">
+        ${logoTag(mandir)}
+        <h1>${mandir.name}</h1>
+        <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+      </div>
+      <div class="rhs">
+        <div class="rtitle">Donation Receipt</div>
+        <div class="rno">${r.receipt_number}</div>
+        <div class="rdate">${dateStr}</div>
+      </div>
+    </div>
+    ${voidedBanner(r.is_voided)}
+    <div class="field"><span class="k">Received From</span><span class="v">${r.donor?.name || 'Anonymous'}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
+    <div class="field"><span class="k">Category</span><span class="v">${r.category || '—'}</span></div>
+    <div class="field"><span class="k">Payment Mode</span><span class="v">${modeName(r.payment_mode)}</span></div>
+    <div class="field"><span class="k">80G Eligible</span><span class="v">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</span></div>
+    <div class="field amount-row"><span class="k">Amount</span><span class="v">₹ ${fmtRs(r.amount_paise)}</span></div>
+    <div class="words">${amountInWords(r.amount_paise)}</div>
+    ${regBlock(mandir)}
+    ${paymentBlock(mandir)}
+    ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+// ── TEMPLATE 3: Modern ──────────────────────────────────────────────────────
+function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: 'Arial', sans-serif; background:#f8fafc; }
+    .page { max-width:700px; margin:24px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.15); }
+    .stripe { height:6px; background:linear-gradient(90deg,${color},${color}99); }
+    .header { padding:28px 36px; display:flex; align-items:center; gap:20px; border-bottom:1px solid #f1f5f9; }
+    .logo { height:54px; width:auto; object-fit:contain; }
+    .mandir-info h1 { font-size:19px; font-weight:800; color:#0f172a; letter-spacing:-.3px; }
+    .mandir-info p { font-size:11px; color:#64748b; margin-top:3px; line-height:1.6; }
+    .receipt-id { margin-left:auto; text-align:right; }
+    .receipt-id .tag { display:inline-block; background:${color}15; color:${color}; font-size:10px; font-weight:700; letter-spacing:1px; padding:3px 10px; border-radius:999px; margin-bottom:6px; }
+    .receipt-id .num { font-size:17px; font-weight:700; font-family:monospace; color:#0f172a; }
+    .receipt-id .dt { font-size:11px; color:#94a3b8; margin-top:2px; }
+    ${voidedBanner(r.is_voided) ? '.voided{background:#fef2f2;border-left:4px solid #ef4444;color:#b91c1c;padding:10px 16px;font-weight:700;font-size:12px;margin:16px 36px;}' : ''}
+    .body { padding:24px 36px 32px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+    .info-card { background:#f8fafc; border-radius:8px; padding:14px 16px; }
+    .info-card .label { font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+    .info-card .value { font-size:14px; font-weight:700; color:#0f172a; }
+    .info-card .sub { font-size:11px; color:#64748b; margin-top:2px; }
+    .amount-hero { background:linear-gradient(135deg,${color},${color}cc); border-radius:10px; padding:20px 24px; color:#fff; display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .amount-hero .lbl { font-size:11px; opacity:.8; font-weight:600; letter-spacing:.5px; }
+    .amount-hero .amt { font-size:32px; font-weight:900; font-family:monospace; }
+    .amount-hero .words { font-size:10.5px; opacity:.8; margin-top:4px; font-style:italic; }
+    .details { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+    .detail-item .k { font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
+    .detail-item .v { font-size:13px; font-weight:600; color:#0f172a; }
+    .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+    .badge-yes { background:#dcfce7; color:#15803d; }
+    .badge-no { background:#fee2e2; color:#991b1b; }
+    .reg-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
+    .payment-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
+    .pay-label { color:${color}; font-weight:700; }
+    .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; padding-top:16px; border-top:1px solid #f1f5f9; margin-top:8px; }
+    .print-hint { font-size:10px; color:#cbd5e1; text-align:center; margin-top:10px; }
+    @media print { body{background:#fff;} .page{box-shadow:none;border-radius:0;margin:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="stripe"></div>
+    <div class="header">
+      ${logoTag(mandir)}
+      <div class="mandir-info">
+        <h1>${mandir.name}</h1>
+        <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+      </div>
+      <div class="receipt-id">
+        <div class="tag">DONATION RECEIPT</div>
+        <div class="num">${r.receipt_number}</div>
+        <div class="dt">${dateStr}</div>
+      </div>
+    </div>
+    ${voidedBanner(r.is_voided)}
+    <div class="body">
+      <div class="grid2">
+        <div class="info-card">
+          <div class="label">Received From</div>
+          <div class="value">${r.donor?.name || 'Anonymous'}</div>
+          ${r.donor?.mobile ? `<div class="sub">${r.donor.mobile}</div>` : ''}
+        </div>
+        <div class="info-card">
+          <div class="label">Category</div>
+          <div class="value">${r.category || '—'}</div>
+        </div>
+      </div>
+      <div class="amount-hero">
+        <div>
+          <div class="lbl">Donation Amount</div>
+          <div class="words">${amountInWords(r.amount_paise)}</div>
+        </div>
+        <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
+      </div>
+      <div class="details">
+        <div class="detail-item"><div class="k">Payment Mode</div><div class="v">${modeName(r.payment_mode)}</div></div>
+        <div class="detail-item"><div class="k">80G Eligible</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? 'Yes ✓' : 'No'}</span></div></div>
+      </div>
+      ${regBlock(mandir)}
+      ${paymentBlock(mandir)}
+      ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    </div>
+  </div>`
+}
+
+// ── TEMPLATE 4: Traditional (Saffron) ───────────────────────────────────────
+function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
+  return `
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Sanskrit&display=swap');
+    body { font-family: 'Times New Roman', serif; background:#fffbf0; }
+    .page { max-width:680px; margin:24px auto; background:#fffef9; border:2px solid #c97b22; border-radius:4px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.1); }
+    .top-border { height:8px; background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22); }
+    .header { padding:24px 32px; text-align:center; border-bottom:2px solid #f59e0b; background:linear-gradient(180deg,#fef3c7,#fffef9); }
+    .aum { font-size:28px; color:#c97b22; margin-bottom:4px; }
+    .logo { height:56px; width:auto; object-fit:contain; margin-bottom:8px; }
+    .mandir-name { font-size:22px; font-weight:700; color:#92400e; letter-spacing:.5px; }
+    .mandir-address { font-size:11px; color:#78350f; margin-top:3px; line-height:1.7; }
+    .receipt-title { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#c97b22; margin-top:10px; border-top:1px dashed #f59e0b; padding-top:8px; }
+    .meta { display:flex; justify-content:space-between; padding:12px 32px; background:#fef9ee; border-bottom:1px solid #fde68a; font-size:12px; color:#78350f; font-weight:600; }
+    ${voidedBanner(r.is_voided) ? '.voided{background:#fee2e2;border:2px solid #f87171;color:#991b1b;padding:8px;text-align:center;font-weight:700;font-size:13px;margin:12px 32px;}' : ''}
+    .body { padding:20px 32px 28px; }
+    .received { font-size:12px; color:#78350f; margin-bottom:6px; font-style:italic; }
+    .donor-name { font-size:20px; font-weight:700; color:#92400e; margin-bottom:2px; }
+    .donor-mobile { font-size:12px; color:#a16207; margin-bottom:16px; }
+    .divider { border:none; border-top:1px dashed #f59e0b; margin:14px 0; }
+    table { width:100%; border-collapse:collapse; }
+    td { padding:9px 12px; border-bottom:1px solid #fef3c7; font-size:13px; }
+    td:first-child { color:#78350f; font-weight:600; width:38%; }
+    td:last-child { color:#1c1917; font-weight:500; }
+    .amount-td { font-size:22px; font-weight:800; color:#c97b22; font-family:monospace; }
+    .words-row td { font-size:10.5px; color:#a16207; font-style:italic; }
+    .reg-block { font-size:10.5px; color:#78350f; margin-top:16px; line-height:2; padding-top:12px; border-top:1px dashed #f59e0b; }
+    .payment-block { font-size:10.5px; color:#78350f; line-height:2; padding-top:6px; }
+    .pay-label { color:#c97b22; font-weight:700; }
+    .footer-note { font-size:11px; color:#a16207; text-align:center; margin-top:16px; font-style:italic; }
+    .bottom-border { height:8px; background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22); margin-top:20px; }
+    .print-hint { font-size:10px; color:#d97706; text-align:center; padding:8px; background:#fef9ee; }
+    @media print { body{background:#fff;} .page{border-color:#999;box-shadow:none;margin:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="top-border"></div>
+    <div class="header">
+      <div class="aum">🕉</div>
+      ${logoTag(mandir)}
+      <div class="mandir-name">${mandir.name}</div>
+      <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
+      <div class="receipt-title">Donation Receipt / दान रसीद</div>
+    </div>
+    <div class="meta">
+      <span>Receipt No: ${r.receipt_number}</span>
+      <span>Date: ${dateStr}</span>
+    </div>
+    ${voidedBanner(r.is_voided)}
+    <div class="body">
+      <div class="received">Received with gratitude from:</div>
+      <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
+      ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
+      <hr class="divider">
+      <table>
+        <tr><td>Category</td><td>${r.category || '—'}</td></tr>
+        <tr><td>Payment Mode</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>80G Eligible</td><td>${r.is_80g_eligible ? '✓ Yes' : 'No'}</td></tr>
+        <tr><td>Amount</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
+        <tr class="words-row"><td></td><td>${amountInWords(r.amount_paise)}</td></tr>
+      </table>
+      ${regBlock(mandir)}
+      ${paymentBlock(mandir)}
+      ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+    </div>
+    <div class="bottom-border"></div>
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+// ── TEMPLATE 5: Elegant (Premium) ───────────────────────────────────────────
+function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background:#f5f5f5; }
+    .page { max-width:700px; margin:24px auto; background:#fff; border-radius:2px; overflow:hidden; box-shadow:0 2px 20px rgba(0,0,0,.12); }
+    .accent-bar { height:4px; background:${color}; }
+    .header { display:grid; grid-template-columns:1fr auto; align-items:start; gap:24px; padding:32px 40px 24px; border-bottom:1px solid #e5e7eb; }
+    .logo { height:52px; width:auto; object-fit:contain; display:block; margin-bottom:12px; }
+    .mandir-name { font-size:20px; font-weight:700; color:#111; letter-spacing:-.2px; margin-bottom:4px; }
+    .mandir-address { font-size:11px; color:#6b7280; line-height:1.8; }
+    .receipt-meta { text-align:right; }
+    .receipt-meta .rt { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:${color}; font-weight:700; margin-bottom:8px; }
+    .receipt-meta .rn { font-size:18px; font-weight:700; font-family:'Courier New',monospace; color:#111; }
+    .receipt-meta .rd { font-size:11px; color:#9ca3af; margin-top:4px; }
+    ${voidedBanner(r.is_voided) ? '.voided{border:1px solid #fca5a5;background:#fff5f5;color:#b91c1c;padding:10px 16px;font-weight:700;text-align:center;font-size:12px;margin:16px 40px;}' : ''}
+    .body { padding:28px 40px 36px; }
+    .sec { margin-bottom:24px; }
+    .sec-title { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:${color}; font-weight:700; padding-bottom:6px; border-bottom:1px solid #f3f4f6; margin-bottom:12px; }
+    .donor-name { font-size:20px; font-weight:700; color:#111; }
+    .donor-sub { font-size:12px; color:#6b7280; margin-top:3px; }
+    .amount-line { display:flex; align-items:baseline; gap:12px; margin:12px 0; }
+    .amount-num { font-size:36px; font-weight:700; color:${color}; font-family:'Courier New',monospace; letter-spacing:-1px; }
+    .amount-cur { font-size:20px; font-weight:700; color:${color}; }
+    .amount-words { font-size:11px; color:#6b7280; font-style:italic; margin-top:2px; }
+    .dl { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .dt { font-size:10px; color:#9ca3af; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
+    .dd { font-size:13px; color:#111; font-weight:600; }
+    .elig-yes { color:#15803d; } .elig-no { color:#b91c1c; }
+    .reg-block { font-size:10.5px; color:#374151; border-top:1px solid #f3f4f6; padding-top:12px; margin-top:8px; line-height:2.1; }
+    .payment-block { font-size:10.5px; color:#374151; line-height:2.1; }
+    .pay-label { color:${color}; font-weight:700; }
+    .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:20px; font-style:italic; }
+    .bottom { height:4px; background:${color}20; margin-top:28px; position:relative; }
+    .bottom::before { content:''; position:absolute; left:0; top:0; height:100%; width:30%; background:${color}; }
+    .print-hint { font-size:10px; color:#d1d5db; text-align:center; padding:10px; }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="accent-bar"></div>
+    <div class="header">
+      <div>
+        ${logoTag(mandir)}
+        <div class="mandir-name">${mandir.name}</div>
+        <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
+      </div>
+      <div class="receipt-meta">
+        <div class="rt">Donation Receipt</div>
+        <div class="rn">${r.receipt_number}</div>
+        <div class="rd">${dateStr}</div>
+      </div>
+    </div>
+    ${voidedBanner(r.is_voided)}
+    <div class="body">
+      <div class="sec">
+        <div class="sec-title">Received From</div>
+        <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
+        ${r.donor?.mobile ? `<div class="donor-sub">${r.donor.mobile}</div>` : ''}
+      </div>
+      <div class="sec">
+        <div class="sec-title">Donation Amount</div>
+        <div class="amount-line">
+          <span class="amount-cur">₹</span>
+          <span class="amount-num">${fmtRs(r.amount_paise)}</span>
+        </div>
+        <div class="amount-words">${amountInWords(r.amount_paise)}</div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Details</div>
+        <div class="dl">
+          <div><div class="dt">Category</div><div class="dd">${r.category || '—'}</div></div>
+          <div><div class="dt">Payment Mode</div><div class="dd">${modeName(r.payment_mode)}</div></div>
+          <div><div class="dt">80G Eligible</div><div class="dd ${r.is_80g_eligible ? 'elig-yes' : 'elig-no'}">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</div></div>
+        </div>
+      </div>
+      ${regBlock(mandir)}
+      ${paymentBlock(mandir)}
+      ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+    </div>
+    <div class="bottom"></div>
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+export function buildReceiptHtml(r: ReceiptData): string {
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
-  const mandir = r.mandir ?? { name: 'Mandir', address: '' }
+  const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
+  const template = mandir.template || 'classic'
+  const color = mandir.primary_color || '#0D1B2E'
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Donation Receipt – ${r.receipt_number}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; background: #fff; }
-  .page { max-width: 680px; margin: 20px auto; padding: 28px 32px; border: 1px solid #ccc; }
-  .header { text-align: center; border-bottom: 2px solid #0D1B2E; padding-bottom: 12px; margin-bottom: 16px; }
-  .mandir-name { font-size: 20px; font-weight: 700; color: #0D1B2E; }
-  .mandir-address { font-size: 11px; color: #555; margin-top: 2px; }
-  .receipt-title { font-size: 15px; font-weight: 700; letter-spacing: 1px; margin-top: 8px; color: #0D1B2E; }
-  .voided-banner { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 6px 12px; border-radius: 4px; text-align: center; font-weight: 700; margin-bottom: 12px; }
-  .meta { display: flex; justify-content: space-between; font-size: 12px; color: #555; margin-bottom: 16px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  td { padding: 7px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
-  td:first-child { font-weight: 600; color: #374151; width: 38%; background: #f8fafc; }
-  .amount-row td { font-size: 16px; font-weight: 700; color: #0D1B2E; }
-  .footer-note { font-size: 11px; color: #6b7280; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 4px; }
-  .reg-info { font-size: 11px; color: #374151; margin-top: 10px; }
-  .print-hint { font-size: 11px; color: #999; text-align: center; margin-top: 12px; }
-  @media print { .print-hint { display: none; } body { margin: 0; } .page { border: none; margin: 0; } }
-</style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div class="mandir-name">${mandir.name}</div>
-    ${mandir.address ? `<div class="mandir-address">${mandir.address}</div>` : ''}
-    <div class="receipt-title">DONATION RECEIPT</div>
-  </div>
+  let body = ''
+  if (template === 'minimal') body = buildMinimal(r, dateStr, mandir, color)
+  else if (template === 'modern') body = buildModern(r, dateStr, mandir, color)
+  else if (template === 'traditional') body = buildTraditional(r, dateStr, mandir)
+  else if (template === 'elegant') body = buildElegant(r, dateStr, mandir, color)
+  else body = buildClassic(r, dateStr, mandir, color)
 
-  ${r.is_voided ? '<div class="voided-banner">⚠ VOIDED</div>' : ''}
-
-  <div class="meta">
-    <span><strong>Receipt No:</strong> ${r.receipt_number}</span>
-    <span><strong>Date:</strong> ${dateStr}</span>
-  </div>
-
-  <table>
-    <tr><td>Donor Name</td><td>${r.donor?.name || 'Anonymous'}</td></tr>
-    ${r.donor?.mobile ? `<tr><td>Mobile</td><td>${r.donor.mobile}</td></tr>` : ''}
-    <tr><td>Category</td><td>${r.category || '—'}</td></tr>
-    <tr><td>Payment Mode</td><td>${modeName(r.payment_mode)}</td></tr>
-    <tr class="amount-row"><td>Amount</td><td>₹ ${fmtRs(r.amount_paise)}</td></tr>
-    <tr><td>80G Eligible</td><td>${r.is_80g_eligible ? 'Yes' : 'No'}</td></tr>
-  </table>
-
-  ${mandir.show_80g && (mandir.reg_80g_number || mandir.reg_12a_number || mandir.pan) ? `
-  <div class="reg-info">
-    ${mandir.reg_80g_number ? `80G Reg No: <strong>${mandir.reg_80g_number}</strong>&nbsp;&nbsp;` : ''}
-    ${mandir.reg_12a_number ? `12A Reg No: <strong>${mandir.reg_12a_number}</strong>&nbsp;&nbsp;` : ''}
-    ${mandir.pan ? `PAN: <strong>${mandir.pan}</strong>` : ''}
-  </div>` : ''}
-
-  ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-
-  <div class="print-hint">Print this page or save as PDF using your browser's print function (Ctrl+P)</div>
-</div>
-<script>window.onload = () => { window.print() }</script>
-</body>
-</html>`
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0;}</style>
+</head><body>${body}<script>window.onload=()=>{window.print()}</script></body></html>`
 }
 
 export async function printDonationReceipt(donationId: string): Promise<void> {
   const { data } = await api.get(`/donations/${donationId}/receipt`)
   const receipt: ReceiptData = data.data
-  const html = buildHtml(receipt)
-  const win = window.open('', '_blank', 'width=780,height=900')
+  const html = buildReceiptHtml(receipt)
+  const win = window.open('', '_blank', 'width=800,height=960')
   if (!win) {
     alert('Popup blocked. Please allow popups for this site and try again.')
     return
