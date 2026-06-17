@@ -472,6 +472,355 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   </div>`
 }
 
+// ── TEMPLATE 6: Temple (Shri Ram style — two-column, orange bar) ────────────
+function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  const hasBank = mandir.bank_account_no || mandir.upi_id
+  const hasReg = mandir.show_80g && (mandir.reg_80g_number || mandir.pan)
+  return `
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f5f5; font-size:12px; }
+    .page { max-width:740px; margin:20px auto; background:#fff; border:1.5px solid #ccc; box-shadow:0 2px 12px rgba(0,0,0,.1); }
+    .top-bar { background:${color}; color:#fff; display:flex; align-items:center; gap:16px; padding:12px 20px; }
+    .logo { height:64px; width:64px; object-fit:contain; border-radius:50%; background:#fff; padding:4px; flex-shrink:0; }
+    .top-bar-text { flex:1; text-align:center; }
+    .top-bar-text h1 { font-size:20px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
+    .top-bar-text .sub { font-size:11px; font-style:italic; opacity:.9; }
+    .top-bar-text .addr { font-size:10px; opacity:.8; margin-top:4px; line-height:1.6; }
+    .orange-line { height:5px; background:linear-gradient(90deg,#f97316,${color},#f97316); }
+    ${hasReg ? '.tax-row { background:#fff8f0; border-bottom:1px solid #fde8cc; padding:6px 20px; font-size:11px; color:#92400e; display:flex; justify-content:space-between; }' : ''}
+    .receipt-meta { display:flex; justify-content:flex-end; gap:32px; padding:8px 20px; border-bottom:1px solid #e5e7eb; font-size:11px; }
+    .receipt-meta .label { color:#6b7280; }
+    .receipt-meta .val { font-weight:700; color:#111; }
+    ${r.is_voided ? '.voided{background:#fef2f2;border-bottom:2px solid #ef4444;color:#b91c1c;padding:8px 20px;font-weight:700;text-align:center;}' : ''}
+    .two-col { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid #e5e7eb; }
+    .col-left { padding:16px 20px; border-right:1px solid #e5e7eb; }
+    .col-right { padding:16px 20px; }
+    .sec-hdr { background:${color}; color:#fff; font-size:10px; font-weight:700; letter-spacing:1px; padding:4px 10px; margin:-16px -20px 12px; text-transform:uppercase; }
+    .field { margin-bottom:8px; }
+    .field .k { font-size:10px; color:#6b7280; font-weight:600; margin-bottom:1px; }
+    .field .v { font-size:13px; font-weight:700; color:#111; }
+    .field .v.amount { font-size:20px; color:${color}; font-family:monospace; }
+    .notes-section { padding:12px 20px; border-bottom:1px solid #e5e7eb; background:#fafafa; }
+    .notes-section ul { list-style:disc; padding-left:18px; }
+    .notes-section ul li { font-size:10px; color:#374151; line-height:1.7; }
+    .footer-row { display:flex; justify-content:space-between; align-items:flex-end; padding:12px 20px 16px; }
+    .sig-block { text-align:right; }
+    .sig-block .for { font-size:11px; color:#6b7280; }
+    .sig-block .entity { font-size:12px; font-weight:700; color:#111; margin-top:2px; }
+    .sig-block .auth { font-size:10px; color:#6b7280; margin-top:20px; border-top:1px solid #9ca3af; padding-top:4px; }
+    .bank-box { border:1px solid #d1d5db; border-radius:4px; padding:8px 12px; font-size:10px; color:#374151; line-height:1.8; }
+    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:6px; background:#f9fafb; }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border:none;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="top-bar">
+      ${mandir.show_logo ? logoTag(mandir) : ''}
+      <div class="top-bar-text">
+        <h1>${mandir.name}</h1>
+        ${mandir.email ? `<div class="sub">by ${mandir.email.split('@')[1] || mandir.name}</div>` : ''}
+        <div class="addr">${mandir.address}${mandir.mobile ? ' &nbsp;|&nbsp; ' + mandir.mobile : ''}${mandir.email ? '<br>Email: ' + mandir.email : ''}</div>
+      </div>
+    </div>
+    <div class="orange-line"></div>
+    ${hasReg ? `<div class="tax-row">
+      <span>Income Tax Exemption (80-G) Number: <b>${mandir.reg_80g_number || '—'}</b></span>
+      ${mandir.pan ? `<span>PAN: <b>${mandir.pan}</b></span>` : ''}
+    </div>` : ''}
+    <div class="receipt-meta">
+      <span><span class="label">Receipt No: </span><span class="val">${r.receipt_number}</span></span>
+      <span><span class="label">Created: </span><span class="val">${dateStr}</span></span>
+    </div>
+    ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
+    <div class="two-col">
+      <div class="col-left">
+        <div class="sec-hdr">Donors Detail:</div>
+        <div class="field"><div class="k">Received with Thanks</div><div class="v">From ${r.donor?.name || 'Anonymous Donor'}</div></div>
+        ${r.donor?.mobile ? `<div class="field"><div class="k">Contact No.</div><div class="v">${r.donor.mobile}</div></div>` : ''}
+        <div class="field" style="margin-top:12px"><div class="k">Amount (INR)</div><div class="v amount">INR ${fmtRs(r.amount_paise)}</div></div>
+        <div class="field"><div class="k">As donation for the cause</div><div class="v">${r.category || 'General Donation'}</div></div>
+        ${hasBank ? `<div style="margin-top:12px"><div class="k" style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px">Bank / Payment Details</div><div class="bank-box">${mandir.upi_id ? 'UPI: <b>'+mandir.upi_id+'</b><br>' : ''}${mandir.bank_account_no ? 'A/C: <b>'+mandir.bank_account_no+'</b> &nbsp; IFSC: <b>'+mandir.bank_ifsc+'</b><br>'+mandir.bank_name : ''}</div></div>` : ''}
+      </div>
+      <div class="col-right">
+        <div class="sec-hdr">Transaction Detail:</div>
+        <div class="field"><div class="k">Donor Name</div><div class="v">${r.donor?.name || '—'}</div></div>
+        <div style="margin:10px 0 6px"><div class="sec-hdr" style="margin:-4px -20px 10px">Purpose of Donation:</div>
+          <div class="v">${r.category || 'General Donation'}</div>
+        </div>
+        <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">Payment details:</div>
+          <div class="v">${modeName(r.payment_mode)}</div>
+        </div>
+        <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">Mode of Payment:</div>
+          <div class="v">${modeName(r.payment_mode)}</div>
+        </div>
+        ${r.is_80g_eligible && mandir.show_80g ? `<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:3px;font-size:10px;color:#92400e"><b>80G Eligible</b> — Tax exemption certificate available</div>` : ''}
+      </div>
+    </div>
+    ${mandir.footer ? `<div class="notes-section"><div style="font-size:10px;font-weight:700;margin-bottom:6px">Please Note:</div><ul><li>${mandir.footer}</li></ul></div>` : ''}
+    <div class="footer-row">
+      <div style="font-size:11px;color:#374151;max-width:300px;font-style:italic">${r.is_80g_eligible && mandir.show_80g ? 'This receipt is valid for 80G tax exemption purposes.' : 'Thank you for your generous donation.'}</div>
+      <div class="sig-block">
+        <div class="for">For ${mandir.name}</div>
+        <div class="auth">Authorised Signatory</div>
+      </div>
+    </div>
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+// ── TEMPLATE 7: Tabular (Saibaba Sansthan / Duplicate style) ────────────────
+function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: Arial, sans-serif; background:#fff; font-size:12px; }
+    .page { max-width:700px; margin:20px auto; background:#fff; border:2px solid #333; }
+    .header { text-align:center; padding:14px 20px 10px; border-bottom:2px solid #333; }
+    .logo { height:52px; object-fit:contain; margin-bottom:6px; }
+    .header h1 { font-size:18px; font-weight:900; text-transform:uppercase; color:#111; letter-spacing:.5px; }
+    .header .ftr-no { font-size:10px; color:#555; margin-top:2px; }
+    .header .addr { font-size:10px; color:#555; line-height:1.7; margin-top:3px; }
+    .dup-banner { background:#f0f0f0; border-bottom:2px solid #333; text-align:center; font-size:13px; font-weight:900; letter-spacing:4px; padding:4px; color:#333; }
+    ${r.is_voided ? '.voided-row{background:#fee2e2;text-align:center;font-weight:700;font-size:12px;color:#b91c1c;padding:8px;border-bottom:2px solid #333;}' : ''}
+    .meta-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; border-bottom:1px solid #999; }
+    .meta-cell { padding:6px 14px; font-size:11px; border-right:1px solid #999; }
+    .meta-cell:last-child { border-right:none; }
+    .meta-cell .k { color:#555; font-size:10px; }
+    .meta-cell .v { font-weight:700; color:#111; }
+    .rcvd-row { padding:8px 14px; border-bottom:1px solid #999; font-size:12px; }
+    .addr-row { display:grid; grid-template-columns:1fr 1fr; padding:6px 14px; border-bottom:1px solid #999; font-size:11px; gap:12px; }
+    table.main { width:100%; border-collapse:collapse; border-top:2px solid #333; border-bottom:2px solid #333; }
+    table.main th { background:#333; color:#fff; font-size:11px; padding:7px 14px; text-align:left; font-weight:700; letter-spacing:.5px; }
+    table.main th:last-child { text-align:right; }
+    table.main td { padding:10px 14px; border-bottom:1px solid #ddd; font-size:12px; }
+    table.main td.amount-td { text-align:right; font-weight:700; font-family:monospace; font-size:14px; }
+    table.main tr.total-row td { font-weight:900; border-top:2px solid #333; font-size:14px; }
+    table.main tr.total-row td.amount-td { color:${color}; }
+    .footer-section { padding:10px 14px; border-top:1px solid #ccc; background:#fafafa; font-size:10.5px; color:#374151; line-height:1.8; }
+    .sig-row { display:flex; justify-content:space-between; align-items:flex-end; padding:10px 14px 14px; }
+    .sig-block { text-align:center; }
+    .sig-block .sig-line { width:120px; border-top:1px solid #333; margin:0 auto 3px; }
+    .sig-block .sig-label { font-size:10px; color:#555; }
+    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; background:#f9fafb; }
+    @media print { body{background:#fff;} .page{margin:0;border:2px solid #333;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="header">
+      ${mandir.show_logo ? logoTag(mandir) : ''}
+      <h1>${mandir.name}</h1>
+      ${(mandir.show_80g && mandir.reg_80g_number) || mandir.pan ? `<div class="ftr-no">${[mandir.reg_80g_number ? 'FTR No / 80G: '+mandir.reg_80g_number : '', mandir.pan ? 'PAN: '+mandir.pan : ''].filter(Boolean).join(' &nbsp;|&nbsp; ')}</div>` : ''}
+      <div class="addr">${mandir.address}${mandir.mobile ? ' &nbsp;|&nbsp; Ph: '+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? ' &nbsp;|&nbsp; GSTIN: '+mandir.gstin : ''}</div>
+    </div>
+    <div class="dup-banner">DONATION RECEIPT</div>
+    ${r.is_voided ? '<div class="voided-row">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
+    <div class="meta-row">
+      <div class="meta-cell"><div class="k">Cont. No.</div><div class="v">${modeName(r.payment_mode).toUpperCase()}</div></div>
+      <div class="meta-cell"><div class="k">Receipt Number</div><div class="v">${r.receipt_number}</div></div>
+      <div class="meta-cell"><div class="k">Date</div><div class="v">${dateStr}</div></div>
+    </div>
+    <div class="rcvd-row">Received From: &nbsp;<b>${r.donor?.name || 'Anonymous Donor'}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; Mobile: <b>'+r.donor.mobile+'</b>' : ''}</div>
+    <div class="addr-row">
+      <div>Category: <b>${r.category || 'General Donation'}</b></div>
+      <div>Mode: <b>${modeName(r.payment_mode)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? 'Yes' : 'No'}</b></div>
+    </div>
+    <table class="main">
+      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td>${r.category || 'General Donation'}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
+        <tr><td style="font-size:10px;color:#6b7280;font-style:italic">${amountInWords(r.amount_paise)}</td><td></td></tr>
+      </tbody>
+      <tfoot><tr class="total-row"><td><b>Total</b></td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr></tfoot>
+    </table>
+    ${(mandir.upi_id || mandir.bank_account_no) ? `<div class="footer-section">${mandir.upi_id ? 'UPI ID: <b>'+mandir.upi_id+'</b>' : ''} ${mandir.bank_account_no ? '&nbsp;|&nbsp; Bank A/C: <b>'+mandir.bank_account_no+'</b> IFSC: <b>'+mandir.bank_ifsc+'</b> — '+mandir.bank_name : ''}</div>` : ''}
+    ${mandir.footer ? `<div class="footer-section" style="border-top:1px solid #ccc">${mandir.footer}</div>` : ''}
+    <div class="sig-row">
+      <div style="font-size:11px;color:#555">This is a computer-generated receipt.</div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-label">Authorised Signatory</div>
+        <div style="font-size:10px;font-weight:700;color:#111;margin-top:2px">${mandir.name}</div>
+      </div>
+    </div>
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+// ── TEMPLATE 8: Acknowledgement (Tirumala / Formal letter style) ─────────────
+function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  return `
+  <style>
+    body { font-family: 'Times New Roman', Times, serif; background:#fff; font-size:13px; line-height:1.7; }
+    .page { max-width:700px; margin:20px auto; background:#fff; border:2px double #333; padding:0; }
+    .header { text-align:center; padding:16px 28px 12px; border-bottom:3px double #333; }
+    .logo { height:60px; object-fit:contain; margin-bottom:6px; }
+    .header h1 { font-size:20px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#111; }
+    .header h2 { font-size:13px; font-weight:700; color:#444; margin-top:2px; letter-spacing:.5px; }
+    .header .addr { font-size:11px; color:#555; margin-top:4px; }
+    .txn-row { display:flex; justify-content:space-between; padding:8px 28px; background:#f8f8f8; border-bottom:1px solid #ccc; font-size:11px; }
+    .txn-row .lbl { color:#555; }
+    .txn-row .val { font-weight:700; color:#111; }
+    ${r.is_voided ? '.voided{text-align:center;font-weight:700;color:#b91c1c;padding:8px;border-bottom:2px solid #ccc;font-size:13px;}' : ''}
+    .ack-title { text-align:center; font-size:15px; font-weight:900; letter-spacing:2px; text-transform:uppercase; padding:12px 28px; border-bottom:1px solid #ccc; background:${color}08; }
+    .body { padding:20px 28px; }
+    .recvd-para { margin-bottom:16px; }
+    .recvd-para .amount-highlight { font-size:16px; font-weight:900; color:${color}; }
+    table.details { width:100%; border-collapse:collapse; margin:16px 0; }
+    table.details th { background:#333; color:#fff; font-size:11px; padding:6px 14px; text-align:left; }
+    table.details td { padding:8px 14px; border:1px solid #ccc; font-size:12px; }
+    table.details td.amt-col { font-weight:700; text-align:right; font-family:monospace; font-size:14px; }
+    .certified { font-size:11px; color:#374151; background:#f9fafb; border:1px solid #e5e7eb; border-radius:3px; padding:10px 14px; margin:12px 0; line-height:1.8; }
+    .contribution-line { font-style:italic; text-align:center; font-size:12px; color:#444; margin:12px 0; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:8px; }
+    .address-block { margin-top:20px; }
+    .address-block .to { font-size:11px; color:#555; margin-bottom:4px; }
+    .address-block .donor-name { font-size:14px; font-weight:700; }
+    .address-block .donor-addr { font-size:12px; color:#374151; margin-top:4px; line-height:1.7; }
+    .sig-section { display:flex; justify-content:space-between; align-items:flex-end; margin-top:24px; padding-top:16px; border-top:1px solid #ccc; }
+    .sig-left { font-size:11px; color:#555; }
+    .sig-right { text-align:right; }
+    .sig-right .role { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-top:24px; border-top:1px solid #333; padding-top:4px; }
+    .sig-right .org { font-size:12px; font-weight:700; color:#111; }
+    .footer-note { font-size:10px; color:#777; text-align:center; padding:8px 28px 12px; border-top:1px solid #ccc; font-style:italic; }
+    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; background:#f9fafb; }
+    @media print { body{background:#fff;} .page{margin:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="header">
+      ${mandir.show_logo ? logoTag(mandir) : ''}
+      <h1>${mandir.name}</h1>
+      ${(mandir.show_80g && mandir.reg_80g_number) ? `<h2>${mandir.reg_80g_number}</h2>` : ''}
+      <div class="addr">${mandir.address}${mandir.mobile ? '<br>Phone: '+mandir.mobile : ''}${mandir.email ? '<br>Email: '+mandir.email : ''}</div>
+    </div>
+    <div class="txn-row">
+      <span><span class="lbl">Transaction ID: </span><span class="val">${r.receipt_number}</span></span>
+      <span><span class="lbl">Status: </span><span class="val" style="color:#15803d">Received</span></span>
+    </div>
+    ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
+    <div class="ack-title">Acknowledgement Receipt</div>
+    <div class="body">
+      <div class="recvd-para">
+        Received with thanks from <b>${r.donor?.name || 'Anonymous Donor'}</b>, an amount of
+        <span class="amount-highlight">INR ${fmtRs(r.amount_paise)} / ${amountInWords(r.amount_paise)}</span>
+        towards corpus donation on <b>${dateStr}</b>.
+      </div>
+      <table class="details">
+        <thead><tr><th>Mode of Payment</th><th>Instrument No.</th><th>Instrument Date</th><th>Realized Amount</th></tr></thead>
+        <tbody><tr>
+          <td>${modeName(r.payment_mode)}</td>
+          <td>${r.receipt_number}</td>
+          <td>${dateStr}</td>
+          <td class="amt-col">INR ${fmtRs(r.amount_paise)}</td>
+        </tr></tbody>
+      </table>
+      ${r.is_80g_eligible && mandir.show_80g ? `<div class="certified">Certified that this donation is eligible for deduction U/S 80 G (5) (vi) of the Income Tax Act. ${mandir.reg_80g_number ? 'Reg No: <b>'+mandir.reg_80g_number+'</b>.' : ''} ${mandir.pan ? 'PAN: <b>'+mandir.pan+'</b>.' : ''}</div>` : ''}
+      <div class="contribution-line">Your contribution towards "<b>${mandir.name}</b>" is one of the best charities.</div>
+      ${mandir.footer ? `<div style="font-size:11px;color:#374151;font-style:italic;margin-top:8px">${mandir.footer}</div>` : ''}
+      <div class="address-block">
+        <div class="to">TO</div>
+        <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
+        ${r.donor?.mobile ? `<div class="donor-addr">${r.donor.mobile}</div>` : ''}
+      </div>
+      <div class="sig-section">
+        <div class="sig-left">This is an electronically generated document<br>and does not require any signature.</div>
+        <div class="sig-right">
+          <div class="org">${mandir.name}</div>
+          <div class="role">Chief Accounts Officer</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">PLEASE SEE OVERLEAF FOR PARTICULARS OF THE TRUST</div>
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
+// ── TEMPLATE 9: Jain Tirth (Tally-style — bank box, signature) ──────────────
+function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  const hasBank = mandir.bank_account_no
+  return `
+  <style>
+    body { font-family: Arial, sans-serif; background:#fff; font-size:12px; }
+    .page { max-width:720px; margin:20px auto; background:#fff; border:2.5px solid #333; }
+    .header { padding:14px 20px 10px; border-bottom:2px solid #333; display:flex; gap:16px; align-items:flex-start; }
+    .logo { height:68px; width:auto; object-fit:contain; }
+    .header-center { flex:1; text-align:center; }
+    .aum { font-size:12px; color:${color}; font-weight:700; margin-bottom:2px; }
+    .header-center h1 { font-size:19px; font-weight:900; color:#111; text-transform:uppercase; letter-spacing:.5px; }
+    .header-center .sub { font-size:11px; color:#444; margin-top:3px; line-height:1.6; }
+    .reg-bar { font-size:10px; text-align:right; color:#555; }
+    .reg-bar b { color:#111; }
+    .title-bar { background:${color}; color:#fff; text-align:center; font-size:13px; font-weight:900; letter-spacing:2px; padding:5px 0; }
+    .meta-row { display:flex; justify-content:space-between; padding:6px 16px; border-bottom:1px solid #ccc; font-size:11px; background:#fafafa; }
+    ${r.is_voided ? '.voided{text-align:center;font-weight:700;color:#b91c1c;padding:8px;border-bottom:2px solid #ccc;}' : ''}
+    .body { padding:14px 16px; }
+    .field-row { display:flex; gap:8px; margin-bottom:8px; border-bottom:1px dotted #ccc; padding-bottom:7px; align-items:baseline; }
+    .field-row .lbl { font-size:11px; font-weight:700; color:#333; min-width:140px; }
+    .field-row .val { font-size:12px; color:#111; font-weight:600; }
+    .field-row .val.big { font-size:16px; font-weight:900; color:${color}; font-family:monospace; }
+    .bank-table { width:100%; border-collapse:collapse; margin-top:12px; }
+    .bank-table td { border:1.5px solid #333; padding:8px 12px; font-size:11px; }
+    .bank-table .amount-cell { font-size:16px; font-weight:900; font-family:monospace; color:${color}; text-align:right; }
+    .bank-table .bank-info { font-size:10.5px; line-height:1.8; }
+    .sig-row { display:flex; justify-content:flex-end; margin-top:20px; padding-top:12px; border-top:1px solid #ccc; }
+    .sig-box { text-align:center; }
+    .sig-box .sig-line { width:140px; border-top:1px solid #333; margin:0 auto 4px; }
+    .sig-box .sig-lbl { font-size:11px; font-weight:700; }
+    .reg-footer { font-size:10px; color:#555; padding:8px 16px; border-top:1px solid #ccc; background:#fafafa; }
+    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; }
+    @media print { body{background:#fff;} .page{margin:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="header">
+      ${mandir.show_logo ? logoTag(mandir) : ''}
+      <div class="header-center">
+        <div class="aum">॥ श्री आदिनाथाय नमः ॥</div>
+        <h1>${mandir.name}</h1>
+        <div class="sub">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</div>
+      </div>
+      <div class="reg-bar">
+        ${mandir.show_80g && mandir.reg_80g_number ? `Reg. No: <b>${mandir.reg_80g_number}</b><br>` : ''}
+        ${mandir.pan ? `PAN No: <b>${mandir.pan}</b>` : ''}
+        <br>Date: <b>${dateStr}</b>
+      </div>
+    </div>
+    <div class="title-bar">TRUST RECEIPT</div>
+    <div class="meta-row">
+      <span>Receipt No: <b>${r.receipt_number}</b></span>
+      <span>Date: <b>${dateStr}</b></span>
+    </div>
+    ${r.is_voided ? '<div class="voided">⚠ VOID</div>' : ''}
+    <div class="body">
+      <div class="field-row"><span class="lbl">Donor Name Shri / Smt.</span><span class="val">${r.donor?.name || 'Anonymous Donor'}</span></div>
+      ${r.donor?.mobile ? `<div class="field-row"><span class="lbl">Mobile Number</span><span class="val">${r.donor.mobile}</span></div>` : ''}
+      <div class="field-row"><span class="lbl">Amount in Words</span><span class="val">INR ${amountInWords(r.amount_paise)}</span></div>
+      <div class="field-row"><span class="lbl">For Purpose of</span><span class="val">${r.category || 'General Donation'}</span></div>
+      ${hasBank ? `
+      <table class="bank-table">
+        <tr>
+          <td class="bank-info">
+            Bank: <b>${mandir.bank_name || '—'}</b><br>
+            A/C Name: <b>${mandir.bank_account_name || mandir.name}</b><br>
+            A/C No.: <b>${mandir.bank_account_no}</b><br>
+            IFS Code: <b>${mandir.bank_ifsc || '—'}</b>
+            ${mandir.upi_id ? '<br>UPI: <b>'+mandir.upi_id+'</b>' : ''}
+          </td>
+          <td class="amount-cell">
+            ${fmtRs(r.amount_paise)}<br>
+            <span style="font-size:11px;font-weight:400;color:#6b7280">Mode: ${modeName(r.payment_mode)}</span>
+          </td>
+        </tr>
+      </table>` : `
+      <div class="field-row"><span class="lbl">Amount</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>
+      <div class="field-row"><span class="lbl">Mode of Payment</span><span class="val">${modeName(r.payment_mode)}</span></div>`}
+      <div class="sig-row">
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <div class="sig-lbl">Signature</div>
+        </div>
+      </div>
+    </div>
+    ${mandir.show_80g && mandir.reg_80g_number ? `<div class="reg-footer">80G Exemption: <b>${mandir.reg_80g_number}</b>${mandir.pan ? ' &nbsp;|&nbsp; PAN: <b>'+mandir.pan+'</b>' : ''} — This donation is eligible for income tax deduction u/s 80G of Income Tax Act, 1961.</div>` : ''}
+    ${mandir.footer ? `<div class="reg-footer" style="border-top:1px solid #ccc">${mandir.footer}</div>` : ''}
+    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+  </div>`
+}
+
 export function buildReceiptHtml(r: ReceiptData): string {
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
@@ -483,6 +832,10 @@ export function buildReceiptHtml(r: ReceiptData): string {
   else if (template === 'modern') body = buildModern(r, dateStr, mandir, color)
   else if (template === 'traditional') body = buildTraditional(r, dateStr, mandir)
   else if (template === 'elegant') body = buildElegant(r, dateStr, mandir, color)
+  else if (template === 'temple') body = buildTemple(r, dateStr, mandir, color)
+  else if (template === 'tabular') body = buildTabular(r, dateStr, mandir, color)
+  else if (template === 'acknowledgement') body = buildAcknowledgement(r, dateStr, mandir, color)
+  else if (template === 'jain_tirth') body = buildJainTirth(r, dateStr, mandir, color)
   else body = buildClassic(r, dateStr, mandir, color)
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>

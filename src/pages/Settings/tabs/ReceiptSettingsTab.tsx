@@ -122,6 +122,125 @@ const TEMPLATES = [
         <div style="height:3px;background:${color}20"></div>
       </div>`,
   },
+  {
+    id: 'temple',
+    label: 'Temple',
+    desc: 'Two-column, coloured header bar, transaction block (Shri Ram style)',
+    thumb: (color: string) => `
+      <div style="font-family:sans-serif;font-size:6px;border:1.5px solid #ccc;overflow:hidden">
+        <div style="background:${color};color:#fff;padding:5px 8px;display:flex;align-items:center;gap:5px">
+          <div style="width:14px;height:14px;background:#fff;border-radius:50%;opacity:.9;flex-shrink:0"></div>
+          <div style="flex:1;text-align:center">
+            <div style="font-weight:900;font-size:7px;text-transform:uppercase">Mandir Name</div>
+            <div style="font-size:4.5px;opacity:.8;margin-top:1px">Address, City · contact@mandir.org</div>
+          </div>
+        </div>
+        <div style="height:3px;background:linear-gradient(90deg,#f97316,${color},#f97316)"></div>
+        <div style="background:#fff8f0;padding:3px 8px;display:flex;justify-content:space-between;border-bottom:1px solid #fde8cc;font-size:4.5px;color:#92400e">
+          <span>80G: 80G/2024/001</span><span>PAN: AAAAB1234C</span>
+        </div>
+        <div style="display:flex;border-bottom:1px solid #e5e7eb">
+          <div style="flex:1;padding:4px 6px;border-right:1px solid #e5e7eb">
+            <div style="background:${color};color:#fff;font-size:4px;padding:1px 3px;margin:-4px -6px 4px;font-weight:700">DONOR DETAIL</div>
+            <div style="font-weight:700;font-size:6px">Donor Name</div>
+            <div style="font-size:4.5px;color:#6b7280;margin-top:2px">+91 98765 43210</div>
+            <div style="font-size:8px;font-weight:800;color:${color};margin-top:4px;font-family:monospace">₹1,500</div>
+          </div>
+          <div style="flex:1;padding:4px 6px">
+            <div style="background:${color};color:#fff;font-size:4px;padding:1px 3px;margin:-4px -6px 4px;font-weight:700">TRANSACTION</div>
+            <div style="font-size:4.5px;border-bottom:1px solid #f0f0f0;padding:2px 0">Mode: Cash</div>
+            <div style="font-size:4.5px;border-bottom:1px solid #f0f0f0;padding:2px 0">Purpose: General</div>
+            <div style="font-size:4.5px;padding:2px 0">80G: <b>Yes</b></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:3px 6px;font-size:4.5px;color:#555">Authorised Signatory</div>
+      </div>`,
+  },
+  {
+    id: 'tabular',
+    label: 'Tabular',
+    desc: 'Table format with description & amount columns (Saibaba style)',
+    thumb: (color: string) => `
+      <div style="font-family:sans-serif;font-size:6px;border:2px solid #333;overflow:hidden">
+        <div style="text-align:center;padding:5px 6px;border-bottom:2px solid #333">
+          <div style="font-weight:900;font-size:7.5px;text-transform:uppercase">Mandir Name</div>
+          <div style="font-size:4.5px;color:#555;margin-top:1px">Address · Phone · GSTIN</div>
+        </div>
+        <div style="background:#f0f0f0;text-align:center;letter-spacing:3px;font-weight:900;font-size:5.5px;padding:2px;border-bottom:1px solid #999">DONATION RECEIPT</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid #999">
+          <div style="padding:2px 4px;border-right:1px solid #999"><div style="font-size:4px;color:#555">Receipt No</div><div style="font-weight:700;font-size:5px">DON/001</div></div>
+          <div style="padding:2px 4px;border-right:1px solid #999"><div style="font-size:4px;color:#555">Donor</div><div style="font-weight:700;font-size:5px">Name</div></div>
+          <div style="padding:2px 4px"><div style="font-size:4px;color:#555">Date</div><div style="font-weight:700;font-size:5px">11 Jan 2025</div></div>
+        </div>
+        <div style="border-top:2px solid #333;border-bottom:2px solid #333">
+          <div style="display:flex;background:#333;color:#fff;padding:2px 4px;font-size:4.5px;font-weight:700;justify-content:space-between"><span>Description</span><span>Amount</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px;border-bottom:1px solid #ddd"><span>General Donation</span><span style="font-weight:700;font-family:monospace">₹1,500</span></div>
+          <div style="display:flex;justify-content:space-between;padding:3px 4px;font-weight:900;border-top:2px solid #333"><span>Total</span><span style="color:${color};font-family:monospace">₹1,500</span></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:3px 5px;font-size:4.5px;color:#555">Authorised Signatory</div>
+      </div>`,
+  },
+  {
+    id: 'acknowledgement',
+    label: 'Acknowledgement',
+    desc: 'Formal letter with address block & Chief Accounts Officer (Tirumala style)',
+    thumb: (color: string) => `
+      <div style="font-family:'Times New Roman',serif;font-size:6px;border:2px double #333;overflow:hidden">
+        <div style="text-align:center;padding:6px 8px;border-bottom:3px double #333">
+          <div style="font-weight:900;font-size:7.5px;text-transform:uppercase;letter-spacing:.5px">Mandir Name</div>
+          <div style="font-size:4.5px;color:#555;margin-top:2px">Reg. No. / 80G / PAN</div>
+          <div style="font-size:4px;color:#777">Address · Phone · Email</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:2px 6px;background:#f8f8f8;border-bottom:1px solid #ccc;font-size:4.5px">
+          <span>Txn ID: DON/001</span><span style="color:#15803d">Status: Received</span>
+        </div>
+        <div style="background:${color}10;text-align:center;font-weight:900;letter-spacing:2px;font-size:5.5px;padding:3px;border-bottom:1px solid #ccc">ACKNOWLEDGEMENT RECEIPT</div>
+        <div style="padding:5px 8px">
+          <div style="margin-bottom:4px;font-size:5px">Received with thanks from <b>Donor Name</b>, an amount of <b style="color:${color}">INR 1,500.00</b> towards corpus donation on 11 Jan 2025.</div>
+          <div style="border:1px solid #ccc;font-size:4px">
+            <div style="display:flex;background:#333;color:#fff;font-weight:700;padding:1.5px 4px;justify-content:space-between"><span>Mode</span><span>Instrument</span><span>Date</span><span>Amount</span></div>
+            <div style="display:flex;justify-content:space-between;padding:2px 4px"><span>Cash</span><span>DON/001</span><span>11 Jan</span><span style="font-weight:700">₹1,500</span></div>
+          </div>
+          <div style="margin-top:4px;font-size:4px;color:#555;font-style:italic">Your contribution towards Mandir is one of the best charities.</div>
+          <div style="margin-top:4px;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:3px">
+            <div style="font-size:4px;color:#777">Auto-generated document</div>
+            <div style="text-align:right;font-size:4px"><div style="font-weight:700">Mandir Name</div><div style="color:#555">Chief Accounts Officer</div></div>
+          </div>
+        </div>
+      </div>`,
+  },
+  {
+    id: 'jain_tirth',
+    label: 'Jain Tirth',
+    desc: 'Trust Receipt with Jain salutation, bank box, signature (Tally style)',
+    thumb: (color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;border:2.5px solid #333;overflow:hidden">
+        <div style="display:flex;gap:6px;align-items:flex-start;padding:5px 8px;border-bottom:2px solid #333">
+          <div style="width:16px;height:16px;background:${color}20;border:1px solid ${color};border-radius:2px;flex-shrink:0"></div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:5px;color:${color};font-weight:700">॥ श्री आदिनाथाय नमः ॥</div>
+            <div style="font-weight:900;font-size:7.5px;text-transform:uppercase">Jain Tirth Kshetra</div>
+            <div style="font-size:4.5px;color:#555;margin-top:1px">Address, City · Phone</div>
+          </div>
+          <div style="text-align:right;font-size:4px;color:#555">Reg: 75/2001<br>PAN: AAAAB1234C<br>Date: 11 Jan 2025</div>
+        </div>
+        <div style="background:${color};color:#fff;text-align:center;font-weight:900;letter-spacing:2px;font-size:5px;padding:2.5px">TRUST RECEIPT</div>
+        <div style="display:flex;justify-content:space-between;padding:2px 6px;background:#fafafa;border-bottom:1px solid #ccc;font-size:4.5px">
+          <span>Receipt No: <b>DON/001</b></span><span>Date: <b>11 Jan 2025</b></span>
+        </div>
+        <div style="padding:5px 8px">
+          <div style="display:flex;border-bottom:1px dotted #ccc;padding-bottom:3px;margin-bottom:3px"><span style="min-width:80px;font-weight:700;font-size:5px">Donor Name Shri</span><span style="font-size:5px;font-weight:600">Ayush Kasliwal</span></div>
+          <div style="display:flex;border-bottom:1px dotted #ccc;padding-bottom:3px;margin-bottom:3px"><span style="min-width:80px;font-weight:700;font-size:5px">Amount in Words</span><span style="font-size:4.5px">INR One Thousand Five Hundred Only</span></div>
+          <div style="display:flex;border:1.5px solid #333;margin-top:3px">
+            <div style="flex:2;padding:3px 5px;font-size:4px;line-height:1.8;border-right:1.5px solid #333">Bank: State Bank<br>A/C Name: Mandir<br>A/C No.: 12345678<br>IFS: SBIN0001234</div>
+            <div style="flex:1;padding:3px 5px;text-align:right"><div style="font-size:9px;font-weight:900;font-family:monospace;color:${color}">₹1,500</div><div style="font-size:4px;color:#6b7280">Cash</div></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px;padding-top:4px;border-top:1px solid #ccc">
+            <div style="text-align:center"><div style="width:40px;border-top:1px solid #333;margin:0 auto 2px"></div><div style="font-size:4.5px;font-weight:700">Signature</div></div>
+          </div>
+        </div>
+      </div>`,
+  },
 ]
 
 const BLANK = {
