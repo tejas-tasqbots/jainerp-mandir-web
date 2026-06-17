@@ -216,9 +216,11 @@ export type SevaStatus = 'confirmed' | 'completed' | 'cancelled'
 export interface Seva {
   id: string
   name: string
+  name_hindi?: string
   description?: string
-  amount_paise: number
+  price_paise: number
   duration_minutes?: number
+  sort_order?: number
   is_active: boolean
 }
 

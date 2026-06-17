@@ -28,7 +28,7 @@ export function AddSevaBooking() {
 
   const selectedSeva = sevas.find(s => s.id === form.seva_id)
   useEffect(() => {
-    if (selectedSeva) setForm(f => ({ ...f, amount: String(selectedSeva.amount_paise / 100) }))
+    if (selectedSeva) setForm(f => ({ ...f, amount: String(selectedSeva.price_paise / 100) }))
   }, [form.seva_id])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -74,7 +74,7 @@ export function AddSevaBooking() {
               <option value="">Select seva...</option>
               {sevas.map(s => (
                 <option key={s.id} value={s.id}>
-                  {s.name} — ₹{fmtPaise(s.amount_paise)}
+                  {s.name} — ₹{fmtPaise(s.price_paise)}
                 </option>
               ))}
             </select>

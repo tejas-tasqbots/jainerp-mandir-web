@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import type { PrasadItem } from '../../types'
@@ -16,7 +17,7 @@ export function PrasadCounter() {
   const [lastSale, setLastSale] = useState<{ total_paise: number; invoice?: string } | null>(null)
 
   useEffect(() => {
-    api.get('/prasad/items?is_active=true').then(r => setItems(r.data.data || [])).finally(() => setLoading(false))
+    api.get('/prasad/items?is_available=true').then(r => setItems(r.data.data || [])).finally(() => setLoading(false))
   }, [])
 
   function addToCart(item: PrasadItem) {
@@ -61,7 +62,7 @@ export function PrasadCounter() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Prasad Counter</h1>
-        <a href="/prasad/items" className="btn-secondary btn-sm">Manage Items</a>
+        <Link to="/prasad/items" className="btn-secondary btn-sm">Manage Items</Link>
       </div>
 
       {lastSale && (
@@ -92,7 +93,7 @@ export function PrasadCounter() {
                   {item.gst_rate > 0 && (
                     <p className="text-xs text-slate-400">+{item.gst_rate}% GST</p>
                   )}
-                  <p className="text-xs text-slate-400 mt-1">Stock: {item.current_stock}</p>
+                  <p className="text-xs text-slate-400 mt-1">Stock: {item.stock_qty ?? 0}</p>
                 </button>
               ))}
             </div>
