@@ -294,6 +294,7 @@ export interface Account {
   bank_name?: string
   ifsc?: string
   is_default_cash: boolean
+  is_default_bank: boolean
   is_active: boolean
 }
 

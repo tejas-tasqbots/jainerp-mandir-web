@@ -8,6 +8,7 @@ export interface AccountOption {
   account_number?: string
   bank_name?: string
   is_default_cash: boolean
+  is_default_bank: boolean
 }
 
 export interface PaymentModeOption {
@@ -66,10 +67,8 @@ export function autoSelectAccount(accounts: AccountOption[], paymentMode: string
   const isCash = paymentMode === 'cash'
   const relevant = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
   if (relevant.length === 1) return relevant[0].id
-  if (isCash) {
-    const def = relevant.find(a => a.is_default_cash)
-    if (def) return def.id
-  }
+  const def = relevant.find(a => isCash ? a.is_default_cash : a.is_default_bank)
+  if (def) return def.id
   return ''
 }
 

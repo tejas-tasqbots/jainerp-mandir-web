@@ -10,11 +10,12 @@ interface Account {
   bank_name: string | null
   ifsc: string | null
   is_default_cash: boolean
+  is_default_bank: boolean
   is_active: boolean
 }
 interface OpeningBalance { id: string; account_id: string; fy: string; opening_balance_paise: number }
 
-const BLANK = { name: '', type: 'bank', account_no: '', bank_name: '', ifsc: '', is_default_cash: false }
+const BLANK = { name: '', type: 'bank', account_no: '', bank_name: '', ifsc: '', is_default_cash: false, is_default_bank: false }
 
 export function BankAccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -38,7 +39,7 @@ export function BankAccountsTab() {
     setEditing(a)
     setForm({
       name: a.name, type: a.type, account_no: a.account_no || '', bank_name: a.bank_name || '',
-      ifsc: a.ifsc || '', is_default_cash: a.is_default_cash,
+      ifsc: a.ifsc || '', is_default_cash: a.is_default_cash, is_default_bank: a.is_default_bank,
     })
     setError(''); setShowForm(true)
   }
@@ -50,7 +51,9 @@ export function BankAccountsTab() {
     setError('')
     try {
       const payload: Record<string, unknown> = {
-        name: form.name, type: form.type, is_default_cash: form.is_default_cash,
+        name: form.name, type: form.type,
+        is_default_cash: form.type === 'cash' ? form.is_default_cash : false,
+        is_default_bank: form.type === 'bank' ? form.is_default_bank : false,
       }
       if (form.type === 'bank') {
         payload.account_no = form.account_no || null
@@ -121,10 +124,18 @@ export function BankAccountsTab() {
                   <div><label className="form-label">IFSC</label><input className="form-input uppercase" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value.toUpperCase() }))} /></div>
                 </div>
               )}
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="w-4 h-4" checked={form.is_default_cash} onChange={e => setForm(f => ({ ...f, is_default_cash: e.target.checked }))} />
-                Use as the default cash account
-              </label>
+              {form.type === 'cash' && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="w-4 h-4" checked={form.is_default_cash} onChange={e => setForm(f => ({ ...f, is_default_cash: e.target.checked }))} />
+                  Use as the default cash account
+                </label>
+              )}
+              {form.type === 'bank' && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="w-4 h-4" checked={form.is_default_bank} onChange={e => setForm(f => ({ ...f, is_default_bank: e.target.checked }))} />
+                  Use as the default bank account
+                </label>
+              )}
               {error && <p className="text-sm text-brand-red">{error}</p>}
               <div className="flex gap-2">
                 <button type="submit" disabled={saving} className="btn-primary btn-sm"><Save size={14} /> {editing ? 'Update' : 'Add'}</button>
@@ -143,7 +154,11 @@ export function BankAccountsTab() {
                   <tr><td colSpan={6} className="text-center text-slate-400 py-6">No accounts yet.</td></tr>
                 ) : accounts.map(a => (
                   <tr key={a.id} className={a.is_active ? '' : 'opacity-50'}>
-                    <td className="font-medium">{a.name}{a.is_default_cash && <span className="badge-blue ml-2">Default Cash</span>}</td>
+                    <td className="font-medium">
+                      {a.name}
+                      {a.is_default_cash && <span className="badge-blue ml-2">Default Cash</span>}
+                      {a.is_default_bank && <span className="badge-blue ml-2">Default Bank</span>}
+                    </td>
                     <td className="capitalize">{a.type}</td>
                     <td className="text-xs text-slate-500">{a.type === 'bank' ? `${a.bank_name || '—'} · ${a.account_no || '—'}` : '—'}</td>
                     <td>
