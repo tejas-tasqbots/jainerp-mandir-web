@@ -211,7 +211,7 @@ export interface PrasadSale {
 }
 
 // ─── Seva ────────────────────────────────────────────────────────────────────
-export type SevaStatus = 'confirmed' | 'completed' | 'cancelled'
+export type SevaStatus = 'booked' | 'confirmed' | 'completed' | 'cancelled'
 
 export interface Seva {
   id: string
