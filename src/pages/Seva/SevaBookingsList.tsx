@@ -28,9 +28,11 @@ export function SevaBookingsList() {
   }
 
   function statusBadge(s: string) {
+    if (s === 'booked') return <span className="badge-yellow">Booked</span>
     if (s === 'confirmed') return <span className="badge-blue">Confirmed</span>
     if (s === 'completed') return <span className="badge-green">Completed</span>
-    return <span className="badge-red">Cancelled</span>
+    if (s === 'cancelled') return <span className="badge-red">Cancelled</span>
+    return <span className="badge-gray">{s}</span>
   }
 
   async function markCompleted(id: string) {
@@ -55,7 +57,7 @@ export function SevaBookingsList() {
         <input type="date" className="form-input w-44" value={dateFilter}
           onChange={e => setDateFilter(e.target.value)} />
         <div className="flex gap-2 ml-4">
-          {['all', 'confirmed', 'completed'].map(s => (
+          {['all', 'booked', 'confirmed', 'completed'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-1 text-xs rounded-md font-medium capitalize transition-colors ${statusFilter === s ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
               {s}
@@ -98,11 +100,17 @@ export function SevaBookingsList() {
                   <td><span className="badge-gray">{b.payment_mode}</span></td>
                   <td>{statusBadge(b.status)}</td>
                   <td>
-                    {b.status === 'confirmed' && (
-                      <button onClick={() => markCompleted(b.id)} className="btn-success btn-sm">
-                        Mark Done
-                      </button>
-                    )}
+                    <div className="flex gap-1 flex-wrap">
+                      {b.status === 'booked' && (
+                        <button onClick={async () => { await api.patch(`/seva-bookings/${b.id}`, { status: 'confirmed' }); load() }}
+                          className="btn-secondary btn-sm text-xs">Confirm</button>
+                      )}
+                      {(b.status === 'booked' || b.status === 'confirmed') && (
+                        <button onClick={() => markCompleted(b.id)} className="btn-success btn-sm text-xs">
+                          Mark Done
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

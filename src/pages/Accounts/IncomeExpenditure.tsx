@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react'
 import { Download } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 
-interface Section { name: string; amount_paise: number }
-interface IEData { income: Section[]; expenditure: Section[]; surplus_paise: number }
+interface Section { name: string; head?: string; amount_paise: number }
+interface IEData {
+  income: Section[]
+  expenditure: Section[]
+  totals: { income_paise: number; expenditure_paise: number; surplus_paise: number }
+}
 
 export function IncomeExpenditure() {
   const [data, setData] = useState<IEData | null>(null)
@@ -20,8 +24,9 @@ export function IncomeExpenditure() {
     } catch { setData(null) } finally { setLoading(false) }
   }
 
-  const totalIncome = data?.income?.reduce((s, r) => s + r.amount_paise, 0) || 0
-  const totalExpenditure = data?.expenditure?.reduce((s, r) => s + r.amount_paise, 0) || 0
+  const totalIncome = data?.totals?.income_paise ?? data?.income?.reduce((s, r) => s + r.amount_paise, 0) ?? 0
+  const totalExpenditure = data?.totals?.expenditure_paise ?? data?.expenditure?.reduce((s, r) => s + r.amount_paise, 0) ?? 0
+  const surplusPaise = data?.totals?.surplus_paise ?? (totalIncome - totalExpenditure)
 
   return (
     <div className="space-y-4">
@@ -36,8 +41,8 @@ export function IncomeExpenditure() {
         <label className="text-sm text-slate-500">FY:</label>
         <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} />
         {data && (
-          <span className={data.surplus_paise >= 0 ? 'badge-green' : 'badge-red'}>
-            {data.surplus_paise >= 0 ? 'Surplus' : 'Deficit'}: ₹{fmtPaise(Math.abs(data.surplus_paise))}
+          <span className={surplusPaise >= 0 ? 'badge-green' : 'badge-red'}>
+            {surplusPaise >= 0 ? 'Surplus' : 'Deficit'}: ₹{fmtPaise(Math.abs(surplusPaise))}
           </span>
         )}
       </div>
@@ -52,7 +57,7 @@ export function IncomeExpenditure() {
               <table className="data-table">
                 <thead><tr><th>Source</th><th className="text-right">Amount</th></tr></thead>
                 <tbody>
-                  {data.income.map((r, i) => <tr key={i}><td>{r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
+                  {data.income.map((r, i) => <tr key={i}><td>{r.head ?? r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
                 </tbody>
                 <tfoot><tr className="bg-green-50"><td className="px-4 py-2 font-bold">Total Income</td><td className="px-4 py-2 text-right font-bold text-green-700">₹{fmtPaise(totalIncome)}</td></tr></tfoot>
               </table>
@@ -65,7 +70,7 @@ export function IncomeExpenditure() {
               <table className="data-table">
                 <thead><tr><th>Category</th><th className="text-right">Amount</th></tr></thead>
                 <tbody>
-                  {data.expenditure.map((r, i) => <tr key={i}><td>{r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
+                  {data.expenditure.map((r, i) => <tr key={i}><td>{r.head ?? r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
                 </tbody>
                 <tfoot><tr className="bg-red-50"><td className="px-4 py-2 font-bold">Total Expenditure</td><td className="px-4 py-2 text-right font-bold text-red-600">₹{fmtPaise(totalExpenditure)}</td></tr></tfoot>
               </table>

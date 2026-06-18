@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
-import { usePaymentModes, useResourceNames } from '../../lib/useDropdownOptions'
+import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
 
 export function AddExpense() {
   const navigate = useNavigate()
@@ -15,6 +15,7 @@ export function AddExpense() {
     description: '',
     amount: '',
     payment_mode: 'cash',
+    payment_account_id: '',
     bill_number: '',
     bill_date: new Date().toISOString().slice(0, 10),
     utr_number: '',
@@ -22,6 +23,12 @@ export function AddExpense() {
     gst_amount: '',
     note: '',
   })
+
+  const accounts = useAccounts()
+  useEffect(() => {
+    const id = autoSelectAccount(accounts, form.payment_mode)
+    if (id) setForm(f => ({ ...f, payment_account_id: id }))
+  }, [form.payment_mode, accounts])
 
   const expenseCategories = useResourceNames('expense-categories', [
     'Electricity', 'Water', 'Salary', 'Maintenance', 'Food & Supplies',
@@ -40,6 +47,7 @@ export function AddExpense() {
         description: form.description,
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
+        payment_account_id: form.payment_account_id || undefined,
         is_on_credit: form.is_on_credit,
         bill_date: form.bill_date,
       }
@@ -104,20 +112,41 @@ export function AddExpense() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Payment Mode</label>
-              <select className="form-select" value={form.payment_mode}
-                onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="form-label">Bill Date</label>
-              <input type="date" className="form-input" value={form.bill_date}
-                onChange={e => setForm(f => ({ ...f, bill_date: e.target.value }))} />
-            </div>
-          </div>
+          {(() => {
+            const isCash = form.payment_mode === 'cash'
+            const relevantAccounts = form.is_on_credit ? [] : accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
+            return (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Payment Mode</label>
+                  <select className="form-select" value={form.payment_mode}
+                    onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}
+                    disabled={form.is_on_credit}>
+                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Bill Date</label>
+                  <input type="date" className="form-input" value={form.bill_date}
+                    onChange={e => setForm(f => ({ ...f, bill_date: e.target.value }))} />
+                </div>
+                {!form.is_on_credit && relevantAccounts.length > 0 && (
+                  <div className="col-span-2">
+                    <label className="form-label">Paid from Account *</label>
+                    <select className="form-select" value={form.payment_account_id}
+                      onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
+                      <option value="">Select account…</option>
+                      {relevantAccounts.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

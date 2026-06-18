@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
+import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import type { Seva } from '../../types'
 
 export function AddSevaBooking() {
@@ -9,6 +10,8 @@ export function AddSevaBooking() {
   const [sevas, setSevas] = useState<Seva[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const paymentModes = usePaymentModes()
+  const accounts = useAccounts()
 
   const [form, setForm] = useState({
     seva_id: '',
@@ -20,6 +23,7 @@ export function AddSevaBooking() {
     slot_time: '',
     amount: '',
     payment_mode: 'cash',
+    payment_account_id: '',
   })
 
   useEffect(() => {
@@ -30,6 +34,11 @@ export function AddSevaBooking() {
   useEffect(() => {
     if (selectedSeva) setForm(f => ({ ...f, amount: String(selectedSeva.price_paise / 100) }))
   }, [form.seva_id])
+
+  useEffect(() => {
+    const id = autoSelectAccount(accounts, form.payment_mode)
+    if (id) setForm(f => ({ ...f, payment_account_id: id }))
+  }, [form.payment_mode, accounts])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -48,6 +57,7 @@ export function AddSevaBooking() {
         slot_time: form.slot_time || undefined,
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
+        payment_account_id: form.payment_account_id || undefined,
       })
       navigate('/seva')
     } catch (e: unknown) {
@@ -119,22 +129,40 @@ export function AddSevaBooking() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Amount (₹) *</label>
-              <input type="number" min="1" step="0.01" className="form-input" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Payment Mode</label>
-              <select className="form-select" value={form.payment_mode}
-                onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="online">Online (Prepaid)</option>
-              </select>
-            </div>
-          </div>
+          {(() => {
+            const isCash = form.payment_mode === 'cash'
+            const relevantAccounts = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
+            return (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Amount (₹) *</label>
+                  <input type="number" min="1" step="0.01" className="form-input" value={form.amount}
+                    onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Payment Mode</label>
+                  <select className="form-select" value={form.payment_mode}
+                    onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
+                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                  </select>
+                </div>
+                {relevantAccounts.length > 0 && (
+                  <div className="col-span-2">
+                    <label className="form-label">Received in Account *</label>
+                    <select className="form-select" value={form.payment_account_id}
+                      onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
+                      <option value="">Select account…</option>
+                      {relevantAccounts.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </div>

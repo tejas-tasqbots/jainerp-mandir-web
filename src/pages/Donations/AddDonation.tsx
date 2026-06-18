@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Save, X, Search, UserPlus } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
-import { usePaymentModes } from '../../lib/useDropdownOptions'
+import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import type { DonationCategory, Donor } from '../../types'
 
 export function AddDonation() {
   const navigate = useNavigate()
   const paymentModes = usePaymentModes()
+  const accounts = useAccounts()
   const [categories, setCategories] = useState<DonationCategory[]>([])
   const [donors, setDonors] = useState<Donor[]>([])
   const [donorSearch, setDonorSearch] = useState('')
@@ -25,6 +26,7 @@ export function AddDonation() {
     category_id: '',
     amount: '',
     payment_mode: 'cash',
+    payment_account_id: '',
     utr_number: '',
     cheque_number: '',
     is_80g_eligible: true,
@@ -56,6 +58,12 @@ export function AddDonation() {
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
+
+  // Auto-select account when payment mode or accounts change
+  useEffect(() => {
+    const id = autoSelectAccount(accounts, form.payment_mode)
+    if (id) setForm(f => ({ ...f, payment_account_id: id }))
+  }, [form.payment_mode, accounts])
 
   // Auto-check 80G: cash > ₹2000 = not eligible
   useEffect(() => {
@@ -118,6 +126,7 @@ export function AddDonation() {
       }
       // If neither id nor name, donor is omitted — API allows anonymous donation
 
+      if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
       if (form.utr_number) payload.utr_number = form.utr_number
       if (form.cheque_number) payload.cheque_number = form.cheque_number
       if (form.note) payload.note = form.note
@@ -234,21 +243,41 @@ export function AddDonation() {
             </select>
           </div>
 
-          {/* Amount */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Amount (₹) *</label>
-              <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
-                value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Payment Mode *</label>
-              <select className="form-select" value={form.payment_mode}
-                onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
-              </select>
-            </div>
-          </div>
+          {/* Amount + Payment */}
+          {(() => {
+            const isCash = form.payment_mode === 'cash'
+            const relevantAccounts = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
+            return (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Amount (₹) *</label>
+                  <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
+                    value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="form-label">Payment Mode *</label>
+                  <select className="form-select" value={form.payment_mode}
+                    onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
+                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                  </select>
+                </div>
+                {relevantAccounts.length > 0 && (
+                  <div className="col-span-2">
+                    <label className="form-label">Received in Account *</label>
+                    <select className="form-select" value={form.payment_account_id}
+                      onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
+                      <option value="">Select account…</option>
+                      {relevantAccounts.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* UTR / Cheque */}
           {(form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (

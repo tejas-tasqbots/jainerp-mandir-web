@@ -1,5 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from './api'
+
+export interface AccountOption {
+  id: string
+  name: string
+  type: 'cash' | 'bank'
+  account_number?: string
+  bank_name?: string
+  is_default_cash: boolean
+}
 
 export interface PaymentModeOption {
   code: string
@@ -31,6 +40,37 @@ export function usePaymentModes(): PaymentModeOption[] {
       .catch(() => { /* keep fallback */ })
   }, [])
   return modes
+}
+
+/**
+ * All active bank/cash accounts. Used to show "Received in / Paid from Account" on forms.
+ * cashOnly=true → only cash accounts; bankOnly=true → only bank accounts.
+ */
+export function useAccounts(filter?: 'cash' | 'bank'): AccountOption[] {
+  const [all, setAll] = useState<AccountOption[]>([])
+  useEffect(() => {
+    api.get('/accounts', { params: { is_active: 'true' } })
+      .then(r => setAll(r.data.data || r.data || []))
+      .catch(() => {})
+  }, [])
+  return useMemo(() => filter ? all.filter(a => a.type === filter) : all, [all, filter])
+}
+
+/**
+ * Returns the single best account for the given payment_mode.
+ * - cash → default cash account (or first cash account)
+ * - non-cash → first bank account
+ * Returns '' (no auto-select) when there are multiple choices.
+ */
+export function autoSelectAccount(accounts: AccountOption[], paymentMode: string): string {
+  const isCash = paymentMode === 'cash'
+  const relevant = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
+  if (relevant.length === 1) return relevant[0].id
+  if (isCash) {
+    const def = relevant.find(a => a.is_default_cash)
+    if (def) return def.id
+  }
+  return ''
 }
 
 /**
