@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   {
     label: 'People', icon: <Users size={18} />,
     children: [
+      { label: 'Connected Devotees', to: '/devotees' },
       { label: 'Donors / Guests', to: '/donors' },
       { label: 'Creditors (Udhaar)', to: '/creditors' },
     ],

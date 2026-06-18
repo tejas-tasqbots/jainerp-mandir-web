@@ -1,28 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, X, Search, UserPlus } from 'lucide-react'
+import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
-import type { DonationCategory, Donor } from '../../types'
+import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import type { DonationCategory, DevoteeSelection } from '../../types'
 
 export function AddDonation() {
   const navigate = useNavigate()
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
   const [categories, setCategories] = useState<DonationCategory[]>([])
-  const [donors, setDonors] = useState<Donor[]>([])
-  const [donorSearch, setDonorSearch] = useState('')
-  const [showDonorDropdown, setShowDonorDropdown] = useState(false)
-  const [searchDone, setSearchDone] = useState(false)
+  const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState({
-    donor_id: '',
-    donor_name: '',
-    donor_mobile: '',
     category_id: '',
     amount: '',
     payment_mode: 'cash',
@@ -38,67 +32,16 @@ export function AddDonation() {
   }, [])
 
   useEffect(() => {
-    if (donorSearch.length < 2) { setDonors([]); setSearchDone(false); return }
-    setSearchDone(false)
-    const t = setTimeout(async () => {
-      const { data } = await api.get(`/donors?q=${encodeURIComponent(donorSearch)}&limit=8`)
-      setDonors(data.data || [])
-      setSearchDone(true)
-    }, 300)
-    return () => clearTimeout(t)
-  }, [donorSearch])
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDonorDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  // Auto-select account when payment mode or accounts change
-  useEffect(() => {
     const id = autoSelectAccount(accounts, form.payment_mode)
     if (id) setForm(f => ({ ...f, payment_account_id: id }))
   }, [form.payment_mode, accounts])
 
-  // Auto-check 80G: cash > ₹2000 = not eligible
   useEffect(() => {
     const amt = parseFloat(form.amount)
     if (form.payment_mode === 'cash' && amt > 2000) {
       setForm(f => ({ ...f, is_80g_eligible: false }))
     }
   }, [form.amount, form.payment_mode])
-
-  function selectDonor(d: Donor) {
-    setForm(f => ({ ...f, donor_id: d.id, donor_name: d.name, donor_mobile: d.mobile ?? '' }))
-    setDonorSearch(d.name)
-    setShowDonorDropdown(false)
-    setSearchDone(false)
-  }
-
-  function prefillNewDonor() {
-    // Pre-fill name/mobile from search box. If search looks like a mobile number use it as mobile.
-    const looksLikeMobile = /^[6-9]\d{9}$/.test(donorSearch.replace(/\D/g, ''))
-    setForm(f => ({
-      ...f,
-      donor_id: '',
-      donor_name: looksLikeMobile ? '' : donorSearch,
-      donor_mobile: looksLikeMobile ? donorSearch.replace(/\D/g, '') : '',
-    }))
-    setShowDonorDropdown(false)
-    setSearchDone(false)
-  }
-
-  function clearDonor() {
-    setForm(f => ({ ...f, donor_id: '', donor_name: '', donor_mobile: '' }))
-    setDonorSearch('')
-    setSearchDone(false)
-    setDonors([])
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -114,17 +57,14 @@ export function AddDonation() {
         is_80g_eligible: form.is_80g_eligible,
       }
 
-      // API expects { donor: { id } } for existing, { donor: { name, mobile } } for new/anonymous
-      if (form.donor_id) {
-        payload.donor = { id: form.donor_id }
-      } else if (form.donor_name) {
-        const mobile = form.donor_mobile.replace(/\D/g, '')
-        payload.donor = {
-          name: form.donor_name,
-          mobile: mobile.length === 10 ? `+91${mobile}` : (mobile || undefined),
-        }
+      if (devotee?.is_anonymous) {
+        payload.is_anonymous = true
+        if (devotee.anonymous_category) payload.anonymous_category = devotee.anonymous_category
+      } else if (devotee?.global_user_id) {
+        payload.donor = { global_user_id: devotee.global_user_id, name: devotee.name, mobile: devotee.mobile }
+      } else if (devotee?.name) {
+        payload.donor = { name: devotee.name, mobile: devotee.mobile }
       }
-      // If neither id nor name, donor is omitted — API allows anonymous donation
 
       if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
       if (form.utr_number) payload.utr_number = form.utr_number
@@ -135,7 +75,6 @@ export function AddDonation() {
       const donationId = data.data?.id
       navigate('/donations')
       if (donationId) {
-        // Print receipt after navigating (small delay so the page change doesn't block popup)
         setTimeout(() => printDonationReceipt(donationId).catch(() => {}), 300)
       }
     } catch (e: unknown) {
@@ -147,7 +86,6 @@ export function AddDonation() {
   }
 
   const selectedCategory = categories.find(c => c.id === form.category_id)
-  const showDropdown = showDonorDropdown && donorSearch.length >= 2 && (donors.length > 0 || searchDone)
 
   return (
     <div className="max-w-2xl">
@@ -158,75 +96,14 @@ export function AddDonation() {
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
-          {/* Donor */}
-          <div>
-            <label className="form-label">Donor <span className="text-slate-400 font-normal">(optional)</span></label>
-
-            {/* Selected donor chip */}
-            {form.donor_id ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
-                <span className="text-sm font-medium text-green-800">{form.donor_name}</span>
-                {form.donor_mobile && <span className="text-xs text-green-600">{form.donor_mobile}</span>}
-                <button type="button" onClick={clearDonor} className="ml-auto text-slate-400 hover:text-red-500">
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <div className="relative" ref={dropdownRef}>
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  className="form-input pl-9"
-                  placeholder="Search by name or mobile..."
-                  value={donorSearch}
-                  onChange={e => {
-                    setDonorSearch(e.target.value)
-                    setShowDonorDropdown(true)
-                    if (!e.target.value) { setForm(f => ({ ...f, donor_name: '', donor_mobile: '' })); setSearchDone(false) }
-                  }}
-                  onFocus={() => setShowDonorDropdown(true)}
-                />
-                {showDropdown && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-52 overflow-y-auto">
-                    {donors.map(d => (
-                      <button key={d.id} type="button" onClick={() => selectDonor(d)}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b border-slate-100 last:border-0">
-                        <span className="font-medium">{d.name}</span>
-                        {d.mobile && <span className="text-slate-400 ml-2">{d.mobile}</span>}
-                        {d.city && <span className="text-slate-400 ml-2">• {d.city}</span>}
-                      </button>
-                    ))}
-                    {searchDone && donors.length === 0 && (
-                      <button type="button" onClick={prefillNewDonor}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm text-blue-700 flex items-center gap-2">
-                        <UserPlus size={14} />
-                        <span>Add "<strong>{donorSearch}</strong>" as new donor</span>
-                      </button>
-                    )}
-                    {searchDone && donors.length > 0 && (
-                      <button type="button" onClick={prefillNewDonor}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-50 text-xs text-slate-500 border-t border-slate-100 flex items-center gap-2">
-                        <UserPlus size={12} />
-                        Add new donor instead
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* New donor inline fields — shown when name is pre-filled but no id */}
-            {!form.donor_id && (form.donor_name || form.donor_mobile) && (
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                <div>
-                  <input className="form-input" placeholder="Donor name *" value={form.donor_name}
-                    onChange={e => setForm(f => ({ ...f, donor_name: e.target.value }))} />
-                  <p className="text-xs text-blue-600 mt-1">New donor will be added to donor list</p>
-                </div>
-                <input className="form-input" placeholder="Mobile (optional)" value={form.donor_mobile}
-                  onChange={e => setForm(f => ({ ...f, donor_mobile: e.target.value }))} />
-              </div>
-            )}
-          </div>
+          {/* Devotee / Donor picker */}
+          <DevoteePicker
+            label="Donor"
+            value={devotee}
+            onChange={setDevotee}
+            showAnonymous
+            showDanPeti
+          />
 
           {/* Category */}
           <div>

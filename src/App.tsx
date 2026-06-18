@@ -27,6 +27,7 @@ import { VendorsPage } from './pages/Masters/VendorsPage'
 import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
+import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
 import { StaffPage } from './pages/Staff/StaffPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
 import { FixedAssets } from './pages/Accounts/FixedAssets'
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="/donors" element={<DonorList />} />
             <Route path="/donors/:id" element={<DonorProfile />} />
             <Route path="/creditors" element={<CreditorList />} />
+            <Route path="/devotees" element={<ConnectedDevoteesPage />} />
 
             {/* Masters */}
             <Route path="/masters/vendors" element={<VendorsPage />} />

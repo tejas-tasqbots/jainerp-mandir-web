@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../../lib/api'
-import type { Hall } from '../../../types'
+import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
+import type { Hall, DevoteeSelection } from '../../../types'
 
 export function AddHallBooking() {
   const navigate = useNavigate()
   const [halls, setHalls] = useState<Hall[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [booker, setBooker] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
     hall_id: '',
@@ -17,8 +19,6 @@ export function AddHallBooking() {
     session_type: 'full_day',
     advance: '',
     payment_mode: 'cash',
-    contact_name: '',
-    contact_mobile: '',
   })
 
   useEffect(() => {
@@ -32,16 +32,22 @@ export function AddHallBooking() {
     setSaving(true)
     setError('')
     try {
-      await api.post('/hall-bookings', {
+      const payload: Record<string, unknown> = {
         hall_id: form.hall_id,
         event_name: form.event_name,
         booking_date: form.booking_date,
         session_type: form.session_type,
         advance_paise: form.advance ? parsePaise(form.advance) : 0,
         payment_mode: form.payment_mode,
-        contact_name: form.contact_name,
-        contact_mobile: form.contact_mobile,
-      })
+      }
+
+      if (booker?.global_user_id) {
+        payload.booker = { global_user_id: booker.global_user_id, name: booker.name, mobile: booker.mobile }
+      } else if (booker?.name) {
+        payload.booker = { name: booker.name, mobile: booker.mobile }
+      }
+
+      await api.post('/hall-bookings', payload)
       navigate('/hall')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -95,18 +101,12 @@ export function AddHallBooking() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Contact Name</label>
-              <input className="form-input" placeholder="Organizer name" value={form.contact_name}
-                onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Contact Mobile</label>
-              <input type="tel" className="form-input" placeholder="Mobile number" value={form.contact_mobile}
-                onChange={e => setForm(f => ({ ...f, contact_mobile: e.target.value }))} />
-            </div>
-          </div>
+          <DevoteePicker
+            label="Booker / Contact"
+            value={booker}
+            onChange={setBooker}
+            showAnonymous={false}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>

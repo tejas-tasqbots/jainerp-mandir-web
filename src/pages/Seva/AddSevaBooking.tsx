@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
-import type { Seva } from '../../types'
+import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import type { Seva, DevoteeSelection } from '../../types'
 
 export function AddSevaBooking() {
   const navigate = useNavigate()
@@ -12,11 +13,10 @@ export function AddSevaBooking() {
   const [error, setError] = useState('')
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
+  const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
     seva_id: '',
-    devotee_name: '',
-    devotee_mobile: '',
     gotra: '',
     sankalp_names: '',
     booking_date: new Date().toISOString().slice(0, 10),
@@ -43,14 +43,12 @@ export function AddSevaBooking() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.seva_id) { setError('Select a seva'); return }
-    if (!form.devotee_name) { setError('Enter devotee name'); return }
+    if (!devotee && true) { /* devotee optional — anonymous allowed */ }
     setSaving(true)
     setError('')
     try {
-      await api.post('/seva-bookings', {
+      const payload: Record<string, unknown> = {
         seva_id: form.seva_id,
-        devotee_name: form.devotee_name,
-        devotee_mobile: form.devotee_mobile,
         gotra: form.gotra || undefined,
         sankalp_names: form.sankalp_names || undefined,
         booking_date: form.booking_date,
@@ -58,7 +56,17 @@ export function AddSevaBooking() {
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
         payment_account_id: form.payment_account_id || undefined,
-      })
+      }
+
+      if (devotee?.is_anonymous) {
+        payload.is_anonymous = true
+      } else if (devotee?.global_user_id) {
+        payload.devotee = { global_user_id: devotee.global_user_id, name: devotee.name, mobile: devotee.mobile }
+      } else if (devotee?.name) {
+        payload.devotee = { name: devotee.name, mobile: devotee.mobile }
+      }
+
+      await api.post('/seva-bookings', payload)
       navigate('/seva')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -90,18 +98,12 @@ export function AddSevaBooking() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Devotee Name *</label>
-              <input className="form-input" placeholder="Full name" value={form.devotee_name}
-                onChange={e => setForm(f => ({ ...f, devotee_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Mobile Number</label>
-              <input type="tel" className="form-input" placeholder="10-digit mobile" value={form.devotee_mobile}
-                onChange={e => setForm(f => ({ ...f, devotee_mobile: e.target.value }))} />
-            </div>
-          </div>
+          <DevoteePicker
+            label="Devotee"
+            value={devotee}
+            onChange={setDevotee}
+            showAnonymous
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>

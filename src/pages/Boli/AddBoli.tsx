@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
+import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import type { DevoteeSelection } from '../../types'
 
 export function AddBoli() {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
-    devotee_name: '',
-    devotee_mobile: '',
     boli_type: 'aarti',
     description: '',
     pledged_amount: '',
@@ -20,20 +21,28 @@ export function AddBoli() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.devotee_name) { setError('Enter devotee name'); return }
+    if (!devotee && !true) { setError('Select a devotee'); return }  // devotee optional for anonymous
     if (!form.pledged_amount || parseFloat(form.pledged_amount) <= 0) { setError('Enter valid pledged amount'); return }
     setSaving(true)
     setError('')
     try {
-      await api.post('/bolis', {
-        devotee_name: form.devotee_name,
-        devotee_mobile: form.devotee_mobile || undefined,
+      const payload: Record<string, unknown> = {
         boli_type: form.boli_type,
         description: form.description || undefined,
         pledged_amount_paise: parsePaise(form.pledged_amount),
         pledge_date: form.pledge_date,
         due_date: form.due_date || undefined,
-      })
+      }
+
+      if (devotee?.is_anonymous) {
+        payload.is_anonymous = true
+      } else if (devotee?.global_user_id) {
+        payload.donor = { global_user_id: devotee.global_user_id, name: devotee.name, mobile: devotee.mobile }
+      } else if (devotee?.name) {
+        payload.donor = { name: devotee.name, mobile: devotee.mobile }
+      }
+
+      await api.post('/bolis', payload)
       navigate('/boli')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -52,18 +61,12 @@ export function AddBoli() {
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Devotee Name *</label>
-              <input className="form-input" value={form.devotee_name}
-                onChange={e => setForm(f => ({ ...f, devotee_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Mobile Number</label>
-              <input type="tel" className="form-input" value={form.devotee_mobile}
-                onChange={e => setForm(f => ({ ...f, devotee_mobile: e.target.value }))} />
-            </div>
-          </div>
+          <DevoteePicker
+            label="Devotee"
+            value={devotee}
+            onChange={setDevotee}
+            showAnonymous
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div>

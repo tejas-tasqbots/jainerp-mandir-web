@@ -285,6 +285,30 @@ export interface EventRegistration {
   created_at: string
 }
 
+// ─── Global Devotees ─────────────────────────────────────────────────────────
+export interface GlobalDevotee {
+  id: string
+  name: string
+  mobile: string
+  pan_masked?: string
+  city?: string
+  verified: boolean
+  linked_to_this_temple: boolean
+  link_status?: string
+}
+
+export interface DevoteeSelection {
+  global_user_id?: string
+  name?: string
+  mobile?: string
+  verified?: boolean
+  linked_to_this_temple?: boolean
+  pan_masked?: string
+  is_anonymous?: boolean
+  anonymous_category?: 'gupt_dan' | 'dan_peti'
+  is_offline?: boolean
+}
+
 // ─── Accounts ────────────────────────────────────────────────────────────────
 export interface Account {
   id: string

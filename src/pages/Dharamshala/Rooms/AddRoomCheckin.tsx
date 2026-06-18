@@ -2,18 +2,18 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../../lib/api'
-import type { Room } from '../../../types'
+import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
+import type { Room, DevoteeSelection } from '../../../types'
 
 export function AddRoomCheckin() {
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [guest, setGuest] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
     room_id: '',
-    guest_name: '',
-    guest_mobile: '',
     guest_id_type: 'aadhaar',
     check_in_date: new Date().toISOString().slice(0, 10),
     check_out_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
@@ -29,21 +29,27 @@ export function AddRoomCheckin() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.room_id) { setError('Select a room'); return }
-    if (!form.guest_name) { setError('Enter guest name'); return }
+    if (!guest?.name && !guest?.global_user_id) { setError('Enter guest name'); return }
     setSaving(true)
     setError('')
     try {
-      await api.post('/room-bookings', {
+      const payload: Record<string, unknown> = {
         room_id: form.room_id,
-        guest_name: form.guest_name,
-        guest_mobile: form.guest_mobile,
         guest_id_type: form.guest_id_type,
         check_in_date: form.check_in_date,
         check_out_date: form.check_out_date,
         persons_count: parseInt(form.persons_count),
         advance_paise: form.advance ? parsePaise(form.advance) : 0,
         payment_mode: form.payment_mode,
-      })
+      }
+
+      if (guest?.global_user_id) {
+        payload.guest = { global_user_id: guest.global_user_id, name: guest.name, mobile: guest.mobile }
+      } else if (guest?.name) {
+        payload.guest = { name: guest.name, mobile: guest.mobile }
+      }
+
+      await api.post('/room-bookings', payload)
       navigate('/rooms')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -77,18 +83,13 @@ export function AddRoomCheckin() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">Guest Name *</label>
-              <input className="form-input" placeholder="Full name" value={form.guest_name}
-                onChange={e => setForm(f => ({ ...f, guest_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="form-label">Mobile Number</label>
-              <input type="tel" className="form-input" placeholder="10-digit mobile" value={form.guest_mobile}
-                onChange={e => setForm(f => ({ ...f, guest_mobile: e.target.value }))} />
-            </div>
-          </div>
+          <DevoteePicker
+            label="Guest"
+            value={guest}
+            onChange={setGuest}
+            showAnonymous={false}
+            required
+          />
 
           <div className="grid grid-cols-3 gap-4">
             <div>

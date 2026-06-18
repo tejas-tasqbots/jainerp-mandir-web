@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
-import type { PrasadItem } from '../../types'
+import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import type { PrasadItem, DevoteeSelection } from '../../types'
 
 interface CartItem { item: PrasadItem; qty: number }
 
@@ -11,8 +12,8 @@ export function PrasadCounter() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentMode, setPaymentMode] = useState('cash')
-  const [buyerName, setBuyerName] = useState('')
-  const [buyerMobile, setBuyerMobile] = useState('')
+  const [buyer, setBuyer] = useState<DevoteeSelection | null>(null)
+  const [showBuyerPicker, setShowBuyerPicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [lastSale, setLastSale] = useState<{ total_paise: number; invoice?: string } | null>(null)
 
@@ -41,16 +42,24 @@ export function PrasadCounter() {
     if (cart.length === 0) return
     setSaving(true)
     try {
-      const { data } = await api.post('/prasad/sales', {
+      const payload: Record<string, unknown> = {
         items: cart.map(ci => ({ item_id: ci.item.id, qty: ci.qty })),
         payment_mode: paymentMode,
-        buyer_name: buyerName || undefined,
-        buyer_mobile: buyerMobile || undefined,
-      })
+      }
+
+      if (buyer?.is_anonymous) {
+        payload.is_anonymous = true
+      } else if (buyer?.global_user_id) {
+        payload.buyer = { global_user_id: buyer.global_user_id, name: buyer.name, mobile: buyer.mobile }
+      } else if (buyer?.name) {
+        payload.buyer = { name: buyer.name, mobile: buyer.mobile }
+      }
+
+      const { data } = await api.post('/prasad/sales', payload)
       setLastSale({ total_paise: data.data.total_paise, invoice: data.data.invoice_no })
       setCart([])
-      setBuyerName('')
-      setBuyerMobile('')
+      setBuyer(null)
+      setShowBuyerPicker(false)
     } catch {
       alert('Sale failed')
     } finally {
@@ -158,8 +167,27 @@ export function PrasadCounter() {
                 <option value="upi">UPI</option>
               </select>
 
-              <input className="form-input text-xs" placeholder="Buyer name (optional)"
-                value={buyerName} onChange={e => setBuyerName(e.target.value)} />
+              {/* Optional buyer picker — collapsed by default */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setShowBuyerPicker(v => !v); if (showBuyerPicker) setBuyer(null) }}
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+                >
+                  {showBuyerPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {showBuyerPicker ? 'Remove buyer' : 'Add buyer (optional)'}
+                </button>
+                {showBuyerPicker && (
+                  <div className="mt-2">
+                    <DevoteePicker
+                      label=""
+                      value={buyer}
+                      onChange={setBuyer}
+                      showAnonymous
+                    />
+                  </div>
+                )}
+              </div>
 
               <button onClick={checkout} disabled={saving} className="btn-primary w-full justify-center">
                 {saving ? 'Processing...' : `Checkout — ₹${fmtPaise(total)}`}
