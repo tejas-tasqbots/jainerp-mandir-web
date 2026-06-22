@@ -114,8 +114,8 @@ export function DevoteePicker({
     setSearching(true)
     const t = setTimeout(async () => {
       try {
-        const { data } = await api.get('/devotees/search', { params: { q: query } })
-        setResults(data || [])
+        const r = await api.get('/devotees/search', { params: { q: query } })
+        setResults(r.data?.data || [])
         setSearchDone(true)
         setStep('results')
       } catch {
@@ -176,11 +176,12 @@ export function DevoteePicker({
     setRegSending(true)
     setError('')
     try {
-      const { data } = await api.post('/devotees/register', {
+      const resp = await api.post('/devotees/register', {
         mobile,
         name: regName.trim(),
         pan: (!regNoPan && regPan) ? regPan : undefined,
       })
+      const data = resp.data?.data ?? resp.data
       if (data.already_verified) {
         // Devotee is already in the system and verified — select directly
         selectDevotee({
@@ -210,7 +211,8 @@ export function DevoteePicker({
     setOtpVerifying(true)
     setError('')
     try {
-      const { data } = await api.post('/devotees/verify-otp', { user_id: regUserId, otp })
+      const resp = await api.post('/devotees/verify-otp', { user_id: regUserId, otp })
+      const data = resp.data?.data ?? resp.data
       onChange({
         global_user_id: data.global_user_id,
         name: regName,

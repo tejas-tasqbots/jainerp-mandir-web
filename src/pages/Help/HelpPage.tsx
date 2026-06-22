@@ -2,12 +2,25 @@ import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, CheckCircle } from 'lu
 
 const topics = [
   {
+    title: 'Finding & Registering Devotees (Global Devotee Search)',
+    steps: [
+      'On every form (Donation, Boli, Seva, Room, Hall, Prasad) the devotee field is a global search box',
+      'Type a mobile number or name — matches across ALL temples appear with Verified ✓ and Connected 🔗 badges',
+      'Select a match to attach the devotee; their PAN (if verified) flows onto the 80G receipt automatically',
+      'Not found? Click "Register on-site": enter name + optional PAN, then "Send OTP"',
+      'The devotee shares the 6-digit OTP from their phone; verifying links them to your temple and confirms identity',
+      'PAN tip: tick "Don\'t share PAN" to skip it — the receipt then prints with name + mobile only',
+      'Offline (desktop): the box becomes plain name + mobile inputs; the record auto-links by mobile when you reconnect',
+    ],
+  },
+  {
     title: 'Recording a Donation',
     steps: [
       'Go to Donations → New Donation',
-      'Search for existing donor or add new donor details',
+      'Use the Donor search to find/register a devotee (see "Global Devotee Search" above)',
+      'For unnamed gifts choose "Anonymous / Gupt Dan", or "Dan Peti (Donation Box)" for collection-box cash',
       'Select donation category and enter amount + payment mode',
-      '80G eligibility is auto-checked (disabled for cash > ₹2000)',
+      '80G eligibility is auto-checked (disabled for cash > ₹2000, and for anonymous gifts)',
       'Save — receipt available via the Receipt icon (📄) in the list',
       'To void a donation: click the 🚫 icon and enter a reason (admin only)',
     ],
@@ -15,8 +28,8 @@ const topics = [
   {
     title: 'Boli (Pledge) Management',
     steps: [
-      'Go to Boli Donations → New Boli (enter devotee name and pledged amount)',
-      'Status will be "Pledged" until payment is recorded',
+      'Go to Boli Donations → New Boli — use the Devotee search to attach a global devotee (or mark anonymous)',
+      'Enter the pledged amount; status will be "Pledged" until payment is recorded',
       'When devotee pays: click the "Pay" button on the boli entry',
       'Enter amount and payment mode in the modal, then confirm',
       'To waive remaining balance: click ⚠️ icon and enter a reason (admin only)',
@@ -69,8 +82,19 @@ const topics = [
     steps: [
       'Go to Seva Donation → New Booking',
       'Select seva type — amount fills automatically from the seva catalog',
-      'Enter devotee name, gotra, sankalp, and date',
+      'Use the Devotee search to attach a global devotee (or mark anonymous)',
+      'Enter gotra, sankalp names, and date (these stay separate from the devotee record)',
       'Booking list shows status; mark "Done" after the pooja is completed',
+    ],
+  },
+  {
+    title: 'Connected Devotees',
+    steps: [
+      'Go to People → Connected Devotees to manage every devotee linked to your temple',
+      'Three tabs: Connected (approved), Pending Requests (devotees who asked to join), Pending Invites (you invited)',
+      'Approve / Reject pending requests; cancel a pending invite or remove a connected devotee',
+      'Click "Invite Devotee", enter a 10-digit mobile — the devotee gets a notification in the JainERP Devotee app to accept',
+      'Connected devotees can receive temple notices and appear pre-verified in your forms',
     ],
   },
   {
@@ -90,6 +114,8 @@ const apiCoverage = [
   { endpoint: 'GET/POST /donations, PATCH /:id/void, GET /:id/receipt', ui: 'Donations List + Add Donation', status: 'connected' },
   { endpoint: 'GET/POST/PATCH/DELETE /expenses', ui: 'Expenses List + Add + Edit + Delete', status: 'connected' },
   { endpoint: 'GET/POST /donors, PATCH /donors/:id, GET /donors/:id/ledger', ui: 'Donor List + Profile (with edit)', status: 'connected' },
+  { endpoint: 'GET /devotees/search, POST /devotees/register, POST /devotees/verify-otp', ui: 'DevoteePicker (all transaction forms)', status: 'connected' },
+  { endpoint: 'GET /devotee-links, POST /invite, PATCH /:id/approve, /:id/reject, DELETE /:id', ui: 'Connected Devotees page', status: 'connected' },
   { endpoint: 'GET/POST /room-bookings, PATCH /:id/checkin, /checkout, /cancel', ui: 'Rooms List + New Booking', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /hall-bookings', ui: 'Hall Bookings List + Add', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /prasad/items, POST /:id/adjust-stock, POST/GET /prasad/sales', ui: 'Prasad Counter POS + Manage Items', status: 'connected' },
