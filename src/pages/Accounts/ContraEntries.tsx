@@ -12,14 +12,15 @@ export function ContraEntries() {
 
   useEffect(() => {
     api.get('/accounts?is_active=true').then(r => setAccounts(r.data.data || []))
-    api.get('/accounts/contra?limit=20').then(r => setEntries(r.data.data || [])).catch(() => {})
+    api.get('/contra-entries?limit=20').then(r => setEntries(r.data.data || [])).catch(() => {})
   }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/accounts/contra', {
+      await api.post('/contra-entries', {
+        entry_date: new Date().toISOString().slice(0, 10),
         from_account_id: form.from_account_id,
         to_account_id: form.to_account_id,
         amount_paise: parsePaise(form.amount),
@@ -27,7 +28,7 @@ export function ContraEntries() {
       })
       setForm({ from_account_id: '', to_account_id: '', amount: '', narration: '' })
       setShowForm(false)
-      api.get('/accounts/contra?limit=20').then(r => setEntries(r.data.data || []))
+      api.get('/contra-entries?limit=20').then(r => setEntries(r.data.data || []))
     } finally {
       setSaving(false)
     }
