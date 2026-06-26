@@ -308,16 +308,8 @@ export function SettingsPage() {
             ]}
           />
 
-          <MasterEditor
-            resource="vendors"
-            title="Vendors"
-            description="Vendors / payees used in expenses and creditors."
-            fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'Vendor name' },
-              { key: 'mobile', label: 'Mobile', placeholder: '10-digit' },
-              { key: 'gstin', label: 'GSTIN', placeholder: 'Optional' },
-            ]}
-          />
+          {/* Vendors are managed on the dedicated master page (Masters → Vendors / Suppliers),
+              not here, to avoid two places editing the same records. */}
 
           <MasterEditor
             resource="prasad/items"

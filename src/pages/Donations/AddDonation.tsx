@@ -174,13 +174,16 @@ export function AddDonation() {
 
           {/* 80G toggle */}
           <div className="flex items-center gap-3">
-            <input type="checkbox" id="is_80g" checked={form.is_80g_eligible}
+            <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous}
               onChange={e => setForm(f => ({ ...f, is_80g_eligible: e.target.checked }))}
-              disabled={!selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000)}
+              disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000)}
               className="w-4 h-4 accent-green-600" />
             <label htmlFor="is_80g" className="text-sm text-slate-700">
               80G Eligible donation
-              {form.payment_mode === 'cash' && parseFloat(form.amount) > 2000 && (
+              {devotee?.is_anonymous && (
+                <span className="text-orange-500 ml-2 text-xs">(Anonymous / Dan Peti gifts are not 80G eligible)</span>
+              )}
+              {!devotee?.is_anonymous && form.payment_mode === 'cash' && parseFloat(form.amount) > 2000 && (
                 <span className="text-orange-500 ml-2 text-xs">(Cash &gt;₹2,000 is not 80G eligible)</span>
               )}
             </label>
