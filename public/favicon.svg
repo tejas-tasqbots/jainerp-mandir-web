@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#0D1B2E"/>
-  <text x="32" y="44" font-family="'Noto Sans',system-ui,sans-serif" font-size="38" font-weight="800" fill="#ffffff" text-anchor="middle">J</text>
+  <!-- Temple / shikhara silhouette -->
+  <path fill="#ffffff" d="M32 13l4 6h-8l4-6zM22 21h20l3 5H19l3-5zM18 28h28v3H18v-3z"/>
+  <path fill="#ffffff" d="M21 33h22v15h-5V39h-4v9h-4v-9h-4v9h-5V33z"/>
+  <rect x="16" y="48" width="32" height="4" rx="1" fill="#ffffff"/>
 </svg>
