@@ -51,6 +51,8 @@ export interface Donation {
   donor_id?: string
   donor_name?: string
   donor_mobile?: string
+  is_anonymous?: boolean
+  anonymous_category?: 'gupt_dan' | 'dan_peti'
   category_id: string
   category_name?: string
   amount_paise: number

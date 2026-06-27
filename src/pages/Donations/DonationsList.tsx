@@ -129,6 +129,11 @@ export function DonationsList() {
                   <td>
                     <p className="font-medium">{d.donor_name || '—'}</p>
                     {d.donor_mobile && <p className="text-xs text-slate-400">{d.donor_mobile}</p>}
+                    {d.is_anonymous && (
+                      <p className="text-xs text-slate-400 italic">
+                        {d.anonymous_category === 'dan_peti' ? 'Dan Peti' : 'Anonymous / Gupt Dan'}
+                      </p>
+                    )}
                   </td>
                   <td className="text-slate-600">{d.category_name || '—'}</td>
                   <td className="font-semibold">₹{fmtPaise(d.amount_paise)}</td>

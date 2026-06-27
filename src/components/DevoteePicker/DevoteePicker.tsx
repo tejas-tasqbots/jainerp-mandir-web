@@ -336,12 +336,25 @@ export function DevoteePicker({
 
   // ── REGISTER STEP 1: Name + PAN ────────────────────────────────────────────
   if (step === 'register_name') {
+    const mobile10 = query.replace(/\D/g, '')
+    function saveWithoutOtp() {
+      if (!regName.trim()) { setError('Name is required'); return }
+      onChange({
+        name: regName.trim(),
+        mobile: mobile10 || undefined,
+        pan_masked: (!regNoPan && regPan) ? regPan : undefined,
+        verified: false,
+        is_offline: false,
+      })
+      setStep('selected')
+      setError('')
+    }
     return (
       <div>
         <label className="form-label">{fieldLabel}{required && ' *'}</label>
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
           <p className="text-xs text-blue-700 font-medium">
-            Register devotee — OTP will be sent to <strong>{query.replace(/\D/g, '')}</strong>
+            New devotee{mobile10 ? <> — mobile: <strong>+91{mobile10}</strong></> : ''}
           </p>
           <input className="form-input" placeholder="Full name *" value={regName}
             onChange={e => setRegName(e.target.value)} />
@@ -354,15 +367,22 @@ export function DevoteePicker({
             Devotee doesn't want to share PAN
           </label>
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <button type="button" onClick={sendOtp} disabled={regSending}
-              className="btn-primary btn-sm text-xs flex items-center gap-1">
-              <KeyRound size={12} /> {regSending ? 'Sending…' : 'Send OTP'}
+          <div className="flex gap-2 flex-wrap">
+            {mobile10.length === 10 && (
+              <button type="button" onClick={sendOtp} disabled={regSending}
+                className="btn-primary btn-sm text-xs flex items-center gap-1">
+                <KeyRound size={12} /> {regSending ? 'Sending…' : 'Send OTP to verify'}
+              </button>
+            )}
+            <button type="button" onClick={saveWithoutOtp}
+              className="btn-secondary btn-sm text-xs">
+              Save without OTP
             </button>
             <button type="button" onClick={() => { setStep('idle'); setQuery('') }} className="btn-secondary btn-sm text-xs">
               Cancel
             </button>
           </div>
+          <p className="text-xs text-slate-400">OTP verification is optional — the devotee can verify later via their own login.</p>
         </div>
       </div>
     )
@@ -421,24 +441,39 @@ export function DevoteePicker({
           {showDropdown && (
             <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
               {results.map(d => (
-                <button key={d.id} type="button" onClick={() => selectDevotee(d)}
-                  className="w-full text-left px-3 py-2.5 hover:bg-slate-50 text-sm border-b border-slate-100 last:border-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-medium">{d.name}</span>
-                    <span className="text-slate-400 text-xs">{d.mobile}</span>
-                    {d.city && <span className="text-slate-400 text-xs">• {d.city}</span>}
-                    {d.verified && (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600">
-                        <ShieldCheck size={10} /> Verified
-                      </span>
-                    )}
-                    {d.linked_to_this_temple && (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-blue-600">
-                        <Link2 size={10} /> Connected
-                      </span>
-                    )}
-                  </div>
-                </button>
+                <div key={d.id} className="flex items-center border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <button type="button" onClick={() => selectDevotee(d)}
+                    className="flex-1 text-left px-3 py-2.5 text-sm">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium">{d.name}</span>
+                      <span className="text-slate-400 text-xs">{d.mobile}</span>
+                      {d.city && <span className="text-slate-400 text-xs">• {d.city}</span>}
+                      {d.verified && (
+                        <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600">
+                          <ShieldCheck size={10} /> Verified
+                        </span>
+                      )}
+                      {d.linked_to_this_temple && (
+                        <span className="inline-flex items-center gap-0.5 text-xs text-blue-600">
+                          <Link2 size={10} /> Connected
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  {!d.verified && (
+                    <button type="button" title="Send OTP to verify"
+                      onClick={() => {
+                        setQuery(d.mobile.replace('+91', ''))
+                        setRegName(d.name)
+                        setRegUserId(d.id)
+                        setStep('register_name')
+                        setError('')
+                      }}
+                      className="px-2 py-1 mr-1 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-0.5 flex-shrink-0">
+                      <KeyRound size={11} /> OTP
+                    </button>
+                  )}
+                </div>
               ))}
 
               {searchDone && results.length === 0 && (
