@@ -13,11 +13,15 @@ interface StaffMember {
   joined_at: string
 }
 
-const ROLES = ['cashier', 'accountant', 'priest', 'volunteer', 'viewer', 'temple_admin']
+const ROLES = ['cashier', 'bhojanshala_cashier', 'accountant', 'priest', 'volunteer', 'viewer', 'temple_admin']
+const ROLE_LABELS: Record<string, string> = {
+  temple_admin: 'Admin', accountant: 'Accountant', cashier: 'Cashier',
+  bhojanshala_cashier: 'Bhojanshala Cashier', priest: 'Priest', volunteer: 'Volunteer', viewer: 'Viewer',
+}
 const roleBadge = (role: string) => {
   const map: Record<string, string> = {
     temple_admin: 'badge-red', accountant: 'badge-blue', cashier: 'badge-green',
-    priest: 'badge-yellow', volunteer: 'badge-gray', viewer: 'badge-gray',
+    bhojanshala_cashier: 'badge-green', priest: 'badge-yellow', volunteer: 'badge-gray', viewer: 'badge-gray',
   }
   return map[role] || 'badge-gray'
 }
@@ -125,12 +129,7 @@ export function StaffPage() {
             <div>
               <label className="form-label">Role</label>
               <select className="form-select" value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}>
-                <option value="cashier">Cashier</option>
-                <option value="accountant">Accountant</option>
-                <option value="priest">Priest</option>
-                <option value="volunteer">Volunteer</option>
-                <option value="viewer">Viewer (Read-only)</option>
-                <option value="temple_admin">Admin</option>
+                {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
               </select>
             </div>
             <button type="submit" disabled={inviting || inviteForm.mobile.length !== 10} className="btn-primary">
@@ -191,6 +190,7 @@ export function StaffPage() {
               { role: 'temple_admin', desc: 'Full access — can void donations, delete data, manage all settings', cls: 'badge-red' },
               { role: 'accountant', desc: 'Accounts, reports, fixed assets, loans, TDS entries', cls: 'badge-blue' },
               { role: 'cashier', desc: 'Donations, expenses, bookings, prasad, seva, bhojanshala', cls: 'badge-green' },
+              { role: 'bhojanshala_cashier', desc: 'Bhojanshala only — record & redeem meal tokens', cls: 'badge-green' },
               { role: 'priest', desc: 'View seva bookings, mark them done', cls: 'badge-yellow' },
               { role: 'volunteer', desc: 'Event registrations, visitor count entries', cls: 'badge-gray' },
               { role: 'viewer', desc: 'Read-only access to all data (no create/edit)', cls: 'badge-gray' },
@@ -213,7 +213,7 @@ export function StaffPage() {
               <div>
                 <label className="form-label">Role</label>
                 <select className="form-select" value={editRole} onChange={e => setEditRole(e.target.value)}>
-                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
                 </select>
               </div>
               <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 
 interface Entry {
   date: string
@@ -39,11 +40,18 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">{bankMode ? 'Bank Book' : 'Cash Book'}</h1>
-        <button
-          onClick={() => window.open(`/api/v1/accounting/ledger?type=${bankMode ? 'bank' : 'cash'}&from=${from}&to=${to}&export=pdf`, '_blank')}
-          className="btn-secondary btn-sm">
-          <Download size={14} /> Export PDF
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+            <Printer size={14} /> Print / PDF
+          </button>
+          <button type="button"
+            onClick={() => exportRowsCsv(`${bankMode ? 'bank' : 'cash'}-book-${from}_${to}.csv`,
+              ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
+              entries.map(e => [e.date, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]))}
+            className="btn-secondary btn-sm">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

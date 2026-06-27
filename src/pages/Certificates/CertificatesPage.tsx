@@ -2,6 +2,29 @@ import { useState } from 'react'
 import { Award, Download, RefreshCw, FileText } from 'lucide-react'
 import { api, currentFY, fmtPaise } from '../../lib/api'
 
+// ── Authenticated download helpers ───────────────────────────────────────────
+// The compliance endpoints require a Bearer token, so opening them in a new
+// browser tab (window.open) returns 401. Fetch via the authenticated api
+// client and build the file client-side instead.
+
+function downloadBlob(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function toCsv(headers: string[], rows: (string | number)[][]): string {
+  const esc = (v: string | number) => {
+    const s = String(v ?? '')
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  return [headers.map(esc).join(',')].concat(rows.map(r => r.map(esc).join(','))).join('\n')
+}
+
 export function CertificatesPage() {
   const [tab, setTab] = useState<'80g' | 'tds'>('80g')
   const [fy, setFy] = useState(currentFY())
@@ -69,17 +92,76 @@ export function CertificatesPage() {
     }
   }
 
+  // ── Downloads (authenticated) ──────────────────────────────────────────────
+  const [downloading, setDownloading] = useState('')
+
+  async function downloadForm10bd() {
+    setDownloading('10bd')
+    try {
+      const { data } = await api.get(`/compliance/form-10bd?fy=${fy}`)
+      const rows = data.data?.rows || data.rows || []
+      if (!rows.length) { alert('No Form 10BD entries. Generate them first.'); return }
+      // Income-tax Form 10BD utility consumes a JSON/CSV upload; provide JSON.
+      downloadBlob(`form-10bd-${fy}.json`, JSON.stringify({ fy, rows }, null, 2), 'application/json')
+    } catch {
+      alert('Could not download Form 10BD')
+    } finally {
+      setDownloading('')
+    }
+  }
+
+  async function download80gList() {
+    setDownloading('80g')
+    try {
+      const { data } = await api.get(`/compliance/80g-certificates?fy=${fy}`)
+      const rows = data.data?.rows || data.rows || []
+      if (!rows.length) { alert('No 80G-eligible donors for this FY'); return }
+      const csv = toCsv(
+        ['Donor', 'Mobile', 'PAN', 'Receipts', 'Eligible Amount (₹)'],
+        rows.map((c: { donor: string; mobile?: string; pan_masked?: string; receipts: number; total_eligible_paise: number }) =>
+          [c.donor, c.mobile ?? '', c.pan_masked ?? '', c.receipts, (c.total_eligible_paise / 100).toFixed(2)]),
+      )
+      downloadBlob(`80g-certificate-list-${fy}.csv`, csv, 'text/csv')
+    } catch {
+      alert('Could not download 80G list')
+    } finally {
+      setDownloading('')
+    }
+  }
+
+  async function downloadTds(quarter?: string) {
+    setDownloading('tds')
+    try {
+      const params = new URLSearchParams({ fy })
+      if (quarter) params.set('quarter', quarter)
+      const { data } = await api.get(`/compliance/tds-report?${params}`)
+      const d = data.data || data
+      const rows = d.rows || []
+      if (!rows.length) { alert('No TDS records for this period'); return }
+      const csv = toCsv(
+        ['Date', 'Vendor', 'PAN', 'Section', 'Expense Amount (₹)', 'TDS Amount (₹)', 'Challan No'],
+        rows.map((r: TdsRow) =>
+          [r.date, r.vendor ?? '', r.pan_masked ?? '', r.tds_section ?? '', (r.amount_paise / 100).toFixed(2), (r.tds_amount_paise / 100).toFixed(2), r.tds_challan_no ?? '']),
+      )
+      downloadBlob(`tds-report-${fy}${quarter ? `-q${quarter}` : ''}.csv`, csv, 'text/csv')
+    } catch {
+      alert('Could not download TDS report')
+    } finally {
+      setDownloading('')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-navy-900">Compliance — Certificates & TDS</h1>
 
       {/* Tab bar */}
       <div className="flex gap-2">
-        <button onClick={() => setTab('80g')}
+        <button type="button" onClick={() => setTab('80g')}
           className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === '80g' ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
           80G Certificates
         </button>
-        <button onClick={() => setTab('tds')}
+        <button type="button" onClick={() => setTab('tds')}
           className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === 'tds' ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
           TDS Report
         </button>
@@ -97,14 +179,14 @@ export function CertificatesPage() {
             <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><Award size={16} /> 80G Certificate Register</h3></div>
             <div className="card-body space-y-4">
               <div className="flex gap-3 flex-wrap">
-                <button onClick={fetchCerts} disabled={loading} className="btn-secondary">
+                <button type="button" onClick={fetchCerts} disabled={loading} className="btn-secondary">
                   {loading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />} Load Eligible Donors
                 </button>
-                <button onClick={generate10bd} disabled={generating} className="btn-primary">
+                <button type="button" onClick={generate10bd} disabled={generating} className="btn-primary">
                   {generating ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
                   {generating ? 'Generating...' : 'Generate Form 10BD'}
                 </button>
-                <button onClick={fetchForm10bd} disabled={loading} className="btn-secondary">
+                <button type="button" onClick={fetchForm10bd} disabled={loading} className="btn-secondary">
                   <FileText size={14} /> Load Form 10BD Entries
                 </button>
               </div>
@@ -117,14 +199,16 @@ export function CertificatesPage() {
             <div className="card-body">
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Form 10BD (JSON)', url: `/api/v1/compliance/form-10bd?fy=${fy}` },
-                  { label: '80G Certificate List', url: `/api/v1/compliance/80g-certificates?fy=${fy}` },
-                  { label: 'TDS Report', url: `/api/v1/compliance/tds-report?fy=${fy}` },
+                  { key: '10bd', label: 'Form 10BD (JSON)', fn: downloadForm10bd },
+                  { key: '80g', label: '80G Certificate List (CSV)', fn: download80gList },
+                  { key: 'tds', label: 'TDS Report (CSV)', fn: () => downloadTds() },
                 ].map(r => (
-                  <button key={r.label} onClick={() => window.open(r.url, '_blank')}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-brand-blue hover:bg-blue-50 transition-colors group">
+                  <button key={r.label} type="button" onClick={r.fn} disabled={downloading === r.key}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-brand-blue hover:bg-blue-50 transition-colors group disabled:opacity-50">
                     <span className="text-sm font-medium text-slate-700 group-hover:text-brand-blue">{r.label}</span>
-                    <Download size={15} className="text-slate-400 group-hover:text-brand-blue" />
+                    {downloading === r.key
+                      ? <RefreshCw size={15} className="text-brand-blue animate-spin" />
+                      : <Download size={15} className="text-slate-400 group-hover:text-brand-blue" />}
                   </button>
                 ))}
               </div>
@@ -202,11 +286,11 @@ export function CertificatesPage() {
                     <option value="4">Q4 (Jan–Mar)</option>
                   </select>
                 </div>
-                <button onClick={fetchTds} disabled={loading} className="btn-primary">
+                <button type="button" onClick={fetchTds} disabled={loading} className="btn-primary">
                   {loading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />} Load TDS Data
                 </button>
-                <button onClick={() => window.open(`/api/v1/compliance/tds-report?fy=${fy}${tdsQuarter ? `&quarter=${tdsQuarter}` : ''}`, '_blank')} className="btn-secondary">
-                  <Download size={14} /> Export
+                <button type="button" onClick={() => downloadTds(tdsQuarter || undefined)} disabled={downloading === 'tds'} className="btn-secondary">
+                  <Download size={14} /> Export CSV
                 </button>
               </div>
             </div>

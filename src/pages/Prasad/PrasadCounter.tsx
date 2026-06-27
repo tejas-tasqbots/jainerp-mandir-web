@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronUp, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { ChevronDown, ChevronUp, Minus, Plus, ShoppingCart, Trash2, Receipt } from 'lucide-react'
+import { api, fmtPaise } from '../../lib/api'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { PrasadItem, DevoteeSelection } from '../../types'
 
@@ -15,7 +16,8 @@ export function PrasadCounter() {
   const [buyer, setBuyer] = useState<DevoteeSelection | null>(null)
   const [showBuyerPicker, setShowBuyerPicker] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [lastSale, setLastSale] = useState<{ total_paise: number; invoice?: string } | null>(null)
+  const [lastSale, setLastSale] = useState<{ id: string; total_paise: number; invoice?: string } | null>(null)
+  const [receiptLoading, setReceiptLoading] = useState(false)
 
   useEffect(() => {
     api.get('/prasad/items?is_available=true').then(r => setItems(r.data.data || [])).finally(() => setLoading(false))
@@ -56,7 +58,7 @@ export function PrasadCounter() {
       }
 
       const { data } = await api.post('/prasad/sales', payload)
-      setLastSale({ total_paise: data.data.total_paise, invoice: data.data.invoice_no })
+      setLastSale({ id: data.data.id, total_paise: data.data.total_paise, invoice: data.data.invoice_no })
       setCart([])
       setBuyer(null)
       setShowBuyerPicker(false)
@@ -64,6 +66,18 @@ export function PrasadCounter() {
       alert('Sale failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function printLastReceipt() {
+    if (!lastSale) return
+    setReceiptLoading(true)
+    try {
+      await printDonationReceipt(lastSale.id, '/prasad/sales')
+    } catch {
+      alert('Could not load receipt')
+    } finally {
+      setReceiptLoading(false)
     }
   }
 
@@ -77,10 +91,16 @@ export function PrasadCounter() {
       {lastSale && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-green-800">Sale recorded!</p>
+            <p className="font-semibold text-green-800">Sale recorded! {lastSale.invoice && <span className="font-mono text-xs">{lastSale.invoice}</span>}</p>
             <p className="text-sm text-green-600">Total: ₹{fmtPaise(lastSale.total_paise)}</p>
           </div>
-          <button onClick={() => setLastSale(null)} className="text-green-600 text-xs underline">Dismiss</button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={printLastReceipt} disabled={receiptLoading}
+              className="btn-secondary btn-sm flex items-center gap-1 disabled:opacity-50">
+              <Receipt size={14} /> {receiptLoading ? 'Loading…' : 'Print Receipt'}
+            </button>
+            <button type="button" onClick={() => setLastSale(null)} className="text-green-600 text-xs underline">Dismiss</button>
+          </div>
         </div>
       )}
 
@@ -94,6 +114,7 @@ export function PrasadCounter() {
               {items.map(item => (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => addToCart(item)}
                   className="card p-4 text-left hover:border-brand-red hover:shadow-md transition-all group"
                 >
@@ -116,7 +137,7 @@ export function PrasadCounter() {
               <ShoppingCart size={15} /> Cart
             </h3>
             {cart.length > 0 && (
-              <button onClick={() => setCart([])} className="text-xs text-red-500 hover:text-red-700">
+              <button type="button" onClick={() => setCart([])} title="Clear cart" aria-label="Clear cart" className="text-xs text-red-500 hover:text-red-700">
                 <Trash2 size={13} />
               </button>
             )}
@@ -128,15 +149,15 @@ export function PrasadCounter() {
               <div key={ci.item.id} className="flex items-center justify-between gap-2">
                 <span className="text-sm flex-1 truncate">{ci.item.name}</span>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => updateQty(ci.item.id, ci.qty - 1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
+                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty - 1)} title="Decrease quantity" aria-label="Decrease quantity" className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
                     <Minus size={11} />
                   </button>
                   <input
-                    type="number" min="1" value={ci.qty}
+                    type="number" min="1" value={ci.qty} title="Quantity" aria-label="Quantity"
                     onChange={e => updateQty(ci.item.id, parseInt(e.target.value) || 0)}
                     className="w-10 text-center text-sm border border-slate-200 rounded"
                   />
-                  <button onClick={() => updateQty(ci.item.id, ci.qty + 1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
+                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty + 1)} title="Increase quantity" aria-label="Increase quantity" className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
                     <Plus size={11} />
                   </button>
                 </div>
@@ -161,7 +182,7 @@ export function PrasadCounter() {
                 </div>
               </div>
 
-              <select className="form-select text-xs" value={paymentMode}
+              <select className="form-select text-xs" title="Payment mode" aria-label="Payment mode" value={paymentMode}
                 onChange={e => setPaymentMode(e.target.value)}>
                 <option value="cash">Cash</option>
                 <option value="upi">UPI</option>
@@ -189,7 +210,7 @@ export function PrasadCounter() {
                 )}
               </div>
 
-              <button onClick={checkout} disabled={saving} className="btn-primary w-full justify-center">
+              <button type="button" onClick={checkout} disabled={saving} className="btn-primary w-full justify-center">
                 {saving ? 'Processing...' : `Checkout — ₹${fmtPaise(total)}`}
               </button>
             </div>

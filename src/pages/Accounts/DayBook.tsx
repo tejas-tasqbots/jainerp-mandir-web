@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, Printer } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 
 interface Entry {
   date: string
@@ -38,9 +39,18 @@ export function DayBook() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Day Book</h1>
-        <button onClick={() => window.open(`/api/v1/accounting/day-book?from=${from}&to=${to}&export=pdf`, '_blank')} className="btn-secondary btn-sm">
-          <Download size={14} /> Export PDF
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+            <Printer size={14} /> Print / PDF
+          </button>
+          <button type="button"
+            onClick={() => exportRowsCsv(`day-book-${from}_${to}.csv`,
+              ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
+              entries.map(e => [e.date, e.type, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise)]))}
+            className="btn-secondary btn-sm">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

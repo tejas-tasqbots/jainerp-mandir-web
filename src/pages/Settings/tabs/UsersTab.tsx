@@ -15,6 +15,7 @@ const ROLES = [
   { id: 'temple_admin', label: 'Temple Admin' },
   { id: 'accountant', label: 'Accountant' },
   { id: 'cashier', label: 'Cashier' },
+  { id: 'bhojanshala_cashier', label: 'Bhojanshala Cashier' },
   { id: 'priest', label: 'Priest' },
   { id: 'volunteer', label: 'Volunteer' },
   { id: 'viewer', label: 'Viewer (read-only)' },

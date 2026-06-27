@@ -16,22 +16,26 @@ export function AddBoli() {
     description: '',
     pledged_amount: '',
     pledge_date: new Date().toISOString().slice(0, 10),
-    due_date: '',
+    event_name: '',
   })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!devotee && !true) { setError('Select a devotee'); return }  // devotee optional for anonymous
     if (!form.pledged_amount || parseFloat(form.pledged_amount) <= 0) { setError('Enter valid pledged amount'); return }
     setSaving(true)
     setError('')
     try {
+      // The API stores a single seva_description; fold the boli type into it
+      // (capitalised) so the type is preserved and the field is never empty.
+      const typeLabel = form.boli_type.charAt(0).toUpperCase() + form.boli_type.slice(1)
+      const sevaDescription = form.description.trim()
+        ? `${typeLabel} — ${form.description.trim()}`
+        : typeLabel
       const payload: Record<string, unknown> = {
-        boli_type: form.boli_type,
-        description: form.description || undefined,
+        seva_description: sevaDescription,
         pledged_amount_paise: parsePaise(form.pledged_amount),
-        pledge_date: form.pledge_date,
-        due_date: form.due_date || undefined,
+        boli_date: form.pledge_date,
+        event_name: form.event_name || undefined,
       }
 
       if (devotee?.is_anonymous) {
@@ -100,9 +104,9 @@ export function AddBoli() {
                 onChange={e => setForm(f => ({ ...f, pledge_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Due Date <span className="text-slate-400 font-normal">(optional)</span></label>
-              <input type="date" className="form-input" value={form.due_date}
-                onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+              <label className="form-label">Event <span className="text-slate-400 font-normal">(optional)</span></label>
+              <input className="form-input" placeholder="e.g. Paryushan 2026" value={form.event_name}
+                onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
             </div>
           </div>
 

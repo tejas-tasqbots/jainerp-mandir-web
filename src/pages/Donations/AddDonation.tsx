@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Save, X } from 'lucide-react'
-import { api, parsePaise } from '../../lib/api'
+import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
@@ -9,6 +9,8 @@ import type { DonationCategory, DevoteeSelection } from '../../types'
 
 export function AddDonation() {
   const navigate = useNavigate()
+  const { id: editId } = useParams()
+  const isEdit = !!editId
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
   const [categories, setCategories] = useState<DonationCategory[]>([])
@@ -30,6 +32,29 @@ export function AddDonation() {
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } }).then(r => setCategories(r.data.data || []))
   }, [])
+
+  // Load existing donation when editing
+  useEffect(() => {
+    if (!editId) return
+    api.get(`/donations/${editId}`).then(r => {
+      const d = r.data.data
+      setForm({
+        category_id: d.category_id ?? '',
+        amount: d.amount_paise ? String(fmtPaise(d.amount_paise)).replace(/,/g, '') : '',
+        payment_mode: d.payment_mode ?? 'cash',
+        payment_account_id: d.payment_account_id ?? '',
+        utr_number: d.utr_number ?? '',
+        cheque_number: d.cheque_number ?? '',
+        is_80g_eligible: d.is_80g_eligible ?? true,
+        note: d.notes ?? '',
+      })
+      if (d.is_anonymous) {
+        setDevotee({ is_anonymous: true, anonymous_category: d.anonymous_category })
+      } else if (d.donor_id) {
+        setDevotee({ name: d.donor_name, mobile: d.donor_mobile, is_offline: true })
+      }
+    }).catch(() => setError('Could not load donation to edit'))
+  }, [editId])
 
   useEffect(() => {
     const id = autoSelectAccount(accounts, form.payment_mode)
@@ -69,13 +94,19 @@ export function AddDonation() {
       if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
       if (form.utr_number) payload.utr_number = form.utr_number
       if (form.cheque_number) payload.cheque_number = form.cheque_number
-      if (form.note) payload.note = form.note
+      if (form.note) payload.notes = form.note
 
-      const { data } = await api.post('/donations', payload)
-      const donationId = data.data?.id
+      let donationId: string | undefined
+      if (isEdit) {
+        const { data } = await api.patch(`/donations/${editId}/correct`, payload)
+        donationId = data.data?.id
+      } else {
+        const { data } = await api.post('/donations', payload)
+        donationId = data.data?.id
+      }
       navigate('/donations')
       if (donationId) {
-        setTimeout(() => printDonationReceipt(donationId).catch(() => {}), 300)
+        setTimeout(() => printDonationReceipt(donationId!).catch(() => {}), 300)
       }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -90,8 +121,11 @@ export function AddDonation() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">New Donation</h1>
-        <button onClick={() => navigate('/donations')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{isEdit ? 'Edit Donation' : 'New Donation'}</h1>
+          {isEdit && <p className="text-xs text-amber-600 mt-0.5">Saving will void the original receipt and issue a corrected one (keeps the audit trail).</p>}
+        </div>
+        <button type="button" onClick={() => navigate('/donations')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
@@ -202,7 +236,7 @@ export function AddDonation() {
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
           <button type="button" onClick={() => navigate('/donations')} className="btn-secondary">Cancel</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : 'Save & Print Receipt'}
+            <Save size={16} /> {saving ? 'Saving...' : isEdit ? 'Save Correction & Print' : 'Save & Print Receipt'}
           </button>
         </div>
       </form>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Printer } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 
 interface Section { name: string; head?: string; amount_paise: number }
@@ -32,8 +33,8 @@ export function IncomeExpenditure() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Income & Expenditure</h1>
-        <button onClick={() => window.open(`/api/v1/accounting/income-expenditure?fy=${fy}&export=pdf`, '_blank')} className="btn-secondary btn-sm">
-          <Download size={14} /> Export PDF
+        <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+          <Printer size={14} /> Print / PDF
         </button>
       </div>
 

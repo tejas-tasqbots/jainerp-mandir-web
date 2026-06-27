@@ -843,15 +843,55 @@ export function buildReceiptHtml(r: ReceiptData): string {
 </head><body>${body}<script>window.onload=()=>{window.print()}</script></body></html>`
 }
 
-export async function printDonationReceipt(donationId: string): Promise<void> {
-  const { data } = await api.get(`/donations/${donationId}/receipt`)
-  const receipt: ReceiptData = data.data
-  const html = buildReceiptHtml(receipt)
-  const win = window.open('', '_blank', 'width=800,height=960')
-  if (!win) {
-    alert('Popup blocked. Please allow popups for this site and try again.')
+/**
+ * Render the receipt HTML and trigger print. Uses a hidden iframe (no popup,
+ * so it is not blocked by popup blockers); falls back to a new tab if the
+ * iframe approach is unavailable.
+ */
+export function printReceiptHtml(html: string): void {
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow?.document
+  if (!doc) {
+    // Fallback to popup
+    const win = window.open('', '_blank', 'width=800,height=960')
+    if (!win) { alert('Popup blocked. Please allow popups for this site and try again.'); return }
+    win.document.write(html)
+    win.document.close()
+    document.body.removeChild(iframe)
     return
   }
-  win.document.write(html)
-  win.document.close()
+
+  // Strip the auto-print script from the HTML; we drive print() from the iframe load.
+  doc.open()
+  doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
+  doc.close()
+
+  const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe) } catch { /* noop */ } }, 1000) }
+  iframe.contentWindow!.onafterprint = cleanup
+  // Give the browser a tick to lay out before printing
+  setTimeout(() => {
+    iframe.contentWindow!.focus()
+    iframe.contentWindow!.print()
+    cleanup()
+  }, 250)
+}
+
+/**
+ * Fetch and print a receipt. Defaults to the donations endpoint; pass a
+ * different `basePath` (e.g. '/seva-bookings') for other receipt-bearing
+ * resources whose `/:id/receipt` returns a shape-compatible payload.
+ */
+export async function printDonationReceipt(id: string, basePath = '/donations'): Promise<void> {
+  const { data } = await api.get(`${basePath}/${id}/receipt`)
+  const receipt: ReceiptData = data.data
+  const html = buildReceiptHtml(receipt)
+  printReceiptHtml(html)
 }

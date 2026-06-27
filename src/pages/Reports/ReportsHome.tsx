@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Download, FileText } from 'lucide-react'
-import { api, currentFY } from '../../lib/api'
+import { Download, FileText, RefreshCw } from 'lucide-react'
+import { currentFY } from '../../lib/api'
+import { downloadReport } from '../../lib/downloadReport'
 
 export function ReportsHome() {
   const [fy, setFy] = useState(currentFY())
@@ -8,32 +9,31 @@ export function ReportsHome() {
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
   const [loading, setLoading] = useState<string | null>(null)
 
-  async function download(label: string, url: string) {
+  async function download(label: string, key: string, params: Record<string, string>) {
     setLoading(label)
     try {
-      window.open(url, '_blank')
+      await downloadReport(key, params)
     } finally {
-      setTimeout(() => setLoading(null), 1000)
+      setLoading(null)
     }
   }
 
-  const reports = [
+  const reports: { group: string; items: { label: string; key: string; params: Record<string, string> }[] }[] = [
     {
       group: 'Daily & Transaction Reports',
       items: [
-        { label: 'Daily Collection Report', url: `/api/v1/reports/daily-collection?date=${to}` },
-        { label: 'Donation Register (Excel)', url: `/api/v1/reports/donation-register?from=${from}&to=${to}&export=excel` },
-        { label: 'Expense Register (Excel)', url: `/api/v1/reports/expense-register?from=${from}&to=${to}&export=excel` },
-        { label: 'Boli Register (PDF)', url: `/api/v1/reports/boli-register?fy=${fy}&export=pdf` },
+        { label: 'Daily Collection (CSV)', key: 'daily-collection', params: { date: to } },
+        { label: 'Donation Register (CSV)', key: 'donation-register', params: { from, to } },
+        { label: 'Expense Register (CSV)', key: 'expense-register', params: { from, to } },
+        { label: 'Boli Register (CSV)', key: 'boli-register', params: { fy } },
       ],
     },
     {
       group: 'Analytics',
       items: [
-        { label: 'Donation Trends (Monthly)', url: `/api/v1/reports/analytics/donation-trends?granularity=monthly&fy=${fy}` },
-        { label: 'Top Donors Report', url: `/api/v1/reports/analytics/top-donors?fy=${fy}&limit=20` },
-        { label: 'GST Summary', url: `/api/v1/reports/gst-summary?fy=${fy}` },
-        { label: 'CA Pack (ZIP — all reports)', url: `/api/v1/reports/ca-pack?fy=${fy}` },
+        { label: 'Donation Trends (CSV)', key: 'donation-trends', params: { granularity: 'monthly', fy } },
+        { label: 'Top Donors (CSV)', key: 'top-donors', params: { fy, limit: '20' } },
+        { label: 'GST Summary (JSON)', key: 'gst-summary', params: { fy } },
       ],
     },
   ]
@@ -74,14 +74,17 @@ export function ReportsHome() {
               {group.items.map(r => (
                 <button
                   key={r.label}
-                  onClick={() => download(r.label, r.url)}
+                  type="button"
+                  onClick={() => download(r.label, r.key, r.params)}
                   disabled={loading === r.label}
                   className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-brand-blue hover:bg-blue-50 transition-colors text-left group disabled:opacity-50"
                 >
                   <span className="text-sm font-medium text-slate-700 group-hover:text-brand-blue">
                     {r.label}
                   </span>
-                  <Download size={15} className="text-slate-400 group-hover:text-brand-blue flex-shrink-0" />
+                  {loading === r.label
+                    ? <RefreshCw size={15} className="text-brand-blue animate-spin flex-shrink-0" />
+                    : <Download size={15} className="text-slate-400 group-hover:text-brand-blue flex-shrink-0" />}
                 </button>
               ))}
             </div>

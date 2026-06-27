@@ -21,6 +21,9 @@ export function AddExpense() {
     utr_number: '',
     is_on_credit: false,
     gst_amount: '',
+    tds_deducted: false,
+    tds_amount: '',
+    tds_section: '',
     note: '',
   })
 
@@ -55,8 +58,13 @@ export function AddExpense() {
       if (form.category) payload.category = form.category
       if (form.bill_number) payload.bill_number = form.bill_number
       if (form.utr_number) payload.utr_number = form.utr_number
-      if (form.gst_amount) payload.gst_amount_paise = parsePaise(form.gst_amount)
-      if (form.note) payload.note = form.note
+      if (form.gst_amount) payload.gst_paid_paise = parsePaise(form.gst_amount)
+      if (form.tds_deducted) {
+        payload.tds_deducted = true
+        if (form.tds_amount) payload.tds_amount_paise = parsePaise(form.tds_amount)
+        if (form.tds_section) payload.tds_section = form.tds_section
+      }
+      if (form.note) payload.notes = form.note
 
       await api.post('/expenses', payload)
       navigate('/expenses')
@@ -171,6 +179,37 @@ export function AddExpense() {
               On Credit (creates creditor liability — payment to be made later)
             </label>
           </div>
+
+          {/* TDS */}
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="tds_deducted" checked={form.tds_deducted}
+              onChange={e => setForm(f => ({ ...f, tds_deducted: e.target.checked }))}
+              className="w-4 h-4 accent-blue-600" />
+            <label htmlFor="tds_deducted" className="text-sm text-slate-700">
+              TDS Deducted (track for compliance / Form 26Q)
+            </label>
+          </div>
+          {form.tds_deducted && (
+            <div className="grid grid-cols-2 gap-4 pl-7">
+              <div>
+                <label htmlFor="tds-amount" className="form-label">TDS Amount (₹)</label>
+                <input id="tds-amount" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
+                  value={form.tds_amount} onChange={e => setForm(f => ({ ...f, tds_amount: e.target.value }))} />
+              </div>
+              <div>
+                <label htmlFor="tds-section" className="form-label">TDS Section</label>
+                <select id="tds-section" className="form-select" value={form.tds_section}
+                  onChange={e => setForm(f => ({ ...f, tds_section: e.target.value }))}>
+                  <option value="">Select…</option>
+                  <option value="194C">194C — Contractor</option>
+                  <option value="194J">194J — Professional</option>
+                  <option value="194I">194I — Rent</option>
+                  <option value="194H">194H — Commission</option>
+                  <option value="194Q">194Q — Purchase of goods</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </div>

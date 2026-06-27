@@ -24,6 +24,7 @@ import { DonorList } from './pages/Donors/DonorList'
 import { DonorProfile } from './pages/Donors/DonorProfile'
 import { CreditorList } from './pages/Creditors/CreditorList'
 import { VendorsPage } from './pages/Masters/VendorsPage'
+import { VendorProfile } from './pages/Masters/VendorProfile'
 import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
@@ -99,6 +100,7 @@ export default function App() {
             {/* Donations */}
             <Route path="/donations" element={<DonationsList />} />
             <Route path="/donations/add" element={<AddDonation />} />
+            <Route path="/donations/:id/edit" element={<AddDonation />} />
 
             {/* Expenses */}
             <Route path="/expenses" element={<ExpensesList />} />
@@ -138,6 +140,7 @@ export default function App() {
 
             {/* Masters */}
             <Route path="/masters/vendors" element={<VendorsPage />} />
+            <Route path="/masters/vendors/:id" element={<VendorProfile />} />
             <Route path="/masters/priests" element={<PriestsPage />} />
             <Route path="/masters/employees" element={<EmployeesPage />} />
             <Route path="/masters/inventory" element={<InventoryPage />} />

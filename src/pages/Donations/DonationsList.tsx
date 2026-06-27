@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Download, Search, XCircle, Receipt, Ban } from 'lucide-react'
+import { Plus, Download, Search, XCircle, Receipt, Ban, Award, Filter, Pencil } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
-import type { Donation } from '../../types'
+import { print80gCertificate } from '../../lib/print80gCertificate'
+import { downloadReport } from '../../lib/downloadReport'
+import type { Donation, DonationCategory } from '../../types'
+
+const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
 
 export function DonationsList() {
   const navigate = useNavigate()
@@ -16,20 +20,60 @@ export function DonationsList() {
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
 
-  useEffect(() => { load() }, [page, search])
+  // Filters
+  const [showFilters, setShowFilters] = useState(false)
+  const [categories, setCategories] = useState<DonationCategory[]>([])
+  const [fCategory, setFCategory] = useState('')
+  const [fMode, setFMode] = useState('')
+  const [f80g, setF80g] = useState('')
+  const [fFrom, setFFrom] = useState('')
+  const [fTo, setFTo] = useState('')
+
+  useEffect(() => {
+    api.get('/donation-categories', { params: { is_active: 'true' } })
+      .then(r => setCategories(r.data.data || [])).catch(() => {})
+  }, [])
+
+  useEffect(() => { load() }, [page, search, fCategory, fMode, f80g, fFrom, fTo])
 
   async function load() {
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (search) params.set('q', search)
+      if (fCategory) params.set('category', fCategory)
+      if (fMode) params.set('payment_mode', fMode)
+      if (fFrom) params.set('from', fFrom)
+      if (fTo) params.set('to', fTo)
       const { data } = await api.get(`/donations?${params}`)
-      setDonations(data.data || [])
+      let rows: Donation[] = data.data || []
+      // 80G filter is client-side (API has no flag for it yet)
+      if (f80g === 'yes') rows = rows.filter(d => d.is_80g_eligible)
+      else if (f80g === 'no') rows = rows.filter(d => !d.is_80g_eligible)
+      setDonations(rows)
       setTotal(data.meta?.total || 0)
     } catch {
       setDonations([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  function clearFilters() {
+    setFCategory(''); setFMode(''); setF80g(''); setFFrom(''); setFTo(''); setPage(1)
+  }
+  const activeFilterCount = [fCategory, fMode, f80g, fFrom, fTo].filter(Boolean).length
+
+  const [certLoading, setCertLoading] = useState<string | null>(null)
+  async function download80g(donorId: string) {
+    setCertLoading(donorId)
+    try {
+      await print80gCertificate(donorId)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      alert(err.response?.data?.error?.message || 'No 80G-eligible donations for this donor this year')
+    } finally {
+      setCertLoading(null)
     }
   }
 
@@ -76,10 +120,18 @@ export function DonationsList() {
         <h1 className="text-xl font-bold text-navy-900">Donations</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => api.get('/reports/donation-register?export=excel').then(r => window.open(r.data.url)).catch(() => alert('Export not available'))}
+            type="button"
+            onClick={() => {
+              const p: Record<string, string> = {}
+              if (fFrom) p.from = fFrom
+              if (fTo) p.to = fTo
+              if (fCategory) p.category = fCategory
+              if (fMode) p.payment_mode = fMode
+              downloadReport('donation-register', p)
+            }}
             className="btn-secondary btn-sm"
           >
-            <Download size={14} /> Export
+            <Download size={14} /> Export CSV
           </button>
           <button onClick={() => navigate('/donations/add')} className="btn-primary btn-sm">
             <Plus size={14} /> New Donation
@@ -87,20 +139,67 @@ export function DonationsList() {
         </div>
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          className="form-input pl-9"
-          placeholder="Search donor, invoice..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-            <XCircle size={14} />
-          </button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="form-input pl-9"
+            placeholder="Search donor, invoice, category..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+          />
+          {search && (
+            <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <XCircle size={14} />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(s => !s)}
+          className={`btn-secondary btn-sm ${activeFilterCount ? 'border-brand-blue text-brand-blue' : ''}`}
+        >
+          <Filter size={14} /> Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
+        </button>
+        {activeFilterCount > 0 && (
+          <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500">Clear all</button>
         )}
       </div>
+
+      {showFilters && (
+        <div className="card p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div>
+            <label htmlFor="f-category" className="form-label text-xs">Category</label>
+            <select id="f-category" className="form-select" value={fCategory} onChange={e => { setFCategory(e.target.value); setPage(1) }}>
+              <option value="">All</option>
+              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="f-mode" className="form-label text-xs">Payment Mode</label>
+            <select id="f-mode" className="form-select" value={fMode} onChange={e => { setFMode(e.target.value); setPage(1) }}>
+              <option value="">All</option>
+              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="f-80g" className="form-label text-xs">80G</label>
+            <select id="f-80g" className="form-select" value={f80g} onChange={e => { setF80g(e.target.value); setPage(1) }}>
+              <option value="">All</option>
+              <option value="yes">80G Only</option>
+              <option value="no">Non-80G</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="f-from" className="form-label text-xs">From</label>
+            <input id="f-from" type="date" title="From date" className="form-input" value={fFrom} onChange={e => { setFFrom(e.target.value); setPage(1) }} />
+          </div>
+          <div>
+            <label htmlFor="f-to" className="form-label text-xs">To</label>
+            <input id="f-to" type="date" title="To date" className="form-input" value={fTo} onChange={e => { setFTo(e.target.value); setPage(1) }} />
+          </div>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -144,17 +243,44 @@ export function DonationsList() {
                   <td>
                     <div className="flex gap-1">
                       <button
+                        type="button"
                         onClick={() => openReceipt(d.id)}
                         title="Print Receipt"
+                        aria-label="Print Receipt"
                         disabled={receiptLoading === d.id}
                         className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
                       >
                         <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
                       </button>
+                      {d.is_80g_eligible && d.donor_id && !d.is_anonymous && (
+                        <button
+                          type="button"
+                          onClick={() => download80g(d.donor_id!)}
+                          title="Download 80G Certificate"
+                          aria-label="Download 80G Certificate"
+                          disabled={certLoading === d.donor_id}
+                          className="p-1 text-slate-400 hover:text-green-600 rounded disabled:opacity-40"
+                        >
+                          <Award size={14} className={certLoading === d.donor_id ? 'animate-pulse' : ''} />
+                        </button>
+                      )}
                       {!d.is_voided && (
                         <button
+                          type="button"
+                          onClick={() => navigate(`/donations/${d.id}/edit`)}
+                          title="Edit (void & reissue)"
+                          aria-label="Edit donation"
+                          className="p-1 text-slate-400 hover:text-amber-600 rounded"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {!d.is_voided && (
+                        <button
+                          type="button"
                           onClick={() => setVoidModal({ id: d.id, invoiceNo: d.invoice_no })}
                           title="Void Donation"
+                          aria-label="Void Donation"
                           className="p-1 text-slate-400 hover:text-brand-red rounded"
                         >
                           <Ban size={14} />

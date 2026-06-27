@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Plus, Save, RefreshCw } from 'lucide-react'
+import { Plus, Save, RefreshCw, Receipt } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import type { BhojanshalaSale } from '../../types'
 
 export function AnnadaanList() {
@@ -9,9 +10,10 @@ export function AnnadaanList() {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10))
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [summary, setSummary] = useState<{ total_tokens: number; total_paise: number } | null>(null)
+  const [summary, setSummary] = useState<{ tokens: number; collection_paise: number } | null>(null)
   const [redeemId, setRedeemId] = useState<string | null>(null)
   const [redeemTokens, setRedeemTokens] = useState('')
+  const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     meal_type: 'lunch',
@@ -32,7 +34,8 @@ export function AnnadaanList() {
         api.get(`/bhojanshala/daily-summary?date=${dateFilter}`),
       ])
       if (salesResp.status === 'fulfilled') setSales(salesResp.value.data.data || [])
-      if (summaryResp.status === 'fulfilled') setSummary(summaryResp.value.data.data)
+      // daily-summary returns { date, by_meal, totals: { tokens, collection_paise } }
+      if (summaryResp.status === 'fulfilled') setSummary(summaryResp.value.data.data?.totals ?? null)
     } finally {
       setLoading(false)
     }
@@ -56,6 +59,17 @@ export function AnnadaanList() {
       load()
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function openReceipt(id: string) {
+    setReceiptLoading(id)
+    try {
+      await printDonationReceipt(id, '/bhojanshala/sales')
+    } catch {
+      alert('Could not load receipt')
+    } finally {
+      setReceiptLoading(null)
     }
   }
 
@@ -93,14 +107,14 @@ export function AnnadaanList() {
         <div className="grid grid-cols-2 gap-4">
           <div className="card">
             <div className="card-body py-3">
-              <p className="text-xs text-slate-400">Total Tokens</p>
-              <p className="text-2xl font-bold text-navy-900">{(summary as { total_tokens: number }).total_tokens}</p>
+              <p className="text-xs text-slate-400">Total Tokens (this date)</p>
+              <p className="text-2xl font-bold text-navy-900">{summary.tokens ?? 0}</p>
             </div>
           </div>
           <div className="card">
             <div className="card-body py-3">
               <p className="text-xs text-slate-400">Total Collection</p>
-              <p className="text-2xl font-bold text-green-700">₹{fmtPaise((summary as { total_paise: number }).total_paise)}</p>
+              <p className="text-2xl font-bold text-green-700">₹{fmtPaise(summary.collection_paise ?? 0)}</p>
             </div>
           </div>
         </div>
@@ -188,34 +202,51 @@ export function AnnadaanList() {
                 <tr><td colSpan={9} className="text-center py-8 text-slate-400">Loading...</td></tr>
               ) : sales.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-8 text-slate-400">No sales recorded</td></tr>
-              ) : sales.map(s => (
+              ) : sales.map(s => {
+                const remaining = s.plates - (s.tokens_redeemed ?? 0)
+                return (
                 <tr key={s.id}>
-                  <td className="font-medium">{(s as BhojanshalaSale & { buyer_name?: string }).buyer_name || '—'}</td>
+                  <td className="font-medium">{s.buyer_name || '—'}</td>
                   <td className="capitalize">{s.meal_type}</td>
-                  <td className="font-semibold">{s.tokens}</td>
-                  <td className={(s as BhojanshalaSale & { tokens_redeemed?: number }).tokens_redeemed ? 'text-green-700' : 'text-slate-400'}>
-                    {(s as BhojanshalaSale & { tokens_redeemed?: number }).tokens_redeemed ?? 0}
+                  <td className="font-semibold">{s.plates}</td>
+                  <td className={s.tokens_redeemed ? 'text-green-700' : 'text-slate-400'}>
+                    {s.tokens_redeemed ?? 0}{s.tokens_redeemed ? ` / ${s.plates}` : ''}
                   </td>
-                  <td>₹{fmtPaise(s.rate_paise)}</td>
+                  <td>₹{fmtPaise(s.rate_per_plate_paise)}</td>
                   <td className="font-semibold">₹{fmtPaise(s.total_paise)}</td>
                   <td><span className="badge-gray">{s.payment_mode}</span></td>
                   <td className="text-xs text-slate-400">{new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
                   <td>
-                    {redeemId === s.id ? (
-                      <div className="flex gap-1 items-center">
-                        <input type="number" min="1" max={s.tokens} className="form-input w-16 text-xs py-0.5" autoFocus
-                          value={redeemTokens} onChange={e => setRedeemTokens(e.target.value)} placeholder="qty" />
-                        <button onClick={() => redeemSale(s.id)} disabled={saving} className="btn-success btn-sm">
-                          <RefreshCw size={12} />
-                        </button>
-                        <button onClick={() => { setRedeemId(null); setRedeemTokens('') }} className="btn-secondary btn-sm">×</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setRedeemId(s.id)} className="btn-secondary btn-sm text-xs">Redeem</button>
-                    )}
+                    <div className="flex gap-1 items-center">
+                      {redeemId === s.id ? (
+                        <>
+                          <input type="number" min="1" max={remaining} title="Tokens to redeem" className="form-input w-16 text-xs py-0.5" autoFocus
+                            value={redeemTokens} onChange={e => setRedeemTokens(e.target.value)} placeholder="qty" />
+                          <button type="button" onClick={() => redeemSale(s.id)} disabled={saving} className="btn-success btn-sm" aria-label="Confirm redeem">
+                            <RefreshCw size={12} />
+                          </button>
+                          <button type="button" onClick={() => { setRedeemId(null); setRedeemTokens('') }} className="btn-secondary btn-sm" aria-label="Cancel redeem">×</button>
+                        </>
+                      ) : (
+                        remaining > 0 && (
+                          <button type="button" onClick={() => setRedeemId(s.id)} className="btn-secondary btn-sm text-xs">Redeem</button>
+                        )
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openReceipt(s.id)}
+                        title="Print token slip"
+                        aria-label="Print token slip"
+                        disabled={receiptLoading === s.id}
+                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+                      >
+                        <Receipt size={14} className={receiptLoading === s.id ? 'animate-pulse' : ''} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

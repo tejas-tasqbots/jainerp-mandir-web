@@ -1,5 +1,5 @@
 // ─── Auth ────────────────────────────────────────────────────────────────────
-export type Role = 'temple_admin' | 'cashier' | 'accountant' | 'priest' | 'volunteer' | 'viewer'
+export type Role = 'temple_admin' | 'cashier' | 'accountant' | 'priest' | 'volunteer' | 'viewer' | 'bhojanshala_cashier'
 
 export interface TenantMembership {
   tenant_id: string
@@ -51,6 +51,7 @@ export interface Donation {
   donor_id?: string
   donor_name?: string
   donor_mobile?: string
+  donor_pan_masked?: string
   is_anonymous?: boolean
   anonymous_category?: 'gupt_dan' | 'dan_peti'
   category_id: string
@@ -84,38 +85,50 @@ export interface Donor {
 }
 
 // ─── Boli ────────────────────────────────────────────────────────────────────
-export type BoliStatus = 'pledged' | 'partially_paid' | 'paid' | 'waived'
-export type BoliType = 'aarti' | 'pratistha' | 'seva' | 'chadhava' | 'other'
+// Status values match the API/DB. The Boli register uses 'pledged' as the
+// initial (unpaid) state.
+export type BoliStatus = 'pledged' | 'pending' | 'partially_paid' | 'paid' | 'waived'
 
+// Field names mirror the API response (raw bolis row), NOT the old UI guesses.
 export interface Boli {
   id: string
-  devotee_id?: string
-  devotee_name: string
-  devotee_mobile?: string
+  donor_id?: string
+  donor_name: string
+  donor_mobile?: string
   event_id?: string
-  boli_type: BoliType
-  description?: string
-  pledged_amount_paise: number
+  event_name?: string
+  seva_description: string
+  committed_amount_paise: number
   paid_amount_paise: number
   outstanding_paise: number
-  pledge_date: string
-  due_date?: string
+  is_anonymous?: boolean
+  boli_date: string
+  fy?: string
+  notes?: string
   status: BoliStatus
   created_at: string
 }
 
 // ─── Expenses ────────────────────────────────────────────────────────────────
+// Field names mirror the API response (expenses list returns `category` and
+// `vendor_name`, not `category_name`).
 export interface Expense {
   id: string
+  vendor_id?: string
   vendor_name?: string
-  category_name?: string
+  category?: string
+  category_id?: string
   description: string
   amount_paise: number
-  payment_mode: PaymentMode
+  gst_paid_paise?: number
+  payment_mode: PaymentMode | 'credit'
   bill_number?: string
   bill_date?: string
   is_on_credit: boolean
-  gst_amount_paise?: number
+  tds_deducted?: boolean
+  tds_amount_paise?: number
+  notes?: string
+  event_id?: string
   receipt_cdn_url?: string
   created_at: string
 }
@@ -231,7 +244,7 @@ export interface SevaBooking {
   seva_id: string
   seva_name?: string
   devotee_name: string
-  devotee_mobile: string
+  devotee_mobile?: string
   gotra?: string
   sankalp_names?: string
   booking_date: string
@@ -246,14 +259,20 @@ export interface SevaBooking {
 // ─── Bhojanshala ─────────────────────────────────────────────────────────────
 export type MealType = 'breakfast' | 'lunch' | 'dinner'
 
+// Field names mirror the API/DB (bhojanshala_sales uses `plates` and
+// `rate_per_plate_paise`, not `tokens`/`rate_paise`).
 export interface BhojanshalaSale {
   id: string
+  sale_date?: string
   meal_type: MealType
-  tokens: number
-  rate_paise: number
+  plates: number
+  rate_per_plate_paise: number
   total_paise: number
   payment_mode: PaymentMode
-  devotee_mobile?: string
+  buyer_name?: string
+  buyer_mobile?: string
+  tokens_redeemed?: number
+  invoice_no?: string
   created_at: string
 }
 
