@@ -341,7 +341,7 @@ export function DevoteePicker({
       if (!regName.trim()) { setError('Name is required'); return }
       onChange({
         name: regName.trim(),
-        mobile: mobile10 || undefined,
+        mobile: mobile10 ? `+91${mobile10}` : undefined,
         pan_masked: (!regNoPan && regPan) ? regPan : undefined,
         verified: false,
         is_offline: false,
@@ -353,9 +353,17 @@ export function DevoteePicker({
       <div>
         <label className="form-label">{fieldLabel}{required && ' *'}</label>
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
-          <p className="text-xs text-blue-700 font-medium">
-            New devotee{mobile10 ? <> — mobile: <strong>+91{mobile10}</strong></> : ''}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-blue-700 font-medium">
+              New devotee{mobile10 ? <> — <span className="font-semibold">+91{mobile10}</span></> : ''}
+            </p>
+            {mobile10.length === 10 && (
+              <button type="button" onClick={sendOtp} disabled={regSending}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 underline underline-offset-2">
+                <KeyRound size={11} /> {regSending ? 'Sending…' : 'Verify with OTP'}
+              </button>
+            )}
+          </div>
           <input className="form-input" placeholder="Full name *" value={regName}
             onChange={e => setRegName(e.target.value)} />
           {!regNoPan && (
@@ -367,22 +375,15 @@ export function DevoteePicker({
             Devotee doesn't want to share PAN
           </label>
           {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex gap-2 flex-wrap">
-            {mobile10.length === 10 && (
-              <button type="button" onClick={sendOtp} disabled={regSending}
-                className="btn-primary btn-sm text-xs flex items-center gap-1">
-                <KeyRound size={12} /> {regSending ? 'Sending…' : 'Send OTP to verify'}
-              </button>
-            )}
-            <button type="button" onClick={saveWithoutOtp}
-              className="btn-secondary btn-sm text-xs">
-              Save without OTP
+          <p className="text-xs text-slate-400">Devotee can verify their account later via their own login.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={saveWithoutOtp} className="btn-primary btn-sm text-xs">
+              Save
             </button>
             <button type="button" onClick={() => { setStep('idle'); setQuery('') }} className="btn-secondary btn-sm text-xs">
               Cancel
             </button>
           </div>
-          <p className="text-xs text-slate-400">OTP verification is optional — the devotee can verify later via their own login.</p>
         </div>
       </div>
     )

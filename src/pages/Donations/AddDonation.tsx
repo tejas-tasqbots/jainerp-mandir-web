@@ -107,8 +107,8 @@ export function AddDonation() {
 
           {/* Category */}
           <div>
-            <label className="form-label">Donation Category *</label>
-            <select className="form-select" value={form.category_id}
+            <label htmlFor="donation-category" className="form-label">Donation Category *</label>
+            <select id="donation-category" className="form-select" value={form.category_id}
               onChange={e => {
                 const cat = categories.find(c => c.id === e.target.value)
                 setForm(f => ({ ...f, category_id: e.target.value, is_80g_eligible: cat?.is_80g_eligible ?? true }))
@@ -132,16 +132,16 @@ export function AddDonation() {
                     value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">Payment Mode *</label>
-                  <select className="form-select" value={form.payment_mode}
+                  <label htmlFor="payment-mode" className="form-label">Payment Mode *</label>
+                  <select id="payment-mode" className="form-select" value={form.payment_mode}
                     onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
                     {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
                   </select>
                 </div>
                 {relevantAccounts.length > 0 && (
                   <div className="col-span-2">
-                    <label className="form-label">Received in Account *</label>
-                    <select className="form-select" value={form.payment_account_id}
+                    <label htmlFor="payment-account" className="form-label">Received in Account *</label>
+                    <select id="payment-account" className="form-select" value={form.payment_account_id}
                       onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
                       <option value="">Select account…</option>
                       {relevantAccounts.map(a => (
