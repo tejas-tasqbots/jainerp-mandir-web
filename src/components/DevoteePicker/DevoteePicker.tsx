@@ -273,7 +273,7 @@ export function DevoteePicker({
               )}
             </div>
           </div>
-          <button type="button" onClick={clear} className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
+          <button type="button" onClick={clear} aria-label="Clear selection" className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -290,7 +290,7 @@ export function DevoteePicker({
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-md">
           <EyeOff size={14} className="text-slate-400 flex-shrink-0" />
           <span className="text-sm font-medium text-slate-600">{label2}</span>
-          <button type="button" onClick={clear} className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
+          <button type="button" onClick={clear} aria-label="Clear selection" className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
             <X size={14} />
           </button>
         </div>
