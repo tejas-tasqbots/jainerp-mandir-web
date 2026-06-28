@@ -322,7 +322,7 @@ function DashboardCharts({ period }: { period: Period }) {
                 </ResponsiveContainer>
                 <div className="w-full space-y-1 mt-1">
                   {pieData.map((d, i) => (
-                    <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div key={`${d.name}-${i}`} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
                         <span className="text-slate-600 truncate max-w-[80px]">{d.name}</span>
