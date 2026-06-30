@@ -232,11 +232,13 @@ function DashboardCharts({ period }: { period: Period }) {
       ])
 
       if (trends.status === 'fulfilled') {
+        // API returns { fy, granularity, points: [{ bucket, amount_paise, receipts }] }
         const d = trends.value.data.data
-        if (Array.isArray(d)) {
-          setBarData(d.map((m: { month: string; total_paise: number; expense_paise?: number }) => ({
-            month: m.month,
-            donations: Math.round(m.total_paise / 100),
+        const points = Array.isArray(d) ? d : (d?.points ?? [])
+        if (Array.isArray(points) && points.length) {
+          setBarData(points.map((m: { bucket?: string; month?: string; amount_paise?: number; total_paise?: number; expense_paise?: number }) => ({
+            month: m.month ?? (m.bucket ? new Date(m.bucket).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }) : ''),
+            donations: Math.round((m.amount_paise ?? m.total_paise ?? 0) / 100),
             expenses: Math.round((m.expense_paise || 0) / 100),
           })))
         }
@@ -245,9 +247,10 @@ function DashboardCharts({ period }: { period: Period }) {
       if (topDonors.status === 'fulfilled') {
         const d = topDonors.value.data.data
         if (Array.isArray(d)) {
-          setPieData(d.slice(0,5).map((td: { name: string; total_paise: number }) => ({
+          // API returns amount_paise (older builds used total_paise)
+          setPieData(d.slice(0,5).map((td: { name: string; amount_paise?: number; total_paise?: number }) => ({
             name: td.name,
-            value: Math.round(td.total_paise / 100),
+            value: Math.round((td.amount_paise ?? td.total_paise ?? 0) / 100),
           })))
         }
       }

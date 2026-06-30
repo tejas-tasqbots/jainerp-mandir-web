@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Download, Search, XCircle, Receipt, Ban, Award, Filter, Pencil } from 'lucide-react'
+import { Plus, Download, Search, XCircle, Receipt, Ban, Award, Filter, Pencil, FileDown } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
-import { printDonationReceipt } from '../../lib/printReceipt'
+import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
 import { downloadReport } from '../../lib/downloadReport'
 import type { Donation, DonationCategory } from '../../types'
@@ -86,6 +86,7 @@ export function DonationsList() {
   }
 
   const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState<string | null>(null)
 
   async function openReceipt(id: string) {
     setReceiptLoading(id)
@@ -95,6 +96,17 @@ export function DonationsList() {
       alert('Could not load receipt. Please try again.')
     } finally {
       setReceiptLoading(null)
+    }
+  }
+
+  async function savePdf(id: string) {
+    setPdfLoading(id)
+    try {
+      await downloadReceiptPdf(id)
+    } catch {
+      alert('Could not generate the PDF. Please try again.')
+    } finally {
+      setPdfLoading(null)
     }
   }
 
@@ -251,6 +263,16 @@ export function DonationsList() {
                         className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
                       >
                         <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => savePdf(d.id)}
+                        title="Download PDF"
+                        aria-label="Download PDF"
+                        disabled={pdfLoading === d.id}
+                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+                      >
+                        <FileDown size={14} className={pdfLoading === d.id ? 'animate-pulse' : ''} />
                       </button>
                       {d.is_80g_eligible && d.donor_id && !d.is_anonymous && (
                         <button

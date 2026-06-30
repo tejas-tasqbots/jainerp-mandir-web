@@ -895,3 +895,146 @@ export async function printDonationReceipt(id: string, basePath = '/donations'):
   const html = buildReceiptHtml(receipt)
   printReceiptHtml(html)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One-click PDF download / share (Vyapar / Khatabook style).
+//
+// Reuses the exact same receipt HTML + 9 templates as printing — the only
+// difference is the output sink: instead of the browser print dialog we
+// rasterize the rendered receipt and assemble an A4 PDF in the browser. This
+// keeps everything 100% client-side (works offline on the desktop counter),
+// with no server PDF worker. Heavy libs (html2canvas, jsPDF) are dynamically
+// imported so they don't bloat the initial bundle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const A4 = { width: 210, height: 297 } // mm
+
+/** Render receipt HTML in a detached iframe and rasterize it to a canvas. */
+async function renderHtmlToCanvas(html: string): Promise<HTMLCanvasElement> {
+  const { default: html2canvas } = await import('html2canvas')
+
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.left = '-10000px'
+  iframe.style.top = '0'
+  iframe.style.width = '794px' // ≈ A4 width @ 96dpi, matches the .page max-widths
+  iframe.style.height = '10px'
+  iframe.style.border = '0'
+  iframe.style.background = '#fff'
+  document.body.appendChild(iframe)
+
+  try {
+    const doc = iframe.contentWindow?.document
+    if (!doc) throw new Error('Could not create render frame')
+    // Drop the auto-print script — we only want layout, not a print dialog.
+    doc.open()
+    doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
+    doc.close()
+
+    // Wait for fonts + images (logo) to settle before snapshotting.
+    await (doc as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready?.catch(() => {})
+    await new Promise((r) => setTimeout(r, 350))
+
+    const target = (doc.querySelector('.page') as HTMLElement) || doc.body
+    return await html2canvas(target, {
+      scale: 2, // crisp text at print resolution
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    })
+  } finally {
+    setTimeout(() => { try { document.body.removeChild(iframe) } catch { /* noop */ } }, 100)
+  }
+}
+
+/** Turn receipt HTML into a jsPDF document, paginating tall receipts across A4 pages. */
+async function htmlToPdf(html: string): Promise<import('jspdf').jsPDF> {
+  const { jsPDF } = await import('jspdf')
+  const canvas = await renderHtmlToCanvas(html)
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+
+  // Fit the canvas to the A4 width, then slice it into page-height chunks.
+  const imgWidthMm = A4.width
+  const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width
+  const pageHeightMm = A4.height
+
+  if (imgHeightMm <= pageHeightMm) {
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidthMm, imgHeightMm)
+    return pdf
+  }
+
+  // Multi-page: render each A4-tall horizontal slice onto its own page.
+  const pxPerMm = canvas.width / imgWidthMm
+  const sliceHeightPx = Math.floor(pageHeightMm * pxPerMm)
+  let renderedPx = 0
+  let first = true
+  while (renderedPx < canvas.height) {
+    const slicePx = Math.min(sliceHeightPx, canvas.height - renderedPx)
+    const slice = document.createElement('canvas')
+    slice.width = canvas.width
+    slice.height = slicePx
+    const ctx = slice.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, slice.width, slice.height)
+    ctx.drawImage(canvas, 0, renderedPx, canvas.width, slicePx, 0, 0, canvas.width, slicePx)
+    if (!first) pdf.addPage()
+    pdf.addImage(slice.toDataURL('image/png'), 'PNG', 0, 0, imgWidthMm, (slicePx / pxPerMm))
+    renderedPx += slicePx
+    first = false
+  }
+  return pdf
+}
+
+function safeFileName(receipt: ReceiptData): string {
+  const num = (receipt.receipt_number || 'receipt').replace(/[\\/:*?"<>|]+/g, '-')
+  return `Receipt-${num}.pdf`
+}
+
+/**
+ * Build the receipt PDF and download it (one click, no print dialog).
+ * Same templates/branding as printing — Vyapar-style "Download PDF".
+ */
+export async function downloadReceiptPdf(id: string, basePath = '/donations'): Promise<void> {
+  const { data } = await api.get(`${basePath}/${id}/receipt`)
+  const receipt: ReceiptData = data.data
+  const pdf = await htmlToPdf(buildReceiptHtml(receipt))
+  pdf.save(safeFileName(receipt))
+}
+
+/**
+ * Share the receipt PDF via the native share sheet (WhatsApp / email / etc.)
+ * where supported (mobile + some desktops). Falls back to a normal download
+ * when the Web Share API can't share files.
+ */
+export async function shareReceiptPdf(id: string, basePath = '/donations'): Promise<void> {
+  const { data } = await api.get(`${basePath}/${id}/receipt`)
+  const receipt: ReceiptData = data.data
+  const pdf = await htmlToPdf(buildReceiptHtml(receipt))
+  const fileName = safeFileName(receipt)
+  const blob = pdf.output('blob') as Blob
+
+  const nav = navigator as Navigator & {
+    canShare?: (data?: ShareData) => boolean
+    share?: (data: ShareData) => Promise<void>
+  }
+  const file = new File([blob], fileName, { type: 'application/pdf' })
+  if (nav.canShare?.({ files: [file] }) && nav.share) {
+    try {
+      await nav.share({ files: [file], title: `Receipt ${receipt.receipt_number}` })
+      return
+    } catch (e) {
+      // user cancelled or share failed → fall through to download
+      if ((e as DOMException)?.name === 'AbortError') return
+    }
+  }
+  // Fallback: trigger a download of the same PDF.
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
