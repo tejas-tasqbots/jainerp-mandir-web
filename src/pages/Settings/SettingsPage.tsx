@@ -100,6 +100,13 @@ export function SettingsPage() {
       // 1. Create a Razorpay order for the invoice.
       const { data } = await api.post(`/tenants/me/invoices/${invoiceId}/pay`)
       const order = data.data || data
+      if (order.mock) {
+        // Backend has no live Razorpay keys configured — opening the real
+        // checkout widget with a placeholder key would fail immediately.
+        setPayMsg('Payment gateway is not configured on the server yet. Please contact support.')
+        setPayingId(null)
+        return
+      }
       // 2. Open Razorpay Standard Checkout.
       await openRazorpayCheckout({
         order,
