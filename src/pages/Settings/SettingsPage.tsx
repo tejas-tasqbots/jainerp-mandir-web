@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
 import { MasterEditor } from './MasterEditor'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
@@ -31,6 +32,8 @@ export function SettingsPage() {
   })
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [usage, setUsage] = useState<UsageData | null>(null)
+  const [payingId, setPayingId] = useState<string | null>(null)
+  const [payMsg, setPayMsg] = useState('')
   const [reqText, setReqText] = useState('')
   const [reqSent, setReqSent] = useState(false)
   const [requirements, setRequirements] = useState<Requirement[]>([])
@@ -89,6 +92,39 @@ export function SettingsPage() {
       if (subResp.status === 'fulfilled') setSubscription(subResp.value.data.data || subResp.value.data)
       if (usageResp.status === 'fulfilled') setUsage(usageResp.value.data.data || usageResp.value.data)
     } catch { /* ignore */ }
+  }
+
+  async function payInvoice(invoiceId: string) {
+    setPayingId(invoiceId); setPayMsg('')
+    try {
+      // 1. Create a Razorpay order for the invoice.
+      const { data } = await api.post(`/tenants/me/invoices/${invoiceId}/pay`)
+      const order = data.data || data
+      // 2. Open Razorpay Standard Checkout.
+      await openRazorpayCheckout({
+        order,
+        name: profile?.name || 'JainERP Subscription',
+        description: 'Platform subscription payment',
+        prefill: { name: profile?.name, email: profile?.email, contact: profile?.phone },
+        onSuccess: async (cb) => {
+          try {
+            // 3. Verify the signature; the invoice is marked paid server-side.
+            await api.post(`/tenants/me/invoices/${invoiceId}/pay/verify`, cb)
+            setPayMsg('Payment successful — subscription active.')
+            await loadSubscription()
+          } catch {
+            setPayMsg('Payment could not be verified. Please contact support.')
+          } finally {
+            setPayingId(null)
+          }
+        },
+        onFailure: (msg) => { setPayMsg(msg); setPayingId(null) },
+        onDismiss: () => { setPayMsg('Payment cancelled.'); setPayingId(null) },
+      })
+    } catch (e: any) {
+      setPayMsg(e?.response?.data?.error?.message || 'Could not start payment.')
+      setPayingId(null)
+    }
   }
 
   async function save(e: React.FormEvent) {
@@ -450,12 +486,14 @@ export function SettingsPage() {
             </div>
           )}
 
+          {payMsg && <div className="card"><div className="card-body text-sm text-slate-700">{payMsg}</div></div>}
+
           {subscription?.invoices && subscription.invoices.length > 0 && (
             <div className="card overflow-hidden">
               <div className="card-header"><h3 className="font-semibold text-sm">Billing History</h3></div>
               <div className="overflow-x-auto">
                 <table className="data-table">
-                  <thead><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th><th></th></tr></thead>
                   <tbody>
                     {subscription.invoices.map(inv => (
                       <tr key={inv.id}>
@@ -463,6 +501,18 @@ export function SettingsPage() {
                         <td className="text-xs text-slate-500">{inv.period_start ? new Date(inv.period_start).toLocaleDateString('en-IN') : '—'} – {inv.period_end ? new Date(inv.period_end).toLocaleDateString('en-IN') : '—'}</td>
                         <td className="font-semibold">{inv.total_paise ? `₹${fmtPaise(inv.total_paise)}` : '—'}</td>
                         <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{inv.status}</span></td>
+                        <td className="text-right">
+                          {inv.status !== 'paid' && (
+                            <button
+                              onClick={() => payInvoice(inv.id)}
+                              disabled={payingId === inv.id}
+                              className="btn-primary btn-sm"
+                            >
+                              <CreditCard size={13} />
+                              {payingId === inv.id ? 'Processing…' : 'Pay Now'}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
