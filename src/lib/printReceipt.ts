@@ -8,9 +8,14 @@ export interface ReceiptData {
     address: string
     mobile?: string | null
     email?: string | null
+    website?: string | null
     gstin?: string | null
     pan?: string | null
+    tan?: string | null
+    is_gst_registered?: boolean
     reg_80g_number?: string | null
+    reg_80g_urn?: string | null
+    reg_80g_valid_upto?: string | null
     reg_12a_number?: string | null
     reg_12ab_number?: string | null
     upi_id?: string | null
@@ -27,7 +32,15 @@ export interface ReceiptData {
     template?: string
     primary_color?: string
   } | null
-  donor: { name?: string | null; mobile?: string | null }
+  donor: {
+    name?: string | null
+    mobile?: string | null
+    pan_masked?: string | null
+    address?: string | null
+    city?: string | null
+    state?: string | null
+    pincode?: string | null
+  }
   category: string
   amount_paise: number
   payment_mode: string
@@ -821,10 +834,148 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
   </div>`
 }
 
+// ── TEMPLATE 10: 80G Tax-Exemption Receipt (statutory) ──────────────────────
+// A compliance-first donation receipt built for Section 80G claims: carries the
+// trust's 80G registration + URN + validity + PAN, the donor's identification
+// (name, address, masked PAN), and the standard 80G declaration. Modelled on the
+// Form 10BE certificate layout that donors attach to their ITR.
+function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  const d = r.donor || {}
+  const donorAddress = [d.address, d.city, d.state, d.pincode].filter(Boolean).join(', ')
+  const fyLabel = (() => {
+    const dt = new Date(r.date)
+    const y = dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1
+    return `${y}–${String(y + 1).slice(-2)}`
+  })()
+  const validUpto = mandir.reg_80g_valid_upto
+    ? new Date(mandir.reg_80g_valid_upto).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null
+  return `
+  <style>
+    body { font-family: 'Georgia','Times New Roman',serif; background:#eef2f7; color:#1a2233; font-size:13px; }
+    .page { max-width:760px; margin:24px auto; background:#fff; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden; box-shadow:0 6px 28px rgba(15,23,42,.12); }
+    .ribbon { height:6px; background:linear-gradient(90deg,${color},${color}aa); }
+    .header { display:flex; gap:18px; align-items:center; padding:22px 34px 16px; border-bottom:2px solid ${color}; }
+    .logo { height:64px; width:auto; object-fit:contain; }
+    .h-main { flex:1; }
+    .h-main h1 { font-size:22px; font-weight:700; color:${color}; letter-spacing:-.2px; }
+    .h-main .addr { font-size:11px; color:#5b6472; line-height:1.7; margin-top:3px; }
+    .h-badge { text-align:right; }
+    .h-badge .tag { display:inline-block; background:${color}; color:#fff; font-size:10px; font-weight:700; letter-spacing:1px; padding:4px 12px; border-radius:4px; }
+    .h-badge .rno { font-family:'Courier New',monospace; font-size:15px; font-weight:700; margin-top:8px; color:#0f172a; }
+    .h-badge .rdt { font-size:11px; color:#64748b; margin-top:2px; }
+    .reg-strip { display:flex; flex-wrap:wrap; gap:0; background:${color}0c; border-bottom:1px solid #e2e8f0; }
+    .reg-strip .cell { flex:1; min-width:150px; padding:9px 16px; border-right:1px solid #e2e8f0; }
+    .reg-strip .cell:last-child { border-right:none; }
+    .reg-strip .k { font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color:#7c8598; font-weight:700; }
+    .reg-strip .v { font-size:12px; font-weight:700; color:#0f172a; margin-top:2px; font-family:'Courier New',monospace; }
+    ${r.is_voided ? '.voided{background:#fee2e2;border:2px solid #f87171;color:#991b1b;padding:9px;text-align:center;font-weight:700;margin:14px 34px;border-radius:5px;}' : ''}
+    .title { text-align:center; padding:14px; }
+    .title h2 { font-size:16px; letter-spacing:2px; text-transform:uppercase; color:${color}; font-weight:700; }
+    .title .sub { font-size:11px; color:#64748b; margin-top:3px; }
+    .body { padding:6px 34px 26px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
+    .card { border:1px solid #e2e8f0; border-radius:6px; padding:14px 16px; }
+    .card .lbl { font-size:9.5px; text-transform:uppercase; letter-spacing:.7px; color:#7c8598; font-weight:700; margin-bottom:6px; }
+    .card .nm { font-size:15px; font-weight:700; color:#0f172a; }
+    .card .li { font-size:12px; color:#475569; line-height:1.9; margin-top:2px; }
+    .card .li b { color:#0f172a; }
+    .amount-band { display:flex; align-items:center; justify-content:space-between; background:${color}; color:#fff; border-radius:8px; padding:18px 22px; margin-bottom:16px; }
+    .amount-band .lbl { font-size:11px; opacity:.85; font-weight:600; letter-spacing:.4px; }
+    .amount-band .words { font-size:11px; opacity:.9; font-style:italic; margin-top:4px; max-width:420px; }
+    .amount-band .amt { font-size:30px; font-weight:800; font-family:'Courier New',monospace; }
+    table.meta { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    table.meta td { padding:8px 12px; border-bottom:1px solid #eef2f7; font-size:12.5px; }
+    table.meta td:first-child { color:#64748b; font-weight:600; width:34%; }
+    table.meta td:last-child { color:#0f172a; font-weight:600; }
+    .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+    .badge-green { background:#dcfce7; color:#15803d; }
+    .declaration { font-size:11.5px; color:#374151; line-height:1.85; background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid ${color}; border-radius:5px; padding:13px 16px; }
+    .declaration b { color:#0f172a; }
+    .pay { font-size:10.5px; color:#475569; margin-top:12px; line-height:1.9; }
+    .pay b { color:#0f172a; }
+    .sign-row { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
+    .sign-note { font-size:10.5px; color:#94a3b8; font-style:italic; max-width:320px; }
+    .sign-box { text-align:center; font-size:11px; color:#475569; }
+    .sign-box .for { font-weight:700; color:#0f172a; margin-bottom:34px; }
+    .sign-box .line { border-top:1px solid #94a3b8; padding-top:4px; min-width:190px; }
+    .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; }
+    .print-hint { font-size:10px; color:#cbd5e1; text-align:center; padding:8px; }
+    @media print { body{background:#fff;} .page{box-shadow:none;border:none;margin:0;border-radius:0;} .print-hint{display:none;} }
+  </style>
+  <div class="page">
+    <div class="ribbon"></div>
+    <div class="header">
+      ${mandir.show_logo ? logoTag(mandir) : ''}
+      <div class="h-main">
+        <h1>${mandir.name}</h1>
+        <div class="addr">${mandir.address}${mandir.mobile ? '<br>Ph: ' + mandir.mobile : ''}${mandir.email ? ' &nbsp;·&nbsp; ' + mandir.email : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: ' + mandir.gstin : ''}</div>
+      </div>
+      <div class="h-badge">
+        <div class="tag">80G RECEIPT</div>
+        <div class="rno">${r.receipt_number}</div>
+        <div class="rdt">${dateStr}</div>
+      </div>
+    </div>
+    <div class="reg-strip">
+      ${mandir.reg_80g_number ? `<div class="cell"><div class="k">80G Registration</div><div class="v">${mandir.reg_80g_number}</div></div>` : ''}
+      ${mandir.reg_80g_urn && mandir.reg_80g_urn !== mandir.reg_80g_number ? `<div class="cell"><div class="k">80G URN</div><div class="v">${mandir.reg_80g_urn}</div></div>` : ''}
+      ${validUpto ? `<div class="cell"><div class="k">Valid Upto</div><div class="v">${validUpto}</div></div>` : ''}
+      ${mandir.pan ? `<div class="cell"><div class="k">PAN of Trust</div><div class="v">${mandir.pan}</div></div>` : ''}
+    </div>
+    ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
+    <div class="title">
+      <h2>Receipt for Donation u/s 80G</h2>
+      <div class="sub">Income Tax Act, 1961 &nbsp;·&nbsp; Financial Year ${fyLabel}</div>
+    </div>
+    <div class="body">
+      <div class="grid">
+        <div class="card">
+          <div class="lbl">Received With Thanks From</div>
+          <div class="nm">${r.donor?.name || 'Anonymous Donor'}</div>
+          ${r.donor?.mobile ? `<div class="li">Mobile: <b>${r.donor.mobile}</b></div>` : ''}
+          ${donorAddress ? `<div class="li">${donorAddress}</div>` : ''}
+          <div class="li">PAN: <b>${r.donor?.pan_masked || 'Not provided'}</b></div>
+        </div>
+        <div class="card">
+          <div class="lbl">Donation Details</div>
+          <div class="li">Category: <b>${r.category || 'General Donation'}</b></div>
+          <div class="li">Payment Mode: <b>${modeName(r.payment_mode)}</b></div>
+          <div class="li">Nature: <b>Voluntary donation (not corpus/anonymous)</b></div>
+          <div class="li">80G Eligible: <span class="badge badge-green">Yes</span></div>
+        </div>
+      </div>
+      <div class="amount-band">
+        <div>
+          <div class="lbl">Donation Amount</div>
+          <div class="words">${amountInWords(r.amount_paise)}</div>
+        </div>
+        <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
+      </div>
+      <div class="declaration">
+        Certified that <b>${mandir.name}</b> is registered under <b>Section 80G(5)</b> of the Income-tax Act, 1961${mandir.reg_80g_number ? ` vide registration/approval no. <b>${mandir.reg_80g_number}</b>` : ''}${validUpto ? `, valid up to <b>${validUpto}</b>` : ''}. Donations to this institution qualify for deduction under Section 80G. <b>No goods or services</b> were provided to the donor in consideration of this donation. This receipt should be retained for claiming the deduction.
+      </div>
+      ${paymentBlock(mandir)}
+      <div class="sign-row">
+        <div class="sign-note">This is a computer-generated receipt. Please verify the trust's 80G status and eligibility of your donation before claiming a deduction.</div>
+        <div class="sign-box">
+          <div class="for">For ${mandir.name}</div>
+          <div class="line">Authorised Signatory</div>
+        </div>
+      </div>
+      ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    </div>
+  </div>`
+}
+
 export function buildReceiptHtml(r: ReceiptData): string {
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
-  const template = mandir.template || 'classic'
+  // The 80G template makes a statutory tax-exemption claim, so it must never be
+  // used for a donation that isn't 80G-eligible — fall back to Classic instead.
+  let template = mandir.template || 'classic'
+  if (template === '80g' && !r.is_80g_eligible) template = 'classic'
   const color = mandir.primary_color || '#0D1B2E'
 
   let body = ''
@@ -836,6 +987,7 @@ export function buildReceiptHtml(r: ReceiptData): string {
   else if (template === 'tabular') body = buildTabular(r, dateStr, mandir, color)
   else if (template === 'acknowledgement') body = buildAcknowledgement(r, dateStr, mandir, color)
   else if (template === 'jain_tirth') body = buildJainTirth(r, dateStr, mandir, color)
+  else if (template === '80g') body = build80G(r, dateStr, mandir, color)
   else body = buildClassic(r, dateStr, mandir, color)
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Save, RefreshCw, Upload, X, Eye } from 'lucide-react'
+import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api } from '../../../lib/api'
-import { buildReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
+import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 
-const TEMPLATES = [
+type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: string) => string }
+
+const TEMPLATES: TemplateDef[] = [
   {
     id: 'classic',
     label: 'Classic',
@@ -210,6 +212,40 @@ const TEMPLATES = [
       </div>`,
   },
   {
+    id: '80g',
+    label: '80G Tax Receipt',
+    badge: 'Statutory',
+
+    thumb: (color: string) => `
+      <div style="font-family:Georgia,serif;font-size:6px;border:1px solid #cbd5e1;border-radius:2px;overflow:hidden">
+        <div style="height:3px;background:linear-gradient(90deg,${color},${color}aa)"></div>
+        <div style="display:flex;gap:5px;align-items:center;padding:5px 7px;border-bottom:2px solid ${color}">
+          <div style="width:14px;height:14px;background:${color}20;border:1px solid ${color};border-radius:2px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:7px;color:${color}">Mandir Name</div>
+            <div style="font-size:4px;color:#5b6472">Address · Ph · GSTIN</div>
+          </div>
+          <div style="text-align:right"><div style="background:${color};color:#fff;font-size:3.5px;padding:1px 4px;border-radius:2px;font-weight:700">80G RECEIPT</div><div style="font-size:5px;font-family:monospace;margin-top:2px">DON/001</div></div>
+        </div>
+        <div style="display:flex;background:${color}0c;border-bottom:1px solid #e2e8f0;font-size:3.5px">
+          <div style="flex:1;padding:2px 5px;border-right:1px solid #e2e8f0"><div style="color:#7c8598;font-weight:700">80G REG</div><div style="font-weight:700;font-family:monospace">AAATQ...F20214</div></div>
+          <div style="flex:1;padding:2px 5px;border-right:1px solid #e2e8f0"><div style="color:#7c8598;font-weight:700">VALID UPTO</div><div style="font-weight:700;font-family:monospace">31 Mar 27</div></div>
+          <div style="flex:1;padding:2px 5px"><div style="color:#7c8598;font-weight:700">PAN</div><div style="font-weight:700;font-family:monospace">AAATQ0001F</div></div>
+        </div>
+        <div style="text-align:center;padding:3px"><div style="font-size:5px;font-weight:700;letter-spacing:1px;color:${color}">RECEIPT FOR DONATION U/S 80G</div></div>
+        <div style="padding:2px 7px 5px">
+          <div style="display:flex;gap:4px;margin-bottom:3px">
+            <div style="flex:1;border:1px solid #e2e8f0;border-radius:2px;padding:2px 4px"><div style="color:#7c8598;font-size:3.5px;font-weight:700">DONOR</div><div style="font-weight:700;font-size:5px">Donor Name</div><div style="font-size:3.5px;color:#475569">PAN: ABXXXXX4F</div></div>
+            <div style="flex:1;border:1px solid #e2e8f0;border-radius:2px;padding:2px 4px"><div style="color:#7c8598;font-size:3.5px;font-weight:700">DETAILS</div><div style="font-size:3.5px">General · Cash</div><div style="font-size:3.5px;color:#15803d;font-weight:700">80G Eligible: Yes</div></div>
+          </div>
+          <div style="background:${color};color:#fff;border-radius:3px;padding:3px 6px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:4px;opacity:.9">Donation Amount</div><div style="font-size:9px;font-weight:800;font-family:monospace">₹1,500</div>
+          </div>
+          <div style="margin-top:3px;background:#f8fafc;border-left:2px solid ${color};border-radius:2px;padding:2px 4px;font-size:3.5px;color:#374151;line-height:1.5">Certified registered u/s 80G(5). No goods or services provided in return.</div>
+        </div>
+      </div>`,
+  },
+  {
     id: 'jain_tirth',
     label: 'Jain Tirth',
 
@@ -249,9 +285,10 @@ const BLANK = {
   show_gstin_on_header: true, show_80g_on_receipt: true,
   upi_id: '', bank_account_name: '', bank_account_no: '',
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
-  // profile fields for preview
-  name: '', address: '', gstin: '', pan: '',
-  reg_80g_number: '', reg_12a_number: '',
+  // profile fields for preview (read-only here; edited in Temple Profile)
+  name: '', address: '', mobile: '', email: '',
+  gstin: '', pan: '', tan: '',
+  reg_80g_number: '', reg_80g_urn: '', reg_80g_valid_upto: '', reg_12a_number: '', reg_12ab_number: '',
 }
 
 function buildPreviewData(form: typeof BLANK): ReceiptData {
@@ -259,7 +296,12 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
     receipt_number: 'DON/2025-26/000001',
     date: new Date().toISOString(),
     is_voided: false,
-    donor: { name: 'Ayush Kasliwal', mobile: '+919876543210' },
+    donor: {
+      name: 'Ayush Kasliwal',
+      mobile: '+919876543210',
+      pan_masked: 'ABXXXXX34C',
+      address: '12 Sample Street', city: 'Surat', state: 'Gujarat', pincode: '395001',
+    },
     category: 'General Donation',
     amount_paise: 150000,
     payment_mode: 'cash',
@@ -267,10 +309,17 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
     mandir: {
       name: form.name || 'Shree Jain Mandir',
       address: form.address || '123, Temple Road, Ahmedabad, Gujarat 380001',
-      gstin: form.gstin || 'GSTIN: 24XXXXX1234A1Z5',
+      mobile: form.mobile || '+91 98765 43210',
+      email: form.email || 'info@jainmandir.org',
+      gstin: form.gstin || '24XXXXX1234A1Z5',
       pan: form.pan || 'AAAAB1234C',
-      reg_80g_number: form.reg_80g_number || '80G/2024/AHM/001',
+      tan: form.tan || null,
+      is_gst_registered: Boolean(form.gstin),
+      reg_80g_number: form.reg_80g_number || 'AAAAB1234CF20214',
+      reg_80g_urn: form.reg_80g_urn || 'AAAAB1234CF20214',
+      reg_80g_valid_upto: form.reg_80g_valid_upto || '2027-03-31',
       reg_12a_number: form.reg_12a_number || null,
+      reg_12ab_number: form.reg_12ab_number || null,
       upi_id: form.upi_id || 'temple@upi',
       bank_account_name: form.bank_account_name || null,
       bank_account_no: form.bank_account_no || null,
@@ -316,10 +365,16 @@ export function ReceiptSettingsTab() {
         custom_receipt_footer: (p.custom_receipt_footer as string) || '',
         name: (p.name as string) || '',
         address: [p.address_line1, p.city, p.state, p.pincode].filter(Boolean).join(', '),
+        mobile: (p.mobile as string) || '',
+        email: (p.email as string) || '',
         gstin: (p.gstin as string) || '',
         pan: (p.pan as string) || '',
+        tan: (p.tan as string) || '',
         reg_80g_number: (p.reg_80g_number as string) || '',
+        reg_80g_urn: (p.reg_80g_urn as string) || '',
+        reg_80g_valid_upto: (p.reg_80g_valid_upto as string) || '',
         reg_12a_number: (p.reg_12a_number as string) || '',
+        reg_12ab_number: (p.reg_12ab_number as string) || '',
       }))
     }).catch(() => {})
   }, [])
@@ -384,15 +439,71 @@ export function ReceiptSettingsTab() {
 
   const logoSrc = form.logo_base64 || form.logo_cdn_url
 
+  function printSample() {
+    printReceiptHtml(buildReceiptHtml(buildPreviewData(form)))
+  }
+
+  // Statutory identity that will print on receipts (managed in Temple Profile).
+  const statutory: { label: string; value: string; required?: boolean }[] = [
+    { label: 'GSTIN', value: form.gstin },
+    { label: 'PAN', value: form.pan },
+    { label: '80G Reg. No.', value: form.reg_80g_number, required: true },
+    { label: '80G URN', value: form.reg_80g_urn },
+    { label: '80G Valid Upto', value: form.reg_80g_valid_upto ? new Date(form.reg_80g_valid_upto).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '' },
+    { label: '12A / 12AB', value: form.reg_12ab_number || form.reg_12a_number },
+  ]
+  const missingRequired = statutory.filter(s => s.required && !s.value)
+  const selected = TEMPLATES.find(t => t.id === form.receipt_template)
+
   return (
     <div className="flex gap-6 items-start">
       {/* ── Left: Settings panel ── */}
       <form onSubmit={save} className="flex-1 min-w-0 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Receipt Settings</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Design the donation receipts your temple issues. Changes preview live on the right.</p>
+          </div>
+          <button type="button" onClick={printSample} className="btn-secondary btn-sm whitespace-nowrap">
+            <Printer size={14} /> Print sample
+          </button>
+        </div>
+
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">
-            Receipt settings saved!
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">
+            <CheckCircle2 size={16} /> Receipt settings saved!
           </div>
         )}
+
+        {/* Statutory identity (read-only — edited in Temple Profile) */}
+        <div className="card">
+          <div className="card-header flex items-center gap-2">
+            <ShieldCheck size={15} className="text-navy-900" />
+            <h3 className="font-semibold text-sm">Statutory Details on Receipts</h3>
+            <span className="ml-auto text-[11px] text-slate-400">from Temple Profile</span>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {statutory.map(s => (
+                <div key={s.label} className="rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">{s.label}</div>
+                  {s.value ? (
+                    <div className="text-sm font-semibold text-slate-800 font-mono truncate" title={s.value}>{s.value}</div>
+                  ) : (
+                    <div className={`text-xs font-medium ${s.required ? 'text-amber-600' : 'text-slate-400'}`}>{s.required ? 'Not set — required for 80G' : 'Not set'}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {missingRequired.length > 0 && (
+              <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <span>Your <b>80G registration number</b> is not set. The 80G receipt template and donor 80G certificates need it. Add it in <b>Settings → Temple Profile</b>.</span>
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-slate-400">These values are managed in <b>Temple Profile</b> and are shown here so you can confirm what prints on receipts.</p>
+          </div>
+        </div>
 
         {/* Logo */}
         <div className="card">
@@ -441,17 +552,31 @@ export function ReceiptSettingsTab() {
 
         {/* Template */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Template</h3></div>
-          <div className="card-body grid grid-cols-1 gap-3">
-            {TEMPLATES.map(t => (
-              <button type="button" key={t.id} onClick={() => set('receipt_template', t.id)}
-                className={`flex items-center gap-3 text-left border rounded-lg p-3 transition-all ${form.receipt_template === t.id ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                <div className="w-24 flex-shrink-0" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
-                <div>
-                  <p className="font-semibold text-sm">{t.label}</p>
-                </div>
-              </button>
-            ))}
+          <div className="card-header flex items-center gap-2">
+            <h3 className="font-semibold text-sm">Template</h3>
+            <span className="ml-auto text-[11px] text-slate-400">{TEMPLATES.length} designs</span>
+          </div>
+          <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {TEMPLATES.map(t => {
+              const active = form.receipt_template === t.id
+              return (
+                <button type="button" key={t.id} onClick={() => set('receipt_template', t.id)}
+                  className={`relative text-left border rounded-lg p-2.5 transition-all ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'}`}>
+                  {active && (
+                    <span className="absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-navy-900 text-white">
+                      <Check size={12} />
+                    </span>
+                  )}
+                  <div className="rounded-md overflow-hidden bg-white" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <p className="font-semibold text-sm text-slate-800">{t.label}</p>
+                    {t.badge && (
+                      <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{t.badge}</span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -521,23 +646,32 @@ export function ReceiptSettingsTab() {
           <div className="card-header flex items-center gap-2">
             <Eye size={14} className="text-slate-500" />
             <h3 className="font-semibold text-sm">Live Preview</h3>
-            <span className="ml-auto text-xs text-slate-400 capitalize">{form.receipt_template} template</span>
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+              {selected?.label || 'Classic'}
+              {selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
+            </span>
           </div>
           <div className="bg-slate-100 p-3">
-            <div className="bg-white rounded shadow-sm overflow-hidden" style={{ height: '580px' }}>
+            <div className="bg-white rounded shadow-sm overflow-hidden ring-1 ring-slate-200" style={{ height: '560px' }}>
               <iframe
                 ref={iframeRef}
                 title="Receipt Preview"
                 sandbox="allow-same-origin"
                 className="w-full h-full border-0"
-                style={{ zoom: 0.6, height: '967px', transformOrigin: 'top left' }}
+                style={{ zoom: 0.6, height: '933px', transformOrigin: 'top left' }}
               />
             </div>
           </div>
-          <div className="px-4 py-2 bg-slate-50 border-t border-slate-100">
-            <p className="text-xs text-slate-400 text-center">Preview updates as you change settings</p>
+          <div className="px-3 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
+            <p className="text-xs text-slate-400 flex-1">Updates as you change settings</p>
+            <button type="button" onClick={printSample} className="btn-secondary btn-sm">
+              <Printer size={13} /> Print
+            </button>
           </div>
         </div>
+        <p className="text-[11px] text-slate-400 text-center mt-2 px-4">
+          Sample data shown. Real donor name, amount and receipt number are filled in when a receipt is issued.
+        </p>
       </div>
     </div>
   )

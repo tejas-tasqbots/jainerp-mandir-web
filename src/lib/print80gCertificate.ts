@@ -23,8 +23,12 @@ interface Cert80gData {
   mandir: {
     name: string
     address: string
+    mobile?: string | null
+    email?: string | null
     pan?: string | null
     reg_80g_number?: string | null
+    reg_80g_urn?: string | null
+    reg_80g_valid_upto?: string | null
     reg_12a_number?: string | null
     reg_12ab_number?: string | null
     logo_base64?: string | null
@@ -75,10 +79,13 @@ function buildCert80gHtml(d: Cert80gData): string {
   const logo = m.logo_base64 || m.logo_cdn_url
   const fyEnd = Number(d.fy.slice(0, 4)) + 1
 
+  const validUpto = m.reg_80g_valid_upto ? fmtDate(m.reg_80g_valid_upto) : null
   const regParts: string[] = []
   if (m.reg_80g_number) regParts.push(`80G Reg. No.: <b>${m.reg_80g_number}</b>`)
-  if (m.reg_12a_number) regParts.push(`12A: <b>${m.reg_12a_number}</b>`)
+  if (m.reg_80g_urn && m.reg_80g_urn !== m.reg_80g_number) regParts.push(`80G URN: <b>${m.reg_80g_urn}</b>`)
+  if (validUpto) regParts.push(`Valid upto: <b>${validUpto}</b>`)
   if (m.reg_12ab_number) regParts.push(`12AB: <b>${m.reg_12ab_number}</b>`)
+  else if (m.reg_12a_number) regParts.push(`12A: <b>${m.reg_12a_number}</b>`)
   if (m.pan) regParts.push(`PAN: <b>${m.pan}</b>`)
 
   const rows = d.lines.map((l, i) => `
@@ -149,7 +156,7 @@ function buildCert80gHtml(d: Cert80gData): string {
       <div class="words">Amount in words: ${amountInWords(d.total_paise)}</div>
       <div class="declaration">
         This is to certify that the above donation(s) have been received by <b>${m.name}</b> and are eligible
-        for deduction under <b>Section 80G</b> of the Income Tax Act, 1961${m.reg_80g_number ? `, vide registration no. <b>${m.reg_80g_number}</b>` : ''}.
+        for deduction under <b>Section 80G(5)</b> of the Income Tax Act, 1961${m.reg_80g_number ? `, vide registration/approval no. <b>${m.reg_80g_number}</b>` : ''}${validUpto ? `, valid up to <b>${validUpto}</b>` : ''}.
         No goods or services were provided in return for this donation.
       </div>
       <div class="sign">

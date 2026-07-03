@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Save, X } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Eye, ShieldCheck, RefreshCw } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import type { Donor } from '../../types'
 
@@ -27,6 +27,38 @@ export function DonorProfile() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', city: '', state: '', address: '', pan: '' })
+
+  // OTP-gated full-PAN reveal
+  const [pan, setPan] = useState<{ open: boolean; stage: 'idle' | 'otp'; otp: string; value: string | null; hint: string | null; busy: boolean; error: string | null }>(
+    { open: false, stage: 'idle', otp: '', value: null, hint: null, busy: false, error: null },
+  )
+
+  async function requestPanOtp() {
+    setPan(p => ({ ...p, busy: true, error: null }))
+    try {
+      const r = await api.post(`/donors/${id}/pan/request-otp`)
+      const d = r.data.data
+      setPan(p => ({ ...p, stage: 'otp', hint: d.mobile_hint || null, busy: false, error: d.dev_otp ? `Dev OTP: ${d.dev_otp}` : null }))
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Could not send OTP'
+      setPan(p => ({ ...p, busy: false, error: msg }))
+    }
+  }
+
+  async function submitPanOtp() {
+    setPan(p => ({ ...p, busy: true, error: null }))
+    try {
+      const r = await api.post(`/donors/${id}/pan/reveal`, { otp: pan.otp })
+      setPan(p => ({ ...p, value: r.data.data.pan, stage: 'idle', busy: false, error: null }))
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Incorrect OTP'
+      setPan(p => ({ ...p, busy: false, error: msg }))
+    }
+  }
+
+  function closePanReveal() {
+    setPan({ open: false, stage: 'idle', otp: '', value: null, hint: null, busy: false, error: null })
+  }
 
   useEffect(() => { if (id) load() }, [id])
 
@@ -165,7 +197,30 @@ export function DonorProfile() {
               {[
                 ['Mobile', donor.mobile || '—'],
                 ['Email', donor.email || '—'],
-                ['PAN', donor.pan_masked || '—'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between text-sm">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="font-medium">{value}</span>
+                </div>
+              ))}
+              {/* PAN — masked by default, full value only after OTP reveal */}
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-500">PAN</span>
+                {donor.pan_masked ? (
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium font-mono">{pan.value || donor.pan_masked}</span>
+                    {pan.value ? (
+                      <span className="text-[10px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Revealed</span>
+                    ) : (
+                      <button type="button" onClick={() => setPan(p => ({ ...p, open: true }))}
+                        className="flex items-center gap-1 text-xs text-navy-900 hover:underline">
+                        <Eye size={13} /> Reveal
+                      </button>
+                    )}
+                  </span>
+                ) : <span className="font-medium">—</span>}
+              </div>
+              {[
                 ['Gotra', donor.gotra || '—'],
                 ['City', donor.city ? `${donor.city}${donor.state ? `, ${donor.state}` : ''}` : '—'],
                 ['Pincode', donor.pincode || '—'],
@@ -223,6 +278,52 @@ export function DonorProfile() {
           </table>
         </div>
       </div>
+
+      {/* OTP-gated PAN reveal modal */}
+      {pan.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closePanReveal}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100">
+              <ShieldCheck size={18} className="text-navy-900" />
+              <h3 className="font-semibold text-sm">Reveal full PAN</h3>
+              <button onClick={closePanReveal} className="ml-auto text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-slate-600">
+                The donor's full PAN is sensitive tax data. We send a one-time password to their registered
+                mobile{pan.hint ? <> ({pan.hint})</> : null} and reveal the PAN only after it is confirmed.
+              </p>
+              {pan.stage === 'otp' && (
+                <div>
+                  <label className="form-label">Enter OTP sent to donor</label>
+                  <input className="form-input tracking-[0.4em] text-center font-mono" maxLength={6} inputMode="numeric"
+                    value={pan.otp} onChange={e => setPan(p => ({ ...p, otp: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="______" autoFocus />
+                </div>
+              )}
+              {pan.error && (
+                <div className={`text-xs rounded-md px-3 py-2 ${pan.error.startsWith('Dev OTP') ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                  {pan.error}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button onClick={closePanReveal} className="btn-secondary btn-sm">Cancel</button>
+              {pan.stage === 'idle' ? (
+                <button onClick={requestPanOtp} disabled={pan.busy} className="btn-primary btn-sm">
+                  {pan.busy ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
+                  {pan.busy ? 'Sending…' : 'Send OTP'}
+                </button>
+              ) : (
+                <button onClick={submitPanOtp} disabled={pan.busy || pan.otp.length < 4} className="btn-primary btn-sm">
+                  {pan.busy ? <RefreshCw size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                  {pan.busy ? 'Verifying…' : 'Verify & reveal'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
