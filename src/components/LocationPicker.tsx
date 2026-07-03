@@ -77,6 +77,10 @@ export function LocationPicker({
   }
 
   function useMyLocation() {
+    if (!window.isSecureContext) {
+      setGeoErr('Live location needs a secure (HTTPS) connection. Tap the map or drag the pin to set the location instead.')
+      return
+    }
     if (!navigator.geolocation) { setGeoErr('Geolocation not supported by this browser'); return }
     setLocating(true); setGeoErr('')
     navigator.geolocation.getCurrentPosition(
