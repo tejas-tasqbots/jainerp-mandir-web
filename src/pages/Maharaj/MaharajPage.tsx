@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Search, Sparkles, MapPin, Link2, X, Clock, Check, Ban } from 'lucide-react'
 import { api } from '../../lib/api'
-import { MapPicker } from '../../components/MapPicker'
+import { LocationPicker } from '../../components/LocationPicker'
+import { StateSelect, CitySelect } from '../../components/GeoSelect'
 
 interface Maharaj { id: string; name: string; type: string; samuday?: string; city?: string; state?: string; current_city?: string; photo_url?: string; note?: string; maharaj_id?: string }
 interface Proposal { id: string; maharaj_name: string; place: string; city?: string; status: string; created_at: string; decision_note?: string }
@@ -12,12 +13,10 @@ export function MaharajPage() {
   const [directory, setDirectory] = useState<Maharaj[]>([])
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [q, setQ] = useState('')
-  const [states, setStates] = useState<string[]>([])
-  const [cities, setCities] = useState<string[]>([])
   const [proposeFor, setProposeFor] = useState<Maharaj | null>(null)
   const [msg, setMsg] = useState('')
 
-  useEffect(() => { loadLinked(); loadProposals(); api.get('/geo/states').then(r => setStates(r.data.data ?? r.data ?? [])).catch(() => {}) }, [])
+  useEffect(() => { loadLinked(); loadProposals() }, [])
   useEffect(() => { if (tab === 'directory') searchDirectory() }, [tab])
 
   async function loadLinked() { try { const { data } = await api.get('/maharaj/linked'); setLinked(data.data ?? data ?? []) } catch { /* */ } }
@@ -119,9 +118,6 @@ export function MaharajPage() {
       {proposeFor && (
         <ProposeModal
           maharaj={proposeFor}
-          states={states}
-          cities={cities}
-          onLoadCities={(s) => api.get(`/geo/states/${encodeURIComponent(s)}/cities`).then(r => setCities(r.data.data ?? r.data ?? [])).catch(() => setCities([]))}
           onClose={() => setProposeFor(null)}
           onDone={() => { setProposeFor(null); setMsg('Location proposed — awaiting the representative’s approval.'); setTab('proposals'); loadProposals() }}
         />
@@ -138,9 +134,8 @@ function Avatar({ m }: { m: Maharaj }) {
   )
 }
 
-function ProposeModal({ maharaj, states, cities, onLoadCities, onClose, onDone }: {
-  maharaj: Maharaj; states: string[]; cities: string[]
-  onLoadCities: (s: string) => void; onClose: () => void; onDone: () => void
+function ProposeModal({ maharaj, onClose, onDone }: {
+  maharaj: Maharaj; onClose: () => void; onDone: () => void
 }) {
   const [f, setF] = useState<any>({ place: '', city: '', state: '', pincode: '', from_date: '', to_date: '', chaturmas: false, notes: '', lat: null, lng: null })
   const [saving, setSaving] = useState(false)
@@ -168,12 +163,10 @@ function ProposeModal({ maharaj, states, cities, onLoadCities, onClose, onDone }
           <div><label className="form-label">Place / Venue *</label><input className="form-input" value={f.place} onChange={e => setF({ ...f, place: e.target.value })} placeholder="e.g. Shree Jain Derasar" /></div>
           <div className="grid grid-cols-2 gap-2">
             <div><label className="form-label">State</label>
-              <select className="form-select" value={f.state} onChange={e => { setF({ ...f, state: e.target.value, city: '' }); onLoadCities(e.target.value) }}>
-                <option value="">Select…</option>{states.map(s => <option key={s} value={s}>{s}</option>)}
-              </select></div>
+              <StateSelect value={f.state} onChange={s => setF({ ...f, state: s, city: '' })} />
+            </div>
             <div><label className="form-label">City</label>
-              <input className="form-input" list="maharaj-cities" value={f.city} onChange={e => setF({ ...f, city: e.target.value })} />
-              <datalist id="maharaj-cities">{cities.map(c => <option key={c} value={c} />)}</datalist>
+              <CitySelect state={f.state} value={f.city} onChange={c => setF({ ...f, city: c })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -181,7 +174,7 @@ function ProposeModal({ maharaj, states, cities, onLoadCities, onClose, onDone }
             <div><label className="form-label">To</label><input type="date" className="form-input" value={f.to_date} onChange={e => setF({ ...f, to_date: e.target.value })} /></div>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={f.chaturmas} onChange={e => setF({ ...f, chaturmas: e.target.checked })} className="accent-brand-red" /> Chaturmas at our mandir</label>
-          <MapPicker lat={f.lat} lng={f.lng} onChange={(lat, lng) => setF({ ...f, lat, lng })} label="Location pin (optional)" />
+          <LocationPicker lat={f.lat} lng={f.lng} onChange={(lat, lng) => setF({ ...f, lat, lng })} height={200} />
           <div><label className="form-label">Notes</label><textarea className="form-textarea" rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
           {err && <p className="text-red-600 text-sm">{err}</p>}
           <button onClick={submit} disabled={saving} className="btn-primary w-full justify-center py-2.5">{saving ? 'Sending…' : 'Send Proposal'}</button>

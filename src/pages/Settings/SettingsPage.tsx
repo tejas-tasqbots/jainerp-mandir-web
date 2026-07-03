@@ -3,7 +3,8 @@ import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-r
 import { api, fmtPaise } from '../../lib/api'
 import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
-import { MapPicker } from '../../components/MapPicker'
+import { LocationPicker } from '../../components/LocationPicker'
+import { StateSelect, CitySelect } from '../../components/GeoSelect'
 import { MasterEditor } from './MasterEditor'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
@@ -33,8 +34,6 @@ export function SettingsPage() {
     show_80g_on_receipt: false, global_sync_enabled: false,
     lat: null as number | null, lng: null as number | null,
   })
-  const [profileStates, setProfileStates] = useState<string[]>([])
-  const [profileCities, setProfileCities] = useState<string[]>([])
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
@@ -90,14 +89,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (tab === 'subscription') loadSubscription()
     if (tab === 'privacy') loadRequirements()
-    if (tab === 'profile' && profileStates.length === 0) {
-      api.get('/geo/states').then(r => setProfileStates(r.data.data ?? r.data ?? [])).catch(() => {})
-    }
   }, [tab])
-
-  useEffect(() => {
-    if (form.state) api.get(`/geo/states/${encodeURIComponent(form.state)}/cities`).then(r => setProfileCities(r.data.data ?? r.data ?? [])).catch(() => setProfileCities([]))
-  }, [form.state])
 
   async function loadRequirements() {
     try {
@@ -272,17 +264,14 @@ export function SettingsPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><label className="form-label">State</label>
-                <select className="form-select" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value, city: '' }))}>
-                  <option value="">Select…</option>{profileStates.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <StateSelect value={form.state} onChange={s => setForm(f => ({ ...f, state: s, city: '' }))} />
               </div>
               <div><label className="form-label">City</label>
-                <input className="form-input" list="profile-cities" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
-                <datalist id="profile-cities">{profileCities.map(c => <option key={c} value={c} />)}</datalist>
+                <CitySelect state={form.state} value={form.city} onChange={c => setForm(f => ({ ...f, city: c }))} />
               </div>
               <div><label className="form-label">Pincode</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
             </div>
-            <MapPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} label="Temple location (shown on the devotee portal)" />
+            <LocationPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} />
             <div className="grid grid-cols-2 gap-4">
               <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><label className="form-label">Website</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
@@ -395,23 +384,29 @@ export function SettingsPage() {
           <MasterEditor
             resource="halls"
             title="Halls"
-            description="Dharamshala halls available for booking."
+            description="Dharamshala halls available for booking. Tariffs are the default prices — editable per booking."
             statusField="is_available"
             fields={[
               { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Main Hall' },
               { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
+              { key: 'fullday_tariff_paise', label: 'Full-day ₹', type: 'money', placeholder: '0' },
+              { key: 'session_tariff_paise', label: 'Session ₹', type: 'money', placeholder: '0' },
+              { key: 'hourly_tariff_paise', label: 'Hourly ₹', type: 'money', placeholder: '0' },
+              { key: 'gst_rate', label: 'GST %', type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="rooms"
             title="Rooms"
-            description="Dharamshala rooms available for check-in."
+            description="Dharamshala rooms available for check-in. Tariff is the default per-night price — editable at checkout."
             statusField="is_available"
             fields={[
               { key: 'room_number', label: 'Room No.', required: true, placeholder: 'e.g. 101' },
               { key: 'name', label: 'Name / Type', placeholder: 'e.g. AC Deluxe' },
               { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
+              { key: 'tariff_paise', label: 'Tariff / night ₹', type: 'money', placeholder: '0' },
+              { key: 'gst_rate', label: 'GST %', type: 'number', placeholder: '0' },
             ]}
           />
 
