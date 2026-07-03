@@ -45,6 +45,7 @@ import { CertificatesPage } from './pages/Certificates/CertificatesPage'
 import { LostFoundPage } from './pages/Registers/LostFoundPage'
 import { VisitorCountPage } from './pages/Registers/VisitorCountPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
+import { MaharajPage } from './pages/Maharaj/MaharajPage'
 import { HelpPage } from './pages/Help/HelpPage'
 import { useAuthStore } from './store/authStore'
 import { useProfileStore } from './store/profileStore'
@@ -172,6 +173,7 @@ export default function App() {
             <Route path="/registers/visitor-count" element={<VisitorCountPage />} />
 
             {/* Settings & Help */}
+            <Route path="/maharaj" element={<MaharajPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<HelpPage />} />
 

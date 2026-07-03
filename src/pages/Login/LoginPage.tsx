@@ -79,7 +79,33 @@ export function LoginPage() {
     })
     const result = data.data
     setTokens(result.access_token, result.refresh_token)
-    setUser({ id: '', mobile: `+91${mobile}`, name: null, roles: [] }, { id: '', slug, name: slug })
+    // Seed from the login response, then GET /auth/me fills in the real
+    // user name/roles + temple display name (never show the raw slug).
+    setUser(
+      { id: '', mobile: `+91${mobile}`, name: null, roles: result.roles ?? [] },
+      { id: result.tenant?.id ?? '', slug: result.tenant?.slug ?? slug, name: result.tenant?.name ?? slug },
+    )
+    await hydrateSession()
+  }
+
+  // Pull the authoritative user (name + roles) and temple (display name) so the
+  // header shows "Ramesh Shah (Temple Admin)" and the real mandir name.
+  async function hydrateSession() {
+    try {
+      const { data } = await api.get('/auth/me')
+      const me = data.data ?? data
+      if (me?.user || me?.tenant) {
+        setUser(
+          {
+            id: me.user?.id ?? '',
+            mobile: me.user?.mobile ?? `+91${mobile}`,
+            name: me.user?.name ?? null,
+            roles: me.user?.roles ?? [],
+          },
+          { id: me.tenant?.id ?? '', slug: me.tenant?.slug ?? '', name: me.tenant?.name ?? '' },
+        )
+      }
+    } catch { /* header falls back to seeded values */ }
     await fetchProfile()
   }
 

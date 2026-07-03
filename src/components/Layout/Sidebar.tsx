@@ -3,7 +3,7 @@ import {
   LayoutDashboard, IndianRupee, Receipt, Hotel, ShoppingBag,
   Heart, Utensils, Calendar, BarChart2, Award, BookMarked, Settings,
   ChevronDown, ChevronRight, Bell, HelpCircle, Users, Landmark,
-  UserCheck, UserCog
+  UserCheck, UserCog, Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useProfileStore } from '../../store/profileStore'
@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Bhojanshala', icon: <Utensils size={18} />, to: '/annadaan' },
   { label: 'Boli Donations', icon: <Bell size={18} />, to: '/boli' },
   { label: 'Events', icon: <Calendar size={18} />, to: '/events' },
+  { label: 'Maharaj / Mataji', icon: <Sparkles size={18} />, to: '/maharaj' },
   {
     label: 'People', icon: <Users size={18} />,
     children: [

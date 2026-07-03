@@ -3,12 +3,14 @@ import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-r
 import { api, fmtPaise } from '../../lib/api'
 import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
+import { MapPicker } from '../../components/MapPicker'
 import { MasterEditor } from './MasterEditor'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
 import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
+import { GalleryTab } from './tabs/GalleryTab'
 
 interface Requirement {
   id: string
@@ -22,18 +24,25 @@ interface Requirement {
 
 export function SettingsPage() {
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'masters' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'profile' | 'masters' | 'gallery' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
     name: '', address_line1: '', city: '', state: '', pincode: '', mobile: '', email: '', website: '',
     gstin: '', pan: '', reg_80g_number: '', reg_12ab_number: '', upi_id: '', custom_receipt_footer: '',
     show_80g_on_receipt: false, global_sync_enabled: false,
+    lat: null as number | null, lng: null as number | null,
   })
+  const [profileStates, setProfileStates] = useState<string[]>([])
+  const [profileCities, setProfileCities] = useState<string[]>([])
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
   const [payMsg, setPayMsg] = useState('')
+  const [plans, setPlans] = useState<PlanRow[]>([])
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [planCycle, setPlanCycle] = useState<'monthly' | 'yearly'>('yearly')
+  const [upgradingPlan, setUpgradingPlan] = useState('')
   const [reqText, setReqText] = useState('')
   const [reqSent, setReqSent] = useState(false)
   const [requirements, setRequirements] = useState<Requirement[]>([])
@@ -45,6 +54,11 @@ export function SettingsPage() {
   interface UsageData {
     limits?: { max_users?: number; max_receipts_per_month?: number; max_sms_per_month?: number }
     current?: { users?: number; receipts_this_month?: number }
+  }
+  interface PlanRow {
+    id: string; name: string; display_name: string
+    price_monthly_paise: number; price_yearly_paise: number
+    max_users: number; max_receipts_per_month: number; max_sms_per_month: number
   }
 
   useEffect(() => {
@@ -67,6 +81,8 @@ export function SettingsPage() {
         custom_receipt_footer: (p.custom_receipt_footer as string) || '',
         show_80g_on_receipt: Boolean(p.show_80g_on_receipt),
         global_sync_enabled: profile.global_sync_enabled || false,
+        lat: p.lat != null ? Number(p.lat) : null,
+        lng: p.lng != null ? Number(p.lng) : null,
       })
     }
   }, [profile])
@@ -74,7 +90,14 @@ export function SettingsPage() {
   useEffect(() => {
     if (tab === 'subscription') loadSubscription()
     if (tab === 'privacy') loadRequirements()
+    if (tab === 'profile' && profileStates.length === 0) {
+      api.get('/geo/states').then(r => setProfileStates(r.data.data ?? r.data ?? [])).catch(() => {})
+    }
   }, [tab])
+
+  useEffect(() => {
+    if (form.state) api.get(`/geo/states/${encodeURIComponent(form.state)}/cities`).then(r => setProfileCities(r.data.data ?? r.data ?? [])).catch(() => setProfileCities([]))
+  }, [form.state])
 
   async function loadRequirements() {
     try {
@@ -85,13 +108,42 @@ export function SettingsPage() {
 
   async function loadSubscription() {
     try {
-      const [subResp, usageResp] = await Promise.allSettled([
+      const [subResp, usageResp, plansResp] = await Promise.allSettled([
         api.get('/tenants/me/subscription'),
         api.get('/tenants/me/usage'),
+        api.get('/tenants/me/plans'),
       ])
       if (subResp.status === 'fulfilled') setSubscription(subResp.value.data.data || subResp.value.data)
       if (usageResp.status === 'fulfilled') setUsage(usageResp.value.data.data || usageResp.value.data)
+      if (plansResp.status === 'fulfilled') setPlans(plansResp.value.data.data || plansResp.value.data || [])
     } catch { /* ignore */ }
+  }
+
+  async function changePlan(planName: string) {
+    setUpgradingPlan(planName); setPayMsg('')
+    try {
+      // Raise an invoice for the chosen plan + cycle, then pay it.
+      const { data } = await api.post('/tenants/me/subscription/upgrade', { plan: planName, billing_cycle: planCycle })
+      const invoiceId = (data.data || data).invoice?.id
+      setShowPlanModal(false)
+      await loadSubscription()
+      if (invoiceId) await payInvoice(invoiceId)
+    } catch (e: any) {
+      setPayMsg(e?.response?.data?.error?.message || 'Could not change plan.')
+    } finally {
+      setUpgradingPlan('')
+    }
+  }
+
+  function openReceipt(invoiceId: string) {
+    // Receipt is server-rendered HTML; open in a new tab so the user can
+    // print / save as PDF. Pass the bearer token via a short-lived fetch→blob.
+    api.get(`/tenants/me/invoices/${invoiceId}/receipt`, { responseType: 'text' })
+      .then(({ data }) => {
+        const w = window.open('', '_blank')
+        if (w) { w.document.write(data); w.document.close() }
+      })
+      .catch(() => setPayMsg('Could not load receipt.'))
   }
 
   async function payInvoice(invoiceId: string) {
@@ -145,6 +197,7 @@ export function SettingsPage() {
         reg_12ab_number: form.reg_12ab_number, upi_id: form.upi_id,
         custom_receipt_footer: form.custom_receipt_footer,
         show_80g_on_receipt: form.show_80g_on_receipt,
+        lat: form.lat, lng: form.lng,
       })
       await fetchProfile()
       setSuccess(true)
@@ -183,6 +236,7 @@ export function SettingsPage() {
           { id: 'receipts', label: 'Receipt Settings' },
           { id: 'accounting', label: 'Accounting Rules' },
           { id: 'masters', label: 'Categories & Dropdowns' },
+          { id: 'gallery', label: 'Gallery' },
           { id: 'users', label: 'Users' },
           { id: 'backup', label: 'Backup' },
           { id: 'privacy', label: 'Privacy & Sync' },
@@ -217,10 +271,18 @@ export function SettingsPage() {
               <input className="form-input" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} />
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><label className="form-label">City</label><input className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
-              <div><label className="form-label">State</label><input className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} /></div>
+              <div><label className="form-label">State</label>
+                <select className="form-select" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value, city: '' }))}>
+                  <option value="">Select…</option>{profileStates.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div><label className="form-label">City</label>
+                <input className="form-input" list="profile-cities" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+                <datalist id="profile-cities">{profileCities.map(c => <option key={c} value={c} />)}</datalist>
+              </div>
               <div><label className="form-label">Pincode</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
             </div>
+            <MapPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} label="Temple location (shown on the devotee portal)" />
             <div className="grid grid-cols-2 gap-4">
               <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><label className="form-label">Website</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
@@ -263,6 +325,8 @@ export function SettingsPage() {
       {tab === 'accounting' && <AccountingRulesTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'backup' && <BackupTab />}
+
+      {tab === 'gallery' && <GalleryTab />}
 
       {tab === 'masters' && (
         <div className="space-y-4">
@@ -462,10 +526,18 @@ export function SettingsPage() {
                     <p className="font-medium">{subscription.subscription.current_period_end ? new Date(subscription.subscription.current_period_end).toLocaleDateString('en-IN') : '—'}</p>
                   </div>
                 </div>
+                <div className="mt-4">
+                  <button onClick={() => setShowPlanModal(true)} className="btn-secondary btn-sm">
+                    <TrendingUp size={13} /> Change Plan
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="card"><div className="card-body text-slate-400 text-sm">No subscription data available.</div></div>
+            <div className="card"><div className="card-body flex items-center justify-between text-sm">
+              <span className="text-slate-400">No subscription data available.</span>
+              <button onClick={() => setShowPlanModal(true)} className="btn-secondary btn-sm"><TrendingUp size={13} /> Choose a Plan</button>
+            </div></div>
           )}
 
           {usage && (
@@ -509,7 +581,11 @@ export function SettingsPage() {
                         <td className="font-semibold">{inv.total_paise ? `₹${fmtPaise(inv.total_paise)}` : '—'}</td>
                         <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{inv.status}</span></td>
                         <td className="text-right">
-                          {inv.status !== 'paid' && (
+                          {inv.status === 'paid' ? (
+                            <button onClick={() => openReceipt(inv.id)} className="btn-secondary btn-sm">
+                              <ClipboardList size={13} /> Receipt
+                            </button>
+                          ) : (
                             <button
                               onClick={() => payInvoice(inv.id)}
                               disabled={payingId === inv.id}
@@ -524,6 +600,51 @@ export function SettingsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Change Plan modal */}
+          {showPlanModal && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowPlanModal(false)}>
+              <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-navy-900">Choose a Plan</h3>
+                  <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs">
+                    <button onClick={() => setPlanCycle('monthly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'monthly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>Monthly</button>
+                    <button onClick={() => setPlanCycle('yearly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'yearly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>Yearly</button>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {plans.map(p => {
+                    const price = planCycle === 'yearly' ? p.price_yearly_paise : p.price_monthly_paise
+                    const isCurrent = subscription?.subscription?.plan_display === p.display_name
+                    return (
+                      <div key={p.id} className={`card p-4 ${isCurrent ? 'border-brand-red' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-navy-900">{p.display_name} {isCurrent && <span className="badge-green ml-1">Current</span>}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{p.max_users} users · {p.max_receipts_per_month} receipts/mo · {p.max_sms_per_month} SMS/mo</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-navy-900">{price > 0 ? `₹${fmtPaise(price)}` : 'Free'}</p>
+                            <p className="text-[10px] text-slate-400">/{planCycle === 'yearly' ? 'yr' : 'mo'}</p>
+                          </div>
+                        </div>
+                        {price > 0 && (
+                          <button
+                            onClick={() => changePlan(p.name)}
+                            disabled={!!upgradingPlan}
+                            className="btn-primary btn-sm w-full justify-center mt-3"
+                          >
+                            {upgradingPlan === p.name ? 'Processing…' : isCurrent ? 'Renew' : 'Select & Pay'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {plans.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No plans available.</p>}
+                </div>
               </div>
             </div>
           )}
