@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Crown, Plus, ShieldCheck, X } from 'lucide-react'
 import { api } from '../../../lib/api'
+import { ROLE_LABELS } from '../../../lib/rbac'
+import { useAuthStore } from '../../../store/authStore'
 
 interface StaffUser {
   id: string
@@ -12,7 +14,6 @@ interface StaffUser {
 }
 
 const ROLES = [
-  { id: 'temple_admin', label: 'Temple Admin' },
   { id: 'accountant', label: 'Accountant' },
   { id: 'cashier', label: 'Cashier' },
   { id: 'bhojanshala_cashier', label: 'Bhojanshala Cashier' },
@@ -28,12 +29,19 @@ function toE164(m: string): string {
   return '+' + digits
 }
 
+function apiMessage(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { error?: { message?: string } } } }
+  return e.response?.data?.error?.message || fallback
+}
+
 export function UsersTab() {
+  const me = useAuthStore(s => s.user)
   const [users, setUsers] = useState<StaffUser[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', role: 'cashier' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => { load() }, [])
 
@@ -56,33 +64,66 @@ export function UsersTab() {
       setShowInvite(false)
       load()
     } catch (err: unknown) {
-      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
-      setError(e2.response?.data?.error?.message || 'Failed to add user')
+      setError(apiMessage(err, 'Failed to add user'))
     } finally {
       setSaving(false)
     }
   }
 
   async function toggleActive(u: StaffUser) {
-    await api.patch(`/users/${u.id}`, { is_active: !u.is_active }).catch(() => {})
+    setNotice('')
+    try {
+      await api.patch(`/users/${u.id}`, { is_active: !u.is_active })
+    } catch (err) {
+      alert(apiMessage(err, 'Could not change status'))
+    }
     load()
   }
 
   async function changeRole(u: StaffUser, role: string) {
-    await api.patch(`/users/${u.id}`, { roles: [role] }).catch(() => {})
+    setNotice('')
+    try {
+      await api.patch(`/users/${u.id}`, { roles: [role] })
+    } catch (err) {
+      alert(apiMessage(err, 'Could not change role'))
+    }
     load()
   }
+
+  async function transferAdmin(u: StaffUser) {
+    if (!window.confirm(
+      `Transfer the Temple Admin role to ${u.name || u.mobile}?\n\n` +
+      'They become the Temple Admin and you keep your other roles ' +
+      '(or become Viewer). This takes effect from your next login.',
+    )) return
+    setNotice('')
+    try {
+      const { data } = await api.post(`/users/${u.id}/transfer-admin`)
+      setNotice(data.data?.note || 'Temple Admin transferred.')
+      load()
+    } catch (err) {
+      alert(apiMessage(err, 'Could not transfer Temple Admin'))
+    }
+  }
+
+  const iAmAdmin = me?.roles?.includes('temple_admin') ?? false
 
   return (
     <div className="card">
       <div className="card-header flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-sm">User Management</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Staff who can log in to this mandir, and their roles.</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Staff who can log in to this mandir, and their roles. Every mandir always has exactly the
+            Temple Admin role holder in charge — it can only be transferred, never removed.
+          </p>
         </div>
         {!showInvite && <button onClick={() => setShowInvite(true)} className="btn-primary btn-sm"><Plus size={14} /> Add User</button>}
       </div>
       <div className="card-body space-y-3">
+        {notice && (
+          <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">{notice}</div>
+        )}
         {showInvite && (
           <form onSubmit={invite} className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -105,29 +146,71 @@ export function UsersTab() {
 
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Status</th></tr></thead>
+            <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={4} className="text-center text-slate-400 py-6">No users yet.</td></tr>
-              ) : users.map(u => (
-                <tr key={u.id} className={u.is_active ? '' : 'opacity-50'}>
-                  <td className="font-medium">{u.name || '—'}</td>
-                  <td className="text-sm text-slate-500">{u.mobile}</td>
-                  <td>
-                    <select className="form-select text-sm py-1" value={u.roles?.[0] || 'viewer'} onChange={e => changeRole(u, e.target.value)}>
-                      {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <button onClick={() => toggleActive(u)} className={u.is_active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                <tr><td colSpan={5} className="text-center text-slate-400 py-6">No users yet.</td></tr>
+              ) : users.map(u => {
+                const isSelf = u.id === me?.id
+                const isAdminRow = u.roles?.includes('temple_admin')
+                return (
+                  <tr key={u.id} className={u.is_active ? '' : 'opacity-50'}>
+                    <td className="font-medium">
+                      {u.name || '—'}
+                      {isSelf && <span className="badge-blue ml-2">You</span>}
+                    </td>
+                    <td className="text-sm text-slate-500">{u.mobile}</td>
+                    <td>
+                      {isAdminRow ? (
+                        <span className="badge-gold inline-flex items-center gap-1">
+                          <Crown size={11} /> Temple Admin
+                        </span>
+                      ) : (
+                        <select
+                          className="form-select text-sm py-1"
+                          value={u.roles?.[0] || 'viewer'}
+                          onChange={e => changeRole(u, e.target.value)}
+                          disabled={!iAmAdmin}
+                        >
+                          {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                        </select>
+                      )}
+                    </td>
+                    <td>
+                      {isSelf || isAdminRow ? (
+                        <span className={u.is_active ? 'badge-green' : 'badge-gray'}>
+                          {u.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      ) : (
+                        <button onClick={() => toggleActive(u)} className={u.is_active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>
+                          {u.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="text-right">
+                      {iAmAdmin && !isSelf && !isAdminRow && u.is_active && (
+                        <button
+                          onClick={() => transferAdmin(u)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 border border-amber-300 rounded-md px-2 py-1 hover:bg-amber-50"
+                          title="Hand the Temple Admin role to this member"
+                        >
+                          <ShieldCheck size={12} /> Make Temple Admin
+                        </button>
+                      )}
+                      {isSelf && isAdminRow && (
+                        <span className="text-xs text-slate-400">Transfer the role to step down</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
+        <p className="text-xs text-slate-400">
+          {ROLE_LABELS.temple_admin} can manage everything. Other roles only see and use the modules
+          that belong to their work — the sidebar adjusts automatically after they log in.
+        </p>
       </div>
     </div>
   )

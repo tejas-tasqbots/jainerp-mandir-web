@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Search, Printer } from 'lucide-react'
+import { Download, FileDown, Search, Printer } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 import type { Account, LedgerEntry } from '../../types'
 
 export function Ledger() {
@@ -47,7 +48,15 @@ export function Ledger() {
         {accountId && (
           <div className="flex gap-2">
             <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-              <Printer size={14} /> Print / PDF
+              <Printer size={14} /> Print
+            </button>
+            <button type="button"
+              onClick={() => downloadRowsPdf(`ledger-${from}_${to}.pdf`, 'Account Ledger',
+                ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
+                filtered.map(e => [e.date, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]),
+                { subtitle: `${from} to ${to}` })}
+              className="btn-secondary btn-sm">
+              <FileDown size={14} /> Download PDF
             </button>
             <button type="button"
               onClick={() => exportRowsCsv(`ledger-${from}_${to}.csv`,

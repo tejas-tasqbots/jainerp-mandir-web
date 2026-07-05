@@ -12,6 +12,7 @@ import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
 import { GalleryTab } from './tabs/GalleryTab'
+import { TrusteesTab } from './tabs/TrusteesTab'
 
 interface Requirement {
   id: string
@@ -25,7 +26,7 @@ interface Requirement {
 
 export function SettingsPage() {
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'masters' | 'gallery' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -224,6 +225,7 @@ export function SettingsPage() {
       <div className="flex gap-2 flex-wrap">
         {[
           { id: 'profile', label: 'Temple Profile' },
+          { id: 'trustees', label: 'Trustees' },
           { id: 'accounts', label: 'Bank & Cash Accounts' },
           { id: 'receipts', label: 'Receipt Settings' },
           { id: 'accounting', label: 'Accounting Rules' },
@@ -309,6 +311,7 @@ export function SettingsPage() {
         </form>
       )}
 
+      {tab === 'trustees' && <TrusteesTab />}
       {tab === 'accounts' && <BankAccountsTab />}
       {tab === 'receipts' && <ReceiptSettingsTab />}
       {tab === 'accounting' && <AccountingRulesTab />}

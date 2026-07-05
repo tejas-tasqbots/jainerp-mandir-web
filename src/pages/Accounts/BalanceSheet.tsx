@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Download, FileDown, Printer } from 'lucide-react'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 
 interface CashBankEntry { account: string; type: string; balance_paise: number }
@@ -51,6 +54,51 @@ export function BalanceSheet() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Balance Sheet</h1>
+        <div className="flex gap-2">
+          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => data && downloadSectionsPdf(`balance-sheet-${fy}.pdf`, 'Balance Sheet', [
+              {
+                heading: 'Assets',
+                headers: ['Item', 'Amount'],
+                rows: [
+                  ...data.assets.cash_and_bank.map(a => [`${a.account} (${a.type})`, rsFmt(a.balance_paise)]),
+                  ['Fixed Assets (Net)', rsFmt(data.assets.fixed_assets_paise)],
+                  ...(data.assets.loans_given_paise > 0 ? [['Loans Given (Outstanding)', rsFmt(data.assets.loans_given_paise)]] : []),
+                ],
+                totals: ['Total Assets', rsFmt(totalAssets)],
+              },
+              {
+                heading: 'Liabilities & Corpus',
+                headers: ['Item', 'Amount'],
+                rows: [
+                  ...(data.liabilities.creditors_paise > 0 ? [['Creditors (Outstanding)', rsFmt(data.liabilities.creditors_paise)]] : []),
+                  ...(data.liabilities.loans_taken_paise > 0 ? [['Loans Taken (Outstanding)', rsFmt(data.liabilities.loans_taken_paise)]] : []),
+                  ['Corpus / Net Worth', rsFmt(corpus)],
+                ],
+                totals: ['Total', rsFmt(totalAssets)],
+              },
+            ], { subtitle: `FY ${fy} (as of year end)` })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
+          </button>
+          <button type="button"
+            onClick={() => data && exportRowsCsv(`balance-sheet-${fy}.csv`, ['Section', 'Item', 'Amount'], [
+              ...data.assets.cash_and_bank.map(a => ['Assets', `${a.account} (${a.type})`, rsFmt(a.balance_paise)]),
+              ['Assets', 'Fixed Assets (Net)', rsFmt(data.assets.fixed_assets_paise)],
+              ['Assets', 'Loans Given (Outstanding)', rsFmt(data.assets.loans_given_paise)],
+              ['Assets', 'Total Assets', rsFmt(totalAssets)],
+              ['Liabilities', 'Creditors (Outstanding)', rsFmt(data.liabilities.creditors_paise)],
+              ['Liabilities', 'Loans Taken (Outstanding)', rsFmt(data.liabilities.loans_taken_paise)],
+              ['Liabilities', 'Corpus / Net Worth', rsFmt(corpus)],
+              ['Liabilities', 'Total', rsFmt(totalAssets)],
+            ])}
+            className="btn-secondary btn-sm">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

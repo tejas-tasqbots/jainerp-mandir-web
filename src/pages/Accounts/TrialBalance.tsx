@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Download, Printer } from 'lucide-react'
+import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 
 interface TBRow { account_name: string; debit_paise: number; credit_paise: number }
 
@@ -33,7 +34,14 @@ export function TrialBalance() {
         <h1 className="text-xl font-bold text-navy-900">Trial Balance</h1>
         <div className="flex gap-2">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> Print / PDF
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => downloadRowsPdf(`trial-balance-${fy}.pdf`, 'Trial Balance', ['Account', 'Debit', 'Credit'],
+              rows.map(r => [r.account_name, r.debit_paise > 0 ? rsFmt(r.debit_paise) : '', r.credit_paise > 0 ? rsFmt(r.credit_paise) : '']),
+              { subtitle: `FY ${fy}`, totals: ['Total', rsFmt(totalDebit), rsFmt(totalCredit)] })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
           </button>
           <button type="button"
             onClick={() => exportRowsCsv(`trial-balance-${fy}.csv`, ['Account', 'Debit', 'Credit'],

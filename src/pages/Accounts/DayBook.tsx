@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Download, Printer } from 'lucide-react'
+import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 
 interface Entry {
   date: string
@@ -41,7 +42,15 @@ export function DayBook() {
         <h1 className="text-xl font-bold text-navy-900">Day Book</h1>
         <div className="flex gap-2">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> Print / PDF
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => downloadRowsPdf(`day-book-${from}_${to}.pdf`, 'Day Book',
+              ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
+              entries.map(e => [e.date, e.type, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise)]),
+              { subtitle: `${from} to ${to}`, totals: ['Total', '', '', '', rsFmt(totalDebit), rsFmt(totalCredit)] })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
           </button>
           <button type="button"
             onClick={() => exportRowsCsv(`day-book-${from}_${to}.csv`,

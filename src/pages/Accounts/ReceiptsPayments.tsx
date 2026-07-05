@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Printer } from 'lucide-react'
-import { printCurrentView } from '../../lib/downloadReport'
+import { Download, FileDown, Printer } from 'lucide-react'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 
 interface Section { head?: string; name?: string; amount_paise: number; entries?: number }
@@ -38,9 +39,39 @@ export function ReceiptsPayments() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Receipts & Payments</h1>
-        <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-          <Printer size={14} /> Print / PDF
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => data && downloadSectionsPdf(`receipts-payments-${fy}.pdf`, 'Receipts & Payments Account', [
+              {
+                heading: 'Receipts',
+                headers: ['Source', 'Entries', 'Amount'],
+                rows: data.receipts.map(r => [r.head ?? r.name, r.entries ?? '', rsFmt(r.amount_paise)]),
+                totals: ['Total Receipts', '', rsFmt(totalReceipts)],
+              },
+              {
+                heading: 'Payments',
+                headers: ['Category', 'Entries', 'Amount'],
+                rows: data.payments.map(p => [p.head ?? p.name, p.entries ?? '', rsFmt(p.amount_paise)]),
+                totals: ['Total Payments', '', rsFmt(totalPayments)],
+              },
+            ], { subtitle: `FY ${fy}` })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
+          </button>
+          <button type="button"
+            onClick={() => data && exportRowsCsv(`receipts-payments-${fy}.csv`, ['Section', 'Head', 'Entries', 'Amount'], [
+              ...data.receipts.map(r => ['Receipts', r.head ?? r.name ?? '', r.entries ?? '', rsFmt(r.amount_paise)]),
+              ['Receipts', 'Total Receipts', '', rsFmt(totalReceipts)],
+              ...data.payments.map(p => ['Payments', p.head ?? p.name ?? '', p.entries ?? '', rsFmt(p.amount_paise)]),
+              ['Payments', 'Total Payments', '', rsFmt(totalPayments)],
+            ])}
+            className="btn-secondary btn-sm">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Award, Download, RefreshCw, FileText } from 'lucide-react'
 import { api, currentFY, fmtPaise } from '../../lib/api'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 
 // ── Authenticated download helpers ───────────────────────────────────────────
 // The compliance endpoints require a Bearer token, so opening them in a new
@@ -29,7 +30,7 @@ export function CertificatesPage() {
   const [tab, setTab] = useState<'80g' | 'tds'>('80g')
   const [fy, setFy] = useState(currentFY())
   const [generating, setGenerating] = useState(false)
-  const [certs, setCerts] = useState<{ id: string; donor: string; mobile?: string; pan_masked?: string; total_eligible_paise: number; receipts: number }[]>([])
+  const [certs, setCerts] = useState<{ id: string; donor: string; mobile?: string; pan_masked?: string; total_eligible_paise: number; receipts: number; certificate_no?: string | null }[]>([])
   const [form10bd, setForm10bd] = useState<{ id: string; donor: string; pan_masked?: string; amount_paise: number; donation_date: string; payment_mode: string; status: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [tdsData, setTdsData] = useState<{ rows: TdsRow[]; total_tds_paise: number } | null>(null)
@@ -43,6 +44,22 @@ export function CertificatesPage() {
     amount_paise: number
     tds_amount_paise: number
     tds_challan_no?: string
+  }
+
+  async function generate80g() {
+    if (!window.confirm(`Generate 80G certificates for all eligible donors of FY ${fy}? Existing certificate numbers are kept.`)) return
+    setGenerating(true)
+    try {
+      const { data } = await api.post('/compliance/80g-certificates/generate', { fy, donor_ids: 'all' })
+      const d = data.data || {}
+      alert(`80G certificates: ${d.created ?? 0} new, ${d.updated ?? 0} refreshed (of ${d.eligible_donors ?? 0} eligible donors)`)
+      fetchCerts()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e.response?.data?.error?.message || 'Failed to generate certificates')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function generate10bd() {
@@ -129,6 +146,48 @@ export function CertificatesPage() {
     }
   }
 
+  async function download80gListPdf() {
+    setDownloading('80g-pdf')
+    try {
+      const { data } = await api.get(`/compliance/80g-certificates?fy=${fy}`)
+      const rows = data.data?.rows || data.rows || []
+      if (!rows.length) { alert('No 80G-eligible donors for this FY'); return }
+      const total = rows.reduce((s: number, c: { total_eligible_paise: number }) => s + Number(c.total_eligible_paise), 0)
+      downloadRowsPdf(`80g-certificate-list-${fy}.pdf`, '80G Certificate Register',
+        ['Certificate No.', 'Donor', 'Mobile', 'PAN', 'Receipts', 'Eligible Amount'],
+        rows.map((c: { certificate_no?: string | null; donor: string; mobile?: string; pan_masked?: string; receipts: number; total_eligible_paise: number }) =>
+          [c.certificate_no ?? '', c.donor, c.mobile ?? '', c.pan_masked ?? '', c.receipts, (c.total_eligible_paise / 100).toFixed(2)]),
+        { subtitle: `FY ${fy}`, totals: ['Total', '', '', '', '', (total / 100).toFixed(2)] })
+    } catch {
+      alert('Could not download 80G list')
+    } finally {
+      setDownloading('')
+    }
+  }
+
+  async function downloadTdsPdf(quarter?: string) {
+    setDownloading('tds-pdf')
+    try {
+      const params = new URLSearchParams({ fy })
+      if (quarter) params.set('quarter', quarter)
+      const { data } = await api.get(`/compliance/tds-report?${params}`)
+      const d = data.data || data
+      const rows: TdsRow[] = d.rows || []
+      if (!rows.length) { alert('No TDS records for this period'); return }
+      downloadRowsPdf(`tds-report-${fy}${quarter ? `-q${quarter}` : ''}.pdf`, 'TDS Report',
+        ['Date', 'Vendor', 'PAN', 'Section', 'Expense Amount', 'TDS Amount', 'Challan No'],
+        rows.map(r => [
+          r.date, r.vendor ?? '', r.pan_masked ?? '', r.tds_section ?? '',
+          (r.amount_paise / 100).toFixed(2), (r.tds_amount_paise / 100).toFixed(2), r.tds_challan_no ?? '',
+        ]),
+        { subtitle: `FY ${fy}${quarter ? ` — Q${quarter}` : ''}`, totals: ['Total TDS', '', '', '', '', ((d.total_tds_paise ?? 0) / 100).toFixed(2), ''] })
+    } catch {
+      alert('Could not download TDS report')
+    } finally {
+      setDownloading('')
+    }
+  }
+
   async function downloadTds(quarter?: string) {
     setDownloading('tds')
     try {
@@ -182,6 +241,10 @@ export function CertificatesPage() {
                 <button type="button" onClick={fetchCerts} disabled={loading} className="btn-secondary">
                   {loading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />} Load Eligible Donors
                 </button>
+                <button type="button" onClick={generate80g} disabled={generating} className="btn-primary">
+                  {generating ? <RefreshCw size={14} className="animate-spin" /> : <Award size={14} />}
+                  {generating ? 'Generating...' : 'Generate 80G Certificates'}
+                </button>
                 <button type="button" onClick={generate10bd} disabled={generating} className="btn-primary">
                   {generating ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
                   {generating ? 'Generating...' : 'Generate Form 10BD'}
@@ -201,7 +264,9 @@ export function CertificatesPage() {
                 {[
                   { key: '10bd', label: 'Form 10BD (JSON)', fn: downloadForm10bd },
                   { key: '80g', label: '80G Certificate List (CSV)', fn: download80gList },
+                  { key: '80g-pdf', label: '80G Certificate List (PDF)', fn: download80gListPdf },
                   { key: 'tds', label: 'TDS Report (CSV)', fn: () => downloadTds() },
+                  { key: 'tds-pdf', label: 'TDS Report (PDF)', fn: () => downloadTdsPdf() },
                 ].map(r => (
                   <button key={r.label} type="button" onClick={r.fn} disabled={downloading === r.key}
                     className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-brand-blue hover:bg-blue-50 transition-colors group disabled:opacity-50">
@@ -224,10 +289,11 @@ export function CertificatesPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="data-table">
-                  <thead><tr><th>Donor</th><th>Mobile</th><th>PAN</th><th>Receipts</th><th>Eligible Amount</th></tr></thead>
+                  <thead><tr><th>Certificate No.</th><th>Donor</th><th>Mobile</th><th>PAN</th><th>Receipts</th><th>Eligible Amount</th></tr></thead>
                   <tbody>
                     {certs.map((c, i) => (
                       <tr key={c.id || i}>
+                        <td className="font-mono text-xs">{c.certificate_no || <span className="text-slate-400">not generated</span>}</td>
                         <td className="font-medium">{c.donor}</td>
                         <td>{c.mobile || '—'}</td>
                         <td className="font-mono text-xs">{c.pan_masked || '—'}</td>

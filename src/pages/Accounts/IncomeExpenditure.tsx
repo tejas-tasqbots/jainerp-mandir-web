@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Printer } from 'lucide-react'
-import { printCurrentView } from '../../lib/downloadReport'
+import { Download, FileDown, Printer } from 'lucide-react'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 
 interface Section { name: string; head?: string; amount_paise: number }
@@ -33,9 +34,45 @@ export function IncomeExpenditure() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Income & Expenditure</h1>
-        <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-          <Printer size={14} /> Print / PDF
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => data && downloadSectionsPdf(`income-expenditure-${fy}.pdf`, 'Income & Expenditure Account', [
+              {
+                heading: 'Income',
+                headers: ['Source', 'Amount'],
+                rows: data.income.map(r => [r.head ?? r.name, rsFmt(r.amount_paise)]),
+                totals: ['Total Income', rsFmt(totalIncome)],
+              },
+              {
+                heading: 'Expenditure',
+                headers: ['Category', 'Amount'],
+                rows: data.expenditure.map(r => [r.head ?? r.name, rsFmt(r.amount_paise)]),
+                totals: ['Total Expenditure', rsFmt(totalExpenditure)],
+              },
+              {
+                headers: ['', ''],
+                rows: [],
+                totals: [surplusPaise >= 0 ? 'Surplus' : 'Deficit', rsFmt(Math.abs(surplusPaise))],
+              },
+            ], { subtitle: `FY ${fy}` })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
+          </button>
+          <button type="button"
+            onClick={() => data && exportRowsCsv(`income-expenditure-${fy}.csv`, ['Section', 'Head', 'Amount'], [
+              ...data.income.map(r => ['Income', r.head ?? r.name, rsFmt(r.amount_paise)]),
+              ['Income', 'Total Income', rsFmt(totalIncome)],
+              ...data.expenditure.map(r => ['Expenditure', r.head ?? r.name, rsFmt(r.amount_paise)]),
+              ['Expenditure', 'Total Expenditure', rsFmt(totalExpenditure)],
+              ['', surplusPaise >= 0 ? 'Surplus' : 'Deficit', rsFmt(Math.abs(surplusPaise))],
+            ])}
+            className="btn-secondary btn-sm">
+            <Download size={14} /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

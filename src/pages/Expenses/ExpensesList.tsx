@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Download, Search, Pencil, Trash2, XCircle } from 'lucide-react'
+import { Plus, Download, FileDown, Search, Pencil, Trash2, XCircle } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 import type { Expense } from '../../types'
 
 export function ExpensesList() {
@@ -70,6 +72,29 @@ export function ExpensesList() {
     }).catch(() => alert('Export failed'))
   }
 
+  function exportPdf() {
+    const params = new URLSearchParams({ limit: '1000' })
+    if (search) params.set('q', search)
+    if (fFrom) params.set('from', fFrom)
+    if (fTo) params.set('to', fTo)
+    api.get(`/expenses?${params}`).then(r => {
+      const rows: Expense[] = r.data.data || []
+      const total = rows.reduce((s, e) => s + e.amount_paise, 0)
+      downloadRowsPdf('expenses.pdf', 'Expense Register',
+        ['Date', 'Description', 'Vendor', 'Category', 'Amount', 'GST', 'Mode', 'Bill No', 'TDS', 'Credit'],
+        rows.map(e => [
+          (e.bill_date || e.created_at || '').slice(0, 10), e.description ?? '', e.vendor_name ?? '',
+          e.category ?? '', rsFmt(e.amount_paise), rsFmt(e.gst_paid_paise ?? 0), e.payment_mode,
+          e.bill_number ?? '', e.tds_deducted ? rsFmt(e.tds_amount_paise ?? 0) : '', e.is_on_credit ? 'Yes' : 'No',
+        ]),
+        {
+          subtitle: fFrom || fTo ? `${fFrom || '…'} to ${fTo || '…'}` : 'All dates',
+          landscape: true,
+          totals: ['Total', '', '', '', rsFmt(total), '', '', '', '', ''],
+        })
+    }).catch(() => alert('Export failed'))
+  }
+
   function openEdit(e: Expense) {
     setEditModal(e)
     setEditForm({
@@ -118,6 +143,7 @@ export function ExpensesList() {
           <button type="button" onClick={() => navigate('/expenses/add')} className="btn-primary btn-sm">
             <Plus size={14} /> New Expense
           </button>
+          <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> Export PDF</button>
           <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Download size={14} /> Export CSV</button>
         </div>
       </div>

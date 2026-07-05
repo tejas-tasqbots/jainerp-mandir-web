@@ -19,6 +19,7 @@ export function DonationsList() {
   const [voidModal, setVoidModal] = useState<{ id: string; invoiceNo: string } | null>(null)
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   // Filters
   const [showFilters, setShowFilters] = useState(false)
@@ -139,17 +140,36 @@ export function DonationsList() {
               if (fTo) p.to = fTo
               if (fCategory) p.category = fCategory
               if (fMode) p.payment_mode = fMode
+              downloadReport('donation-register', p, 'pdf')
+            }}
+            className="btn-secondary btn-sm"
+          >
+            <FileDown size={14} /> Export PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const p: Record<string, string> = {}
+              if (fFrom) p.from = fFrom
+              if (fTo) p.to = fTo
+              if (fCategory) p.category = fCategory
+              if (fMode) p.payment_mode = fMode
               downloadReport('donation-register', p)
             }}
             className="btn-secondary btn-sm"
           >
             <Download size={14} /> Export CSV
           </button>
+          <button onClick={() => setImportOpen(true)} className="btn-secondary btn-sm">
+            <FileDown size={14} /> Import Old Register
+          </button>
           <button onClick={() => navigate('/donations/add')} className="btn-primary btn-sm">
             <Plus size={14} /> New Donation
           </button>
         </div>
       </div>
+
+      {importOpen && <BulkImportModal onClose={ok => { setImportOpen(false); if (ok) load() }} />}
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative w-72">
@@ -358,6 +378,123 @@ export function DonationsList() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Import an old donation register (doc §M4 bulk import). Accepts CSV pasted or
+ * chosen as a file with the header:
+ *   date,donor_name,mobile,category,amount_rupees,payment_mode,is_80g,pan,remarks
+ * Rows are parsed client-side and posted to POST /donations/bulk-import.
+ */
+function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ total: number; imported: number; failed: number; errors: { row: number; message: string }[] } | null>(null)
+  const [err, setErr] = useState('')
+
+  function parseCsv(src: string): Record<string, string>[] {
+    const lines = src.trim().split(/\r?\n/).filter(l => l.trim())
+    if (lines.length < 2) return []
+    const parseLine = (line: string): string[] => {
+      const out: string[] = []
+      let cur = ''
+      let quoted = false
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]
+        if (quoted) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++ }
+          else if (ch === '"') quoted = false
+          else cur += ch
+        } else if (ch === '"') quoted = true
+        else if (ch === ',') { out.push(cur); cur = '' }
+        else cur += ch
+      }
+      out.push(cur)
+      return out
+    }
+    const headers = parseLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'))
+    return lines.slice(1).map(l => {
+      const vals = parseLine(l)
+      const row: Record<string, string> = {}
+      headers.forEach((h, i) => { row[h] = (vals[i] ?? '').trim() })
+      return row
+    })
+  }
+
+  async function run() {
+    setErr(''); setResult(null)
+    const parsed = parseCsv(text)
+    if (!parsed.length) { setErr('Paste CSV data with a header row first.'); return }
+    const rows = parsed.map(r => ({
+      donor_name: r.donor_name || r.donor || r.name,
+      mobile: r.mobile || undefined,
+      category: r.category || undefined,
+      amount_rupees: r.amount_rupees || r.amount || undefined,
+      payment_mode: r.payment_mode || r.mode || 'cash',
+      date: r.date || undefined,
+      is_80g: ['yes', 'true', '1', 'y'].includes((r.is_80g || '').toLowerCase()),
+      pan: r.pan || undefined,
+      remarks: r.remarks || undefined,
+    }))
+    setBusy(true)
+    try {
+      const { data } = await api.post('/donations/bulk-import', { rows })
+      setResult(data.data)
+    } catch (e: unknown) {
+      const ex = e as { response?: { data?: { error?: { message?: string } } } }
+      setErr(ex.response?.data?.error?.message || 'Import failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function onFile(f: File | undefined) {
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = () => setText(String(reader.result ?? ''))
+    reader.readAsText(f)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="font-semibold text-navy-900">Import Old Donation Register</h3>
+          <button onClick={() => onClose(!!result && result.imported > 0)} className="text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-slate-500">
+            Upload or paste a CSV with the columns
+            <code className="mx-1 text-xs bg-slate-100 px-1 py-0.5 rounded">date, donor_name, mobile, category, amount_rupees, payment_mode, is_80g, pan, remarks</code>
+            (header row required — save your Excel register as CSV). Each row becomes a receipted donation. Max 2000 rows per import.
+          </p>
+          <input type="file" accept=".csv,text/csv" onChange={e => onFile(e.target.files?.[0])} className="text-sm" />
+          <textarea
+            className="form-input font-mono text-xs"
+            rows={8}
+            placeholder={'date,donor_name,mobile,category,amount_rupees,payment_mode,is_80g\n2024-04-12,Rakesh Jain,9876543210,General,5100,cash,no'}
+            value={text}
+            onChange={e => setText(e.target.value)}
+          />
+          {err && <p className="text-sm text-red-600">{err}</p>}
+          {result && (
+            <div className={`rounded-md px-4 py-3 text-sm ${result.failed ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+              <p className="font-medium">{result.imported} of {result.total} rows imported{result.failed ? `, ${result.failed} failed` : ''}.</p>
+              {result.errors?.slice(0, 8).map(e2 => (
+                <p key={e2.row} className="text-xs mt-1">Row {e2.row}: {e2.message}</p>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <button onClick={() => onClose(!!result && result.imported > 0)} className="btn-secondary">Close</button>
+            <button onClick={run} disabled={busy || !text.trim()} className="btn-primary">
+              {busy ? 'Importing…' : 'Import Rows'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

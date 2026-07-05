@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Download, Printer } from 'lucide-react'
+import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 
 interface Entry {
   date: string
@@ -42,7 +43,16 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
         <h1 className="text-xl font-bold text-navy-900">{bankMode ? 'Bank Book' : 'Cash Book'}</h1>
         <div className="flex gap-2">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> Print / PDF
+            <Printer size={14} /> Print
+          </button>
+          <button type="button"
+            onClick={() => downloadRowsPdf(`${bankMode ? 'bank' : 'cash'}-book-${from}_${to}.pdf`,
+              bankMode ? 'Bank Book' : 'Cash Book',
+              ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
+              entries.map(e => [e.date, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]),
+              { subtitle: `${from} to ${to}`, totals: ['Total', '', '', rsFmt(totalDebit), rsFmt(totalCredit), ''] })}
+            className="btn-secondary btn-sm">
+            <FileDown size={14} /> Download PDF
           </button>
           <button type="button"
             onClick={() => exportRowsCsv(`${bankMode ? 'bank' : 'cash'}-book-${from}_${to}.csv`,

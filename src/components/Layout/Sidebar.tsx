@@ -6,6 +6,8 @@ import {
   UserCheck, UserCog, Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { canSee } from '../../lib/rbac'
+import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 
 interface NavItem {
@@ -125,6 +127,19 @@ function NavGroup({ item }: { item: NavItem }) {
 
 export function Sidebar() {
   const { profile } = useProfileStore()
+  const roles = useAuthStore(s => s.user?.roles)
+
+  // Hide modules the logged-in role can't work in (doc M1). The server
+  // enforces real permissions — this only keeps the workspace uncluttered.
+  const visibleItems = navItems
+    .map(item => {
+      if (item.children) {
+        const children = item.children.filter(c => canSee(c.to, roles))
+        return children.length ? { ...item, children } : null
+      }
+      return canSee(item.to!, roles) ? item : null
+    })
+    .filter((i): i is NavItem => i !== null)
 
   return (
     <aside className="w-60 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-full">
@@ -138,7 +153,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navItems.map(item =>
+        {visibleItems.map(item =>
           item.children ? (
             <NavGroup key={item.label} item={item} />
           ) : (

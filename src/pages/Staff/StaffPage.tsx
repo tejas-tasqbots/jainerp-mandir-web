@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, Shield, CheckCircle, XCircle } from 'lucide-react'
+import { UserPlus, Shield, ShieldCheck, CheckCircle, XCircle } from 'lucide-react'
 import { api } from '../../lib/api'
+import { useAuthStore } from '../../store/authStore'
 
 interface StaffMember {
   id: string
@@ -13,7 +14,9 @@ interface StaffMember {
   joined_at: string
 }
 
-const ROLES = ['cashier', 'bhojanshala_cashier', 'accountant', 'priest', 'volunteer', 'viewer', 'temple_admin']
+// temple_admin is intentionally NOT assignable here — it is held by exactly
+// one person and can only be handed over via "Make Temple Admin" (transfer).
+const ROLES = ['cashier', 'bhojanshala_cashier', 'accountant', 'priest', 'volunteer', 'viewer']
 const ROLE_LABELS: Record<string, string> = {
   temple_admin: 'Admin', accountant: 'Accountant', cashier: 'Cashier',
   bhojanshala_cashier: 'Bhojanshala Cashier', priest: 'Priest', volunteer: 'Volunteer', viewer: 'Viewer',
@@ -27,6 +30,7 @@ const roleBadge = (role: string) => {
 }
 
 export function StaffPage() {
+  const me = useAuthStore(s => s.user)
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteForm, setInviteForm] = useState({ mobile: '', name: '', role: 'cashier' })
@@ -90,8 +94,27 @@ export function StaffPage() {
       })
       setEditMember(null)
       load()
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e2.response?.data?.error?.message || 'Could not update this member')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  async function transferAdmin(m: StaffMember) {
+    if (!window.confirm(
+      `Transfer the Temple Admin role to ${m.name || m.mobile}?\n\n` +
+      'They become the Temple Admin and you keep your other roles ' +
+      '(or become Viewer). Applies from your next login.',
+    )) return
+    try {
+      const { data } = await api.post(`/users/${m.id}/transfer-admin`)
+      setInviteMsg(data.data?.note || 'Temple Admin transferred successfully')
+      load()
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e2.response?.data?.error?.message || 'Could not transfer Temple Admin')
     }
   }
 
@@ -153,29 +176,53 @@ export function StaffPage() {
                 <tr><td colSpan={6} className="text-center py-10 text-slate-400">Loading...</td></tr>
               ) : staff.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-8 text-slate-400">No staff members found</td></tr>
-              ) : staff.map(m => (
-                <tr key={m.id}>
-                  <td>
-                    <p className="font-medium">{m.name || '—'}</p>
-                    {m.email && <p className="text-xs text-slate-400">{m.email}</p>}
-                  </td>
-                  <td className="font-mono text-sm">{m.mobile}</td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
-                      {(m.roles || []).map(r => <span key={r} className={roleBadge(r)}>{r}</span>)}
-                    </div>
-                  </td>
-                  <td>
-                    {m.is_active
-                      ? <span className="flex items-center gap-1 text-green-700 text-xs"><CheckCircle size={12} /> Active</span>
-                      : <span className="flex items-center gap-1 text-slate-400 text-xs"><XCircle size={12} /> Inactive</span>}
-                  </td>
-                  <td className="text-xs text-slate-400">{new Date(m.joined_at).toLocaleDateString('en-IN')}</td>
-                  <td>
-                    <button onClick={() => openEdit(m)} className="btn-secondary btn-sm">Edit</button>
-                  </td>
-                </tr>
-              ))}
+              ) : staff.map(m => {
+                const isSelf = m.id === me?.id
+                const isAdminRow = (m.roles || []).includes('temple_admin')
+                return (
+                  <tr key={m.id}>
+                    <td>
+                      <p className="font-medium">
+                        {m.name || '—'}
+                        {isSelf && <span className="badge-blue ml-2">You</span>}
+                      </p>
+                      {m.email && <p className="text-xs text-slate-400">{m.email}</p>}
+                    </td>
+                    <td className="font-mono text-sm">{m.mobile}</td>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        {(m.roles || []).map(r => <span key={r} className={roleBadge(r)}>{r}</span>)}
+                      </div>
+                    </td>
+                    <td>
+                      {m.is_active
+                        ? <span className="flex items-center gap-1 text-green-700 text-xs"><CheckCircle size={12} /> Active</span>
+                        : <span className="flex items-center gap-1 text-slate-400 text-xs"><XCircle size={12} /> Inactive</span>}
+                    </td>
+                    <td className="text-xs text-slate-400">{new Date(m.joined_at).toLocaleDateString('en-IN')}</td>
+                    <td>
+                      {isAdminRow ? (
+                        <span className="text-xs text-slate-400" title="The Temple Admin role can only be transferred, never edited away">
+                          {isSelf ? 'Use "Make Temple Admin" on another member to step down' : 'Temple Admin'}
+                        </span>
+                      ) : (
+                        <div className="flex gap-2 justify-start">
+                          <button onClick={() => openEdit(m)} className="btn-secondary btn-sm">Edit</button>
+                          {m.is_active && me?.roles?.includes('temple_admin') && (
+                            <button
+                              onClick={() => transferAdmin(m)}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 border border-amber-300 rounded-md px-2 py-1 hover:bg-amber-50"
+                              title="Hand the Temple Admin role to this member"
+                            >
+                              <ShieldCheck size={12} /> Make Temple Admin
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

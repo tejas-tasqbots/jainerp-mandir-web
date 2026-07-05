@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Download, Search, XCircle, Receipt, Ban } from 'lucide-react'
+import { Plus, Download, FileDown, Search, XCircle, Receipt, Ban } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import type { SevaBooking } from '../../types'
 
@@ -78,6 +80,23 @@ export function SevaBookingsList() {
     }).catch(() => alert('Export failed'))
   }
 
+  function exportPdf() {
+    const params = new URLSearchParams({ limit: '1000' })
+    if (dateFilter) params.set('date', dateFilter)
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    api.get(`/seva-bookings?${params}`).then(r => {
+      const rows: SevaBooking[] = r.data.data || []
+      const total = rows.reduce((s, b) => s + b.amount_paise, 0)
+      downloadRowsPdf('seva-bookings.pdf', 'Seva Bookings',
+        ['Date', 'Devotee', 'Mobile', 'Seva', 'Slot', 'Amount', 'Mode', 'Status'],
+        rows.map(b => [
+          b.booking_date, b.devotee_name ?? '', b.devotee_mobile ?? '',
+          b.seva_name ?? '', b.slot_time ?? '', rsFmt(b.amount_paise), b.payment_mode, b.status,
+        ]),
+        { subtitle: dateFilter || 'All dates', totals: ['Total', '', '', '', '', rsFmt(total), '', ''] })
+    }).catch(() => alert('Export failed'))
+  }
+
   function statusBadge(s: string) {
     if (s === 'booked') return <span className="badge-yellow">Booked</span>
     if (s === 'confirmed') return <span className="badge-blue">Confirmed</span>
@@ -96,6 +115,7 @@ export function SevaBookingsList() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Seva Bookings</h1>
         <div className="flex gap-2">
+          <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> Export PDF</button>
           <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Download size={14} /> Export CSV</button>
           <button type="button" onClick={() => navigate('/seva/add')} className="btn-primary btn-sm">
             <Plus size={14} /> New Booking
