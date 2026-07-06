@@ -76,7 +76,7 @@ interface PhoneInputProps {
 
 export function PhoneInput({
   value, onChange, required, disabled, autoFocus, placeholder,
-  selectClassName = 'form-select rounded-r-none border-r-0 w-28 flex-shrink-0',
+  selectClassName = 'form-input rounded-r-none border-r-0 w-20 inline-flex items-center justify-center text-slate-600 select-none',
   inputClassName = 'form-input rounded-l-none flex-1',
 }: PhoneInputProps) {
   const [dials, setDials] = useState<DialOption[]>(DIALS)
@@ -104,19 +104,28 @@ export function PhoneInput({
 
   return (
     <div className="flex">
-      <select
-        aria-label="Country code"
-        className={selectClassName}
-        value={parsed.dial}
-        disabled={disabled}
-        onChange={e => update(e.target.value, parsed.national)}
-      >
-        {[...byDial.entries()].map(([dial, group]) => (
-          <option key={dial} value={dial}>
-            {flag(group[0].iso2)} +{dial} {group.map(g => g.name).join(' / ')}
-          </option>
-        ))}
-      </select>
+      {/* The open list shows flag + code + country name; the closed control
+          shows only the dial code (long labels overflow the narrow select),
+          via a transparent native select overlaid on a compact display. */}
+      <div className="relative flex-shrink-0">
+        <span aria-hidden="true" className={selectClassName}>
+          +{parsed.dial}
+          <span className="ml-1 text-xs opacity-60">▾</span>
+        </span>
+        <select
+          aria-label="Country code"
+          className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
+          value={parsed.dial}
+          disabled={disabled}
+          onChange={e => update(e.target.value, parsed.national)}
+        >
+          {[...byDial.entries()].map(([dial, group]) => (
+            <option key={dial} value={dial}>
+              {flag(group[0].iso2)} +{dial} {group.map(g => g.name).join(' / ')}
+            </option>
+          ))}
+        </select>
+      </div>
       <input
         type="tel"
         inputMode="numeric"
