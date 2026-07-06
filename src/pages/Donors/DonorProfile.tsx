@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Save, X, Eye, ShieldCheck, RefreshCw } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
+import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
 
 interface LedgerRow {
@@ -26,7 +28,7 @@ export function DonorProfile() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', city: '', state: '', address: '', pan: '' })
+  const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '', pan: '' })
 
   // OTP-gated full-PAN reveal
   const [pan, setPan] = useState<{ open: boolean; stage: 'idle' | 'otp'; otp: string; value: string | null; hint: string | null; busy: boolean; error: string | null }>(
@@ -74,9 +76,10 @@ export function DonorProfile() {
         setDonor(d)
         setForm({
           name: d.name || '',
-          mobile: (d.mobile || '').replace(/^\+91/, ''),
+          mobile: d.mobile || '',
           email: d.email || '',
           gotra: d.gotra || '',
+          country: d.country || 'India',
           city: d.city || '',
           state: d.state || '',
           address: d.address_line1 || '',
@@ -96,13 +99,15 @@ export function DonorProfile() {
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault()
     if (!id) return
+    if (form.mobile && !isValidPhone(form.mobile)) return
     setSaving(true)
     try {
       await api.patch(`/donors/${id}`, {
         name: form.name,
-        mobile: form.mobile ? `+91${form.mobile.replace(/^\+91/, '')}` : undefined,
+        mobile: form.mobile || undefined,
         email: form.email || undefined,
         gotra: form.gotra || undefined,
+        country: form.country || undefined,
         city: form.city || undefined,
         state: form.state || undefined,
         address_line1: form.address || undefined,
@@ -150,11 +155,7 @@ export function DonorProfile() {
               </div>
               <div>
                 <label className="form-label">Mobile</label>
-                <div className="flex">
-                  <span className="flex items-center px-3 bg-slate-50 border border-slate-300 rounded-l-md text-sm text-slate-500">+91</span>
-                  <input type="tel" className="form-input rounded-l-none flex-1" value={form.mobile}
-                    onChange={e => setForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, '') }))} maxLength={10} />
-                </div>
+                <PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} />
               </div>
               <div>
                 <label className="form-label">Email</label>
@@ -169,13 +170,32 @@ export function DonorProfile() {
                 <input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} maxLength={10} />
               </div>
               <div>
-                <label className="form-label">City</label>
-                <input className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+                <label className="form-label">Country</label>
+                <CountrySelect value={form.country} onChange={c => setForm(f => ({ ...f, country: c, state: '', city: '' }))} />
               </div>
-              <div>
-                <label className="form-label">State</label>
-                <input className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
-              </div>
+              {(!form.country || form.country === 'India') ? (
+                <>
+                  <div>
+                    <label className="form-label">State</label>
+                    <StateSelect value={form.state} onChange={sv => setForm(f => ({ ...f, state: sv, city: '' }))} />
+                  </div>
+                  <div>
+                    <label className="form-label">City</label>
+                    <CitySelect state={form.state} value={form.city} onChange={c => setForm(f => ({ ...f, city: c }))} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="form-label">State / Province</label>
+                    <input className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="form-label">City</label>
+                    <input className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+                  </div>
+                </>
+              )}
               <div className="col-span-2">
                 <label className="form-label">Address</label>
                 <input className="form-input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />

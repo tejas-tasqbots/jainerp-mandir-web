@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, X, UserPlus, ShieldCheck, Link2, EyeOff, KeyRound } from 'lucide-react'
 import { api } from '../../lib/api'
+import { CitySelect, CountrySelect, StateSelect } from '../GeoSelect'
+import { isValidPhone, PhoneInput } from '../PhoneInput'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,12 +78,21 @@ export function DevoteePicker({
   const [offlineName, setOfflineName] = useState('')
   const [offlineMobile, setOfflineMobile] = useState('')
 
-  // Register step 1
+  // Register step 1 — same details as the full Donor registration form
   const [regName, setRegName] = useState('')
+  const [regMobile, setRegMobile] = useState('')     // E.164 via PhoneInput
+  const [regEmail, setRegEmail] = useState('')
+  const [regGotra, setRegGotra] = useState('')
+  const [regCountry, setRegCountry] = useState('India')
+  const [regState, setRegState] = useState('')
+  const [regCity, setRegCity] = useState('')
+  const [regAddress, setRegAddress] = useState('')
+  const [regPincode, setRegPincode] = useState('')
   const [regPan, setRegPan] = useState('')
   const [regNoPan, setRegNoPan] = useState(false)
   const [regUserId, setRegUserId] = useState('')
   const [regSending, setRegSending] = useState(false)
+  const [regSaving, setRegSaving] = useState(false)
   const [regDevOtp, setRegDevOtp] = useState('')
 
   // Register step 2
@@ -138,6 +149,14 @@ export function DevoteePicker({
     setOfflineName('')
     setOfflineMobile('')
     setRegName('')
+    setRegMobile('')
+    setRegEmail('')
+    setRegGotra('')
+    setRegCountry('India')
+    setRegState('')
+    setRegCity('')
+    setRegAddress('')
+    setRegPincode('')
     setRegPan('')
     setRegNoPan(false)
     setRegUserId('')
@@ -159,10 +178,28 @@ export function DevoteePicker({
     setError('')
   }
 
+  /** Everything the admin captured inline — mirrors the full Donor registration form. */
+  function registerPayload() {
+    return {
+      mobile: regMobile,
+      name: regName.trim(),
+      pan: (!regNoPan && regPan) ? regPan : undefined,
+      email: regEmail.trim() || undefined,
+      gotra: regGotra.trim() || undefined,
+      country: regCountry || undefined,
+      state: regState.trim() || undefined,
+      city: regCity.trim() || undefined,
+      address: regAddress.trim() || undefined,
+      pincode: regPincode.trim() || undefined,
+    }
+  }
+
   function startRegister() {
-    // Pre-fill name if query looks like a name
-    const looksLikeMobile = /^\d{10}$/.test(query.replace(/\D/g, ''))
+    // Pre-fill from the query: digits become the mobile, anything else the name
+    const digits = query.replace(/\D/g, '')
+    const looksLikeMobile = /^\d{10}$/.test(digits)
     setRegName(looksLikeMobile ? '' : query)
+    setRegMobile(looksLikeMobile ? `+91${digits}` : '')
     setRegPan('')
     setRegNoPan(false)
     setError('')
@@ -170,17 +207,12 @@ export function DevoteePicker({
   }
 
   async function sendOtp() {
-    const mobile = query.replace(/\D/g, '')
-    if (mobile.length !== 10) { setError('Enter a valid 10-digit mobile number to continue'); return }
+    if (!isValidPhone(regMobile)) { setError('Enter a valid mobile number to continue'); return }
     if (!regName.trim()) { setError('Name is required'); return }
     setRegSending(true)
     setError('')
     try {
-      const resp = await api.post('/devotees/register', {
-        mobile,
-        name: regName.trim(),
-        pan: (!regNoPan && regPan) ? regPan : undefined,
-      })
+      const resp = await api.post('/devotees/register', registerPayload())
       const data = resp.data?.data ?? resp.data
       if (data.already_verified) {
         // Devotee is already in the system and verified — select directly
@@ -216,7 +248,7 @@ export function DevoteePicker({
       onChange({
         global_user_id: data.global_user_id,
         name: regName,
-        mobile: query.replace(/\D/g, ''),
+        mobile: regMobile,
         verified: true,
         linked_to_this_temple: true,
         pan_masked: data.pan_masked,
@@ -334,14 +366,41 @@ export function DevoteePicker({
     )
   }
 
-  // ── REGISTER STEP 1: Name + PAN ────────────────────────────────────────────
+  // ── REGISTER STEP 1: full devotee details (same as Donor registration) ────
   if (step === 'register_name') {
-    const mobile10 = query.replace(/\D/g, '')
-    function saveWithoutOtp() {
+    const isIndia = !regCountry || regCountry === 'India'
+    async function saveWithoutOtp() {
       if (!regName.trim()) { setError('Name is required'); return }
+      if (regMobile) {
+        if (!isValidPhone(regMobile)) { setError('Enter a valid mobile number'); return }
+        // Persist the full profile now (unverified) so nothing the admin
+        // captured is lost; the devotee can verify via OTP later.
+        setRegSaving(true)
+        setError('')
+        try {
+          const resp = await api.post('/devotees/register', registerPayload())
+          const data = resp.data?.data ?? resp.data
+          onChange({
+            global_user_id: data.user_id,
+            name: regName.trim(),
+            mobile: regMobile,
+            verified: !!data.already_verified,
+            linked_to_this_temple: false,
+            pan_masked: (!regNoPan && regPan) ? regPan : undefined,
+            is_offline: false,
+          })
+          setStep('selected')
+        } catch (e: unknown) {
+          const err = e as { response?: { data?: { error?: { message?: string } } } }
+          setError(err.response?.data?.error?.message || 'Failed to save devotee')
+        } finally {
+          setRegSaving(false)
+        }
+        return
+      }
+      // No mobile — record locally on the transaction only
       onChange({
         name: regName.trim(),
-        mobile: mobile10 ? `+91${mobile10}` : undefined,
         pan_masked: (!regNoPan && regPan) ? regPan : undefined,
         verified: false,
         is_offline: false,
@@ -354,10 +413,8 @@ export function DevoteePicker({
         <label className="form-label">{fieldLabel}{required && ' *'}</label>
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-blue-700 font-medium">
-              New devotee{mobile10 ? <> — <span className="font-semibold">+91{mobile10}</span></> : ''}
-            </p>
-            {mobile10.length === 10 && (
+            <p className="text-xs text-blue-700 font-medium">New devotee</p>
+            {isValidPhone(regMobile) && (
               <button type="button" onClick={sendOtp} disabled={regSending}
                 className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 underline underline-offset-2">
                 <KeyRound size={11} /> {regSending ? 'Sending…' : 'Verify with OTP'}
@@ -365,7 +422,36 @@ export function DevoteePicker({
             )}
           </div>
           <input className="form-input" placeholder="Full name *" value={regName}
-            onChange={e => setRegName(e.target.value)} />
+            onChange={e => { setRegName(e.target.value); setError('') }} />
+          <PhoneInput value={regMobile} onChange={v => { setRegMobile(v); setError('') }} />
+          <div className="grid grid-cols-2 gap-2">
+            <input type="email" className="form-input" placeholder="Email (optional)" value={regEmail}
+              onChange={e => setRegEmail(e.target.value)} />
+            <input className="form-input" placeholder="Gotra (optional)" value={regGotra}
+              onChange={e => setRegGotra(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <CountrySelect value={regCountry} onChange={c => { setRegCountry(c); setRegState(''); setRegCity('') }} />
+            {isIndia ? (
+              <StateSelect value={regState} onChange={s => { setRegState(s); setRegCity('') }} />
+            ) : (
+              <input className="form-input" placeholder="State / Province" value={regState}
+                onChange={e => setRegState(e.target.value)} />
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {isIndia ? (
+              <CitySelect state={regState} value={regCity} onChange={setRegCity} />
+            ) : (
+              <input className="form-input" placeholder="City" value={regCity}
+                onChange={e => setRegCity(e.target.value)} />
+            )}
+            <input className="form-input" placeholder={isIndia ? 'Pincode' : 'Postal code'} value={regPincode}
+              maxLength={isIndia ? 6 : 12}
+              onChange={e => setRegPincode(isIndia ? e.target.value.replace(/\D/g, '') : e.target.value)} />
+          </div>
+          <input className="form-input" placeholder="Address (optional)" value={regAddress}
+            onChange={e => setRegAddress(e.target.value)} />
           {!regNoPan && (
             <input className="form-input uppercase" placeholder="PAN (optional, for 80G)" value={regPan}
               onChange={e => setRegPan(e.target.value.toUpperCase())} maxLength={10} />
@@ -377,8 +463,8 @@ export function DevoteePicker({
           {error && <p className="text-xs text-red-600">{error}</p>}
           <p className="text-xs text-slate-400">Devotee can verify their account later via their own login.</p>
           <div className="flex gap-2">
-            <button type="button" onClick={saveWithoutOtp} className="btn-primary btn-sm text-xs">
-              Save
+            <button type="button" onClick={saveWithoutOtp} disabled={regSaving} className="btn-primary btn-sm text-xs">
+              {regSaving ? 'Saving…' : 'Save'}
             </button>
             <button type="button" onClick={() => { setStep('idle'); setQuery('') }} className="btn-secondary btn-sm text-xs">
               Cancel
@@ -396,7 +482,7 @@ export function DevoteePicker({
         <label className="form-label">{fieldLabel}{required && ' *'}</label>
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
           <p className="text-xs text-blue-700">
-            OTP sent to <strong>{query.replace(/\D/g, '')}</strong>. Ask the devotee to read it out.
+            OTP sent to <strong>{regMobile}</strong>. Ask the devotee to read it out.
             {regDevOtp && <span className="ml-1 font-bold text-orange-600">[Dev: {regDevOtp}]</span>}
           </p>
           <input className="form-input text-lg tracking-widest w-40" placeholder="6-digit OTP"
@@ -464,7 +550,7 @@ export function DevoteePicker({
                   {!d.verified && (
                     <button type="button" title="Send OTP to verify"
                       onClick={() => {
-                        setQuery(d.mobile.replace('+91', ''))
+                        setRegMobile(d.mobile)
                         setRegName(d.name)
                         setRegUserId(d.id)
                         setStep('register_name')

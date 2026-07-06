@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Crown, Plus, ShieldCheck, X } from 'lucide-react'
 import { api } from '../../../lib/api'
+import { PhoneInput } from '../../../components/PhoneInput'
 import { ROLE_LABELS } from '../../../lib/rbac'
 import { useAuthStore } from '../../../store/authStore'
 
@@ -128,7 +129,7 @@ export function UsersTab() {
           <form onSubmit={invite} className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div><label className="form-label">Name *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-              <div><label className="form-label">Mobile *</label><input className="form-input" placeholder="9876543210" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} required /></div>
+              <div><label className="form-label">Mobile *</label><PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} required /></div>
               <div>
                 <label className="form-label">Role</label>
                 <select className="form-select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>

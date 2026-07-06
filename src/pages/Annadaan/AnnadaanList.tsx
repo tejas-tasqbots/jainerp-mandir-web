@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Save, RefreshCw, Receipt } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { PhoneInput } from '../../components/PhoneInput'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import type { BhojanshalaSale } from '../../types'
 
@@ -159,11 +160,7 @@ export function AnnadaanList() {
               </div>
               <div>
                 <label className="form-label">Mobile (opt.)</label>
-                <div className="flex gap-0">
-                  <span className="flex items-center px-3 bg-slate-50 border border-slate-300 border-r-0 rounded-l-md text-sm text-slate-500">+91</span>
-                  <input className="form-input rounded-l-none flex-1" value={form.devotee_mobile} inputMode="numeric" maxLength={10}
-                    onChange={e => setForm(f => ({ ...f, devotee_mobile: e.target.value.replace(/\D/g, '').slice(0, 10) }))} placeholder="10-digit mobile" />
-                </div>
+                <PhoneInput value={form.devotee_mobile} onChange={v => setForm(f => ({ ...f, devotee_mobile: v }))} />
               </div>
             </div>
             {form.tokens && form.rate && (

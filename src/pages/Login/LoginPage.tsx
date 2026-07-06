@@ -3,6 +3,7 @@ import { Building2, Phone, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide
 import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 import { api } from '../../lib/api'
+import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 
 type Step = 'mobile' | 'otp' | 'tenant'
 
@@ -27,14 +28,14 @@ export function LoginPage() {
   const { fetchProfile } = useProfileStore()
 
   async function sendOtp() {
-    if (!/^[6-9]\d{9}$/.test(mobile)) {
-      setError('Enter a valid 10-digit mobile number')
+    if (!isValidPhone(mobile)) {
+      setError('Enter a valid mobile number')
       return
     }
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.post('/auth/send-otp', { mobile: `+91${mobile}`, purpose: 'login' })
+      const { data } = await api.post('/auth/send-otp', { mobile, purpose: 'login' })
       if (data.data?.dev_otp) setMockOtp(data.data.dev_otp)
       setStep('otp')
     } catch (e: unknown) {
@@ -51,7 +52,7 @@ export function LoginPage() {
     setError('')
     try {
       const { data } = await api.post('/auth/verify-otp', {
-        mobile: `+91${mobile}`,
+        mobile,
         otp,
         device_id: deviceId,
       })
@@ -82,7 +83,7 @@ export function LoginPage() {
     // Seed from the login response, then GET /auth/me fills in the real
     // user name/roles + temple display name (never show the raw slug).
     setUser(
-      { id: '', mobile: `+91${mobile}`, name: null, roles: result.roles ?? [] },
+      { id: '', mobile, name: null, roles: result.roles ?? [] },
       { id: result.tenant?.id ?? '', slug: result.tenant?.slug ?? slug, name: result.tenant?.name ?? slug },
     )
     await hydrateSession()
@@ -98,7 +99,7 @@ export function LoginPage() {
         setUser(
           {
             id: me.user?.id ?? '',
-            mobile: me.user?.mobile ?? `+91${mobile}`,
+            mobile: me.user?.mobile ?? mobile,
             name: me.user?.name ?? null,
             roles: me.user?.roles ?? [],
           },
@@ -141,27 +142,14 @@ export function LoginPage() {
           <div className="space-y-4">
             <div>
               <label className="form-label">Mobile Number</label>
-              <div className="flex gap-2">
-                <span className="flex items-center px-3 bg-slate-50 border border-slate-300 rounded-md text-sm text-slate-500 border-r-0 rounded-r-none">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="9876543210"
-                  className="form-input rounded-l-none flex-1"
-                  value={mobile}
-                  onChange={e => { setMobile(e.target.value.replace(/\D/g, '')); setError('') }}
-                  onKeyDown={e => e.key === 'Enter' && sendOtp()}
-                  autoFocus
-                />
+              <div onKeyDown={e => e.key === 'Enter' && sendOtp()}>
+                <PhoneInput value={mobile} onChange={v => { setMobile(v); setError('') }} autoFocus />
               </div>
             </div>
             {error && <p className="text-red-600 text-sm">{error}</p>}
             <button
               onClick={sendOtp}
-              disabled={loading || mobile.length !== 10}
+              disabled={loading || !isValidPhone(mobile)}
               className="btn-primary w-full justify-center py-3"
             >
               <Phone size={16} />
@@ -177,7 +165,7 @@ export function LoginPage() {
               <ChevronLeft size={15} /> Back
             </button>
             <p className="text-sm text-slate-600">
-              OTP sent to <span className="font-semibold">+91 {mobile}</span>
+              OTP sent to <span className="font-semibold">{mobile}</span>
             </p>
             {mockOtp && (
               <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-700">

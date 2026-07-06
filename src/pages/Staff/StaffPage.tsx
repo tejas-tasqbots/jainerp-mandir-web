@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { UserPlus, Shield, ShieldCheck, CheckCircle, XCircle } from 'lucide-react'
 import { api } from '../../lib/api'
+import { PhoneInput } from '../../components/PhoneInput'
 import { useAuthStore } from '../../store/authStore'
 
 interface StaffMember {
@@ -61,7 +62,7 @@ export function StaffPage() {
     setInviteMsg('')
     try {
       await api.post('/users/invite', {
-        mobile: `+91${inviteForm.mobile.replace(/^\+91/, '')}`,
+        mobile: inviteForm.mobile,
         name: inviteForm.name || undefined,
         roles: [inviteForm.role],
       })
@@ -136,12 +137,8 @@ export function StaffPage() {
           <form onSubmit={invite} className="flex items-end gap-3 flex-wrap">
             <div>
               <label className="form-label">Mobile *</label>
-              <div className="flex">
-                <span className="flex items-center px-3 bg-slate-50 border border-slate-300 rounded-l-md text-sm text-slate-500">+91</span>
-                <input type="tel" className="form-input rounded-l-none" style={{ width: '140px' }}
-                  placeholder="9876543210" value={inviteForm.mobile}
-                  onChange={e => setInviteForm(f => ({ ...f, mobile: e.target.value.replace(/\D/g, '') }))}
-                  maxLength={10} required />
+              <div style={{ minWidth: '230px' }}>
+                <PhoneInput value={inviteForm.mobile} onChange={v => setInviteForm(f => ({ ...f, mobile: v }))} required />
               </div>
             </div>
             <div>

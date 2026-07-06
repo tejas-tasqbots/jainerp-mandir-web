@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Download, XCircle, Plus, X } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
+import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
 
 const emptyForm = {
-  name: '', mobile: '', email: '', gotra: '', city: '', state: '', address: '', pan: '', is_80g_eligible: true,
+  name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '', pan: '', is_80g_eligible: true,
 }
 
 export function DonorList() {
@@ -43,14 +45,19 @@ export function DonorList() {
 
   async function addDonor(e: React.FormEvent) {
     e.preventDefault()
+    if (form.mobile && !isValidPhone(form.mobile)) {
+      setError('Enter a valid mobile number')
+      return
+    }
     setSaving(true)
     setError('')
     try {
       const { data } = await api.post('/donors', {
         name: form.name,
-        mobile: form.mobile ? `+91${form.mobile.replace(/^\+91/, '')}` : undefined,
+        mobile: form.mobile || undefined,
         email: form.email || undefined,
         gotra: form.gotra || undefined,
+        country: form.country || undefined,
         city: form.city || undefined,
         state: form.state || undefined,
         address: form.address || undefined,
@@ -159,11 +166,7 @@ export function DonorList() {
                 </div>
                 <div>
                   <label className="form-label">Mobile</label>
-                  <div className="flex">
-                    <span className="flex items-center px-3 bg-slate-50 border border-slate-300 rounded-l-md text-sm text-slate-500">+91</span>
-                    <input type="tel" className="form-input rounded-l-none flex-1" placeholder="9876543210"
-                      value={form.mobile} onChange={e => f('mobile', e.target.value.replace(/\D/g, ''))} maxLength={10} />
-                  </div>
+                  <PhoneInput value={form.mobile} onChange={v => f('mobile', v)} />
                 </div>
                 <div>
                   <label className="form-label">Email</label>
@@ -179,13 +182,32 @@ export function DonorList() {
                     onChange={e => f('pan', e.target.value.toUpperCase())} maxLength={10} />
                 </div>
                 <div>
-                  <label className="form-label">City</label>
-                  <input className="form-input" value={form.city} onChange={e => f('city', e.target.value)} />
+                  <label className="form-label">Country</label>
+                  <CountrySelect value={form.country} onChange={c => { f('country', c); f('state', ''); f('city', '') }} />
                 </div>
-                <div>
-                  <label className="form-label">State</label>
-                  <input className="form-input" value={form.state} onChange={e => f('state', e.target.value)} />
-                </div>
+                {(!form.country || form.country === 'India') ? (
+                  <>
+                    <div>
+                      <label className="form-label">State</label>
+                      <StateSelect value={form.state} onChange={s => { f('state', s); f('city', '') }} />
+                    </div>
+                    <div>
+                      <label className="form-label">City</label>
+                      <CitySelect state={form.state} value={form.city} onChange={c => f('city', c)} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="form-label">State / Province</label>
+                      <input className="form-input" value={form.state} onChange={e => f('state', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="form-label">City</label>
+                      <input className="form-input" value={form.city} onChange={e => f('city', e.target.value)} />
+                    </div>
+                  </>
+                )}
                 <div className="col-span-2">
                   <label className="form-label">Address</label>
                   <input className="form-input" value={form.address} onChange={e => f('address', e.target.value)} />
