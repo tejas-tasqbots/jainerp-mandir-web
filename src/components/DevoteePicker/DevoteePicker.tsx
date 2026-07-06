@@ -271,7 +271,10 @@ export function DevoteePicker({
 
   function confirmOffline() {
     if (!offlineName.trim()) { setError('Name is required'); return }
-    onChange({ name: offlineName.trim(), mobile: offlineMobile.replace(/\D/g, '') || undefined, is_offline: true })
+    if (offlineMobile && !isValidPhone(offlineMobile)) { setError('Enter a valid mobile number'); return }
+    // offlineMobile is already E.164 via PhoneInput — links to the global
+    // profile by exact mobile match on sync
+    onChange({ name: offlineName.trim(), mobile: offlineMobile || undefined, is_offline: true })
     setStep('selected')
     setError('')
   }
@@ -339,12 +342,9 @@ export function DevoteePicker({
           <div className="text-xs text-amber-600 flex items-center gap-1 mb-1">
             <span className="font-medium">Offline mode</span> — name and mobile only. Will link to global profile on sync.
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input className="form-input" placeholder={`${fieldLabel} name${required ? ' *' : ''}`}
-              value={offlineName} onChange={e => setOfflineName(e.target.value)} />
-            <input className="form-input" placeholder="Mobile (optional)" type="tel"
-              value={offlineMobile} onChange={e => setOfflineMobile(e.target.value)} />
-          </div>
+          <input className="form-input" placeholder={`${fieldLabel} name${required ? ' *' : ''}`}
+            value={offlineName} onChange={e => setOfflineName(e.target.value)} />
+          <PhoneInput value={offlineMobile} onChange={v => { setOfflineMobile(v); setError('') }} />
           {showAnonymous && (
             <button type="button" onClick={() => selectAnonymous()}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 mt-1">
