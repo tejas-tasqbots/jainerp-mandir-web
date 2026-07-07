@@ -44,6 +44,19 @@ interface DevoteePickerProps {
 // Anything selected renders as a compact chip regardless of mode.
 type Mode = 'search' | 'add'
 
+/**
+ * Mask a PAN for display exactly as the API stores it (`AB` + `XXXXX` + `234F`
+ * → `ABXXXXX34F`). The full PAN must never be shown after entry — only the
+ * OTP-gated reveal endpoint discloses it. Returns undefined for anything that
+ * isn't a well-formed PAN, so a partial/typo'd entry is simply not shown.
+ */
+function maskPanForDisplay(pan?: string): string | undefined {
+  if (!pan) return undefined
+  const clean = pan.toUpperCase().trim()
+  if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(clean)) return undefined
+  return `${clean.slice(0, 2)}XXXXX${clean.slice(-3)}`
+}
+
 // ─── Hook: detect online/offline for desktop ─────────────────────────────────
 
 function useIsOnline(): boolean {
@@ -185,7 +198,9 @@ export function DevoteePicker({
   async function saveDonor() {
     if (!f.name.trim()) { setError('Name is required'); return }
     if (f.mobile && !isValidPhone(f.mobile)) { setError('Enter a valid mobile number'); return }
-    const panMasked = (!f.noPan && f.pan) ? f.pan : undefined
+    // Store the MASKED PAN on the selection — the raw PAN goes to the API in the
+    // register/donation payload but must never be surfaced back in the UI chip.
+    const panMasked = (!f.noPan) ? maskPanForDisplay(f.pan) : undefined
 
     if (isOnline && f.mobile) {
       setSaving(true); setError('')
@@ -239,7 +254,9 @@ export function DevoteePicker({
       onChange({
         global_user_id: data.global_user_id, name: f.name.trim(), mobile: f.mobile,
         verified: true, linked_to_this_temple: true,
-        pan_masked: data.pan_masked ?? ((!f.noPan && f.pan) ? f.pan : undefined),
+        // verify-otp returns an already-masked PAN; fall back to a locally-masked
+        // one (never the raw entry) if the API didn't echo it.
+        pan_masked: data.pan_masked ?? (!f.noPan ? maskPanForDisplay(f.pan) : undefined),
       })
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
