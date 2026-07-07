@@ -61,6 +61,9 @@ function modeName(mode: string): string {
 }
 
 function amountInWords(paise: number): string {
+  // Guard against a missing/NaN amount — without this, convert(NaN) recurses
+  // forever (every comparison is false) and overflows the stack.
+  if (!Number.isFinite(paise)) return 'Zero Rupees'
   const rupees = Math.floor(paise / 100)
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
     'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
@@ -111,6 +114,18 @@ function paymentBlock(mandir: ReceiptData['mandir']): string {
 
 function voidedBanner(is_voided: boolean): string {
   return is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''
+}
+
+/**
+ * Donor PAN text for the receipt — masked, and only when the donation is
+ * 80G-eligible and a PAN is on file. An 80G receipt must carry the donor's PAN
+ * (it is what links to Form 10BD/10BE); a non-80G receipt never shows it. Full
+ * PAN is never printed — only the OTP-gated reveal endpoint discloses it.
+ * Returns '' when there is nothing to show, so callers can drop it inline.
+ */
+function donorPan(r: ReceiptData): string {
+  if (!r.is_80g_eligible || !r.donor?.pan_masked) return ''
+  return r.donor.pan_masked
 }
 
 // ── TEMPLATE 1: Classic ─────────────────────────────────────────────────────
@@ -170,6 +185,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div class="donor-box">
         <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
         ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-mobile">PAN: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="amount-box">
         <div>
@@ -234,6 +250,7 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     </div>
     ${voidedBanner(r.is_voided)}
     <div class="field"><span class="k">Received From</span><span class="v">${r.donor?.name || 'Anonymous'}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
+    ${donorPan(r) ? `<div class="field"><span class="k">Donor PAN</span><span class="v">${donorPan(r)}</span></div>` : ''}
     <div class="field"><span class="k">Category</span><span class="v">${r.category || '—'}</span></div>
     <div class="field"><span class="k">Payment Mode</span><span class="v">${modeName(r.payment_mode)}</span></div>
     <div class="field"><span class="k">80G Eligible</span><span class="v">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</span></div>
@@ -306,6 +323,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
           <div class="label">Received From</div>
           <div class="value">${r.donor?.name || 'Anonymous'}</div>
           ${r.donor?.mobile ? `<div class="sub">${r.donor.mobile}</div>` : ''}
+          ${donorPan(r) ? `<div class="sub">PAN: ${donorPan(r)}</div>` : ''}
         </div>
         <div class="info-card">
           <div class="label">Category</div>
@@ -384,6 +402,7 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <div class="received">Received with gratitude from:</div>
       <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
       ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
+      ${donorPan(r) ? `<div class="donor-mobile">PAN: ${donorPan(r)}</div>` : ''}
       <hr class="divider">
       <table>
         <tr><td>Category</td><td>${r.category || '—'}</td></tr>
@@ -459,6 +478,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="sec-title">Received From</div>
         <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
         ${r.donor?.mobile ? `<div class="donor-sub">${r.donor.mobile}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-sub">PAN: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="sec">
         <div class="sec-title">Donation Amount</div>
@@ -549,6 +569,7 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         <div class="sec-hdr">Donors Detail:</div>
         <div class="field"><div class="k">Received with Thanks</div><div class="v">From ${r.donor?.name || 'Anonymous Donor'}</div></div>
         ${r.donor?.mobile ? `<div class="field"><div class="k">Contact No.</div><div class="v">${r.donor.mobile}</div></div>` : ''}
+        ${donorPan(r) ? `<div class="field"><div class="k">Donor PAN</div><div class="v">${donorPan(r)}</div></div>` : ''}
         <div class="field" style="margin-top:12px"><div class="k">Amount (INR)</div><div class="v amount">INR ${fmtRs(r.amount_paise)}</div></div>
         <div class="field"><div class="k">As donation for the cause</div><div class="v">${r.category || 'General Donation'}</div></div>
         ${hasBank ? `<div style="margin-top:12px"><div class="k" style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px">Bank / Payment Details</div><div class="bank-box">${mandir.upi_id ? 'UPI: <b>'+mandir.upi_id+'</b><br>' : ''}${mandir.bank_account_no ? 'A/C: <b>'+mandir.bank_account_no+'</b> &nbsp; IFSC: <b>'+mandir.bank_ifsc+'</b><br>'+mandir.bank_name : ''}</div></div>` : ''}
@@ -629,7 +650,7 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div class="meta-cell"><div class="k">Receipt Number</div><div class="v">${r.receipt_number}</div></div>
       <div class="meta-cell"><div class="k">Date</div><div class="v">${dateStr}</div></div>
     </div>
-    <div class="rcvd-row">Received From: &nbsp;<b>${r.donor?.name || 'Anonymous Donor'}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; Mobile: <b>'+r.donor.mobile+'</b>' : ''}</div>
+    <div class="rcvd-row">Received From: &nbsp;<b>${r.donor?.name || 'Anonymous Donor'}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; Mobile: <b>'+r.donor.mobile+'</b>' : ''}${donorPan(r) ? ' &nbsp;&nbsp; PAN: <b>'+donorPan(r)+'</b>' : ''}</div>
     <div class="addr-row">
       <div>Category: <b>${r.category || 'General Donation'}</b></div>
       <div>Mode: <b>${modeName(r.payment_mode)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? 'Yes' : 'No'}</b></div>
@@ -729,6 +750,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
         <div class="to">TO</div>
         <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
         ${r.donor?.mobile ? `<div class="donor-addr">${r.donor.mobile}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-addr">PAN: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="sig-section">
         <div class="sig-left">This is an electronically generated document<br>and does not require any signature.</div>
@@ -801,6 +823,7 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     <div class="body">
       <div class="field-row"><span class="lbl">Donor Name Shri / Smt.</span><span class="val">${r.donor?.name || 'Anonymous Donor'}</span></div>
       ${r.donor?.mobile ? `<div class="field-row"><span class="lbl">Mobile Number</span><span class="val">${r.donor.mobile}</span></div>` : ''}
+      ${donorPan(r) ? `<div class="field-row"><span class="lbl">Donor PAN</span><span class="val">${donorPan(r)}</span></div>` : ''}
       <div class="field-row"><span class="lbl">Amount in Words</span><span class="val">INR ${amountInWords(r.amount_paise)}</span></div>
       <div class="field-row"><span class="lbl">For Purpose of</span><span class="val">${r.category || 'General Donation'}</span></div>
       ${hasBank ? `
