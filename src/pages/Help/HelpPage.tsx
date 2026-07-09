@@ -100,7 +100,7 @@ const topics = [
   {
     title: 'Staff & User Management',
     steps: [
-      'Go to Staff Management in the sidebar',
+      'Go to Settings → Users',
       'To invite a new staff member: enter mobile, name, and role, then click "Send Invite"',
       'Staff receives an OTP on their mobile to log in',
       'To update role or deactivate: click "Edit" on the staff row',
@@ -127,7 +127,7 @@ const apiCoverage = [
   { endpoint: 'GET /reports/daily-collection, /donation-register, /expense-register, /gst-summary', ui: 'Reports page with export', status: 'connected' },
   { endpoint: 'GET /compliance/80g-certificates, POST /form-10bd/generate, GET /tds-report', ui: 'Certificates & TDS page', status: 'connected' },
   { endpoint: 'GET/PATCH /tenants/me, PATCH /tenants/me/privacy, GET /subscription, /usage', ui: 'Settings — Profile + Subscription tabs', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /users', ui: 'Staff Management page', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /users', ui: 'Settings → Users', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /vendors, /priests, /employees, /volunteers', ui: 'Masters — Vendors, Priests, Employees', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /inventory-items', ui: 'Masters — Inventory', status: 'connected' },
   { endpoint: 'GET /accounting/cash-book, /day-book, /income-expenditure, /balance-sheet', ui: 'Accounting module (11 pages)', status: 'connected' },

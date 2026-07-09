@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Save, X, Pencil, RefreshCw } from 'lucide-react'
+import { Plus, Save, X, Pencil, Trash2, RefreshCw } from 'lucide-react'
 import { api } from '../../lib/api'
 
 export interface MasterField {
@@ -152,6 +152,18 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     }
   }
 
+  async function remove(row: Row) {
+    const name = (row.name ?? row.label ?? 'this entry') as string
+    if (!window.confirm(`Delete "${name}"? Past records that reference it are kept.`)) return
+    try {
+      await api.delete(`/${resource}/${row.id}`)
+      await load()
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string }; message?: string } } }
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to delete')
+    }
+  }
+
   function renderField(field: MasterField) {
     const v = form[field.key]
     if (field.type === 'checkbox') {
@@ -268,6 +280,9 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                       <td className="text-right">
                         <button onClick={() => startEdit(row)} className="btn-icon" title="Edit">
                           <Pencil size={14} />
+                        </button>
+                        <button onClick={() => remove(row)} className="btn-icon text-slate-500 hover:text-brand-red" title="Delete">
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>

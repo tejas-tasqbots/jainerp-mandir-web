@@ -49,6 +49,10 @@ export function AccountingRulesTab() {
               </div>
             </label>
           ))}
+          <p className="text-xs text-slate-400 pt-1">
+            Note: reports and statements are currently prepared on a <strong>cash basis</strong>.
+            This preference is saved for your records; accrual-basis reporting is planned.
+          </p>
         </div>
       </div>
 
@@ -60,6 +64,10 @@ export function AccountingRulesTab() {
               onChange={e => setForm(f => ({ ...f, enable_depreciation: e.target.checked }))} />
             Enable depreciation tracking for fixed assets
           </label>
+          <p className="text-xs text-slate-400 mt-2">
+            Depreciation is entered manually per asset on the Fixed Assets page; the Balance Sheet
+            shows assets net of the depreciation you record. Automatic depreciation runs are planned.
+          </p>
         </div>
       </div>
 

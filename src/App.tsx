@@ -29,7 +29,6 @@ import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
 import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
-import { StaffPage } from './pages/Staff/StaffPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
 import { FixedAssets } from './pages/Accounts/FixedAssets'
 import { Loans } from './pages/Accounts/Loans'
@@ -145,9 +144,6 @@ export default function App() {
             <Route path="/masters/priests" element={<PriestsPage />} />
             <Route path="/masters/employees" element={<EmployeesPage />} />
             <Route path="/masters/inventory" element={<InventoryPage />} />
-
-            {/* Staff */}
-            <Route path="/staff" element={<StaffPage />} />
 
             {/* Accounts */}
             <Route path="/accounts/contra" element={<ContraEntries />} />

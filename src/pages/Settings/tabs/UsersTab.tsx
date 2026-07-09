@@ -12,7 +12,19 @@ interface StaffUser {
   email: string | null
   roles: string[]
   is_active: boolean
+  joined_at?: string
 }
+
+// Plain-language description of what each role can do (reference card below the table).
+const ROLE_PERMISSIONS: { role: string; desc: string; cls: string }[] = [
+  { role: 'temple_admin', desc: 'Full access — can void donations, delete data, manage all settings', cls: 'badge-red' },
+  { role: 'accountant', desc: 'Accounts, reports, fixed assets, loans, TDS entries', cls: 'badge-blue' },
+  { role: 'cashier', desc: 'Donations, expenses, bookings, prasad, seva, bhojanshala', cls: 'badge-green' },
+  { role: 'bhojanshala_cashier', desc: 'Bhojanshala only — record & redeem meal tokens', cls: 'badge-green' },
+  { role: 'priest', desc: 'View seva bookings, mark them done', cls: 'badge-yellow' },
+  { role: 'volunteer', desc: 'Event registrations, visitor count entries', cls: 'badge-gray' },
+  { role: 'viewer', desc: 'Read-only access to all data (no create/edit)', cls: 'badge-gray' },
+]
 
 const ROLES = [
   { id: 'accountant', label: 'Accountant' },
@@ -147,10 +159,10 @@ export function UsersTab() {
 
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Status</th><th>Joined</th><th className="text-right">Actions</th></tr></thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={5} className="text-center text-slate-400 py-6">No users yet.</td></tr>
+                <tr><td colSpan={6} className="text-center text-slate-400 py-6">No users yet.</td></tr>
               ) : users.map(u => {
                 const isSelf = u.id === me?.id
                 const isAdminRow = u.roles?.includes('temple_admin')
@@ -188,6 +200,9 @@ export function UsersTab() {
                         </button>
                       )}
                     </td>
+                    <td className="text-xs text-slate-400">
+                      {u.joined_at ? new Date(u.joined_at).toLocaleDateString('en-IN') : '—'}
+                    </td>
                     <td className="text-right">
                       {iAmAdmin && !isSelf && !isAdminRow && u.is_active && (
                         <button
@@ -212,6 +227,18 @@ export function UsersTab() {
           {ROLE_LABELS.temple_admin} can manage everything. Other roles only see and use the modules
           that belong to their work — the sidebar adjusts automatically after they log in.
         </p>
+
+        <div className="border-t border-slate-100 pt-4">
+          <h4 className="font-semibold text-sm mb-3">Role Permissions Reference</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            {ROLE_PERMISSIONS.map(({ role, desc, cls }) => (
+              <div key={role} className="flex gap-2">
+                <span className={`${cls} mt-0.5 flex-shrink-0`}>{role}</span>
+                <p className="text-slate-500 text-xs">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -169,9 +169,7 @@ export async function downloadReport(
           ['Input GST (on expenses)', rs(d.input_gst_paise)],
           ['Net GST Payable', rs(d.net_payable_paise)],
         ]
-        if (format === 'pdf') return emit('pdf', `gst-summary-${params.fy || ''}`, 'GST Summary', range, ['Head', 'Amount'], rows)
-        downloadBlob(`gst-summary-${params.fy || ''}.json`, JSON.stringify(data.data, null, 2), 'application/json')
-        return true
+        return emit(format, `gst-summary-${params.fy || ''}`, 'GST Summary', range, ['Head', 'Amount'], rows)
       }
       case 'ca-pack': {
         // Server-built ZIP (registers + trial balance + I&E + balance sheet).

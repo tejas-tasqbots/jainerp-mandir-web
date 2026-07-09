@@ -41,7 +41,6 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/reports': ['accountant', 'viewer'],
   '/certificates': ['accountant'],
   '/registers': ['cashier', 'volunteer', 'viewer'],
-  '/staff': [], // temple_admin only
   '/settings': [], // temple_admin only
   '/help': ALL_STAFF,
 }

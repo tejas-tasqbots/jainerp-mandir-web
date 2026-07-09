@@ -20,12 +20,16 @@ interface AddModal {
   due_date: string
 }
 
+interface Account { id: string; name: string; type: string }
+
 export function CreditorList() {
   const [creditors, setCreditors] = useState<Creditor[]>([])
   const [loading, setLoading] = useState(true)
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [payModal, setPayModal] = useState<PayModal | null>(null)
   const [payAmt, setPayAmt] = useState('')
   const [payMode, setPayMode] = useState<PayMode>('cash')
+  const [payAccountId, setPayAccountId] = useState('')
   const [paying, setPaying] = useState(false)
   const [addModal, setAddModal] = useState<AddModal>({
     open: false, vendor_name: '', description: '', amount: '', due_date: '',
@@ -38,8 +42,12 @@ export function CreditorList() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await api.get('/creditors?limit=100')
-      setCreditors(data.data || [])
+      const [cr, ac] = await Promise.all([
+        api.get('/creditors?limit=100'),
+        api.get('/accounts?is_active=true'),
+      ])
+      setCreditors(cr.data.data || [])
+      setAccounts(ac.data.data || [])
     } catch {
       setCreditors([])
     } finally {
@@ -47,11 +55,14 @@ export function CreditorList() {
     }
   }
 
+  const bankAccounts = accounts.filter(a => a.type !== 'cash')
+
   function openPayModal(c: Creditor) {
     const outstanding = c.original_amount_paise - c.paid_amount_paise
     setPayModal({ id: c.id, vendorName: c.vendor_name || 'Unknown', outstanding, currentPaid: c.paid_amount_paise })
     setPayAmt('')
     setPayMode('cash')
+    setPayAccountId('')
     setError('')
   }
 
@@ -61,21 +72,23 @@ export function CreditorList() {
     const payPaise = parsePaise(payAmt)
     if (!payPaise || payPaise <= 0) { setError('Enter a valid amount'); return }
     if (payPaise > payModal.outstanding) { setError(`Cannot pay more than outstanding ₹${fmtPaise(payModal.outstanding)}`); return }
+    if (payMode !== 'cash' && !payAccountId) { setError('Select the bank account this payment came from'); return }
     setPaying(true)
     setError('')
     try {
-      const newPaid = payModal.currentPaid + payPaise
-      const totalOriginal = payModal.outstanding + payModal.currentPaid
-      await api.patch(`/creditors/${payModal.id}`, {
-        paid_amount_paise: newPaid,
-        status: newPaid >= totalOriginal ? 'paid' : 'partially_paid',
-        last_payment_mode: payMode,
-        last_payment_date: new Date().toISOString().slice(0, 10),
+      // Dedicated pay endpoint records a real cash/bank outflow (updates the
+      // Cash/Bank Book & Balance Sheet), unlike the old generic PATCH.
+      await api.post(`/creditors/${payModal.id}/pay`, {
+        amount_paise: payPaise,
+        payment_mode: payMode,
+        payment_account_id: payMode === 'cash' ? undefined : payAccountId,
+        payment_date: new Date().toISOString().slice(0, 10),
       })
       setPayModal(null)
       load()
-    } catch {
-      setError('Payment failed. Please try again.')
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      setError(e2.response?.data?.error?.message || 'Payment failed. Please try again.')
     } finally {
       setPaying(false)
     }
@@ -209,13 +222,27 @@ export function CreditorList() {
               </div>
               <div>
                 <label className="form-label">Payment Mode *</label>
-                <select className="form-input" value={payMode} onChange={e => setPayMode(e.target.value as PayMode)}>
+                <select className="form-input" value={payMode}
+                  onChange={e => { setPayMode(e.target.value as PayMode); setError('') }}>
                   <option value="cash">Cash</option>
                   <option value="upi">UPI</option>
                   <option value="cheque">Cheque</option>
                   <option value="netbanking">Net Banking</option>
                 </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  {payMode === 'cash' ? 'Paid from Cash in Hand.' : 'Paid from the selected bank account.'}
+                </p>
               </div>
+              {payMode !== 'cash' && (
+                <div>
+                  <label className="form-label">Bank Account *</label>
+                  <select className="form-input" value={payAccountId}
+                    onChange={e => { setPayAccountId(e.target.value); setError('') }}>
+                    <option value="">Select account…</option>
+                    {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">Cancel</button>

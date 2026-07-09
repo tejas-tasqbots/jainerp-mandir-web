@@ -3,7 +3,7 @@ import {
   LayoutDashboard, IndianRupee, Receipt, Hotel, ShoppingBag,
   Heart, Utensils, Calendar, BarChart2, Award, BookMarked, Settings,
   ChevronDown, ChevronRight, Bell, HelpCircle, Users, Landmark,
-  UserCheck, UserCog, Sparkles
+  UserCheck, Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { canSee } from '../../lib/rbac'
@@ -76,7 +76,6 @@ const navItems: NavItem[] = [
       { label: 'Visitor Count', to: '/registers/visitor-count' },
     ],
   },
-  { label: 'Staff Management', icon: <UserCog size={18} />, to: '/staff' },
   { label: 'Settings', icon: <Settings size={18} />, to: '/settings' },
   { label: 'User Guide', icon: <HelpCircle size={18} />, to: '/help' },
 ]

@@ -77,7 +77,7 @@ export function EmployeesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2"><Users size={18} /> Staff Management</h1>
+        <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2"><Users size={18} /> Employees & Volunteers</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> Add {tab === 'employees' ? 'Employee' : 'Volunteer'}</button>
       </div>
 
