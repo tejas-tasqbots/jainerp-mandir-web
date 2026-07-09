@@ -163,6 +163,10 @@ async function run() {
     // C4: creditor shows a real vendor name, not "Unknown vendor"
     ok('C4: creditor has real vendor name', target.vendor_name && target.vendor_name !== 'Unknown vendor', `name=${target.vendor_name}`);
 
+    // Unpaid creditors appear on the Balance Sheet only under accrual basis, so
+    // set accrual for the liability assertion below.
+    await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: 'accrual' } });
+
     // capture cash-book closing before payment (cash-book returns the full
     // object with closing_balance_paise; ledger returns only the entry array)
     const cashBefore = (await http('GET', `/accounting/cash-book?account_id=${cashAcct.id}&from=2026-04-01&to=2027-03-31`, { token: T })).data;
@@ -193,24 +197,52 @@ async function run() {
     // non-cash without account rejected
     const noAcct = await http('POST', `/creditors/${target.id}/pay`, { token: T, body: { amount_paise: 1000, payment_mode: 'upi' } });
     ok('non-cash without account rejected', noAcct.status === 400, `status=${noAcct.status}`);
+
+    // restore cash basis (default) so later cash-flow assertions are unaffected
+    await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: 'cash' } });
   }
 
-  // ---- ACCOUNTING BASIS + DEPRECIATION TOGGLES (documented no-op: save works, no crash) ----
-  for (const basis of ['accrual', 'cash']) {
-    const patch = await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: basis } });
-    ok(`toggle accounting_basis=${basis} saves`, isOk(patch));
-    const me = await http('GET', '/tenants/me', { token: T });
-    ok(`accounting_basis=${basis} persisted`, me.data?.accounting_basis === basis, `got ${me.data?.accounting_basis}`);
-    // statements still 200 under this basis
-    const bs = await http('GET', `/accounting/balance-sheet?fy=${fy}`, { token: T });
-    ok(`balance-sheet OK under ${basis}`, isOk(bs));
-  }
-  for (const dep of [true, false]) {
-    const patch = await http('PATCH', '/tenants/me', { token: T, body: { enable_depreciation: dep } });
-    ok(`toggle enable_depreciation=${dep} saves`, isOk(patch));
-    const me = await http('GET', '/tenants/me', { token: T });
-    ok(`enable_depreciation=${dep} persisted`, me.data?.enable_depreciation === dep, `got ${me.data?.enable_depreciation}`);
-  }
+  // ---- ACCRUAL vs CASH BASIS actually changes the statements ----
+  // Seed a fresh UNPAID on-credit expense so accrual > cash by that amount.
+  await http('POST', '/expenses', { token: T, body: { amount_paise: 500000, description: `QA accrual ${RUN}`, category: 'AccrualQA', vendor: { name: 'AccrualQA V' }, vendor_name: 'AccrualQA V', is_on_credit: true } });
+  await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: 'accrual' } });
+  const ieAcc = (await http('GET', `/accounting/income-expenditure?fy=${fy}`, { token: T })).data;
+  const bsAcc = (await http('GET', `/accounting/balance-sheet?fy=${fy}`, { token: T })).data;
+  await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: 'cash' } });
+  const ieCash = (await http('GET', `/accounting/income-expenditure?fy=${fy}`, { token: T })).data;
+  const bsCash = (await http('GET', `/accounting/balance-sheet?fy=${fy}`, { token: T })).data;
+  ok('basis label present', ieAcc?.basis === 'accrual' && ieCash?.basis === 'cash', `${ieAcc?.basis}/${ieCash?.basis}`);
+  ok('accrual expenditure > cash (unpaid on-credit counted only in accrual)',
+    Number(ieAcc?.totals?.expenditure_paise) - Number(ieCash?.totals?.expenditure_paise) >= 500000,
+    `accr=${ieAcc?.totals?.expenditure_paise} cash=${ieCash?.totals?.expenditure_paise}`);
+  ok('accrual BS shows payables, cash BS drops them',
+    Number(bsAcc?.liabilities?.creditors_paise) > 0 && Number(bsCash?.liabilities?.creditors_paise) === 0,
+    `accr=${bsAcc?.liabilities?.creditors_paise} cash=${bsCash?.liabilities?.creditors_paise}`);
+
+  // ---- DEPRECIATION engine: run computes + posts, idempotent, gates BS ----
+  const depFy = '2019-20'; // isolated FY so this run is deterministic
+  const asset = await http('POST', '/fixed-assets', { token: T, body: { name: `QA Asset ${RUN}`, purchase_date: '2019-05-01', purchase_cost_paise: 1000000, useful_life_years: 10, depreciation_method: 'SLM', depreciation_rate: 10 } });
+  ok('create fixed asset', !!asset.data?.id);
+  const run1 = await http('POST', '/fixed-assets/depreciation/run', { token: T, body: { fy: depFy } });
+  const mine1 = (run1.data?.entries || []).find(e => e.asset === `QA Asset ${RUN}`);
+  ok('depreciation run posts SLM charge (10% of 1,000,000 = 100,000)', mine1?.amount_paise === 100000, `got ${mine1?.amount_paise}`);
+  const run2 = await http('POST', '/fixed-assets/depreciation/run', { token: T, body: { fy: depFy } });
+  const mine2 = (run2.data?.entries || []).find(e => e.asset === `QA Asset ${RUN}`);
+  ok('depreciation run idempotent per FY (no re-charge)', !mine2, `re-charged ${mine2?.amount_paise ?? 0}`);
+  const ent = await http('GET', `/fixed-assets/depreciation/entries?fy=${depFy}`, { token: T });
+  ok('depreciation entries listed', (ent.data || []).some(e => e.asset_name === `QA Asset ${RUN}`));
+  const badFy = await http('POST', '/fixed-assets/depreciation/run', { token: T, body: { fy: 'nope' } });
+  ok('depreciation run rejects bad fy', badFy.status === 400);
+  // enable_depreciation gates gross vs net on the Balance Sheet (for depFy)
+  await http('PATCH', '/tenants/me', { token: T, body: { enable_depreciation: true } });
+  const bsDepOn = (await http('GET', `/accounting/balance-sheet?fy=${depFy}`, { token: T })).data;
+  await http('PATCH', '/tenants/me', { token: T, body: { enable_depreciation: false } });
+  const bsDepOff = (await http('GET', `/accounting/balance-sheet?fy=${depFy}`, { token: T })).data;
+  ok('depreciation flag: gross (off) > net (on) fixed assets',
+    Number(bsDepOff?.assets?.fixed_assets_paise) > Number(bsDepOn?.assets?.fixed_assets_paise),
+    `off=${bsDepOff?.assets?.fixed_assets_paise} on=${bsDepOn?.assets?.fixed_assets_paise}`);
+  // restore defaults
+  await http('PATCH', '/tenants/me', { token: T, body: { accounting_basis: 'cash', enable_depreciation: false } });
 
   // ---- CATEGORIES & DROPDOWNS DELETE (Part 1) ----
   const cat = await http('POST', '/donation-categories', { token: T, body: { name: `QA Cat ${RUN}` } });

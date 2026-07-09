@@ -50,8 +50,9 @@ export function AccountingRulesTab() {
             </label>
           ))}
           <p className="text-xs text-slate-400 pt-1">
-            Note: reports and statements are currently prepared on a <strong>cash basis</strong>.
-            This preference is saved for your records; accrual-basis reporting is planned.
+            This drives the Income &amp; Expenditure and Balance Sheet. <strong>Cash</strong> counts only
+            money that actually moved; <strong>Accrual</strong> recognises income/expenses when
+            earned/incurred and shows unpaid bills (creditors) as liabilities.
           </p>
         </div>
       </div>
@@ -65,8 +66,9 @@ export function AccountingRulesTab() {
             Enable depreciation tracking for fixed assets
           </label>
           <p className="text-xs text-slate-400 mt-2">
-            Depreciation is entered manually per asset on the Fixed Assets page; the Balance Sheet
-            shows assets net of the depreciation you record. Automatic depreciation runs are planned.
+            When on, the Balance Sheet shows fixed assets net of depreciation; when off, at gross
+            cost. Use “Run Depreciation” on the Fixed Assets page to compute &amp; post each year’s
+            charge (straight-line or written-down value).
           </p>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Plus, Save } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { Plus, Save, Calculator } from 'lucide-react'
+import { api, fmtPaise, parsePaise, currentFY } from '../../lib/api'
 import type { FixedAsset } from '../../types'
 
 export function FixedAssets() {
@@ -8,6 +8,7 @@ export function FixedAssets() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [running, setRunning] = useState(false)
   const [form, setForm] = useState({
     name: '', purchase_date: new Date().toISOString().slice(0, 10),
     purchase_cost: '', useful_life_years: '5',
@@ -35,11 +36,33 @@ export function FixedAssets() {
     } finally { setSaving(false) }
   }
 
+  async function runDepreciation() {
+    const fy = window.prompt('Run depreciation for which financial year? (e.g. 2026-27)', currentFY())
+    if (!fy) return
+    setRunning(true)
+    try {
+      const { data } = await api.post('/fixed-assets/depreciation/run', { fy })
+      const d = data.data || {}
+      alert(d.assets_charged
+        ? `Depreciation posted for FY ${d.fy}: ${d.assets_charged} asset(s), total ₹${fmtPaise(d.total_depreciation_paise)}.`
+        : `No depreciation to post for FY ${d.fy} (already run, or nothing left to depreciate).`)
+      api.get('/fixed-assets').then(r => setAssets(r.data.data || []))
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e.response?.data?.error?.message || 'Could not run depreciation')
+    } finally { setRunning(false) }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">Fixed Assets</h1>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary btn-sm"><Plus size={14} /> Add Asset</button>
+        <div className="flex gap-2">
+          <button onClick={runDepreciation} disabled={running} className="btn-secondary btn-sm" title="Compute & post depreciation for a financial year">
+            <Calculator size={14} /> {running ? 'Running…' : 'Run Depreciation'}
+          </button>
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary btn-sm"><Plus size={14} /> Add Asset</button>
+        </div>
       </div>
 
       {showForm && (
