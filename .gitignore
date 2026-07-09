@@ -55,3 +55,6 @@ Thumbs.db
 # Misc
 .cache/
 .tmp/
+
+# e2e download artifacts
+e2e/full/downloads/

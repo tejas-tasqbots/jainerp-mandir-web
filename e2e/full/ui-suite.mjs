@@ -116,7 +116,7 @@ try {
   await visit('TC-MAST-visitors', '/registers/visitor-count', '');
   await visit('TC-MAST-annadaan', '/annadaan', '');
   await visit('TC-MAST-creditors', '/creditors', '');
-  await visit('TC-STAFF', '/staff', '');
+  // Staff Management was consolidated into Settings → Users; /staff no longer exists.
   await visit('TC-SET-settings', '/settings', 'Setting');
   await visit('TC-HELP', '/help', '');
 

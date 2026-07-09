@@ -26,6 +26,7 @@ export function EmployeesPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => { load() }, [search, tab])
 
@@ -42,9 +43,10 @@ export function EmployeesPage() {
     }
   }
 
-  function openAdd() { setEditId(null); setForm(emptyForm); setShowForm(true) }
+  function openAdd() { setEditId(null); setForm(emptyForm); setError(''); setShowForm(true) }
   function openEdit(emp: Employee) {
     setEditId(emp.id)
+    setError('')
     setForm({
       name: emp.name, mobile: emp.mobile || '', email: emp.email || '',
       designation: emp.designation || '', department: emp.department || '',
@@ -57,6 +59,7 @@ export function EmployeesPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setError('')
     const resource = tab === 'employees' ? 'employees' : 'volunteers'
     try {
       const body = {
@@ -69,6 +72,9 @@ export function EmployeesPage() {
       else await api.post(`/${resource}`, body)
       setShowForm(false); setForm(emptyForm); setEditId(null)
       load()
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      setError(e2.response?.data?.error?.message || `Could not save ${resource === 'employees' ? 'employee' : 'volunteer'}`)
     } finally {
       setSaving(false)
     }
@@ -133,17 +139,20 @@ export function EmployeesPage() {
             <form onSubmit={submit} className="space-y-3">
               <div><label className="form-label">Name *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">Mobile</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} /></div>
+                <div><label className="form-label">Mobile *</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} required /></div>
                 <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">Designation</label><input className="form-input" value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} /></div>
-                <div><label className="form-label">Department</label><input className="form-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
-              </div>
+              {tab === 'employees' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="form-label">Designation *</label><input className="form-input" value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} required /></div>
+                  <div><label className="form-label">Department</label><input className="form-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">Monthly Salary (₹)</label><input type="number" className="form-input" value={form.monthly_salary} onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))} /></div>
                 <div><label className="form-label">Joining Date</label><input type="date" className="form-input" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} /></div>
               </div>
+              {error && <p className="text-sm text-brand-red">{error}</p>}
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
                 <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Saving...' : 'Save'}</button>
