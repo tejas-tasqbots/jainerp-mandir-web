@@ -154,12 +154,15 @@ async function run() {
   const rBad = await http('POST', '/donations', { token, body: { category_id: cat80?.id, amount_paise: 100000, payment_mode: 'upi', is_80g_eligible: true, donor: { name: 'Bad PAN', mobile: mob('3'), pan: 'NOTAPAN' } } });
   rec('B3-1', 'invalid PAN → error (not silently stored)', rBad.status >= 400, `code=${rBad.code} status=${rBad.status}`);
 
-  G('B4 — 80G donation for PAN donor → masked PAN in live receipt payload');
+  G('B4 — 80G donation for PAN donor → FULL PAN on live receipt (masked stays in payload)');
   const d4 = await http('POST', '/donations', { token, body: { category_id: cat80?.id, amount_paise: 500000, payment_mode: 'upi', is_80g_eligible: true, utr_number: `U${stamp}`, donor: { global_user_id: uid1, name: 'Edge PAN', mobile: mob('1') } } });
   const rc4 = (await http('GET', `/donations/${d4.data?.id}/receipt`, { token })).data;
   const m4 = rc4?.donor?.pan_masked;
-  rec('B4-1', 'receipt payload masked PAN', !!m4 && /X/.test(m4) && m4 !== 'ABCDE1234F', `pan=${m4}`);
-  rec('B4-2', 'live payload renders PAN on classic', buildReceiptHtml({ ...rc4, mandir: { ...rc4.mandir, template: 'classic' } }).includes(m4), '');
+  const f4 = rc4?.donor?.pan_full;
+  rec('B4-1', 'receipt payload carries masked + full PAN for 80G', !!m4 && /X/.test(m4) && !!f4 && !/X/.test(f4), `masked=${m4} full=${f4}`);
+  // 80G receipt renders the FULL PAN (income-tax rule), not the masked form.
+  const html4 = buildReceiptHtml({ ...rc4, mandir: { ...rc4.mandir, template: 'classic' } });
+  rec('B4-2', 'live 80G receipt renders FULL PAN on classic (not masked)', !!f4 && html4.includes(f4) && !html4.includes(m4), '');
 
   G('B5 — PAN backfill: donor created WITHOUT PAN, then 80G donation supplies inline PAN → backfilled + on receipt');
   const uid5 = r2.data?.user_id;

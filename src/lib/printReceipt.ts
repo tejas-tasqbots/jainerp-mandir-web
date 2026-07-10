@@ -36,6 +36,9 @@ export interface ReceiptData {
     name?: string | null
     mobile?: string | null
     pan_masked?: string | null
+    // Full PAN — sent by the API only for 80G-eligible receipts, where it is
+    // legally required. Absent (null) on non-80G receipts.
+    pan_full?: string | null
     address?: string | null
     city?: string | null
     state?: string | null
@@ -117,15 +120,20 @@ function voidedBanner(is_voided: boolean): string {
 }
 
 /**
- * Donor PAN text for the receipt — masked, and only when the donation is
- * 80G-eligible and a PAN is on file. An 80G receipt must carry the donor's PAN
- * (it is what links to Form 10BD/10BE); a non-80G receipt never shows it. Full
- * PAN is never printed — only the OTP-gated reveal endpoint discloses it.
+ * Donor PAN text for the receipt. Only ever shown when the donation is
+ * 80G-eligible — a non-80G receipt never shows the donor PAN.
+ *
+ * On an 80G receipt the FULL PAN is printed, because Indian income-tax rules
+ * require the donor's PAN on the 80G receipt (it is what the donor reconciles
+ * against Form 10BD/10BE; a masked value can't be matched). The API returns the
+ * full PAN (`pan_full`) only for 80G receipts; everywhere else in the app PAN
+ * stays masked. If the full PAN is unavailable (e.g. decrypt failure) we fall
+ * back to the masked value rather than dropping it entirely.
  * Returns '' when there is nothing to show, so callers can drop it inline.
  */
 function donorPan(r: ReceiptData): string {
-  if (!r.is_80g_eligible || !r.donor?.pan_masked) return ''
-  return r.donor.pan_masked
+  if (!r.is_80g_eligible) return ''
+  return r.donor?.pan_full || r.donor?.pan_masked || ''
 }
 
 // ── TEMPLATE 1: Classic ─────────────────────────────────────────────────────
@@ -958,7 +966,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
           <div class="nm">${r.donor?.name || 'Anonymous Donor'}</div>
           ${r.donor?.mobile ? `<div class="li">Mobile: <b>${r.donor.mobile}</b></div>` : ''}
           ${donorAddress ? `<div class="li">${donorAddress}</div>` : ''}
-          <div class="li">PAN: <b>${r.donor?.pan_masked || 'Not provided'}</b></div>
+          <div class="li">PAN: <b>${donorPan(r) || 'Not provided'}</b></div>
         </div>
         <div class="card">
           <div class="lbl">Donation Details</div>

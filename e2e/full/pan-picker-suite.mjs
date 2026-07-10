@@ -85,7 +85,9 @@ async function run() {
   // Valid Indian E.164: +91 followed by exactly 10 digits starting 6-9.
   const uniq = Date.now().toString().slice(-6); // 6 digits
   const mobile = `+919${uniq}200`.slice(0, 13);  // +91 9 xxxxxx 200 = 10 national digits
-  const pan = 'ABCDE1234F';
+  // Unique PAN per run so a fresh donor (with pan_encrypted) is created — a reused
+  // legacy donor with a null pan_encrypted would hide the full-PAN-on-80G path.
+  const pan = `ABCDE${uniq.slice(0, 4)}F`;
 
   // (1) Register donor with inline PAN — exactly like the picker's saveDonor().
   const reg = await http('POST', '/devotees/register', { token, body: {
@@ -107,28 +109,34 @@ async function run() {
   const donId = don.data?.id;
   rec('PICK-02', '80G donation created for PAN donor', don.status < 300 && !!donId, `receipt=${don.data?.receipt_number ?? don.code}`);
 
-  // (3)(4) Receipt payload carries masked donor PAN.
+  // (3)(4) Receipt payload carries the masked PAN always, and — because this is
+  // an 80G donation — the FULL PAN too (income-tax rule: donor PAN on 80G receipt).
   const rcptRes = await http('GET', `/donations/${donId}/receipt`, { token });
   const rcpt = rcptRes.data;
   const masked = rcpt?.donor?.pan_masked;
+  const full = rcpt?.donor?.pan_full;
   const isMasked = !!masked && masked !== pan && /X/.test(masked);
   rec('PAN-01', 'receipt payload has masked donor PAN', isMasked, `pan_masked=${masked ?? 'null'}`);
-  rec('PAN-02', 'full PAN is NOT in payload (never printed raw)', JSON.stringify(rcpt).indexOf(pan) === -1, masked ?? '');
+  rec('PAN-02', '80G receipt payload carries FULL donor PAN (income-tax requirement)',
+    full === pan, `pan_full=${full ?? 'null'}`);
 
-  // (5) Every template renders the masked PAN in the HTML.
+  // (5) Every template prints the FULL PAN on an 80G receipt (not the masked one).
   for (const t of TEMPLATES) {
     const r = { ...rcpt, mandir: { ...rcpt.mandir, template: t, show_80g: true } };
     const html = buildReceiptHtml(r);
-    const ok = masked ? html.includes(masked) : false;
-    rec(`TMPL-${t}`, `template '${t}' prints masked donor PAN`, ok, ok ? '' : 'PAN missing from HTML');
+    const showsFull = html.includes(pan);
+    const showsMasked = masked ? html.includes(masked) : false;
+    rec(`TMPL-${t}`, `template '${t}' prints FULL donor PAN on 80G (not masked)`,
+      showsFull && !showsMasked, showsFull ? (showsMasked ? 'also showed masked' : '') : 'full PAN missing');
   }
 
-  // (6) Negative: a NON-80G donation must NOT show donor PAN on any template.
+  // (6) Negative: a NON-80G donation must NOT show donor PAN (full or masked) on
+  // any template.
   const nonMasked = { ...rcpt, is_80g_eligible: false };
   let leaked = false;
   for (const t of TEMPLATES) {
     const html = buildReceiptHtml({ ...nonMasked, mandir: { ...rcpt.mandir, template: t, show_80g: true } });
-    if (masked && html.includes(masked)) leaked = true;
+    if (html.includes(pan) || (masked && html.includes(masked))) leaked = true;
   }
   rec('PAN-03', 'non-80G receipts do NOT show donor PAN (any template)', !leaked);
 

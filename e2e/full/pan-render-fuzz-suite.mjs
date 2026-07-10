@@ -71,9 +71,12 @@ async function run() {
     const amount = rnd(2) ? rnd(2_000_000_00) : [0, 100, 50000, 99999900][rnd(4)];
     const template = TEMPLATES[rnd(TEMPLATES.length)];
     const is80 = !!rnd(2);
+    // The API sends the FULL PAN (pan_full) only on 80G receipts; on the rare
+    // decrypt-fallback it may be absent even for 80G. Model both.
+    const hasFull = is80 && !!rnd(2);
     const base = payload({
       is_80g_eligible: is80, amount_paise: amount,
-      donor: { name: 'Fuzz Donor', mobile: '+919000000000', pan_masked: masked },
+      donor: { name: 'Fuzz Donor', mobile: '+919000000000', pan_masked: masked, pan_full: hasFull ? pan : null },
       mandir: { ...payload().mandir, template },
     });
 
@@ -83,17 +86,20 @@ async function run() {
 
     // I5: always renders
     rec(`I5-${i}`, html.length > 200, `${template} html too short (${html.length})`);
-    // I2: raw PAN never present (the strongest invariant)
-    rec(`I2-${i}`, !html.includes(pan), `${template} LEAKED raw PAN ${pan}`);
-    // I4: mask format
+    // I4: mask format is well-formed
     rec(`I4-${i}`, /^[A-Z]{2}XXXXX[0-9A-Z]{3}$/.test(masked), `bad mask ${masked}`);
 
-    if (is80) {
-      // I1: masked PAN present when 80G
-      rec(`I1-${i}`, html.includes(masked), `${template} 80G but masked PAN ${masked} absent`);
+    if (!is80) {
+      // I2 (non-80G): no PAN at all — neither full nor masked may appear.
+      rec(`I2-${i}`, !html.includes(pan) && !html.includes(masked), `${template} non-80G LEAKED PAN`);
+    } else if (hasFull) {
+      // I1a (80G, full available): the FULL PAN is REQUIRED on the receipt, and
+      // the masked form should not also appear.
+      rec(`I1a-${i}`, html.includes(pan), `${template} 80G but full PAN ${pan} absent`);
+      rec(`I1b-${i}`, !html.includes(masked), `${template} 80G showed masked PAN alongside full`);
     } else {
-      // I3: masked PAN absent when non-80G
-      rec(`I3-${i}`, !html.includes(masked), `${template} non-80G but showed PAN ${masked}`);
+      // I1c (80G, decrypt-fallback): masked PAN appears; raw PAN never present.
+      rec(`I1c-${i}`, html.includes(masked) && !html.includes(pan), `${template} 80G fallback mask wrong`);
     }
   }
 
