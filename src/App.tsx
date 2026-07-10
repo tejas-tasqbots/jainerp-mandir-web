@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ConfirmProvider } from './components/ConfirmDialog'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
@@ -89,6 +90,7 @@ export default function App() {
 
   return (
     <Router>
+      <ConfirmProvider>
       <Routes>
         {!isLoggedIn ? (
           <Route path="*" element={<LoginPage />} />
@@ -177,6 +179,7 @@ export default function App() {
           </Route>
         )}
       </Routes>
+      </ConfirmProvider>
     </Router>
   )
 }

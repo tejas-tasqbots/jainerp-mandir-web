@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Save, X, Pencil, Trash2, RefreshCw } from 'lucide-react'
 import { api } from '../../lib/api'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 export interface MasterField {
   /** Column name sent to / read from the API. */
@@ -58,6 +59,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   const [form, setForm] = useState(emptyForm(fields))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const confirm = useConfirm()
 
   async function load() {
     setLoading(true)
@@ -154,7 +156,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
 
   async function remove(row: Row) {
     const name = (row.name ?? row.label ?? 'this entry') as string
-    if (!window.confirm(`Delete "${name}"? Past records that reference it are kept.`)) return
+    if (!(await confirm({ title: 'Delete entry', message: `Delete "${name}"?\nPast records that reference it are kept.`, confirmLabel: 'Delete', danger: true }))) return
     try {
       await api.delete(`/${resource}/${row.id}`)
       await load()

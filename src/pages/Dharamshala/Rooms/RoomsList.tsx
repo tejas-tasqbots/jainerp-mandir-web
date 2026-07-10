@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import type { RoomBooking } from '../../../types'
+import { useConfirm } from '../../../components/ConfirmDialog'
 
 export function RoomsList() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [bookings, setBookings] = useState<RoomBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -37,7 +39,7 @@ export function RoomsList() {
   }
 
   async function checkin(id: string) {
-    if (!window.confirm('Confirm check-in for this booking?')) return
+    if (!(await confirm({ title: 'Confirm check-in', message: 'Confirm check-in for this booking?', confirmLabel: 'Check in' }))) return
     try {
       await api.patch(`/room-bookings/${id}/checkin`, {})
       load()
@@ -48,7 +50,7 @@ export function RoomsList() {
   }
 
   async function checkout(id: string) {
-    if (!window.confirm('Confirm check-out for this booking?')) return
+    if (!(await confirm({ title: 'Confirm check-out', message: 'Confirm check-out for this booking?', confirmLabel: 'Check out' }))) return
     try {
       await api.patch(`/room-bookings/${id}/checkout`, {})
       load()

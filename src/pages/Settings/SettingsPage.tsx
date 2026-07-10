@@ -375,7 +375,7 @@ export function SettingsPage() {
           <MasterEditor
             resource="gst-rates"
             title="GST Rates"
-            description="GST percentages applied to taxable services (CGST + SGST for intra-state)."
+            description="GST % applied to taxable services (CGST + SGST for intra-state). Editing a rate here applies it to future Hall, Room and Prasad bookings — Room (Taxable) is used only above the ₹1,000/night threshold. Past records keep their original GST."
             fields={[
               { key: 'service', label: 'Service / Label', required: true, placeholder: 'e.g. Hall Rent' },
               { key: 'cgst', label: 'CGST (%)', type: 'number', placeholder: '9' },

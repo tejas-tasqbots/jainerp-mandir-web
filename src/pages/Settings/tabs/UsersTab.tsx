@@ -4,6 +4,7 @@ import { api } from '../../../lib/api'
 import { PhoneInput } from '../../../components/PhoneInput'
 import { ROLE_LABELS } from '../../../lib/rbac'
 import { useAuthStore } from '../../../store/authStore'
+import { useConfirm } from '../../../components/ConfirmDialog'
 
 interface StaffUser {
   id: string
@@ -49,6 +50,7 @@ function apiMessage(err: unknown, fallback: string): string {
 
 export function UsersTab() {
   const me = useAuthStore(s => s.user)
+  const confirm = useConfirm()
   const [users, setUsers] = useState<StaffUser[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', role: 'cashier' })
@@ -104,11 +106,15 @@ export function UsersTab() {
   }
 
   async function transferAdmin(u: StaffUser) {
-    if (!window.confirm(
-      `Transfer the Temple Admin role to ${u.name || u.mobile}?\n\n` +
-      'They become the Temple Admin and you keep your other roles ' +
-      '(or become Viewer). This takes effect from your next login.',
-    )) return
+    if (!(await confirm({
+      title: 'Transfer Temple Admin',
+      message:
+        `Transfer the Temple Admin role to ${u.name || u.mobile}?\n\n` +
+        'They become the Temple Admin and you keep your other roles ' +
+        '(or become Viewer). This takes effect from your next login.',
+      confirmLabel: 'Transfer',
+      danger: true,
+    }))) return
     setNotice('')
     try {
       const { data } = await api.post(`/users/${u.id}/transfer-admin`)

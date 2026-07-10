@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link2, UserPlus, ShieldCheck, CheckCircle, XCircle, Trash2, RefreshCw } from 'lucide-react'
 import { api } from '../../lib/api'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 type LinkStatus = 'approved' | 'requested' | 'invited'
 
@@ -26,6 +27,7 @@ const TABS: { key: LinkStatus; label: string }[] = [
 ]
 
 export function ConnectedDevoteesPage() {
+  const confirm = useConfirm()
   const [tab, setTab] = useState<LinkStatus>('approved')
   const [links, setLinks] = useState<DevoteeLink[]>([])
   const [loading, setLoading] = useState(false)
@@ -63,7 +65,7 @@ export function ConnectedDevoteesPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm('Remove this devotee connection?')) return
+    if (!(await confirm({ title: 'Remove connection', message: 'Remove this devotee connection?', confirmLabel: 'Remove', danger: true }))) return
     setActionId(id)
     try {
       await api.delete(`/devotee-links/${id}`)

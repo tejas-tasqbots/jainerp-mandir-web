@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Plus, Trash2, Users, X } from 'lucide-react'
 import { api } from '../../../lib/api'
+import { useConfirm } from '../../../components/ConfirmDialog'
 
 interface Trustee {
   id: string
@@ -15,6 +16,7 @@ const EMPTY = { name: '', designation: '', mobile: '', email: '', since_year: ''
 
 /** Trustee board management (shown on receipts/80G docs and the public temple page). */
 export function TrusteesTab() {
+  const confirm = useConfirm()
   const [rows, setRows] = useState<Trustee[]>([])
   const [form, setForm] = useState(EMPTY)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -53,7 +55,7 @@ export function TrusteesTab() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm('Remove this trustee?')) return
+    if (!(await confirm({ title: 'Remove trustee', message: 'Remove this trustee?', confirmLabel: 'Remove', danger: true }))) return
     try { await api.delete(`/tenants/me/trustees/${id}`); await load() } catch { /* */ }
   }
 

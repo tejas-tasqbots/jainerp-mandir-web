@@ -171,6 +171,17 @@ async function run() {
   const rc5 = (await http('GET', `/donations/${d5.data?.id}/receipt`, { token })).data;
   rec('B5-2', 'backfilled PAN now on receipt (masked)', !!rc5?.donor?.pan_masked && /X/.test(rc5.donor.pan_masked), `pan=${rc5?.donor?.pan_masked}`);
 
+  G('B5b — donor w/ PAN on file (UNVERIFIED, no OTP) → 2nd 80G donation without resending PAN still succeeds');
+  // Regression for the reported bug: a picked donor whose PAN is on file but who
+  // was never OTP-verified, and whose tenant donors row may pre-date the PAN,
+  // must not be blocked with PAN_REQUIRED. resolveRef backfills the PAN from the
+  // global user. uid1 is the B4 PAN donor; this donation resends neither pan nor
+  // an OTP verification.
+  const d5b = await http('POST', '/donations', { token, body: { category_id: cat80?.id, amount_paise: 111100, payment_mode: 'upi', is_80g_eligible: true, utr_number: `V${stamp}`, donor: { global_user_id: uid1, name: 'Edge PAN', mobile: mob('1') } } });
+  rec('B5b-1', 'unverified donor w/ PAN → 80G accepted (no PAN_REQUIRED)', d5b.status < 300, `status=${d5b.status} code=${d5b.code ?? 'ok'}`);
+  const rc5b = (await http('GET', `/donations/${d5b.data?.id}/receipt`, { token })).data;
+  rec('B5b-2', 'receipt still carries full PAN for that donor', !!rc5b?.donor?.pan_full && !/X/.test(rc5b.donor.pan_full), `full=${rc5b?.donor?.pan_full}`);
+
   G('B6 — 80G with NO PAN anywhere → PAN_REQUIRED');
   const uid6 = (await http('POST', '/devotees/register', { token, body: { mobile: mob('6'), name: 'Edge Block' } })).data?.user_id;
   const d6 = await http('POST', '/donations', { token, body: { category_id: cat80?.id, amount_paise: 300000, payment_mode: 'upi', is_80g_eligible: true, donor: { global_user_id: uid6, name: 'Edge Block', mobile: mob('6') } } });

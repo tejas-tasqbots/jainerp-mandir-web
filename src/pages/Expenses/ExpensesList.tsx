@@ -5,6 +5,7 @@ import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import type { Expense } from '../../types'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 export function ExpensesList() {
   const navigate = useNavigate()
@@ -18,6 +19,7 @@ export function ExpensesList() {
   const [editForm, setEditForm] = useState({ description: '', amount_paise: '', bill_number: '' })
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   // Filters
   const [fFrom, setFFrom] = useState('')
@@ -125,7 +127,7 @@ export function ExpensesList() {
   }
 
   async function deleteExpense(id: string) {
-    if (!window.confirm('Delete this expense? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Delete expense', message: 'Delete this expense? This cannot be undone.', confirmLabel: 'Delete', danger: true }))) return
     setDeleteId(id)
     try {
       await api.delete(`/expenses/${id}`)

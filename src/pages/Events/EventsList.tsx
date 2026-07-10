@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import type { Event } from '../../types'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const eventTypes = ['festival', 'pravachan', 'utsav', 'camp', 'yatra', 'bhajan', 'annadan', 'other']
 
@@ -15,6 +16,7 @@ const emptyForm = {
 
 export function EventsList() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -88,7 +90,7 @@ export function EventsList() {
   }
 
   async function deleteEvent(id: string, name: string) {
-    if (!window.confirm(`Delete event "${name}"? This cannot be undone.`)) return
+    if (!(await confirm({ title: 'Delete event', message: `Delete event "${name}"? This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return
     setDeletingId(id)
     try {
       await api.delete(`/events/${id}`)

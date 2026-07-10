@@ -6,9 +6,11 @@ import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import type { SevaBooking } from '../../types'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 export function SevaBookingsList() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [bookings, setBookings] = useState<SevaBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [dateFilter, setDateFilter] = useState('')   // empty = all dates
@@ -47,7 +49,7 @@ export function SevaBookingsList() {
   }
 
   async function cancelBooking(id: string) {
-    if (!window.confirm('Cancel this seva booking?')) return
+    if (!(await confirm({ title: 'Cancel booking', message: 'Cancel this seva booking?', confirmLabel: 'Cancel booking', cancelLabel: 'Keep', danger: true }))) return
     try {
       await api.patch(`/seva-bookings/${id}`, { status: 'cancelled' })
       load()

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Award, Download, RefreshCw, FileText } from 'lucide-react'
 import { api, currentFY, fmtPaise } from '../../lib/api'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 // ── Authenticated download helpers ───────────────────────────────────────────
 // The compliance endpoints require a Bearer token, so opening them in a new
@@ -27,6 +28,7 @@ function toCsv(headers: string[], rows: (string | number)[][]): string {
 }
 
 export function CertificatesPage() {
+  const confirm = useConfirm()
   const [tab, setTab] = useState<'80g' | 'tds'>('80g')
   const [fy, setFy] = useState(currentFY())
   const [generating, setGenerating] = useState(false)
@@ -47,7 +49,7 @@ export function CertificatesPage() {
   }
 
   async function generate80g() {
-    if (!window.confirm(`Generate 80G certificates for all eligible donors of FY ${fy}? Existing certificate numbers are kept.`)) return
+    if (!(await confirm({ title: 'Generate 80G certificates', message: `Generate 80G certificates for all eligible donors of FY ${fy}?\nExisting certificate numbers are kept.`, confirmLabel: 'Generate' }))) return
     setGenerating(true)
     try {
       const { data } = await api.post('/compliance/80g-certificates/generate', { fy, donor_ids: 'all' })
@@ -63,7 +65,7 @@ export function CertificatesPage() {
   }
 
   async function generate10bd() {
-    if (!window.confirm(`Generate Form 10BD entries for FY ${fy}? Duplicate entries will be skipped.`)) return
+    if (!(await confirm({ title: 'Generate Form 10BD', message: `Generate Form 10BD entries for FY ${fy}?\nDuplicate entries will be skipped.`, confirmLabel: 'Generate' }))) return
     setGenerating(true)
     try {
       const { data } = await api.post('/compliance/form-10bd/generate', { fy })
