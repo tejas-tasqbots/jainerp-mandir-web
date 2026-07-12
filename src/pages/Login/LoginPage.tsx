@@ -134,7 +134,7 @@ export function LoginPage() {
           <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Mandir Admin Portal</p>
+          <p className="text-slate-500 text-sm mt-1">Mandir Login</p>
         </div>
 
         {/* Step 1: Mobile number */}
