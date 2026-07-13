@@ -7,6 +7,7 @@ import { LocationPicker } from '../../components/LocationPicker'
 import { StateSelect, CitySelect } from '../../components/GeoSelect'
 import { MasterEditor } from './MasterEditor'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
+import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
 import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
@@ -26,7 +27,7 @@ interface Requirement {
 
 export function SettingsPage() {
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -227,6 +228,7 @@ export function SettingsPage() {
           { id: 'profile', label: 'Temple Profile' },
           { id: 'trustees', label: 'Trustees' },
           { id: 'accounts', label: 'Bank & Cash Accounts' },
+          { id: 'donor-payments', label: 'Donor Payments' },
           { id: 'receipts', label: 'Receipt Settings' },
           { id: 'accounting', label: 'Accounting Rules' },
           { id: 'masters', label: 'Categories & Dropdowns' },
@@ -313,6 +315,7 @@ export function SettingsPage() {
 
       {tab === 'trustees' && <TrusteesTab />}
       {tab === 'accounts' && <BankAccountsTab />}
+      {tab === 'donor-payments' && <DonorPaymentsTab />}
       {tab === 'receipts' && <ReceiptSettingsTab />}
       {tab === 'accounting' && <AccountingRulesTab />}
       {tab === 'users' && <UsersTab />}

@@ -15,6 +15,8 @@ export interface TempleProfile {
   logo_url?: string
   plan_id?: string
   global_sync_enabled?: boolean
+  /** 80G registration number — a temple without one cannot issue 80G receipts */
+  reg_80g_number?: string | null
 }
 
 interface ProfileState {

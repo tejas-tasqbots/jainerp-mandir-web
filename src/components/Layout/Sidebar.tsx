@@ -3,10 +3,12 @@ import {
   LayoutDashboard, IndianRupee, Receipt, Hotel, ShoppingBag,
   Heart, Utensils, Calendar, BarChart2, Award, BookMarked, Settings,
   ChevronDown, ChevronRight, Bell, HelpCircle, Users, Landmark,
-  UserCheck, Sparkles
+  UserCheck, Sparkles, Inbox
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { api } from '../../lib/api'
 import { canSee } from '../../lib/rbac'
+import { useIsOnline } from '../../lib/useIsOnline'
 import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 
@@ -20,6 +22,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard size={18} />, to: '/dashboard' },
   { label: 'Donations', icon: <IndianRupee size={18} />, to: '/donations' },
+  { label: 'Donation Requests', icon: <Inbox size={18} />, to: '/donation-requests' },
   { label: 'Expenses', icon: <Receipt size={18} />, to: '/expenses' },
   {
     label: 'Dharamshala', icon: <Hotel size={18} />,
@@ -124,9 +127,31 @@ function NavGroup({ item }: { item: NavItem }) {
   )
 }
 
+/** Poll the pending devotee donation-request count for the sidebar badge. */
+function usePendingRequestCount(): number {
+  const online = useIsOnline()
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    // Central-server data — skip entirely while the desktop app is offline.
+    if (online === false) { setCount(0); return }
+    let cancelled = false
+    const poll = () =>
+      api.get('/donation-requests/pending-count')
+        .then(r => { if (!cancelled) setCount(r.data.data?.pending ?? 0) })
+        .catch(() => { if (!cancelled) setCount(0) })
+    poll()
+    const t = setInterval(poll, 60_000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [online])
+
+  return count
+}
+
 export function Sidebar() {
   const { profile } = useProfileStore()
   const roles = useAuthStore(s => s.user?.roles)
+  const pendingRequests = usePendingRequestCount()
 
   // Hide modules the logged-in role can't work in (doc M1). The server
   // enforces real permissions — this only keeps the workspace uncluttered.
@@ -168,7 +193,12 @@ export function Sidebar() {
               }
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              <span className="truncate">{item.label}</span>
+              <span className="truncate flex-1">{item.label}</span>
+              {item.to === '/donation-requests' && pendingRequests > 0 && (
+                <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {pendingRequests > 99 ? '99+' : pendingRequests}
+                </span>
+              )}
             </NavLink>
           )
         )}

@@ -30,6 +30,7 @@ import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
 import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
+import { DonationRequestsPage } from './pages/DonationRequests/DonationRequestsPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
 import { FixedAssets } from './pages/Accounts/FixedAssets'
 import { Loans } from './pages/Accounts/Loans'
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="/donations" element={<DonationsList />} />
             <Route path="/donations/add" element={<AddDonation />} />
             <Route path="/donations/:id/edit" element={<AddDonation />} />
+            <Route path="/donation-requests" element={<DonationRequestsPage />} />
 
             {/* Expenses */}
             <Route path="/expenses" element={<ExpensesList />} />

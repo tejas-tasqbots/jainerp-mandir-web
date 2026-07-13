@@ -21,6 +21,7 @@ const ALL_STAFF: Role[] = ['cashier', 'accountant', 'priest', 'volunteer', 'view
 const MODULE_ROLES: Record<string, Role[]> = {
   '/dashboard': ALL_STAFF,
   '/donations': ['cashier', 'accountant', 'viewer'],
+  '/donation-requests': ['cashier', 'accountant', 'viewer'],
   '/expenses': ['accountant', 'cashier'],
   '/rooms': ['cashier', 'viewer'],
   '/hall': ['cashier', 'viewer'],

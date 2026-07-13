@@ -5,6 +5,7 @@ import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import { useProfileStore } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
@@ -85,6 +86,10 @@ export function AddDonation() {
   // off/disabled until a valid PAN is typed into the inline Add-PAN field.
   const needsPan = !!devotee && !devotee.is_anonymous && !devotee.pan_masked
   const panBlocked = needsPan && !panValid
+  // A temple without an 80G registration cannot issue 80G receipts at all
+  // (server enforces via EIGHTY_G_NOT_CONFIGURED; this just explains it up front).
+  const profile = useProfileStore(s => s.profile)
+  const temple80gBlocked = !!profile && !profile.reg_80g_number
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -97,7 +102,7 @@ export function AddDonation() {
         category_id: form.category_id,
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
-        is_80g_eligible: form.is_80g_eligible && !panBlocked,
+        is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked,
       }
 
       // The inline-added PAN rides along so the API saves it onto the donor record.
@@ -229,12 +234,15 @@ export function AddDonation() {
           {/* 80G toggle */}
           <div className="space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous && !panBlocked}
+              <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous && !panBlocked && !temple80gBlocked}
                 onChange={e => setForm(f => ({ ...f, is_80g_eligible: e.target.checked }))}
-                disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000) || panBlocked}
+                disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000) || panBlocked || temple80gBlocked}
                 className="w-4 h-4 accent-green-600" />
               <label htmlFor="is_80g" className="text-sm text-slate-700">
                 80G Eligible donation
+                {temple80gBlocked && (
+                  <span className="text-orange-500 ml-2 text-xs">(Temple has no 80G registration — add it in Settings → Temple Profile to issue 80G receipts)</span>
+                )}
                 {devotee?.is_anonymous && (
                   <span className="text-orange-500 ml-2 text-xs">(Anonymous / Dan Peti gifts are not 80G eligible)</span>
                 )}
