@@ -93,7 +93,7 @@ const topics = [
       'Go to People → Connected Devotees to manage every devotee linked to your temple',
       'Three tabs: Connected (approved), Pending Requests (devotees who asked to join), Pending Invites (you invited)',
       'Approve / Reject pending requests; cancel a pending invite or remove a connected devotee',
-      'Click "Invite Devotee", enter a 10-digit mobile — the devotee gets a notification in the JainERP Devotee app to accept',
+      'Click "Invite Devotee", enter a 10-digit mobile — the devotee gets a notification in the JainERP™ Devotee app to accept',
       'Connected devotees can receive temple notices and appear pre-verified in your forms',
     ],
   },
@@ -222,7 +222,7 @@ export function HelpPage() {
       </div>
 
       <div className="text-center text-xs text-slate-400 py-4">
-        <p>JainERP v2.0 — Powered by Tasqbots Technologies Pvt. Ltd.</p>
+        <p>JainERP™ v2.0 — Powered by Tasqbots Technologies Pvt. Ltd.</p>
         <p className="mt-1">© {new Date().getFullYear()} All rights reserved</p>
       </div>
     </div>

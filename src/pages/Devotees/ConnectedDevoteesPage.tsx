@@ -221,7 +221,7 @@ export function ConnectedDevoteesPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-navy-900">Invite a Devotee</h2>
             <p className="text-sm text-slate-500">
-              Enter the devotee's mobile number. They'll receive a notification to accept the temple connection in the JainERP Devotee app.
+              Enter the devotee's mobile number. They'll receive a notification to accept the temple connection in the JainERP™ Devotee app.
             </p>
             <div>
               <label className="form-label">Mobile Number *</label>

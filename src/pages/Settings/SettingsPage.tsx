@@ -445,7 +445,7 @@ export function SettingsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium text-sm">Mirror transactions to Global Platform</p>
-                  <p className="text-xs text-slate-400 mt-0.5">When enabled, donations, seva bookings, and room bookings are visible to donors on the JainERP devotee portal.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">When enabled, donations, seva bookings, and room bookings are visible to donors on the JainERP™ devotee portal.</p>
                 </div>
                 <button
                   onClick={toggleSync}
