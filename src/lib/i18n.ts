@@ -20,7 +20,17 @@ i18n.use(initReactI18next).init({
 // Keep i18next in sync whenever authStore's language changes (login, or the
 // user saving a new choice in Settings → My Account).
 useAuthStore.subscribe((state, prev) => {
-  if (state.language !== prev.language) i18n.changeLanguage(state.language)
+  if (state.language !== prev.language) {
+    i18n.changeLanguage(state.language)
+    // In the desktop (Electron) build, mirror the choice into the native config
+    // so the login/license/sync screens, window titles and tray menu match.
+    const electronAPI = (window as unknown as {
+      electronAPI?: { setLanguage?: (lang: string) => Promise<unknown> }
+    }).electronAPI
+    if (electronAPI?.setLanguage) {
+      electronAPI.setLanguage(state.language).catch(() => { /* best-effort */ })
+    }
+  }
 })
 
 export default i18n
