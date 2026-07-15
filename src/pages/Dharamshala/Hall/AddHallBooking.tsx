@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import type { Hall, DevoteeSelection } from '../../../types'
 
 export function AddHallBooking() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [halls, setHalls] = useState<Hall[]>([])
   const [saving, setSaving] = useState(false)
@@ -60,49 +62,49 @@ export function AddHallBooking() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">New Hall Booking</h1>
-        <button onClick={() => navigate('/hall')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newHallBooking')}</h1>
+        <button onClick={() => navigate('/hall')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div>
-            <label className="form-label">Hall *</label>
+            <label className="form-label">{t('dharamshala.hallLabel')}</label>
             <select className="form-select" value={form.hall_id}
               onChange={e => setForm(f => ({ ...f, hall_id: e.target.value }))}>
-              <option value="">Select hall...</option>
+              <option value="">{t('dharamshala.selectHall')}</option>
               {halls.map(h => (
-                <option key={h.id} value={h.id}>{h.name} (capacity: {h.capacity})</option>
+                <option key={h.id} value={h.id}>{h.name} {t('dharamshala.hallCapacity', { capacity: h.capacity })}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="form-label">Event Name *</label>
-            <input className="form-input" placeholder="Function / event name" value={form.event_name}
+            <label className="form-label">{t('dharamshala.eventName')}</label>
+            <input className="form-input" placeholder={t('dharamshala.eventNamePlaceholder')} value={form.event_name}
               onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Booking Date *</label>
+              <label className="form-label">{t('dharamshala.bookingDate')}</label>
               <input type="date" className="form-input" value={form.booking_date}
                 onChange={e => setForm(f => ({ ...f, booking_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Session</label>
+              <label className="form-label">{t('dharamshala.sessionLabel')}</label>
               <select className="form-select" value={form.session_type}
                 onChange={e => setForm(f => ({ ...f, session_type: e.target.value }))}>
-                <option value="morning">Morning (6AM–12PM)</option>
-                <option value="evening">Evening (12PM–8PM)</option>
-                <option value="full_day">Full Day</option>
-                <option value="hourly">Hourly</option>
+                <option value="morning">{t('dharamshala.sessionMorning')}</option>
+                <option value="evening">{t('dharamshala.sessionEvening')}</option>
+                <option value="full_day">{t('dharamshala.sessionFullDay')}</option>
+                <option value="hourly">{t('dharamshala.sessionHourly')}</option>
               </select>
             </div>
           </div>
 
           <DevoteePicker
-            label="Booker / Contact"
+            label={t('dharamshala.bookerContact')}
             value={booker}
             onChange={setBooker}
             showAnonymous={false}
@@ -110,17 +112,17 @@ export function AddHallBooking() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Advance Amount (₹)</label>
+              <label className="form-label">{t('dharamshala.advanceAmount')}</label>
               <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Payment Mode</label>
+              <label className="form-label">{t('dharamshala.paymentMode')}</label>
               <select className="form-select" value={form.payment_mode}
                 onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="cheque">Cheque</option>
+                <option value="cash">{t('common.cash')}</option>
+                <option value="upi">{t('common.upi')}</option>
+                <option value="cheque">{t('common.cheque')}</option>
               </select>
             </div>
           </div>
@@ -129,9 +131,9 @@ export function AddHallBooking() {
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/hall')} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => navigate('/hall')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : 'Confirm Booking'}
+            <Save size={16} /> {saving ? t('common.saving') : t('dharamshala.confirmBooking')}
           </button>
         </div>
       </form>

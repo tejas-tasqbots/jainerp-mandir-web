@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Save, X, Pencil } from 'lucide-react'
 import { api, fmtPaise, parsePaise, currentFY } from '../../../lib/api'
 
@@ -18,6 +19,7 @@ interface OpeningBalance { id: string; account_id: string; fy: string; opening_b
 const BLANK = { name: '', type: 'bank', account_no: '', bank_name: '', ifsc: '', is_default_cash: false, is_default_bank: false }
 
 export function BankAccountsTab() {
+  const { t } = useTranslation()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [balances, setBalances] = useState<OpeningBalance[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -46,7 +48,7 @@ export function BankAccountsTab() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim()) { setError('Name is required'); return }
+    if (!form.name.trim()) { setError(t('settings.accounts.nameRequired')); return }
     setSaving(true)
     setError('')
     try {
@@ -66,7 +68,7 @@ export function BankAccountsTab() {
       load()
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: { message?: string } } } }
-      setError(e2.response?.data?.error?.message || 'Failed to save account')
+      setError(e2.response?.data?.error?.message || t('settings.accounts.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -96,50 +98,50 @@ export function BankAccountsTab() {
       <div className="card">
         <div className="card-header flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-sm">Bank & Cash Accounts</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Accounts used across Cash Book, Bank Book and Ledger.</p>
+            <h3 className="font-semibold text-sm">{t('settings.accounts.heading')}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">{t('settings.accounts.subheading')}</p>
           </div>
-          {!showForm && <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> Add Account</button>}
+          {!showForm && <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('settings.accounts.addAccount')}</button>}
         </div>
         <div className="card-body space-y-3">
           {showForm && (
             <form onSubmit={save} className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Account Name *</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SBI Main Account" />
+                  <label className="form-label">{t('settings.accounts.accountName')}</label>
+                  <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('settings.accounts.accountNamePlaceholder') as string} />
                 </div>
                 <div>
-                  <label className="form-label">Type</label>
+                  <label className="form-label">{t('settings.accounts.type')}</label>
                   <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                    <option value="cash">Cash</option>
-                    <option value="bank">Bank</option>
+                    <option value="cash">{t('settings.accounts.cash')}</option>
+                    <option value="bank">{t('settings.accounts.bank')}</option>
                   </select>
                 </div>
               </div>
               {form.type === 'bank' && (
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="form-label">Account No.</label><input className="form-input" value={form.account_no} onChange={e => setForm(f => ({ ...f, account_no: e.target.value }))} /></div>
-                  <div><label className="form-label">Bank Name</label><input className="form-input" value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
-                  <div><label className="form-label">IFSC</label><input className="form-input uppercase" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value.toUpperCase() }))} /></div>
+                  <div><label className="form-label">{t('settings.accounts.accountNo')}</label><input className="form-input" value={form.account_no} onChange={e => setForm(f => ({ ...f, account_no: e.target.value }))} /></div>
+                  <div><label className="form-label">{t('settings.accounts.bankName')}</label><input className="form-input" value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
+                  <div><label className="form-label">{t('settings.accounts.ifsc')}</label><input className="form-input uppercase" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value.toUpperCase() }))} /></div>
                 </div>
               )}
               {form.type === 'cash' && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" className="w-4 h-4" checked={form.is_default_cash} onChange={e => setForm(f => ({ ...f, is_default_cash: e.target.checked }))} />
-                  Use as the default cash account
+                  {t('settings.accounts.useAsDefaultCash')}
                 </label>
               )}
               {form.type === 'bank' && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" className="w-4 h-4" checked={form.is_default_bank} onChange={e => setForm(f => ({ ...f, is_default_bank: e.target.checked }))} />
-                  Use as the default bank account
+                  {t('settings.accounts.useAsDefaultBank')}
                 </label>
               )}
               {error && <p className="text-sm text-brand-red">{error}</p>}
               <div className="flex gap-2">
-                <button type="submit" disabled={saving} className="btn-primary btn-sm"><Save size={14} /> {editing ? 'Update' : 'Add'}</button>
-                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+                <button type="submit" disabled={saving} className="btn-primary btn-sm"><Save size={14} /> {editing ? t('settings.accounts.update') : t('settings.accounts.add')}</button>
+                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
               </div>
             </form>
           )}
@@ -147,19 +149,19 @@ export function BankAccountsTab() {
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
-                <tr><th>Name</th><th>Type</th><th>Bank / A/c No.</th><th>Opening Balance ({fy})</th><th>Status</th><th className="text-right">Edit</th></tr>
+                <tr><th>{t('settings.accounts.nameCol')}</th><th>{t('settings.accounts.typeCol')}</th><th>{t('settings.accounts.bankAcNoCol')}</th><th>{t('settings.accounts.openingBalanceCol', { fy })}</th><th>{t('settings.accounts.statusCol')}</th><th className="text-right">{t('settings.accounts.editCol')}</th></tr>
               </thead>
               <tbody>
                 {accounts.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center text-slate-400 py-6">No accounts yet.</td></tr>
+                  <tr><td colSpan={6} className="text-center text-slate-400 py-6">{t('settings.accounts.noAccounts')}</td></tr>
                 ) : accounts.map(a => (
                   <tr key={a.id} className={a.is_active ? '' : 'opacity-50'}>
                     <td className="font-medium">
                       {a.name}
-                      {a.is_default_cash && <span className="badge-blue ml-2">Default Cash</span>}
-                      {a.is_default_bank && <span className="badge-blue ml-2">Default Bank</span>}
+                      {a.is_default_cash && <span className="badge-blue ml-2">{t('settings.accounts.defaultCash')}</span>}
+                      {a.is_default_bank && <span className="badge-blue ml-2">{t('settings.accounts.defaultBank')}</span>}
                     </td>
-                    <td className="capitalize">{a.type}</td>
+                    <td className="capitalize">{a.type === 'bank' ? t('settings.accounts.bank') : t('settings.accounts.cash')}</td>
                     <td className="text-xs text-slate-500">{a.type === 'bank' ? `${a.bank_name || '—'} · ${a.account_no || '—'}` : '—'}</td>
                     <td>
                       <input
@@ -171,7 +173,7 @@ export function BankAccountsTab() {
                     </td>
                     <td>
                       <button onClick={() => toggleActive(a)} className={a.is_active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>
-                        {a.is_active ? 'Active' : 'Inactive'}
+                        {a.is_active ? t('common.active') : t('common.inactive')}
                       </button>
                     </td>
                     <td className="text-right"><button onClick={() => openEdit(a)} className="btn-icon"><Pencil size={14} /></button></td>
@@ -180,7 +182,7 @@ export function BankAccountsTab() {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-slate-400">Opening balance is saved when you click away from the field. It applies to FY {fy}.</p>
+          <p className="text-xs text-slate-400">{t('settings.accounts.balanceHelp', { fy })}</p>
         </div>
       </div>
     </div>

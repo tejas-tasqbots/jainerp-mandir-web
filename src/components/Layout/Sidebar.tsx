@@ -6,6 +6,7 @@ import {
   UserCheck, Sparkles, Inbox
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { canSee } from '../../lib/rbac'
 import { useIsOnline } from '../../lib/useIsOnline'
@@ -13,77 +14,76 @@ import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 
 interface NavItem {
-  label: string
+  labelKey: string
   icon: React.ReactNode
   to?: string
-  children?: Array<{ label: string; to: string }>
+  children?: Array<{ labelKey: string; to: string }>
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', icon: <LayoutDashboard size={18} />, to: '/dashboard' },
-  { label: 'Donations', icon: <IndianRupee size={18} />, to: '/donations' },
-  { label: 'Donation Requests', icon: <Inbox size={18} />, to: '/donation-requests' },
-  { label: 'Expenses', icon: <Receipt size={18} />, to: '/expenses' },
+  { labelKey: 'nav.dashboard', icon: <LayoutDashboard size={18} />, to: '/dashboard' },
+  { labelKey: 'nav.donations', icon: <IndianRupee size={18} />, to: '/donations' },
+  { labelKey: 'nav.expenses', icon: <Receipt size={18} />, to: '/expenses' },
   {
-    label: 'Dharamshala', icon: <Hotel size={18} />,
+    labelKey: 'nav.dharamshala', icon: <Hotel size={18} />,
     children: [
-      { label: 'Rooms', to: '/rooms' },
-      { label: 'Hall', to: '/hall' },
+      { labelKey: 'nav.rooms', to: '/rooms' },
+      { labelKey: 'nav.hall', to: '/hall' },
     ],
   },
-  { label: 'Prasad Counter', icon: <ShoppingBag size={18} />, to: '/prasad' },
-  { label: 'Seva Donation', icon: <Heart size={18} />, to: '/seva' },
-  { label: 'Bhojanshala', icon: <Utensils size={18} />, to: '/annadaan' },
-  { label: 'Boli Donations', icon: <Bell size={18} />, to: '/boli' },
-  { label: 'Events', icon: <Calendar size={18} />, to: '/events' },
-  { label: 'Maharaj / Mataji', icon: <Sparkles size={18} />, to: '/maharaj' },
+  { labelKey: 'nav.prasad', icon: <ShoppingBag size={18} />, to: '/prasad' },
+  { labelKey: 'nav.seva', icon: <Heart size={18} />, to: '/seva' },
+  { labelKey: 'nav.bhojanshala', icon: <Utensils size={18} />, to: '/annadaan' },
+  { labelKey: 'nav.events', icon: <Calendar size={18} />, to: '/events' },
+  { labelKey: 'nav.maharaj', icon: <Sparkles size={18} />, to: '/maharaj' },
   {
-    label: 'People', icon: <Users size={18} />,
+    labelKey: 'nav.people', icon: <Users size={18} />,
     children: [
-      { label: 'Connected Devotees', to: '/devotees' },
-      { label: 'Donors / Guests', to: '/donors' },
-      { label: 'Creditors (Udhaar)', to: '/creditors' },
-    ],
-  },
-  {
-    label: 'Masters', icon: <UserCheck size={18} />,
-    children: [
-      { label: 'Vendors / Suppliers', to: '/masters/vendors' },
-      { label: 'Priests', to: '/masters/priests' },
-      { label: 'Employees & Volunteers', to: '/masters/employees' },
-      { label: 'Inventory', to: '/masters/inventory' },
+      { labelKey: 'nav.connectedDevotees', to: '/devotees' },
+      { labelKey: 'nav.donors', to: '/donors' },
+      { labelKey: 'nav.creditors', to: '/creditors' },
     ],
   },
   {
-    label: 'Accounts', icon: <Landmark size={18} />,
+    labelKey: 'nav.masters', icon: <UserCheck size={18} />,
     children: [
-      { label: 'Cash/Bank Transfer', to: '/accounts/contra' },
-      { label: 'Fixed Assets', to: '/accounts/fixed-assets' },
-      { label: 'Loans', to: '/accounts/loans' },
-      { label: 'Cash Book', to: '/accounts/cash-book' },
-      { label: 'Bank Book', to: '/accounts/bank-book' },
-      { label: 'Day Book', to: '/accounts/day-book' },
-      { label: 'Ledger', to: '/accounts/ledger' },
-      { label: 'Trial Balance', to: '/accounts/trial-balance' },
-      { label: 'Receipts & Payments', to: '/accounts/receipts-payments' },
-      { label: 'Income & Expenditure', to: '/accounts/income-expenditure' },
-      { label: 'Balance Sheet', to: '/accounts/balance-sheet' },
+      { labelKey: 'nav.vendors', to: '/masters/vendors' },
+      { labelKey: 'nav.priests', to: '/masters/priests' },
+      { labelKey: 'nav.employees', to: '/masters/employees' },
+      { labelKey: 'nav.inventory', to: '/masters/inventory' },
     ],
   },
-  { label: 'Reports', icon: <BarChart2 size={18} />, to: '/reports' },
-  { label: 'Certificates & TDS', icon: <Award size={18} />, to: '/certificates' },
   {
-    label: 'Registers', icon: <BookMarked size={18} />,
+    labelKey: 'nav.accounts', icon: <Landmark size={18} />,
     children: [
-      { label: 'Lost & Found', to: '/registers/lost-found' },
-      { label: 'Visitor Count', to: '/registers/visitor-count' },
+      { labelKey: 'nav.contra', to: '/accounts/contra' },
+      { labelKey: 'nav.fixedAssets', to: '/accounts/fixed-assets' },
+      { labelKey: 'nav.loans', to: '/accounts/loans' },
+      { labelKey: 'nav.cashBook', to: '/accounts/cash-book' },
+      { labelKey: 'nav.bankBook', to: '/accounts/bank-book' },
+      { labelKey: 'nav.dayBook', to: '/accounts/day-book' },
+      { labelKey: 'nav.ledger', to: '/accounts/ledger' },
+      { labelKey: 'nav.trialBalance', to: '/accounts/trial-balance' },
+      { labelKey: 'nav.receiptsPayments', to: '/accounts/receipts-payments' },
+      { labelKey: 'nav.incomeExpenditure', to: '/accounts/income-expenditure' },
+      { labelKey: 'nav.balanceSheet', to: '/accounts/balance-sheet' },
     ],
   },
-  { label: 'Settings', icon: <Settings size={18} />, to: '/settings' },
-  { label: 'User Guide', icon: <HelpCircle size={18} />, to: '/help' },
+  { labelKey: 'nav.reports', icon: <BarChart2 size={18} />, to: '/reports' },
+  { labelKey: 'nav.certificates', icon: <Award size={18} />, to: '/certificates' },
+  {
+    labelKey: 'nav.registers', icon: <BookMarked size={18} />,
+    children: [
+      { labelKey: 'nav.lostFound', to: '/registers/lost-found' },
+      { labelKey: 'nav.visitorCount', to: '/registers/visitor-count' },
+    ],
+  },
+  { labelKey: 'nav.settings', icon: <Settings size={18} />, to: '/settings' },
+  { labelKey: 'nav.userGuide', icon: <HelpCircle size={18} />, to: '/help' },
 ]
 
 function NavGroup({ item }: { item: NavItem }) {
+  const { t } = useTranslation()
   const location = useLocation()
   const hasActiveChild = item.children?.some(c => location.pathname.startsWith(c.to)) ?? false
   const [open, setOpen] = useState(hasActiveChild)
@@ -99,7 +99,7 @@ function NavGroup({ item }: { item: NavItem }) {
         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-navy-900 rounded-md transition-colors"
       >
         <span className="flex-shrink-0">{item.icon}</span>
-        <span className="flex-1 text-left truncate">{item.label}</span>
+        <span className="flex-1 text-left truncate">{t(item.labelKey)}</span>
         {open
           ? <ChevronDown size={13} className="flex-shrink-0" />
           : <ChevronRight size={13} className="flex-shrink-0" />}
@@ -118,7 +118,7 @@ function NavGroup({ item }: { item: NavItem }) {
                 }`
               }
             >
-              {child.label}
+              {t(child.labelKey)}
             </NavLink>
           ))}
         </div>
@@ -149,6 +149,7 @@ function usePendingRequestCount(): number {
 }
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const { profile } = useProfileStore()
   const roles = useAuthStore(s => s.user?.roles)
   const pendingRequests = usePendingRequestCount()
@@ -179,7 +180,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {visibleItems.map(item =>
           item.children ? (
-            <NavGroup key={item.label} item={item} />
+            <NavGroup key={item.labelKey} item={item} />
           ) : (
             <NavLink
               key={item.to}
@@ -193,8 +194,8 @@ export function Sidebar() {
               }
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              <span className="truncate flex-1">{item.label}</span>
-              {item.to === '/donation-requests' && pendingRequests > 0 && (
+              <span className="truncate flex-1">{t(item.labelKey)}</span>
+              {item.to === '/donations' && pendingRequests > 0 && (
                 <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
                   {pendingRequests > 99 ? '99+' : pendingRequests}
                 </span>

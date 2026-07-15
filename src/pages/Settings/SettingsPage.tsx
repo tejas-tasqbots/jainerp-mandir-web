@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { openRazorpayCheckout } from '../../lib/razorpay'
@@ -14,6 +15,7 @@ import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
 import { GalleryTab } from './tabs/GalleryTab'
 import { TrusteesTab } from './tabs/TrusteesTab'
+import { MyAccountTab } from './tabs/MyAccountTab'
 
 interface Requirement {
   id: string
@@ -26,8 +28,9 @@ interface Requirement {
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'my-account' | 'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -123,7 +126,7 @@ export function SettingsPage() {
       await loadSubscription()
       if (invoiceId) await payInvoice(invoiceId)
     } catch (e: any) {
-      setPayMsg(e?.response?.data?.error?.message || 'Could not change plan.')
+      setPayMsg(e?.response?.data?.error?.message || t('settings.subscription.couldNotChangePlan'))
     } finally {
       setUpgradingPlan('')
     }
@@ -137,7 +140,7 @@ export function SettingsPage() {
         const w = window.open('', '_blank')
         if (w) { w.document.write(data); w.document.close() }
       })
-      .catch(() => setPayMsg('Could not load receipt.'))
+      .catch(() => setPayMsg(t('settings.subscription.couldNotLoadReceipt')))
   }
 
   async function payInvoice(invoiceId: string) {
@@ -149,7 +152,7 @@ export function SettingsPage() {
       if (order.mock) {
         // Backend has no live Razorpay keys configured — opening the real
         // checkout widget with a placeholder key would fail immediately.
-        setPayMsg('Payment gateway is not configured on the server yet. Please contact support.')
+        setPayMsg(t('settings.subscription.gatewayNotConfigured'))
         setPayingId(null)
         return
       }
@@ -163,19 +166,19 @@ export function SettingsPage() {
           try {
             // 3. Verify the signature; the invoice is marked paid server-side.
             await api.post(`/tenants/me/invoices/${invoiceId}/pay/verify`, cb)
-            setPayMsg('Payment successful — subscription active.')
+            setPayMsg(t('settings.subscription.paymentSuccess'))
             await loadSubscription()
           } catch {
-            setPayMsg('Payment could not be verified. Please contact support.')
+            setPayMsg(t('settings.subscription.paymentVerifyFailed'))
           } finally {
             setPayingId(null)
           }
         },
         onFailure: (msg) => { setPayMsg(msg); setPayingId(null) },
-        onDismiss: () => { setPayMsg('Payment cancelled.'); setPayingId(null) },
+        onDismiss: () => { setPayMsg(t('settings.subscription.paymentCancelled')); setPayingId(null) },
       })
     } catch (e: any) {
-      setPayMsg(e?.response?.data?.error?.message || 'Could not start payment.')
+      setPayMsg(e?.response?.data?.error?.message || t('settings.subscription.couldNotStartPayment'))
       setPayingId(null)
     }
   }
@@ -221,93 +224,96 @@ export function SettingsPage() {
 
   return (
     <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
-      <h1 className="text-xl font-bold text-navy-900">Settings</h1>
+      <h1 className="text-xl font-bold text-navy-900">{t('settings.title')}</h1>
 
       <div className="flex gap-2 flex-wrap">
         {[
-          { id: 'profile', label: 'Temple Profile' },
-          { id: 'trustees', label: 'Trustees' },
-          { id: 'accounts', label: 'Bank & Cash Accounts' },
-          { id: 'donor-payments', label: 'Donor Payments' },
-          { id: 'receipts', label: 'Receipt Settings' },
-          { id: 'accounting', label: 'Accounting Rules' },
-          { id: 'masters', label: 'Categories & Dropdowns' },
-          { id: 'gallery', label: 'Gallery' },
-          { id: 'users', label: 'Users' },
-          { id: 'backup', label: 'Backup' },
-          { id: 'privacy', label: 'Privacy & Sync' },
-          { id: 'subscription', label: 'Subscription & Usage' },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as typeof tab)}
-            className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === t.id ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-            {t.label}
+          { id: 'my-account', labelKey: 'settings.tabs.myAccount' },
+          { id: 'profile', labelKey: 'settings.tabs.profile' },
+          { id: 'trustees', labelKey: 'settings.tabs.trustees' },
+          { id: 'accounts', labelKey: 'settings.tabs.accounts' },
+          { id: 'donor-payments', labelKey: 'settings.tabs.donorPayments' },
+          { id: 'receipts', labelKey: 'settings.tabs.receipts' },
+          { id: 'accounting', labelKey: 'settings.tabs.accounting' },
+          { id: 'masters', labelKey: 'settings.tabs.masters' },
+          { id: 'gallery', labelKey: 'settings.tabs.gallery' },
+          { id: 'users', labelKey: 'settings.tabs.users' },
+          { id: 'backup', labelKey: 'settings.tabs.backup' },
+          { id: 'privacy', labelKey: 'settings.tabs.privacy' },
+          { id: 'subscription', labelKey: 'settings.tabs.subscription' },
+        ].map(tabItem => (
+          <button key={tabItem.id} onClick={() => setTab(tabItem.id as typeof tab)}
+            className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === tabItem.id ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+            {t(tabItem.labelKey)}
           </button>
         ))}
       </div>
 
+      {tab === 'my-account' && <MyAccountTab />}
+
       {tab === 'profile' && (
         <form onSubmit={save} className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Temple / Mandir Profile</h3></div>
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.profile.heading')}</h3></div>
           <div className="card-body space-y-5">
             {success && (
-              <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">Settings saved successfully!</div>
+              <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">{t('settings.profile.saved')}</div>
             )}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Temple / Mandir Name *</label>
+                <label className="form-label">{t('settings.profile.templeName')}</label>
                 <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">Mobile</label>
+                <label className="form-label">{t('settings.profile.mobile')}</label>
                 <input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
               </div>
             </div>
             <div>
-              <label className="form-label">Address</label>
+              <label className="form-label">{t('settings.profile.address')}</label>
               <input className="form-input" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} />
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <div><label className="form-label">State</label>
+              <div><label className="form-label">{t('settings.profile.state')}</label>
                 <StateSelect value={form.state} onChange={s => setForm(f => ({ ...f, state: s, city: '' }))} />
               </div>
-              <div><label className="form-label">City</label>
+              <div><label className="form-label">{t('settings.profile.city')}</label>
                 <CitySelect state={form.state} value={form.city} onChange={c => setForm(f => ({ ...f, city: c }))} />
               </div>
-              <div><label className="form-label">Pincode</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
+              <div><label className="form-label">{t('settings.profile.pincode')}</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
             </div>
             <LocationPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} />
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-              <div><label className="form-label">Website</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
+              <div><label className="form-label">{t('settings.profile.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><label className="form-label">{t('settings.profile.website')}</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
             </div>
             <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Registration & Compliance</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{t('settings.profile.registrationCompliance')}</p>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">PAN</label><input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} /></div>
-                <div><label className="form-label">GSTIN</label><input className="form-input uppercase" value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value.toUpperCase() }))} /></div>
-                <div><label className="form-label">80G Registration No.</label><input className="form-input" value={form.reg_80g_number} onChange={e => setForm(f => ({ ...f, reg_80g_number: e.target.value }))} /></div>
-                <div><label className="form-label">12AB Registration No.</label><input className="form-input" value={form.reg_12ab_number} onChange={e => setForm(f => ({ ...f, reg_12ab_number: e.target.value }))} /></div>
+                <div><label className="form-label">{t('settings.profile.pan')}</label><input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} /></div>
+                <div><label className="form-label">{t('settings.profile.gstin')}</label><input className="form-input uppercase" value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value.toUpperCase() }))} /></div>
+                <div><label className="form-label">{t('settings.profile.reg80g')}</label><input className="form-input" value={form.reg_80g_number} onChange={e => setForm(f => ({ ...f, reg_80g_number: e.target.value }))} /></div>
+                <div><label className="form-label">{t('settings.profile.reg12ab')}</label><input className="form-input" value={form.reg_12ab_number} onChange={e => setForm(f => ({ ...f, reg_12ab_number: e.target.value }))} /></div>
               </div>
             </div>
             <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Receipt Settings</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{t('settings.profile.receiptSettings')}</p>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">UPI ID</label><input className="form-input" placeholder="temple@upi" value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} /></div>
+                <div><label className="form-label">{t('settings.profile.upiId')}</label><input className="form-input" placeholder="temple@upi" value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} /></div>
                 <div className="flex items-center gap-3 mt-5">
                   <input type="checkbox" id="show80g" checked={form.show_80g_on_receipt} onChange={e => setForm(f => ({ ...f, show_80g_on_receipt: e.target.checked }))} className="w-4 h-4" />
-                  <label htmlFor="show80g" className="text-sm">Show 80G details on receipts</label>
+                  <label htmlFor="show80g" className="text-sm">{t('settings.profile.show80gOnReceipt')}</label>
                 </div>
               </div>
               <div className="mt-3">
-                <label className="form-label">Custom Receipt Footer</label>
-                <textarea className="form-input" rows={2} value={form.custom_receipt_footer} onChange={e => setForm(f => ({ ...f, custom_receipt_footer: e.target.value }))} placeholder="Jai Jinendra! Thank you for your donation." />
+                <label className="form-label">{t('settings.profile.customFooter')}</label>
+                <textarea className="form-input" rows={2} value={form.custom_receipt_footer} onChange={e => setForm(f => ({ ...f, custom_receipt_footer: e.target.value }))} placeholder={t('settings.profile.footerPlaceholder') as string} />
               </div>
             </div>
           </div>
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
             <button type="submit" disabled={saving} className="btn-primary">
               {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('settings.saving') : t('settings.profile.saveChanges')}
             </button>
           </div>
         </form>
@@ -325,94 +331,91 @@ export function SettingsPage() {
 
       {tab === 'masters' && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-500">
-            Configure the dropdown options used across the app. Items are mandir-specific. Deactivating an
-            item hides it from new entries while keeping it on past records.
-          </p>
+          <p className="text-sm text-slate-500">{t('settings.masters.helpText')}</p>
 
           <MasterEditor
             resource="donation-categories"
-            title="Donation Categories"
-            description="Shown when recording a donation."
+            title={t('settings.masters.donationCategories')}
+            description={t('settings.masters.donationCategoriesDesc')}
             fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. General Donation' },
-              { key: 'is_80g_eligible', label: '80G Eligible', type: 'checkbox', default: true },
-              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderGeneral') as string },
+              { key: 'is_80g_eligible', label: t('settings.masters.fields.is80gEligible'), type: 'checkbox', default: true },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="expense-categories"
-            title="Expense Categories"
-            description="Shown when recording an expense."
+            title={t('settings.masters.expenseCategories')}
+            description={t('settings.masters.expenseCategoriesDesc')}
             fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Electricity' },
-              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderElectricity') as string },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="payment-modes"
-            title="Payment Modes"
-            description="Shown wherever a payment method is selected."
+            title={t('settings.masters.paymentModes')}
+            description={t('settings.masters.paymentModesDesc')}
             fields={[
-              { key: 'name', label: 'Display Name', required: true, placeholder: 'e.g. UPI' },
-              { key: 'code', label: 'Code', required: true, placeholder: 'e.g. upi' },
-              { key: 'requires_reference', label: 'Requires UTR / Ref', type: 'checkbox' },
-              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+              { key: 'name', label: t('settings.masters.fields.displayName'), required: true, placeholder: t('settings.masters.fields.namePlaceholderUpi') as string },
+              { key: 'code', label: t('settings.masters.fields.code'), required: true, placeholder: t('settings.masters.fields.codePlaceholder') as string },
+              { key: 'requires_reference', label: t('settings.masters.fields.requiresRef'), type: 'checkbox' },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="services"
-            title="Sevas / Services"
-            description="Seva options and their default amounts."
+            title={t('settings.masters.sevas')}
+            description={t('settings.masters.sevasDesc')}
             fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Abhishek' },
-              { key: 'name_hindi', label: 'Name (Hindi)', placeholder: 'अभिषेक' },
-              { key: 'price_paise', label: 'Amount (₹)', type: 'money', placeholder: '0.00', required: true },
-              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0' },
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderAbhishek') as string },
+              { key: 'name_hindi', label: t('settings.masters.fields.nameHindi'), placeholder: 'अभिषेक' },
+              { key: 'price_paise', label: t('settings.masters.fields.amountRupees'), type: 'money', placeholder: '0.00', required: true },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="gst-rates"
-            title="GST Rates"
-            description="GST % applied to taxable services (CGST + SGST for intra-state). Editing a rate here applies it to future Hall, Room and Prasad bookings — Room (Taxable) is used only above the ₹1,000/night threshold. Past records keep their original GST."
+            title={t('settings.masters.gstRates')}
+            description={t('settings.masters.gstRatesDesc')}
             fields={[
-              { key: 'service', label: 'Service / Label', required: true, placeholder: 'e.g. Hall Rent' },
-              { key: 'cgst', label: 'CGST (%)', type: 'number', placeholder: '9' },
-              { key: 'sgst', label: 'SGST (%)', type: 'number', placeholder: '9' },
-              { key: 'igst', label: 'IGST (%)', type: 'number', placeholder: '18' },
+              { key: 'service', label: t('settings.masters.fields.service'), required: true, placeholder: t('settings.masters.fields.servicePlaceholder') as string },
+              { key: 'cgst', label: t('settings.masters.fields.cgst'), type: 'number', placeholder: '9' },
+              { key: 'sgst', label: t('settings.masters.fields.sgst'), type: 'number', placeholder: '9' },
+              { key: 'igst', label: t('settings.masters.fields.igst'), type: 'number', placeholder: '18' },
             ]}
           />
 
           <MasterEditor
             resource="halls"
-            title="Halls"
-            description="Dharamshala halls available for booking. Tariffs are the default prices — editable per booking."
+            title={t('settings.masters.halls')}
+            description={t('settings.masters.hallsDesc')}
             statusField="is_available"
             fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Main Hall' },
-              { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
-              { key: 'fullday_tariff_paise', label: 'Full-day ₹', type: 'money', placeholder: '0' },
-              { key: 'session_tariff_paise', label: 'Session ₹', type: 'money', placeholder: '0' },
-              { key: 'hourly_tariff_paise', label: 'Hourly ₹', type: 'money', placeholder: '0' },
-              { key: 'gst_rate', label: 'GST %', type: 'number', placeholder: '0' },
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderMainHall') as string },
+              { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
+              { key: 'fullday_tariff_paise', label: t('settings.masters.fields.fullDayTariff'), type: 'money', placeholder: '0' },
+              { key: 'session_tariff_paise', label: t('settings.masters.fields.sessionTariff'), type: 'money', placeholder: '0' },
+              { key: 'hourly_tariff_paise', label: t('settings.masters.fields.hourlyTariff'), type: 'money', placeholder: '0' },
+              { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
             ]}
           />
 
           <MasterEditor
             resource="rooms"
-            title="Rooms"
-            description="Dharamshala rooms available for check-in. Tariff is the default per-night price — editable at checkout."
+            title={t('settings.masters.rooms')}
+            description={t('settings.masters.roomsDesc')}
             statusField="is_available"
             fields={[
-              { key: 'room_number', label: 'Room No.', required: true, placeholder: 'e.g. 101' },
-              { key: 'name', label: 'Name / Type', placeholder: 'e.g. AC Deluxe' },
-              { key: 'capacity_persons', label: 'Capacity', type: 'number', placeholder: '0' },
-              { key: 'tariff_paise', label: 'Tariff / night ₹', type: 'money', placeholder: '0' },
-              { key: 'gst_rate', label: 'GST %', type: 'number', placeholder: '0' },
+              { key: 'room_number', label: t('settings.masters.fields.roomNo'), required: true, placeholder: t('settings.masters.fields.roomNoPlaceholder') as string },
+              { key: 'name', label: t('settings.masters.fields.nameType'), placeholder: t('settings.masters.fields.nameTypePlaceholder') as string },
+              { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
+              { key: 'tariff_paise', label: t('settings.masters.fields.tariffPerNight'), type: 'money', placeholder: '0' },
+              { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
             ]}
           />
 
@@ -421,17 +424,17 @@ export function SettingsPage() {
 
           <MasterEditor
             resource="prasad/items"
-            title="Prasad Items"
-            description="Items sold at the Prasad counter (POS). Go to Prasad → Manage Items to adjust stock levels."
+            title={t('settings.masters.prasadItems')}
+            description={t('settings.masters.prasadItemsDesc')}
             statusField="is_available"
             fields={[
-              { key: 'name', label: 'Name', required: true, placeholder: 'e.g. Ladoo' },
-              { key: 'name_hindi', label: 'Name (Hindi)', placeholder: 'लड्डू' },
-              { key: 'unit', label: 'Unit', placeholder: 'piece, kg, box…', default: 'piece' },
-              { key: 'price_paise', label: 'Price (₹)', type: 'money', required: true, placeholder: '0.00' },
-              { key: 'gst_rate', label: 'GST (%)', type: 'number', placeholder: '0', default: 0 },
-              { key: 'low_stock_threshold', label: 'Low Stock Alert', type: 'number', placeholder: '10', default: 10 },
-              { key: 'sort_order', label: 'Sort Order', type: 'number', placeholder: '0', default: 0 },
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderLadoo') as string },
+              { key: 'name_hindi', label: t('settings.masters.fields.nameHindi'), placeholder: 'लड्डू' },
+              { key: 'unit', label: t('settings.masters.fields.unit'), placeholder: t('settings.masters.fields.unitPlaceholder') as string, default: 'piece' },
+              { key: 'price_paise', label: t('settings.masters.fields.priceRupees'), type: 'money', required: true, placeholder: '0.00' },
+              { key: 'gst_rate', label: t('settings.masters.fields.gstPercentField'), type: 'number', placeholder: '0', default: 0 },
+              { key: 'low_stock_threshold', label: t('settings.masters.fields.lowStockAlert'), type: 'number', placeholder: '10', default: 10 },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0', default: 0 },
             ]}
           />
         </div>
@@ -440,12 +443,12 @@ export function SettingsPage() {
       {tab === 'privacy' && (
         <div className="space-y-4">
           <div className="card">
-            <div className="card-header"><h3 className="font-semibold text-sm">Global Platform Sync</h3></div>
+            <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.privacy.syncHeading')}</h3></div>
             <div className="card-body">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-sm">Mirror transactions to Global Platform</p>
-                  <p className="text-xs text-slate-400 mt-0.5">When enabled, donations, seva bookings, and room bookings are visible to donors on the JainERP™ devotee portal.</p>
+                  <p className="font-medium text-sm">{t('settings.privacy.syncLabel')}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{t('settings.privacy.syncHelp')}</p>
                 </div>
                 <button
                   onClick={toggleSync}
@@ -458,16 +461,14 @@ export function SettingsPage() {
           </div>
 
           <div className="card">
-            <div className="card-header"><h3 className="font-semibold text-sm">Raise a Requirement</h3></div>
+            <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.privacy.requirementHeading')}</h3></div>
             <div className="card-body">
-              <p className="text-xs text-slate-500 mb-3">
-                Describe any feature, improvement, or customization you need. The Tasqbots team will review and respond.
-              </p>
-              {reqSent && <div className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">Requirement sent to Tasqbots team!</div>}
+              <p className="text-xs text-slate-500 mb-3">{t('settings.privacy.requirementHelp')}</p>
+              {reqSent && <div className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">{t('settings.privacy.requirementSent')}</div>}
               <form onSubmit={sendRequirement} className="flex gap-3">
                 <textarea className="form-input flex-1" rows={2} value={reqText}
-                  onChange={e => setReqText(e.target.value)} placeholder="Describe the feature or improvement you need..." required />
-                <button type="submit" disabled={!reqText.trim()} className="btn-primary self-end">Send</button>
+                  onChange={e => setReqText(e.target.value)} placeholder={t('settings.privacy.requirementPlaceholder') as string} required />
+                <button type="submit" disabled={!reqText.trim()} className="btn-primary self-end">{t('settings.privacy.send')}</button>
               </form>
             </div>
           </div>
@@ -475,25 +476,25 @@ export function SettingsPage() {
           <div className="card">
             <div className="card-header">
               <h3 className="font-semibold text-sm flex items-center gap-2">
-                <ClipboardList size={14} /> My Requirements
+                <ClipboardList size={14} /> {t('settings.privacy.myRequirementsHeading')}
               </h3>
-              <span className="text-xs text-slate-400">{requirements.length} submitted</span>
+              <span className="text-xs text-slate-400">{t('settings.privacy.submittedCount', { count: requirements.length })}</span>
             </div>
             {requirements.length === 0 ? (
-              <div className="card-body text-sm text-slate-400">No requirements raised yet.</div>
+              <div className="card-body text-sm text-slate-400">{t('settings.privacy.noRequirements')}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="data-table">
-                  <thead><tr><th>Requirement</th><th>Status</th><th>Note from Team</th><th>Raised On</th></tr></thead>
+                  <thead><tr><th>{t('settings.privacy.requirementCol')}</th><th>{t('settings.privacy.statusCol')}</th><th>{t('settings.privacy.noteCol')}</th><th>{t('settings.privacy.raisedOnCol')}</th></tr></thead>
                   <tbody>
                     {requirements.map(r => (
                       <tr key={r.id}>
                         <td className="text-sm max-w-xs">{r.text}</td>
                         <td>
-                          {r.status === 'done' ? <span className="badge-green">Done ✓</span>
-                            : r.status === 'in_progress' ? <span className="badge-blue">In Progress</span>
-                            : r.status === 'rejected' ? <span className="badge-red">Rejected</span>
-                            : <span className="badge-yellow">Open</span>}
+                          {r.status === 'done' ? <span className="badge-green">{t('settings.privacy.statusDone')}</span>
+                            : r.status === 'in_progress' ? <span className="badge-blue">{t('settings.privacy.statusInProgress')}</span>
+                            : r.status === 'rejected' ? <span className="badge-red">{t('settings.privacy.statusRejected')}</span>
+                            : <span className="badge-yellow">{t('settings.privacy.statusOpen')}</span>}
                         </td>
                         <td className="text-xs text-slate-500">{r.note || '—'}</td>
                         <td className="text-xs text-slate-400">{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
@@ -511,45 +512,45 @@ export function SettingsPage() {
         <div className="space-y-4">
           {subscription?.subscription ? (
             <div className="card">
-              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp size={14} /> Current Plan</h3></div>
+              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp size={14} /> {t('settings.subscription.currentPlanHeading')}</h3></div>
               <div className="card-body">
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-400 text-xs">Plan</p>
+                    <p className="text-slate-400 text-xs">{t('settings.subscription.plan')}</p>
                     <p className="font-bold text-navy-900">{subscription.subscription.plan_display || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400 text-xs">Status</p>
+                    <p className="text-slate-400 text-xs">{t('settings.subscription.status')}</p>
                     <span className={subscription.subscription.status === 'active' ? 'badge-green' : 'badge-red'}>{subscription.subscription.status}</span>
                   </div>
                   <div>
-                    <p className="text-slate-400 text-xs">Renews On</p>
+                    <p className="text-slate-400 text-xs">{t('settings.subscription.renewsOn')}</p>
                     <p className="font-medium">{subscription.subscription.current_period_end ? new Date(subscription.subscription.current_period_end).toLocaleDateString('en-IN') : '—'}</p>
                   </div>
                 </div>
                 <div className="mt-4">
                   <button onClick={() => setShowPlanModal(true)} className="btn-secondary btn-sm">
-                    <TrendingUp size={13} /> Change Plan
+                    <TrendingUp size={13} /> {t('settings.subscription.changePlan')}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="card"><div className="card-body flex items-center justify-between text-sm">
-              <span className="text-slate-400">No subscription data available.</span>
-              <button onClick={() => setShowPlanModal(true)} className="btn-secondary btn-sm"><TrendingUp size={13} /> Choose a Plan</button>
+              <span className="text-slate-400">{t('settings.subscription.noSubscription')}</span>
+              <button onClick={() => setShowPlanModal(true)} className="btn-secondary btn-sm"><TrendingUp size={13} /> {t('settings.subscription.choosePlan')}</button>
             </div></div>
           )}
 
           {usage && (
             <div className="card">
-              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><CreditCard size={14} /> Usage This Month</h3></div>
+              <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><CreditCard size={14} /> {t('settings.subscription.usageHeading')}</h3></div>
               <div className="card-body">
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   {[
-                    { label: 'Users', current: usage.current?.users, max: usage.limits?.max_users },
-                    { label: 'Receipts', current: usage.current?.receipts_this_month, max: usage.limits?.max_receipts_per_month },
-                    { label: 'SMS / Month', current: 0, max: usage.limits?.max_sms_per_month },
+                    { label: t('settings.subscription.users'), current: usage.current?.users, max: usage.limits?.max_users },
+                    { label: t('settings.subscription.receipts'), current: usage.current?.receipts_this_month, max: usage.limits?.max_receipts_per_month },
+                    { label: t('settings.subscription.smsPerMonth'), current: 0, max: usage.limits?.max_sms_per_month },
                   ].map(({ label, current, max }) => (
                     <div key={label}>
                       <p className="text-xs text-slate-400 mb-1">{label}</p>
@@ -570,10 +571,10 @@ export function SettingsPage() {
 
           {subscription?.invoices && subscription.invoices.length > 0 && (
             <div className="card overflow-hidden">
-              <div className="card-header"><h3 className="font-semibold text-sm">Billing History</h3></div>
+              <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.subscription.billingHistoryHeading')}</h3></div>
               <div className="overflow-x-auto">
                 <table className="data-table">
-                  <thead><tr><th>Invoice</th><th>Period</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+                  <thead><tr><th>{t('settings.subscription.invoiceCol')}</th><th>{t('settings.subscription.periodCol')}</th><th>{t('settings.subscription.amountCol')}</th><th>{t('settings.subscription.statusCol')}</th><th></th></tr></thead>
                   <tbody>
                     {subscription.invoices.map(inv => (
                       <tr key={inv.id}>
@@ -584,7 +585,7 @@ export function SettingsPage() {
                         <td className="text-right">
                           {inv.status === 'paid' ? (
                             <button onClick={() => openReceipt(inv.id)} className="btn-secondary btn-sm">
-                              <ClipboardList size={13} /> Receipt
+                              <ClipboardList size={13} /> {t('settings.subscription.receiptButton')}
                             </button>
                           ) : (
                             <button
@@ -593,7 +594,7 @@ export function SettingsPage() {
                               className="btn-primary btn-sm"
                             >
                               <CreditCard size={13} />
-                              {payingId === inv.id ? 'Processing…' : 'Pay Now'}
+                              {payingId === inv.id ? t('settings.subscription.processing') : t('settings.subscription.payNow')}
                             </button>
                           )}
                         </td>
@@ -610,10 +611,10 @@ export function SettingsPage() {
             <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowPlanModal(false)}>
               <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-navy-900">Choose a Plan</h3>
+                  <h3 className="font-bold text-navy-900">{t('settings.subscription.modalHeading')}</h3>
                   <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs">
-                    <button onClick={() => setPlanCycle('monthly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'monthly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>Monthly</button>
-                    <button onClick={() => setPlanCycle('yearly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'yearly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>Yearly</button>
+                    <button onClick={() => setPlanCycle('monthly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'monthly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>{t('settings.subscription.monthly')}</button>
+                    <button onClick={() => setPlanCycle('yearly')} className={`px-3 py-1 rounded-md font-medium ${planCycle === 'yearly' ? 'bg-white shadow-sm text-navy-900' : 'text-slate-500'}`}>{t('settings.subscription.yearly')}</button>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -624,12 +625,12 @@ export function SettingsPage() {
                       <div key={p.id} className={`card p-4 ${isCurrent ? 'border-brand-red' : ''}`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-bold text-navy-900">{p.display_name} {isCurrent && <span className="badge-green ml-1">Current</span>}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{p.max_users} users · {p.max_receipts_per_month} receipts/mo · {p.max_sms_per_month} SMS/mo</p>
+                            <p className="font-bold text-navy-900">{p.display_name} {isCurrent && <span className="badge-green ml-1">{t('settings.subscription.current')}</span>}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{t('settings.subscription.usersReceiptsSms', { users: p.max_users, receipts: p.max_receipts_per_month, sms: p.max_sms_per_month })}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-navy-900">{price > 0 ? `₹${fmtPaise(price)}` : 'Free'}</p>
-                            <p className="text-[10px] text-slate-400">/{planCycle === 'yearly' ? 'yr' : 'mo'}</p>
+                            <p className="font-bold text-navy-900">{price > 0 ? `₹${fmtPaise(price)}` : t('settings.subscription.free')}</p>
+                            <p className="text-[10px] text-slate-400">{planCycle === 'yearly' ? t('settings.subscription.perYear') : t('settings.subscription.perMonth')}</p>
                           </div>
                         </div>
                         {price > 0 && (
@@ -638,13 +639,13 @@ export function SettingsPage() {
                             disabled={!!upgradingPlan}
                             className="btn-primary btn-sm w-full justify-center mt-3"
                           >
-                            {upgradingPlan === p.name ? 'Processing…' : isCurrent ? 'Renew' : 'Select & Pay'}
+                            {upgradingPlan === p.name ? t('settings.subscription.processing') : isCurrent ? t('settings.subscription.renew') : t('settings.subscription.selectAndPay')}
                           </button>
                         )}
                       </div>
                     )
                   })}
-                  {plans.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No plans available.</p>}
+                  {plans.length === 0 && <p className="text-sm text-slate-400 text-center py-4">{t('settings.subscription.noPlans')}</p>}
                 </div>
               </div>
             </div>

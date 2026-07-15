@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
@@ -338,6 +339,7 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
 }
 
 export function ReceiptSettingsTab() {
+  const { t } = useTranslation()
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -400,7 +402,7 @@ export function ReceiptSettingsTab() {
 
   function handleLogoFile(file: File) {
     if (!file.type.startsWith('image/')) return
-    if (file.size > 2 * 1024 * 1024) { alert('Logo file must be under 2 MB'); return }
+    if (file.size > 2 * 1024 * 1024) { alert(t('settings.receipts.logoRequiredWarn')); return }
     setLogoUploading(true)
     const reader = new FileReader()
     reader.onload = e => {
@@ -447,9 +449,9 @@ export function ReceiptSettingsTab() {
   const statutory: { label: string; value: string; required?: boolean }[] = [
     { label: 'GSTIN', value: form.gstin },
     { label: 'PAN', value: form.pan },
-    { label: '80G Reg. No.', value: form.reg_80g_number, required: true },
+    { label: t('settings.receipts.statutory80gRegNo'), value: form.reg_80g_number, required: true },
     { label: '80G URN', value: form.reg_80g_urn },
-    { label: '80G Valid Upto', value: form.reg_80g_valid_upto ? new Date(form.reg_80g_valid_upto).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '' },
+    { label: t('settings.receipts.statutory80gValidUpto'), value: form.reg_80g_valid_upto ? new Date(form.reg_80g_valid_upto).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '' },
     { label: '12A / 12AB', value: form.reg_12ab_number || form.reg_12a_number },
   ]
   const missingRequired = statutory.filter(s => s.required && !s.value)
@@ -461,17 +463,17 @@ export function ReceiptSettingsTab() {
       <form onSubmit={save} className="flex-1 min-w-0 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Receipt Settings</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Design the donation receipts your temple issues. Changes preview live on the right.</p>
+            <h2 className="text-lg font-bold text-slate-800">{t('settings.receipts.heading')}</h2>
+            <p className="text-sm text-slate-500 mt-0.5">{t('settings.receipts.subheading')}</p>
           </div>
           <button type="button" onClick={printSample} className="btn-secondary btn-sm whitespace-nowrap">
-            <Printer size={14} /> Print sample
+            <Printer size={14} /> {t('settings.receipts.printSample')}
           </button>
         </div>
 
         {success && (
           <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">
-            <CheckCircle2 size={16} /> Receipt settings saved!
+            <CheckCircle2 size={16} /> {t('settings.receipts.saved')}
           </div>
         )}
 
@@ -479,8 +481,8 @@ export function ReceiptSettingsTab() {
         <div className="card">
           <div className="card-header flex items-center gap-2">
             <ShieldCheck size={15} className="text-navy-900" />
-            <h3 className="font-semibold text-sm">Statutory Details on Receipts</h3>
-            <span className="ml-auto text-[11px] text-slate-400">from Temple Profile</span>
+            <h3 className="font-semibold text-sm">{t('settings.receipts.statutoryHeading')}</h3>
+            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.statutorySource')}</span>
           </div>
           <div className="card-body">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -490,7 +492,7 @@ export function ReceiptSettingsTab() {
                   {s.value ? (
                     <div className="text-sm font-semibold text-slate-800 font-mono truncate" title={s.value}>{s.value}</div>
                   ) : (
-                    <div className={`text-xs font-medium ${s.required ? 'text-amber-600' : 'text-slate-400'}`}>{s.required ? 'Not set — required for 80G' : 'Not set'}</div>
+                    <div className={`text-xs font-medium ${s.required ? 'text-amber-600' : 'text-slate-400'}`}>{s.required ? t('settings.receipts.notSetRequired') : t('settings.receipts.notSet')}</div>
                   )}
                 </div>
               ))}
@@ -498,22 +500,22 @@ export function ReceiptSettingsTab() {
             {missingRequired.length > 0 && (
               <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
                 <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                <span>Your <b>80G registration number</b> is not set. The 80G receipt template and donor 80G certificates need it. Add it in <b>Settings → Temple Profile</b>.</span>
+                <Trans i18nKey="settings.receipts.missingWarning" components={{ bold: <b />, bold2: <b /> }} />
               </div>
             )}
-            <p className="mt-2 text-[11px] text-slate-400">These values are managed in <b>Temple Profile</b> and are shown here so you can confirm what prints on receipts.</p>
+            <p className="mt-2 text-[11px] text-slate-400"><Trans i18nKey="settings.receipts.statutoryHelp" components={{ bold: <b /> }} /></p>
           </div>
         </div>
 
         {/* Logo */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Logo</h3></div>
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.logoHeading')}</h3></div>
           <div className="card-body space-y-3">
             {logoSrc ? (
               <div className="flex items-center gap-3">
                 <img src={logoSrc} alt="Logo" className="h-14 object-contain border border-slate-200 rounded p-1 bg-white" />
                 <div className="flex-1">
-                  <p className="text-xs text-slate-500">{form.logo_base64 ? 'Stored as base64 (embedded in receipt)' : 'External URL'}</p>
+                  <p className="text-xs text-slate-500">{form.logo_base64 ? t('settings.receipts.logoStoredBase64') : t('settings.receipts.logoExternalUrl')}</p>
                 </div>
                 <button type="button" onClick={() => { set('logo_base64', ''); set('logo_cdn_url', '') }}
                   className="p-1 text-slate-400 hover:text-red-500">
@@ -528,16 +530,16 @@ export function ReceiptSettingsTab() {
                 className="border-2 border-dashed border-slate-200 rounded-md p-6 text-center cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-colors"
               >
                 <Upload size={20} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-sm font-medium text-slate-600">Upload logo</p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG, SVG · max 2 MB · stored as base64</p>
+                <p className="text-sm font-medium text-slate-600">{t('settings.receipts.uploadLogo')}</p>
+                <p className="text-xs text-slate-400 mt-1">{t('settings.receipts.uploadLogoHelp')}</p>
               </div>
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = '' }} />
-            {logoUploading && <p className="text-xs text-blue-600 animate-pulse">Processing logo...</p>}
+            {logoUploading && <p className="text-xs text-blue-600 animate-pulse">{t('settings.receipts.processingLogo')}</p>}
 
             <div>
-              <label className="form-label">Or enter image URL</label>
+              <label className="form-label">{t('settings.receipts.orEnterUrl')}</label>
               <input className="form-input" placeholder="https://yourdomain.com/logo.png"
                 value={form.logo_cdn_url}
                 onChange={e => { set('logo_cdn_url', e.target.value); if (e.target.value) set('logo_base64', '') }} />
@@ -545,7 +547,7 @@ export function ReceiptSettingsTab() {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_logo_on_receipts}
                 onChange={e => set('show_logo_on_receipts', e.target.checked)} />
-              Show logo on receipts
+              {t('settings.receipts.showLogo')}
             </label>
           </div>
         </div>
@@ -553,8 +555,8 @@ export function ReceiptSettingsTab() {
         {/* Template */}
         <div className="card">
           <div className="card-header flex items-center gap-2">
-            <h3 className="font-semibold text-sm">Template</h3>
-            <span className="ml-auto text-[11px] text-slate-400">{TEMPLATES.length} designs</span>
+            <h3 className="font-semibold text-sm">{t('settings.receipts.templateHeading')}</h3>
+            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length })}</span>
           </div>
           <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
             {TEMPLATES.map(t => {
@@ -582,10 +584,10 @@ export function ReceiptSettingsTab() {
 
         {/* Colour & Visibility */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Colour & Visibility</h3></div>
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.colourHeading')}</h3></div>
           <div className="card-body space-y-3">
             <div className="flex items-center gap-3">
-              <label className="form-label mb-0 w-28">Primary Colour</label>
+              <label className="form-label mb-0 w-28">{t('settings.receipts.primaryColour')}</label>
               <input type="color" value={form.primary_color} onChange={e => set('primary_color', e.target.value)}
                 className="h-9 w-16 rounded border border-slate-200 cursor-pointer" />
               <span className="text-xs font-mono text-slate-500">{form.primary_color}</span>
@@ -593,50 +595,50 @@ export function ReceiptSettingsTab() {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_gstin_on_header}
                 onChange={e => set('show_gstin_on_header', e.target.checked)} />
-              Show GSTIN in header
+              {t('settings.receipts.showGstin')}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_80g_on_receipt}
                 onChange={e => set('show_80g_on_receipt', e.target.checked)} />
-              Show 80G / registration numbers on receipt
+              {t('settings.receipts.show80g')}
             </label>
           </div>
         </div>
 
         {/* Payment details */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Payment Details (on receipts)</h3></div>
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.paymentHeading')}</h3></div>
           <div className="card-body grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="form-label">UPI ID</label>
+              <label className="form-label">{t('settings.receipts.upiId')}</label>
               <input className="form-input" placeholder="temple@upi" value={form.upi_id}
                 onChange={e => set('upi_id', e.target.value)} />
             </div>
-            <div><label className="form-label">Bank Account Name</label>
+            <div><label className="form-label">{t('settings.receipts.bankAccountName')}</label>
               <input className="form-input" value={form.bank_account_name} onChange={e => set('bank_account_name', e.target.value)} /></div>
-            <div><label className="form-label">Account Number</label>
+            <div><label className="form-label">{t('settings.receipts.accountNumber')}</label>
               <input className="form-input" value={form.bank_account_no} onChange={e => set('bank_account_no', e.target.value)} /></div>
-            <div><label className="form-label">IFSC</label>
+            <div><label className="form-label">{t('settings.receipts.ifsc')}</label>
               <input className="form-input uppercase" value={form.bank_ifsc}
                 onChange={e => set('bank_ifsc', e.target.value.toUpperCase())} /></div>
-            <div><label className="form-label">Bank Name</label>
+            <div><label className="form-label">{t('settings.receipts.bankName')}</label>
               <input className="form-input" value={form.bank_name} onChange={e => set('bank_name', e.target.value)} /></div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">Receipt Footer</h3></div>
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.footerHeading')}</h3></div>
           <div className="card-body">
             <textarea className="form-input" rows={2} value={form.custom_receipt_footer}
               onChange={e => set('custom_receipt_footer', e.target.value)}
-              placeholder="Jai Jinendra! Thank you for your generous donation." />
+              placeholder={t('settings.receipts.footerPlaceholder') as string} />
           </div>
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary">
           {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-          {saving ? 'Saving...' : 'Save Receipt Settings'}
+          {saving ? t('settings.saving') : t('settings.receipts.saveButton')}
         </button>
       </form>
 
@@ -645,7 +647,7 @@ export function ReceiptSettingsTab() {
         <div className="card overflow-hidden">
           <div className="card-header flex items-center gap-2">
             <Eye size={14} className="text-slate-500" />
-            <h3 className="font-semibold text-sm">Live Preview</h3>
+            <h3 className="font-semibold text-sm">{t('settings.receipts.livePreview')}</h3>
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
               {selected?.label || 'Classic'}
               {selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
@@ -663,14 +665,14 @@ export function ReceiptSettingsTab() {
             </div>
           </div>
           <div className="px-3 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
-            <p className="text-xs text-slate-400 flex-1">Updates as you change settings</p>
+            <p className="text-xs text-slate-400 flex-1">{t('settings.receipts.previewUpdates')}</p>
             <button type="button" onClick={printSample} className="btn-secondary btn-sm">
-              <Printer size={13} /> Print
+              <Printer size={13} /> {t('settings.receipts.print')}
             </button>
           </div>
         </div>
         <p className="text-[11px] text-slate-400 text-center mt-2 px-4">
-          Sample data shown. Real donor name, amount and receipt number are filled in when a receipt is issued.
+          {t('settings.receipts.sampleDataNote')}
         </p>
       </div>
     </div>

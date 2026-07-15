@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw } from 'lucide-react'
 import { api } from '../../../lib/api'
 
 export function AccountingRulesTab() {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ accounting_basis: 'cash', enable_depreciation: false })
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -31,14 +33,14 @@ export function AccountingRulesTab() {
 
   return (
     <form onSubmit={save} className="space-y-4 max-w-2xl">
-      {success && <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">Accounting rules saved!</div>}
+      {success && <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">{t('settings.accounting.saved')}</div>}
 
       <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm">Accounting Basis</h3></div>
+        <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.accounting.basisHeading')}</h3></div>
         <div className="card-body space-y-2">
           {[
-            { id: 'cash', label: 'Cash Basis', desc: 'Income & expenses recorded when money actually moves. Simpler; common for temples.' },
-            { id: 'accrual', label: 'Accrual Basis', desc: 'Income & expenses recorded when earned/incurred, regardless of payment timing.' },
+            { id: 'cash', label: t('settings.accounting.cashBasis'), desc: t('settings.accounting.cashBasisDesc') },
+            { id: 'accrual', label: t('settings.accounting.accrualBasis'), desc: t('settings.accounting.accrualBasisDesc') },
           ].map(o => (
             <label key={o.id} className={`flex items-start gap-3 border rounded-md p-3 cursor-pointer ${form.accounting_basis === o.id ? 'border-navy-900 ring-1 ring-navy-900' : 'border-slate-200'}`}>
               <input type="radio" name="basis" className="mt-1" checked={form.accounting_basis === o.id}
@@ -50,32 +52,28 @@ export function AccountingRulesTab() {
             </label>
           ))}
           <p className="text-xs text-slate-400 pt-1">
-            This drives the Income &amp; Expenditure and Balance Sheet. <strong>Cash</strong> counts only
-            money that actually moved; <strong>Accrual</strong> recognises income/expenses when
-            earned/incurred and shows unpaid bills (creditors) as liabilities.
+            <Trans i18nKey="settings.accounting.basisHelp" components={{ bold: <strong />, bold2: <strong /> }} />
           </p>
         </div>
       </div>
 
       <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm">Fixed Asset Depreciation</h3></div>
+        <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.accounting.depreciationHeading')}</h3></div>
         <div className="card-body">
           <label className="flex items-center gap-3 text-sm">
             <input type="checkbox" className="w-4 h-4" checked={form.enable_depreciation}
               onChange={e => setForm(f => ({ ...f, enable_depreciation: e.target.checked }))} />
-            Enable depreciation tracking for fixed assets
+            {t('settings.accounting.enableDepreciation')}
           </label>
           <p className="text-xs text-slate-400 mt-2">
-            When on, the Balance Sheet shows fixed assets net of depreciation; when off, at gross
-            cost. Use “Run Depreciation” on the Fixed Assets page to compute &amp; post each year’s
-            charge (straight-line or written-down value).
+            {t('settings.accounting.depreciationHelp')}
           </p>
         </div>
       </div>
 
       <button type="submit" disabled={saving} className="btn-primary">
         {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-        {saving ? 'Saving...' : 'Save Accounting Rules'}
+        {saving ? t('settings.saving') : t('settings.accounting.saveButton')}
       </button>
     </form>
   )

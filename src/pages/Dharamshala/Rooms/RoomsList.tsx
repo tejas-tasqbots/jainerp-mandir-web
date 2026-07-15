@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import type { RoomBooking } from '../../../types'
 import { useConfirm } from '../../../components/ConfirmDialog'
 
 export function RoomsList() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [bookings, setBookings] = useState<RoomBooking[]>([])
@@ -32,14 +34,14 @@ export function RoomsList() {
   }
 
   function statusBadge(s: string) {
-    if (s === 'booked' || s === 'confirmed') return <span className="badge-blue">Booked</span>
-    if (s === 'checked_in') return <span className="badge-green">Checked In</span>
-    if (s === 'checked_out') return <span className="badge-gray">Checked Out</span>
-    return <span className="badge-red">Cancelled</span>
+    if (s === 'booked' || s === 'confirmed') return <span className="badge-blue">{t('dharamshala.statusBooked')}</span>
+    if (s === 'checked_in') return <span className="badge-green">{t('dharamshala.statusCheckedIn')}</span>
+    if (s === 'checked_out') return <span className="badge-gray">{t('dharamshala.statusCheckedOut')}</span>
+    return <span className="badge-red">{t('dharamshala.statusCancelled')}</span>
   }
 
   async function checkin(id: string) {
-    if (!(await confirm({ title: 'Confirm check-in', message: 'Confirm check-in for this booking?', confirmLabel: 'Check in' }))) return
+    if (!(await confirm({ title: t('dharamshala.confirmCheckinTitle'), message: t('dharamshala.confirmCheckinMessage'), confirmLabel: t('dharamshala.checkInButton') }))) return
     try {
       await api.patch(`/room-bookings/${id}/checkin`, {})
       load()
@@ -50,7 +52,7 @@ export function RoomsList() {
   }
 
   async function checkout(id: string) {
-    if (!(await confirm({ title: 'Confirm check-out', message: 'Confirm check-out for this booking?', confirmLabel: 'Check out' }))) return
+    if (!(await confirm({ title: t('dharamshala.confirmCheckoutTitle'), message: t('dharamshala.confirmCheckoutMessage'), confirmLabel: t('dharamshala.checkOutButton') }))) return
     try {
       await api.patch(`/room-bookings/${id}/checkout`, {})
       load()
@@ -79,17 +81,23 @@ export function RoomsList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Dharamshala — Rooms</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.roomsTitle')}</h1>
         <button onClick={() => navigate('/rooms/checkin')} className="btn-primary btn-sm">
-          <Plus size={14} /> New Booking
+          <Plus size={14} /> {t('dharamshala.newBooking')}
         </button>
       </div>
 
       <div className="flex gap-2">
-        {['all', 'confirmed', 'checked_in', 'checked_out', 'cancelled'].map(s => (
+        {(['all', 'confirmed', 'checked_in', 'checked_out', 'cancelled'] as const).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1 text-xs rounded-md font-medium transition-colors capitalize ${statusFilter === s ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-            {s === 'all' ? 'All' : s.replace('_', ' ')}
+            {{
+              all: t('dharamshala.filterAll'),
+              confirmed: t('dharamshala.filterConfirmed'),
+              checked_in: t('dharamshala.filterCheckedIn'),
+              checked_out: t('dharamshala.filterCheckedOut'),
+              cancelled: t('dharamshala.filterCancelled'),
+            }[s]}
           </button>
         ))}
       </div>
@@ -99,22 +107,22 @@ export function RoomsList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Guest</th>
-                <th>Room</th>
-                <th>Check-In</th>
-                <th>Check-Out</th>
-                <th>Persons</th>
-                <th>Advance</th>
-                <th>Balance</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t('dharamshala.guest')}</th>
+                <th>{t('dharamshala.room')}</th>
+                <th>{t('dharamshala.checkIn')}</th>
+                <th>{t('dharamshala.checkOut')}</th>
+                <th>{t('dharamshala.persons')}</th>
+                <th>{t('dharamshala.advance')}</th>
+                <th>{t('dharamshala.balance')}</th>
+                <th>{t('common.status')}</th>
+                <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
               ) : bookings.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">No bookings found</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('dharamshala.noBookingsFound')}</td></tr>
               ) : bookings.map(b => (
                 <tr key={b.id}>
                   <td>
@@ -133,16 +141,16 @@ export function RoomsList() {
                   <td>
                     <div className="flex gap-1">
                       {(b.status === 'confirmed' || b.status === 'booked') && (
-                        <button onClick={() => checkin(b.id)} className="btn-success btn-sm">Check-In</button>
+                        <button onClick={() => checkin(b.id)} className="btn-success btn-sm">{t('dharamshala.checkInAction')}</button>
                       )}
                       {b.status === 'checked_in' && (
-                        <button onClick={() => checkout(b.id)} className="btn-secondary btn-sm">Check-Out</button>
+                        <button onClick={() => checkout(b.id)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
                       )}
                       {(b.status === 'confirmed' || b.status === 'booked') && (
                         <button
                           onClick={() => setCancelModal({ id: b.id, guestName: b.guest_name })}
                           className="p-1 text-slate-400 hover:text-brand-red rounded"
-                          title="Cancel booking"
+                          title={t('dharamshala.cancelBooking')}
                         >
                           <X size={14} />
                         </button>
@@ -160,19 +168,19 @@ export function RoomsList() {
       {cancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="font-bold text-navy-900 mb-1">Cancel Booking</h3>
+            <h3 className="font-bold text-navy-900 mb-1">{t('dharamshala.cancelBookingTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">
-              Cancel booking for <span className="font-semibold text-navy-900">{cancelModal.guestName}</span>?
+              {t('dharamshala.cancelBookingWarning', { name: cancelModal.guestName })}
             </p>
             <div className="mb-4">
-              <label className="form-label">Reason (optional)</label>
+              <label className="form-label">{t('dharamshala.reasonOptional')}</label>
               <input className="form-input" value={cancelReason}
-                onChange={e => setCancelReason(e.target.value)} placeholder="e.g. Guest request, no-show..." />
+                onChange={e => setCancelReason(e.target.value)} placeholder={t('dharamshala.reasonPlaceholder')} />
             </div>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => { setCancelModal(null); setCancelReason('') }} className="btn-secondary">Keep Booking</button>
+              <button onClick={() => { setCancelModal(null); setCancelReason('') }} className="btn-secondary">{t('dharamshala.keepBooking')}</button>
               <button onClick={confirmCancel} disabled={cancelling} className="btn-danger">
-                {cancelling ? 'Cancelling...' : 'Cancel Booking'}
+                {cancelling ? t('dharamshala.cancelling') : t('dharamshala.cancelBookingTitle')}
               </button>
             </div>
           </div>

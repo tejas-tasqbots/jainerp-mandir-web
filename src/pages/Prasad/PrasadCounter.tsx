@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, Minus, Plus, ShoppingCart, Trash2, Receipt } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
@@ -9,6 +10,7 @@ import type { PrasadItem, DevoteeSelection } from '../../types'
 interface CartItem { item: PrasadItem; qty: number }
 
 export function PrasadCounter() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<PrasadItem[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,22 +86,22 @@ export function PrasadCounter() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Prasad Counter</h1>
-        <Link to="/prasad/items" className="btn-secondary btn-sm">Manage Items</Link>
+        <h1 className="text-xl font-bold text-navy-900">{t('prasad.counterTitle')}</h1>
+        <Link to="/prasad/items" className="btn-secondary btn-sm">{t('prasad.manageItems')}</Link>
       </div>
 
       {lastSale && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-green-800">Sale recorded! {lastSale.invoice && <span className="font-mono text-xs">{lastSale.invoice}</span>}</p>
-            <p className="text-sm text-green-600">Total: ₹{fmtPaise(lastSale.total_paise)}</p>
+            <p className="font-semibold text-green-800">{t('prasad.saleRecorded')} {lastSale.invoice && <span className="font-mono text-xs">{lastSale.invoice}</span>}</p>
+            <p className="text-sm text-green-600">{t('prasad.totalLabel', { amount: fmtPaise(lastSale.total_paise) })}</p>
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={printLastReceipt} disabled={receiptLoading}
               className="btn-secondary btn-sm flex items-center gap-1 disabled:opacity-50">
-              <Receipt size={14} /> {receiptLoading ? 'Loading…' : 'Print Receipt'}
+              <Receipt size={14} /> {receiptLoading ? t('prasad.loadingEllipsis') : t('prasad.printReceipt')}
             </button>
-            <button type="button" onClick={() => setLastSale(null)} className="text-green-600 text-xs underline">Dismiss</button>
+            <button type="button" onClick={() => setLastSale(null)} className="text-green-600 text-xs underline">{t('prasad.dismiss')}</button>
           </div>
         </div>
       )}
@@ -108,7 +110,7 @@ export function PrasadCounter() {
         {/* Item grid */}
         <div className="col-span-2 space-y-4">
           {loading ? (
-            <div className="text-center py-10 text-slate-400">Loading items...</div>
+            <div className="text-center py-10 text-slate-400">{t('prasad.loadingItems')}</div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               {items.map(item => (
@@ -121,9 +123,9 @@ export function PrasadCounter() {
                   <p className="font-semibold text-slate-800 text-sm group-hover:text-brand-red">{item.name}</p>
                   <p className="text-lg font-bold text-navy-900 mt-1">₹{fmtPaise(item.price_paise)}</p>
                   {item.gst_rate > 0 && (
-                    <p className="text-xs text-slate-400">+{item.gst_rate}% GST</p>
+                    <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: item.gst_rate })}</p>
                   )}
-                  <p className="text-xs text-slate-400 mt-1">Stock: {item.stock_qty ?? 0}</p>
+                  <p className="text-xs text-slate-400 mt-1">{t('prasad.stock', { qty: item.stock_qty ?? 0 })}</p>
                 </button>
               ))}
             </div>
@@ -134,30 +136,30 @@ export function PrasadCounter() {
         <div className="card flex flex-col">
           <div className="card-header">
             <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-              <ShoppingCart size={15} /> Cart
+              <ShoppingCart size={15} /> {t('prasad.cart')}
             </h3>
             {cart.length > 0 && (
-              <button type="button" onClick={() => setCart([])} title="Clear cart" aria-label="Clear cart" className="text-xs text-red-500 hover:text-red-700">
+              <button type="button" onClick={() => setCart([])} title={t('prasad.clearCart')} aria-label={t('prasad.clearCart')} className="text-xs text-red-500 hover:text-red-700">
                 <Trash2 size={13} />
               </button>
             )}
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
             {cart.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-6">No items added</p>
+              <p className="text-slate-400 text-sm text-center py-6">{t('prasad.noItemsAdded')}</p>
             ) : cart.map(ci => (
               <div key={ci.item.id} className="flex items-center justify-between gap-2">
                 <span className="text-sm flex-1 truncate">{ci.item.name}</span>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty - 1)} title="Decrease quantity" aria-label="Decrease quantity" className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
+                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty - 1)} title={t('prasad.decreaseQty')} aria-label={t('prasad.decreaseQty')} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
                     <Minus size={11} />
                   </button>
                   <input
-                    type="number" min="1" value={ci.qty} title="Quantity" aria-label="Quantity"
+                    type="number" min="1" value={ci.qty} title={t('prasad.quantity')} aria-label={t('prasad.quantity')}
                     onChange={e => updateQty(ci.item.id, parseInt(e.target.value) || 0)}
                     className="w-10 text-center text-sm border border-slate-200 rounded"
                   />
-                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty + 1)} title="Increase quantity" aria-label="Increase quantity" className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
+                  <button type="button" onClick={() => updateQty(ci.item.id, ci.qty + 1)} title={t('prasad.increaseQty')} aria-label={t('prasad.increaseQty')} className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded hover:bg-slate-200">
                     <Plus size={11} />
                   </button>
                 </div>
@@ -170,22 +172,22 @@ export function PrasadCounter() {
             <div className="border-t border-slate-100 px-4 py-3 space-y-3">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-slate-500">
-                  <span>Subtotal</span><span>₹{fmtPaise(subtotal)}</span>
+                  <span>{t('prasad.subtotal')}</span><span>₹{fmtPaise(subtotal)}</span>
                 </div>
                 {gst > 0 && (
                   <div className="flex justify-between text-slate-500">
-                    <span>GST</span><span>₹{fmtPaise(gst)}</span>
+                    <span>{t('prasad.gst')}</span><span>₹{fmtPaise(gst)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-navy-900 pt-1 border-t border-slate-100">
-                  <span>Total</span><span>₹{fmtPaise(total)}</span>
+                  <span>{t('prasad.total')}</span><span>₹{fmtPaise(total)}</span>
                 </div>
               </div>
 
-              <select className="form-select text-xs" title="Payment mode" aria-label="Payment mode" value={paymentMode}
+              <select className="form-select text-xs" title={t('prasad.paymentMode')} aria-label={t('prasad.paymentMode')} value={paymentMode}
                 onChange={e => setPaymentMode(e.target.value)}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
+                <option value="cash">{t('common.cash')}</option>
+                <option value="upi">{t('common.upi')}</option>
               </select>
 
               {/* Optional buyer picker — collapsed by default */}
@@ -196,7 +198,7 @@ export function PrasadCounter() {
                   className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
                 >
                   {showBuyerPicker ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  {showBuyerPicker ? 'Remove buyer' : 'Add buyer (optional)'}
+                  {showBuyerPicker ? t('prasad.removeBuyer') : t('prasad.addBuyerOptional')}
                 </button>
                 {showBuyerPicker && (
                   <div className="mt-2">
@@ -211,7 +213,7 @@ export function PrasadCounter() {
               </div>
 
               <button type="button" onClick={checkout} disabled={saving} className="btn-primary w-full justify-center">
-                {saving ? 'Processing...' : `Checkout — ₹${fmtPaise(total)}`}
+                {saving ? t('prasad.processing') : t('prasad.checkoutButton', { amount: fmtPaise(total) })}
               </button>
             </div>
           )}

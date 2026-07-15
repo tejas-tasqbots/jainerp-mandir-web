@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
   Users, ShoppingBag, Bell
@@ -16,6 +17,7 @@ const COLORS = ['#2176AE', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 type Period = 'day' | 'week' | 'month' | 'year'
 
 export function Dashboard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('month')
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
@@ -37,30 +39,30 @@ export function Dashboard() {
 
   const statCards = overview ? [
     {
-      label: 'Total Donations',
+      label: t('dashboard.totalDonations'),
       value: `₹${fmtPaise(overview.donations.total_paise)}`,
-      sub: `${overview.donations.count} transactions`,
+      sub: t('dashboard.transactions', { count: overview.donations.count }),
       icon: <IndianRupee size={20} />,
       color: 'green',
     },
     {
-      label: 'Total Expenses',
+      label: t('dashboard.totalExpenses'),
       value: `₹${fmtPaise(overview.expenses.total_paise)}`,
-      sub: `${overview.expenses.count} entries`,
+      sub: t('dashboard.entries', { count: overview.expenses.count }),
       icon: <TrendingDown size={20} />,
       color: 'orange',
     },
     {
-      label: 'Net Income',
+      label: t('dashboard.netIncome'),
       value: `₹${fmtPaise(overview.donations.total_paise - overview.expenses.total_paise)}`,
-      sub: 'Donations minus expenses',
+      sub: t('dashboard.donationsMinusExpenses'),
       icon: <TrendingUp size={20} />,
       color: 'blue',
     },
     {
-      label: 'Rooms Available',
+      label: t('dashboard.roomsAvailable'),
       value: String(overview.rooms_available),
-      sub: `${overview.donors} donors total`,
+      sub: t('dashboard.donorsTotal', { count: overview.donors }),
       icon: <Hotel size={20} />,
       color: 'purple',
     },
@@ -77,29 +79,29 @@ export function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Dashboard</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('dashboard.title')}</h1>
         <div className="flex gap-2">
           {(['day','week','month','year'] as Period[]).map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors capitalize ${
+              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
                 period === p
                   ? 'bg-navy-900 text-white'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              {p}
+              {t(`dashboard.${p}`)}
             </button>
           ))}
           <button onClick={() => navigate('/donations/add')} className="btn-primary btn-sm ml-2">
-            <Plus size={14} /> New Donation
+            <Plus size={14} /> {t('dashboard.newDonation')}
           </button>
           <button onClick={() => navigate('/expenses/add')} className="btn-secondary btn-sm">
-            <Plus size={14} /> Expense
+            <Plus size={14} /> {t('dashboard.expense')}
           </button>
           <button onClick={() => navigate('/prasad')} className="btn-secondary btn-sm">
-            <ShoppingBag size={14} /> Prasad Bill
+            <ShoppingBag size={14} /> {t('dashboard.prasadBill')}
           </button>
         </div>
       </div>
@@ -126,22 +128,22 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Boli / Upcoming events alerts */}
+      {/* Pledges (Boli) / Upcoming events alerts */}
       {overview && (
         <div className="grid grid-cols-3 gap-4">
-          {/* Outstanding Boli */}
+          {/* Outstanding Pledges */}
           <div className="card">
             <div className="card-header">
               <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-                <Bell size={15} className="text-orange-400" /> Outstanding Bolis
+                <Bell size={15} className="text-orange-400" /> {t('dashboard.outstandingPledges')}
               </h3>
               <span className="badge-yellow">{overview.bolis.open}</span>
             </div>
             <div className="card-body py-3">
               <p className="text-lg font-bold text-orange-600">₹{fmtPaise(overview.bolis.outstanding_paise)}</p>
-              <p className="text-xs text-slate-400 mt-1">{overview.bolis.open} pending pledges</p>
-              <button onClick={() => navigate('/boli')} className="btn-secondary btn-sm mt-3">
-                View Bolis
+              <p className="text-xs text-slate-400 mt-1">{t('dashboard.pendingPledges', { count: overview.bolis.open })}</p>
+              <button onClick={() => navigate('/donations?tab=pledges')} className="btn-secondary btn-sm mt-3">
+                {t('dashboard.viewPledges')}
               </button>
             </div>
           </div>
@@ -150,13 +152,13 @@ export function Dashboard() {
           <div className="card col-span-2">
             <div className="card-header">
               <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-                <AlertTriangle size={15} className="text-blue-400" /> Upcoming Events
+                <AlertTriangle size={15} className="text-blue-400" /> {t('dashboard.upcomingEvents')}
               </h3>
               <span className="badge-blue">{overview.events.upcoming.length}</span>
             </div>
             <div className="card-body py-3">
               {overview.events.upcoming.length === 0 ? (
-                <p className="text-slate-400 text-sm">No upcoming events</p>
+                <p className="text-slate-400 text-sm">{t('dashboard.noUpcomingEvents')}</p>
               ) : (
                 <div className="space-y-2">
                   {overview.events.upcoming.slice(0, 3).map(e => (
@@ -182,7 +184,7 @@ export function Dashboard() {
             <div className="card-body py-3 flex items-center gap-3">
               <div className="p-2 bg-blue-50 rounded-lg"><Users size={18} className="text-blue-600" /></div>
               <div>
-                <p className="text-xs text-slate-400">Total Donors</p>
+                <p className="text-xs text-slate-400">{t('dashboard.totalDonors')}</p>
                 <p className="font-bold text-lg">{overview.donors}</p>
               </div>
             </div>
@@ -191,7 +193,7 @@ export function Dashboard() {
             <div className="card-body py-3 flex items-center gap-3">
               <div className="p-2 bg-green-50 rounded-lg"><IndianRupee size={18} className="text-green-600" /></div>
               <div>
-                <p className="text-xs text-slate-400">Total Visitors</p>
+                <p className="text-xs text-slate-400">{t('dashboard.totalVisitors')}</p>
                 <p className="font-bold text-lg">{overview.visitors}</p>
               </div>
             </div>
@@ -200,7 +202,7 @@ export function Dashboard() {
             <div className="card-body py-3 flex items-center gap-3">
               <div className="p-2 bg-purple-50 rounded-lg"><Hotel size={18} className="text-purple-600" /></div>
               <div>
-                <p className="text-xs text-slate-400">Employees</p>
+                <p className="text-xs text-slate-400">{t('dashboard.employees')}</p>
                 <p className="font-bold text-lg">{overview.employees}</p>
               </div>
             </div>
@@ -212,6 +214,7 @@ export function Dashboard() {
 }
 
 function DashboardCharts({ period }: { period: Period }) {
+  const { t } = useTranslation()
   const [barData, setBarData] = useState<{ month: string; donations: number; expenses: number }[]>([])
   const [pieData, setPieData] = useState<{ name: string; value: number }[]>([])
   const [lineData, setLineData] = useState<{ date: string; amount: number }[]>([])
@@ -285,7 +288,7 @@ function DashboardCharts({ period }: { period: Period }) {
         {/* Bar chart */}
         <div className="card col-span-2">
           <div className="card-header">
-            <h3 className="font-semibold text-sm text-navy-900">Donations vs Expenses (Monthly)</h3>
+            <h3 className="font-semibold text-sm text-navy-900">{t('dashboard.donationsVsExpenses')}</h3>
           </div>
           <div className="card-body">
             {barData.length > 0 ? (
@@ -296,12 +299,12 @@ function DashboardCharts({ period }: { period: Period }) {
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
                   <Tooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
                   <Legend />
-                  <Bar dataKey="donations" name="Donations" fill="#2176AE" radius={[3,3,0,0]} />
-                  <Bar dataKey="expenses" name="Expenses" fill="#f87171" radius={[3,3,0,0]} />
+                  <Bar dataKey="donations" name={t('dashboard.donationsSeries')} fill="#2176AE" radius={[3,3,0,0]} />
+                  <Bar dataKey="expenses" name={t('dashboard.expensesSeries')} fill="#f87171" radius={[3,3,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-slate-400 text-sm text-center py-8">No chart data available</p>
+              <p className="text-slate-400 text-sm text-center py-8">{t('dashboard.noChartData')}</p>
             )}
           </div>
         </div>
@@ -309,7 +312,7 @@ function DashboardCharts({ period }: { period: Period }) {
         {/* Pie chart */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-sm text-navy-900">Top Donors (This FY)</h3>
+            <h3 className="font-semibold text-sm text-navy-900">{t('dashboard.topDonors')}</h3>
           </div>
           <div className="card-body flex flex-col items-center">
             {pieData.length > 0 ? (
@@ -336,7 +339,7 @@ function DashboardCharts({ period }: { period: Period }) {
                 </div>
               </>
             ) : (
-              <p className="text-slate-400 text-sm text-center py-8">No donor data</p>
+              <p className="text-slate-400 text-sm text-center py-8">{t('dashboard.noDonorData')}</p>
             )}
           </div>
         </div>
@@ -346,7 +349,7 @@ function DashboardCharts({ period }: { period: Period }) {
       {lineData.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-sm text-navy-900">Daily Collection Trend</h3>
+            <h3 className="font-semibold text-sm text-navy-900">{t('dashboard.dailyCollectionTrend')}</h3>
           </div>
           <div className="card-body">
             <ResponsiveContainer width="100%" height={140}>

@@ -4,7 +4,7 @@ const topics = [
   {
     title: 'Finding & Registering Devotees (Global Devotee Search)',
     steps: [
-      'On every form (Donation, Boli, Seva, Room, Hall, Prasad) the devotee field is a global search box',
+      'On every form (Donation, Pledge, Seva Booking, Room, Hall, Prasad) the devotee field is a global search box',
       'Type a mobile number or name — matches across ALL temples appear with Verified ✓ and Connected 🔗 badges',
       'Select a match to attach the devotee; their PAN (if verified) flows onto the 80G receipt automatically',
       'Not found? Click "Register on-site": enter name + optional PAN, then "Send OTP"',
@@ -26,11 +26,11 @@ const topics = [
     ],
   },
   {
-    title: 'Boli (Pledge) Management',
+    title: 'Pledge (Boli) Management',
     steps: [
-      'Go to Boli Donations → New Boli — use the Devotee search to attach a global devotee (or mark anonymous)',
+      'Go to Donations → Pledges tab → New Pledge — use the Devotee search to attach a global devotee (or mark anonymous)',
       'Enter the pledged amount; status will be "Pledged" until payment is recorded',
-      'When devotee pays: click the "Pay" button on the boli entry',
+      'When devotee pays: click the "Pay" button on the pledge entry',
       'Enter amount and payment mode in the modal, then confirm',
       'To waive remaining balance: click ⚠️ icon and enter a reason (admin only)',
       'View intimation details via the 🔔 icon on any boli row',
@@ -80,7 +80,7 @@ const topics = [
   {
     title: 'Seva (Pooja) Bookings',
     steps: [
-      'Go to Seva Donation → New Booking',
+      'Go to Seva Booking → New Booking',
       'Select seva type — amount fills automatically from the seva catalog',
       'Use the Devotee search to attach a global devotee (or mark anonymous)',
       'Enter gotra, sankalp names, and date (these stay separate from the devotee record)',
@@ -121,7 +121,7 @@ const apiCoverage = [
   { endpoint: 'GET/POST/PATCH /prasad/items, POST /:id/adjust-stock, POST/GET /prasad/sales', ui: 'Prasad Counter POS + Manage Items', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /seva-bookings', ui: 'Seva Bookings + Add', status: 'connected' },
   { endpoint: 'POST/GET /bhojanshala/sales, PATCH /:id/redeem, GET /daily-summary', ui: 'Bhojanshala with Redeem Tokens', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /bolis, POST /:id/payments, POST /:id/waive, GET /:id/intimation', ui: 'Boli List + Pay + Waive + Intimation', status: 'connected' },
+  { endpoint: 'GET/POST/PATCH /bolis, POST /:id/payments, POST /:id/waive, GET /:id/intimation', ui: 'Donations → Pledges tab + Pay + Waive + Intimation', status: 'connected' },
   { endpoint: 'GET/POST/PATCH/DELETE /events, GET /:id/registrations, POST /:id/announce', ui: 'Events List + Detail + Edit + Delete', status: 'connected' },
   { endpoint: 'GET /dashboard', ui: 'Dashboard with KPIs and Charts', status: 'connected' },
   { endpoint: 'GET /reports/daily-collection, /donation-register, /expense-register, /gst-summary', ui: 'Reports page with export', status: 'connected' },

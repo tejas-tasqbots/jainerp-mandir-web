@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, FileDown, Printer } from 'lucide-react'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadSectionsPdf } from '../../lib/pdfTable'
@@ -12,6 +13,7 @@ interface IEData {
 }
 
 export function IncomeExpenditure() {
+  const { t } = useTranslation()
   const [data, setData] = useState<IEData | null>(null)
   const [loading, setLoading] = useState(true)
   const [fy, setFy] = useState(currentFY())
@@ -33,10 +35,10 @@ export function IncomeExpenditure() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Income & Expenditure</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('accounts.incomeExpenditureTitle')}</h1>
         <div className="flex gap-2">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> Print
+            <Printer size={14} /> {t('accounts.print')}
           </button>
           <button type="button"
             onClick={() => data && downloadSectionsPdf(`income-expenditure-${fy}.pdf`, 'Income & Expenditure Account', [
@@ -59,7 +61,7 @@ export function IncomeExpenditure() {
               },
             ], { subtitle: `FY ${fy}` })}
             className="btn-secondary btn-sm">
-            <FileDown size={14} /> Download PDF
+            <FileDown size={14} /> {t('accounts.downloadPdf')}
           </button>
           <button type="button"
             onClick={() => data && exportRowsCsv(`income-expenditure-${fy}.csv`, ['Section', 'Head', 'Amount'], [
@@ -70,47 +72,47 @@ export function IncomeExpenditure() {
               ['', surplusPaise >= 0 ? 'Surplus' : 'Deficit', rsFmt(Math.abs(surplusPaise))],
             ])}
             className="btn-secondary btn-sm">
-            <Download size={14} /> Export CSV
+            <Download size={14} /> {t('accounts.exportCsv')}
           </button>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm text-slate-500">FY:</label>
+        <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
         <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} />
         {data && (
           <span className={surplusPaise >= 0 ? 'badge-green' : 'badge-red'}>
-            {surplusPaise >= 0 ? 'Surplus' : 'Deficit'}: ₹{fmtPaise(Math.abs(surplusPaise))}
+            {surplusPaise >= 0 ? t('accounts.surplus') : t('accounts.deficit')}: ₹{fmtPaise(Math.abs(surplusPaise))}
           </span>
         )}
       </div>
 
-      {loading && <div className="text-center py-10 text-slate-400">Loading...</div>}
+      {loading && <div className="text-center py-10 text-slate-400">{t('common.loading')}</div>}
 
       {!loading && data && (
         <div className="grid grid-cols-2 gap-6">
           <div className="card">
-            <div className="card-header"><h3 className="font-semibold text-sm text-navy-900">Income</h3></div>
+            <div className="card-header"><h3 className="font-semibold text-sm text-navy-900">{t('accounts.income')}</h3></div>
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Source</th><th className="text-right">Amount</th></tr></thead>
+                <thead><tr><th>{t('accounts.source')}</th><th className="text-right">{t('common.amount')}</th></tr></thead>
                 <tbody>
                   {data.income.map((r, i) => <tr key={i}><td>{r.head ?? r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
                 </tbody>
-                <tfoot><tr className="bg-green-50"><td className="px-4 py-2 font-bold">Total Income</td><td className="px-4 py-2 text-right font-bold text-green-700">₹{fmtPaise(totalIncome)}</td></tr></tfoot>
+                <tfoot><tr className="bg-green-50"><td className="px-4 py-2 font-bold">{t('accounts.totalIncome')}</td><td className="px-4 py-2 text-right font-bold text-green-700">₹{fmtPaise(totalIncome)}</td></tr></tfoot>
               </table>
             </div>
           </div>
 
           <div className="card">
-            <div className="card-header"><h3 className="font-semibold text-sm text-navy-900">Expenditure</h3></div>
+            <div className="card-header"><h3 className="font-semibold text-sm text-navy-900">{t('accounts.expenditure')}</h3></div>
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Category</th><th className="text-right">Amount</th></tr></thead>
+                <thead><tr><th>{t('accounts.category')}</th><th className="text-right">{t('common.amount')}</th></tr></thead>
                 <tbody>
                   {data.expenditure.map((r, i) => <tr key={i}><td>{r.head ?? r.name}</td><td className="text-right">₹{fmtPaise(r.amount_paise)}</td></tr>)}
                 </tbody>
-                <tfoot><tr className="bg-red-50"><td className="px-4 py-2 font-bold">Total Expenditure</td><td className="px-4 py-2 text-right font-bold text-red-600">₹{fmtPaise(totalExpenditure)}</td></tr></tfoot>
+                <tfoot><tr className="bg-red-50"><td className="px-4 py-2 font-bold">{t('accounts.totalExpenditure')}</td><td className="px-4 py-2 text-right font-bold text-red-600">₹{fmtPaise(totalExpenditure)}</td></tr></tfoot>
               </table>
             </div>
           </div>

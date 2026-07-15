@@ -4,7 +4,7 @@ import { ConfirmProvider } from './components/ConfirmDialog'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
-import { DonationsList } from './pages/Donations/DonationsList'
+import { DonationsHub } from './pages/Donations/DonationsHub'
 import { AddDonation } from './pages/Donations/AddDonation'
 import { ExpensesList } from './pages/Expenses/ExpensesList'
 import { AddExpense } from './pages/Expenses/AddExpense'
@@ -30,7 +30,6 @@ import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
 import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
-import { DonationRequestsPage } from './pages/DonationRequests/DonationRequestsPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
 import { FixedAssets } from './pages/Accounts/FixedAssets'
 import { Loans } from './pages/Accounts/Loans'
@@ -100,11 +99,11 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
 
-            {/* Donations */}
-            <Route path="/donations" element={<DonationsList />} />
+            {/* Donations hub — combines Donations, Requests, Pledges (was Boli) as tabs */}
+            <Route path="/donations" element={<DonationsHub />} />
             <Route path="/donations/add" element={<AddDonation />} />
             <Route path="/donations/:id/edit" element={<AddDonation />} />
-            <Route path="/donation-requests" element={<DonationRequestsPage />} />
+            <Route path="/donation-requests" element={<Navigate to="/donations?tab=requests" replace />} />
 
             {/* Expenses */}
             <Route path="/expenses" element={<ExpensesList />} />
@@ -127,8 +126,8 @@ export default function App() {
             {/* Bhojanshala */}
             <Route path="/annadaan" element={<AnnadaanList />} />
 
-            {/* Boli */}
-            <Route path="/boli" element={<BoliList />} />
+            {/* Boli (Pledges) — list now lives inside the Donations hub as a tab */}
+            <Route path="/boli" element={<Navigate to="/donations?tab=pledges" replace />} />
             <Route path="/boli/add" element={<AddBoli />} />
             <Route path="/boli/:id/edit" element={<AddBoli />} />
 

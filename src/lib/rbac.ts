@@ -20,15 +20,15 @@ const ALL_STAFF: Role[] = ['cashier', 'accountant', 'priest', 'volunteer', 'view
 
 const MODULE_ROLES: Record<string, Role[]> = {
   '/dashboard': ALL_STAFF,
+  // Union of the three merged tabs (donations/requests/pledges) — the
+  // DonationsHub page gates each tab individually via DONATIONS_TAB_ROLES.
   '/donations': ['cashier', 'accountant', 'viewer'],
-  '/donation-requests': ['cashier', 'accountant', 'viewer'],
   '/expenses': ['accountant', 'cashier'],
   '/rooms': ['cashier', 'viewer'],
   '/hall': ['cashier', 'viewer'],
   '/prasad': ['cashier'],
   '/seva': ['cashier', 'priest'],
   '/annadaan': ['cashier', 'bhojanshala_cashier'],
-  '/boli': ['cashier', 'accountant'],
   '/events': ['cashier', 'accountant', 'priest', 'volunteer', 'viewer'],
   '/maharaj': ['cashier', 'viewer'],
   '/devotees': ['cashier', 'accountant'],
@@ -46,6 +46,13 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/help': ALL_STAFF,
 }
 
+/** Per-tab roles inside the merged Donations hub (donations / requests / pledges). */
+export const DONATIONS_TAB_ROLES: Record<'donations' | 'requests' | 'pledges', Role[]> = {
+  donations: ['cashier', 'accountant', 'viewer'],
+  requests: ['cashier', 'accountant', 'viewer'],
+  pledges: ['cashier', 'accountant'],
+}
+
 /** Can a user with these roles see the module at `path`? */
 export function canSee(path: string, roles: string[] | undefined | null): boolean {
   const r = roles ?? []
@@ -58,6 +65,14 @@ export function canSee(path: string, roles: string[] | undefined | null): boolea
     .sort((a, b) => b.length - a.length)[0]
   if (!key) return true // unknown module — leave visible, server enforces
   return MODULE_ROLES[key].some(allowed => r.includes(allowed))
+}
+
+/** Same temple_admin/empty-roles rules as canSee, against an explicit role list (for hub tabs). */
+export function canSeeRoles(allowed: Role[], roles: string[] | undefined | null): boolean {
+  const r = roles ?? []
+  if (r.includes('temple_admin')) return true
+  if (r.length === 0) return true
+  return allowed.some(a => r.includes(a))
 }
 
 export const ROLE_LABELS: Record<string, string> = {

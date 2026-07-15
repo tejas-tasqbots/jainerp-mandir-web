@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link2, UserPlus, ShieldCheck, CheckCircle, XCircle, Trash2, RefreshCw } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useConfirm } from '../../components/ConfirmDialog'
@@ -20,13 +21,14 @@ interface DevoteeLink {
 
 interface InviteModalState { open: boolean; mobile: string; loading: boolean; error: string }
 
-const TABS: { key: LinkStatus; label: string }[] = [
-  { key: 'approved', label: 'Connected' },
-  { key: 'requested', label: 'Pending Requests' },
-  { key: 'invited', label: 'Pending Invites' },
+const TABS: { key: LinkStatus; labelKey: string }[] = [
+  { key: 'approved', labelKey: 'devoteesPage.tabConnected' },
+  { key: 'requested', labelKey: 'devoteesPage.tabPendingRequests' },
+  { key: 'invited', labelKey: 'devoteesPage.tabPendingInvites' },
 ]
 
 export function ConnectedDevoteesPage() {
+  const { t } = useTranslation()
   const confirm = useConfirm()
   const [tab, setTab] = useState<LinkStatus>('approved')
   const [links, setLinks] = useState<DevoteeLink[]>([])
@@ -65,7 +67,7 @@ export function ConnectedDevoteesPage() {
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ title: 'Remove connection', message: 'Remove this devotee connection?', confirmLabel: 'Remove', danger: true }))) return
+    if (!(await confirm({ title: t('devoteesPage.removeConnectionTitle'), message: t('devoteesPage.removeConnectionMessage'), confirmLabel: t('devoteesPage.remove'), danger: true }))) return
     setActionId(id)
     try {
       await api.delete(`/devotee-links/${id}`)
@@ -75,7 +77,7 @@ export function ConnectedDevoteesPage() {
 
   async function sendInvite() {
     if (!modal.mobile.match(/^\d{10}$/)) {
-      setModal(m => ({ ...m, error: 'Enter a valid 10-digit mobile number' }))
+      setModal(m => ({ ...m, error: t('devoteesPage.invalidMobile') }))
       return
     }
     setModal(m => ({ ...m, loading: true, error: '' }))
@@ -93,32 +95,32 @@ export function ConnectedDevoteesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-navy-900">Connected Devotees</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Devotees linked to this temple — searchable from all forms</p>
+          <h1 className="text-xl font-bold text-navy-900">{t('devoteesPage.title')}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('devoteesPage.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchLinks} className="btn-secondary btn-sm" title="Refresh">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => setModal({ open: true, mobile: '', loading: false, error: '' })} className="btn-primary btn-sm">
-            <UserPlus size={14} /> Invite Devotee
+            <UserPlus size={14} /> {t('devoteesPage.inviteDevotee')}
           </button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
-        {TABS.map(t => (
+        {TABS.map(tabItem => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.key
+              tab === tabItem.key
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            {t.label}
+            {t(tabItem.labelKey)}
           </button>
         ))}
       </div>
@@ -126,22 +128,22 @@ export function ConnectedDevoteesPage() {
       {/* Table */}
       <div className="card">
         {loading ? (
-          <div className="py-12 text-center text-slate-400 text-sm">Loading...</div>
+          <div className="py-12 text-center text-slate-400 text-sm">{t('common.loading')}</div>
         ) : links.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-sm">
-            {tab === 'approved' && 'No connected devotees yet. Invite a devotee or approve a pending request.'}
-            {tab === 'requested' && 'No pending requests from devotees.'}
-            {tab === 'invited' && 'No pending invites sent.'}
+            {tab === 'approved' && t('devoteesPage.noConnectedYet')}
+            {tab === 'requested' && t('devoteesPage.noPendingRequests')}
+            {tab === 'invited' && t('devoteesPage.noPendingInvites')}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Mobile</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">City</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">PAN</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('devoteesPage.name')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('devoteesPage.mobile')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('devoteesPage.city')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('devoteesPage.pan')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('common.status')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -162,17 +164,17 @@ export function ConnectedDevoteesPage() {
                   <td className="px-4 py-3">
                     {link.status === 'approved' && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        <Link2 size={10} /> Connected
+                        <Link2 size={10} /> {t('devoteesPage.connected')}
                       </span>
                     )}
                     {link.status === 'requested' && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        Requested by devotee
+                        {t('devoteesPage.requestedByDevotee')}
                       </span>
                     )}
                     {link.status === 'invited' && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        Invite sent
+                        {t('devoteesPage.inviteSent')}
                       </span>
                     )}
                   </td>
@@ -185,14 +187,14 @@ export function ConnectedDevoteesPage() {
                             disabled={actionId === link.id}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                           >
-                            <CheckCircle size={12} /> Approve
+                            <CheckCircle size={12} /> {t('devoteesPage.approve')}
                           </button>
                           <button
                             onClick={() => reject(link.id)}
                             disabled={actionId === link.id}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50"
                           >
-                            <XCircle size={12} /> Reject
+                            <XCircle size={12} /> {t('devoteesPage.reject')}
                           </button>
                         </>
                       )}
@@ -201,7 +203,7 @@ export function ConnectedDevoteesPage() {
                           onClick={() => remove(link.id)}
                           disabled={actionId === link.id}
                           className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                          title={link.status === 'invited' ? 'Cancel invite' : 'Remove connection'}
+                          title={link.status === 'invited' ? t('devoteesPage.cancelInvite') : t('devoteesPage.removeConnection')}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -219,16 +221,16 @@ export function ConnectedDevoteesPage() {
       {modal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-navy-900">Invite a Devotee</h2>
+            <h2 className="text-base font-bold text-navy-900">{t('devoteesPage.inviteADevotee')}</h2>
             <p className="text-sm text-slate-500">
-              Enter the devotee's mobile number. They'll receive a notification to accept the temple connection in the JainERP™ Devotee app.
+              {t('devoteesPage.inviteHint')}
             </p>
             <div>
-              <label className="form-label">Mobile Number *</label>
+              <label className="form-label">{t('devoteesPage.mobileNumber')}</label>
               <input
                 type="tel"
                 className="form-input"
-                placeholder="10-digit mobile"
+                placeholder={t('devoteesPage.mobilePlaceholder')}
                 maxLength={10}
                 value={modal.mobile}
                 onChange={e => setModal(m => ({ ...m, mobile: e.target.value.replace(/\D/g, '') }))}
@@ -243,10 +245,10 @@ export function ConnectedDevoteesPage() {
                 className="btn-secondary"
                 disabled={modal.loading}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={sendInvite} disabled={modal.loading} className="btn-primary">
-                <UserPlus size={14} /> {modal.loading ? 'Sending...' : 'Send Invite'}
+                <UserPlus size={14} /> {modal.loading ? t('common.saving') : t('devoteesPage.sendInvite')}
               </button>
             </div>
           </div>

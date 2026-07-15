@@ -24,7 +24,7 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { setTokens, setUser, deviceId } = useAuthStore()
+  const { setTokens, setUser, setLanguage, deviceId } = useAuthStore()
   const { fetchProfile } = useProfileStore()
 
   async function sendOtp() {
@@ -86,6 +86,7 @@ export function LoginPage() {
       { id: '', mobile, name: null, roles: result.roles ?? [] },
       { id: result.tenant?.id ?? '', slug: result.tenant?.slug ?? slug, name: result.tenant?.name ?? slug },
     )
+    if (result.language) setLanguage(result.language)
     await hydrateSession()
   }
 
@@ -106,6 +107,7 @@ export function LoginPage() {
           { id: me.tenant?.id ?? '', slug: me.tenant?.slug ?? '', name: me.tenant?.name ?? '' },
         )
       }
+      if (me?.language) setLanguage(me.language)
     } catch { /* header falls back to seeded values */ }
     await fetchProfile()
   }

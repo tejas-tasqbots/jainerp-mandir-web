@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, Download, Search, XCircle, Receipt, Ban, Award, Filter, Pencil, FileDown } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
@@ -10,6 +11,7 @@ import type { Donation, DonationCategory } from '../../types'
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
 
 export function DonationsList() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [donations, setDonations] = useState<Donation[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,7 +132,7 @@ export function DonationsList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Donations</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('donations.title')}</h1>
         <div className="flex gap-2">
           <button
             type="button"
@@ -144,7 +146,7 @@ export function DonationsList() {
             }}
             className="btn-secondary btn-sm"
           >
-            <FileDown size={14} /> Export PDF
+            <FileDown size={14} /> {t('donations.exportPdf')}
           </button>
           <button
             type="button"
@@ -158,13 +160,13 @@ export function DonationsList() {
             }}
             className="btn-secondary btn-sm"
           >
-            <Download size={14} /> Export CSV
+            <Download size={14} /> {t('donations.exportCsv')}
           </button>
           <button onClick={() => setImportOpen(true)} className="btn-secondary btn-sm">
-            <FileDown size={14} /> Import Old Register
+            <FileDown size={14} /> {t('donations.importOldRegister')}
           </button>
           <button onClick={() => navigate('/donations/add')} className="btn-primary btn-sm">
-            <Plus size={14} /> New Donation
+            <Plus size={14} /> {t('donations.newDonation')}
           </button>
         </div>
       </div>
@@ -176,7 +178,7 @@ export function DonationsList() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             className="form-input pl-9"
-            placeholder="Search donor, invoice, category..."
+            placeholder={t('donations.searchPlaceholder')}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
           />
@@ -191,43 +193,43 @@ export function DonationsList() {
           onClick={() => setShowFilters(s => !s)}
           className={`btn-secondary btn-sm ${activeFilterCount ? 'border-brand-blue text-brand-blue' : ''}`}
         >
-          <Filter size={14} /> Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
+          <Filter size={14} /> {t('common.filters')}{activeFilterCount ? ` (${activeFilterCount})` : ''}
         </button>
         {activeFilterCount > 0 && (
-          <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500">Clear all</button>
+          <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500">{t('common.clearAll')}</button>
         )}
       </div>
 
       {showFilters && (
         <div className="card p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
           <div>
-            <label htmlFor="f-category" className="form-label text-xs">Category</label>
+            <label htmlFor="f-category" className="form-label text-xs">{t('donations.category')}</label>
             <select id="f-category" className="form-select" value={fCategory} onChange={e => { setFCategory(e.target.value); setPage(1) }}>
-              <option value="">All</option>
+              <option value="">{t('common.all')}</option>
               {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="f-mode" className="form-label text-xs">Payment Mode</label>
+            <label htmlFor="f-mode" className="form-label text-xs">{t('donations.paymentMode')}</label>
             <select id="f-mode" className="form-select" value={fMode} onChange={e => { setFMode(e.target.value); setPage(1) }}>
-              <option value="">All</option>
-              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+              <option value="">{t('common.all')}</option>
+              {PAYMENT_MODES.map(m => <option key={m} value={m}>{t(`common.${m}`)}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="f-80g" className="form-label text-xs">80G</label>
+            <label htmlFor="f-80g" className="form-label text-xs">{t('donations.eightyG')}</label>
             <select id="f-80g" className="form-select" value={f80g} onChange={e => { setF80g(e.target.value); setPage(1) }}>
-              <option value="">All</option>
-              <option value="yes">80G Only</option>
-              <option value="no">Non-80G</option>
+              <option value="">{t('common.all')}</option>
+              <option value="yes">{t('donations.eightyGOnly')}</option>
+              <option value="no">{t('donations.nonEightyG')}</option>
             </select>
           </div>
           <div>
-            <label htmlFor="f-from" className="form-label text-xs">From</label>
+            <label htmlFor="f-from" className="form-label text-xs">{t('donations.from')}</label>
             <input id="f-from" type="date" title="From date" className="form-input" value={fFrom} onChange={e => { setFFrom(e.target.value); setPage(1) }} />
           </div>
           <div>
-            <label htmlFor="f-to" className="form-label text-xs">To</label>
+            <label htmlFor="f-to" className="form-label text-xs">{t('donations.to')}</label>
             <input id="f-to" type="date" title="To date" className="form-input" value={fTo} onChange={e => { setFTo(e.target.value); setPage(1) }} />
           </div>
         </div>
@@ -238,22 +240,22 @@ export function DonationsList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Invoice No</th>
-                <th>Donor</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Mode</th>
-                <th>80G</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t('donations.invoiceNo')}</th>
+                <th>{t('donations.donor')}</th>
+                <th>{t('donations.category')}</th>
+                <th>{t('common.amount')}</th>
+                <th>{t('donations.mode')}</th>
+                <th>{t('donations.eightyG')}</th>
+                <th>{t('common.date')}</th>
+                <th>{t('common.status')}</th>
+                <th>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
               ) : donations.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">No donations found</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('donations.noDonationsFound')}</td></tr>
               ) : donations.map(d => (
                 <tr key={d.id}>
                   <td className="font-mono text-xs text-brand-blue">{d.invoice_no}</td>
@@ -262,23 +264,23 @@ export function DonationsList() {
                     {d.donor_mobile && <p className="text-xs text-slate-400">{d.donor_mobile}</p>}
                     {d.is_anonymous && (
                       <p className="text-xs text-slate-400 italic">
-                        {d.anonymous_category === 'dan_peti' ? 'Dan Peti' : 'Anonymous / Gupt Dan'}
+                        {d.anonymous_category === 'dan_peti' ? t('donations.danPeti') : t('donations.anonymousGuptDan')}
                       </p>
                     )}
                   </td>
                   <td className="text-slate-600">{d.category_name || '—'}</td>
                   <td className="font-semibold">₹{fmtPaise(d.amount_paise)}</td>
                   <td><span className={paymentModeBadge(d.payment_mode)}>{d.payment_mode}</span></td>
-                  <td>{d.is_80g_eligible ? <span className="badge-green">Yes</span> : <span className="badge-gray">No</span>}</td>
+                  <td>{d.is_80g_eligible ? <span className="badge-green">{t('common.yes')}</span> : <span className="badge-gray">{t('common.no')}</span>}</td>
                   <td className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</td>
-                  <td>{d.is_voided ? <span className="badge-red">Voided</span> : <span className="badge-green">Active</span>}</td>
+                  <td>{d.is_voided ? <span className="badge-red">{t('donations.voided')}</span> : <span className="badge-green">{t('common.active')}</span>}</td>
                   <td>
                     <div className="flex gap-1">
                       <button
                         type="button"
                         onClick={() => openReceipt(d.id)}
-                        title="Print Receipt"
-                        aria-label="Print Receipt"
+                        title={t('donations.printReceipt')}
+                        aria-label={t('donations.printReceipt')}
                         disabled={receiptLoading === d.id}
                         className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
                       >
@@ -287,8 +289,8 @@ export function DonationsList() {
                       <button
                         type="button"
                         onClick={() => savePdf(d.id)}
-                        title="Download PDF"
-                        aria-label="Download PDF"
+                        title={t('donations.downloadPdf')}
+                        aria-label={t('donations.downloadPdf')}
                         disabled={pdfLoading === d.id}
                         className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
                       >
@@ -298,8 +300,8 @@ export function DonationsList() {
                         <button
                           type="button"
                           onClick={() => download80g(d.donor_id!)}
-                          title="Download 80G Certificate"
-                          aria-label="Download 80G Certificate"
+                          title={t('donations.download80gCertificate')}
+                          aria-label={t('donations.download80gCertificate')}
                           disabled={certLoading === d.donor_id}
                           className="p-1 text-slate-400 hover:text-green-600 rounded disabled:opacity-40"
                         >
@@ -310,8 +312,8 @@ export function DonationsList() {
                         <button
                           type="button"
                           onClick={() => navigate(`/donations/${d.id}/edit`)}
-                          title="Edit (void & reissue)"
-                          aria-label="Edit donation"
+                          title={t('donations.editVoidReissue')}
+                          aria-label={t('donations.editVoidReissue')}
                           className="p-1 text-slate-400 hover:text-amber-600 rounded"
                         >
                           <Pencil size={14} />
@@ -321,8 +323,8 @@ export function DonationsList() {
                         <button
                           type="button"
                           onClick={() => setVoidModal({ id: d.id, invoiceNo: d.invoice_no })}
-                          title="Void Donation"
-                          aria-label="Void Donation"
+                          title={t('donations.voidDonation')}
+                          aria-label={t('donations.voidDonation')}
                           className="p-1 text-slate-400 hover:text-brand-red rounded"
                         >
                           <Ban size={14} />
@@ -339,10 +341,10 @@ export function DonationsList() {
 
       {total > 20 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>Showing {((page-1)*20)+1}–{Math.min(page*20, total)} of {total}</span>
+          <span>{t('donations.showing', { from: ((page-1)*20)+1, to: Math.min(page*20, total), total })}</span>
           <div className="flex gap-2">
-            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary btn-sm">Prev</button>
-            <button disabled={page * 20 >= total} onClick={() => setPage(p => p+1)} className="btn-secondary btn-sm">Next</button>
+            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary btn-sm">{t('common.prev')}</button>
+            <button disabled={page * 20 >= total} onClick={() => setPage(p => p+1)} className="btn-secondary btn-sm">{t('common.next')}</button>
           </div>
         </div>
       )}
@@ -351,28 +353,28 @@ export function DonationsList() {
       {voidModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-            <h3 className="font-bold text-navy-900 mb-1">Void Donation</h3>
+            <h3 className="font-bold text-navy-900 mb-1">{t('donations.voidDonation')}</h3>
             <p className="text-sm text-slate-500 mb-4">
-              Invoice <span className="font-mono font-semibold text-navy-900">{voidModal.invoiceNo}</span> will be voided. This cannot be undone.
+              {t('donations.voidModalWarning', { invoiceNo: voidModal.invoiceNo })}
             </p>
             <div className="mb-4">
-              <label className="form-label">Reason for voiding *</label>
+              <label className="form-label">{t('donations.reasonForVoiding')}</label>
               <textarea
                 className="form-input"
                 rows={3}
                 value={voidReason}
                 onChange={e => setVoidReason(e.target.value)}
-                placeholder="Enter reason..."
+                placeholder={t('donations.enterReason')}
               />
             </div>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => { setVoidModal(null); setVoidReason('') }} className="btn-secondary">Cancel</button>
+              <button onClick={() => { setVoidModal(null); setVoidReason('') }} className="btn-secondary">{t('common.cancel')}</button>
               <button
                 onClick={confirmVoid}
                 disabled={!voidReason.trim() || voiding}
                 className="btn-danger"
               >
-                {voiding ? 'Voiding...' : 'Void Donation'}
+                {voiding ? t('donations.voiding') : t('donations.voidDonation')}
               </button>
             </div>
           </div>
@@ -389,6 +391,7 @@ export function DonationsList() {
  * Rows are parsed client-side and posted to POST /donations/bulk-import.
  */
 function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ total: number; imported: number; failed: number; errors: { row: number; message: string }[] } | null>(null)
@@ -461,7 +464,7 @@ function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) 
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h3 className="font-semibold text-navy-900">Import Old Donation Register</h3>
+          <h3 className="font-semibold text-navy-900">{t('donations.importTitle')}</h3>
           <button onClick={() => onClose(!!result && result.imported > 0)} className="text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
         </div>
         <div className="p-6 space-y-4">
@@ -488,9 +491,9 @@ function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) 
             </div>
           )}
           <div className="flex justify-end gap-3">
-            <button onClick={() => onClose(!!result && result.imported > 0)} className="btn-secondary">Close</button>
+            <button onClick={() => onClose(!!result && result.imported > 0)} className="btn-secondary">{t('common.close')}</button>
             <button onClick={run} disabled={busy || !text.trim()} className="btn-primary">
-              {busy ? 'Importing…' : 'Import Rows'}
+              {busy ? t('donations.importing') : t('donations.importRows')}
             </button>
           </div>
         </div>

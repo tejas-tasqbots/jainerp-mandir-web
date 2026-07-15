@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import type { Room, DevoteeSelection } from '../../../types'
 
 export function AddRoomCheckin() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [saving, setSaving] = useState(false)
@@ -64,17 +66,17 @@ export function AddRoomCheckin() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">New Room Booking</h1>
-        <button onClick={() => navigate('/rooms')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newRoomBooking')}</h1>
+        <button onClick={() => navigate('/rooms')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div>
-            <label className="form-label">Room *</label>
+            <label className="form-label">{t('dharamshala.roomLabel')}</label>
             <select className="form-select" value={form.room_id}
               onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}>
-              <option value="">Select available room...</option>
+              <option value="">{t('dharamshala.selectAvailableRoom')}</option>
               {rooms.map(r => (
                 <option key={r.id} value={r.id}>
                   {r.room_number} — {r.room_type} ({r.capacity} persons) — ₹{(r.tariff_per_night_paise/100).toLocaleString('en-IN')}/night
@@ -84,7 +86,7 @@ export function AddRoomCheckin() {
           </div>
 
           <DevoteePicker
-            label="Guest"
+            label={t('dharamshala.guestLabel')}
             value={guest}
             onChange={setGuest}
             showAnonymous={false}
@@ -93,17 +95,17 @@ export function AddRoomCheckin() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="form-label">Check-In Date *</label>
+              <label className="form-label">{t('dharamshala.checkInDate')}</label>
               <input type="date" className="form-input" value={form.check_in_date}
                 onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Check-Out Date *</label>
+              <label className="form-label">{t('dharamshala.checkOutDate')}</label>
               <input type="date" className="form-input" value={form.check_out_date}
                 onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Persons</label>
+              <label className="form-label">{t('dharamshala.personsLabel')}</label>
               <input type="number" min="1" max={selectedRoom?.capacity || 10} className="form-input"
                 value={form.persons_count} onChange={e => setForm(f => ({ ...f, persons_count: e.target.value }))} />
             </div>
@@ -111,26 +113,29 @@ export function AddRoomCheckin() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Advance Amount (₹)</label>
+              <label className="form-label">{t('dharamshala.advanceAmount')}</label>
               <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Payment Mode</label>
+              <label className="form-label">{t('dharamshala.paymentMode')}</label>
               <select className="form-select" value={form.payment_mode}
                 onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
+                <option value="cash">{t('common.cash')}</option>
+                <option value="upi">{t('common.upi')}</option>
               </select>
             </div>
           </div>
 
           {selectedRoom && form.check_in_date && form.check_out_date && (
             <div className="bg-blue-50 rounded-md p-3 text-sm">
-              <p className="text-blue-800 font-medium">Booking Summary</p>
+              <p className="text-blue-800 font-medium">{t('dharamshala.bookingSummary')}</p>
               <p className="text-blue-600 mt-1">
-                {Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000))} nights
-                × ₹{(selectedRoom.tariff_per_night_paise/100).toLocaleString('en-IN')} = ₹{((Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)) * selectedRoom.tariff_per_night_paise) / 100).toLocaleString('en-IN')}
+                {t('dharamshala.nightsSummary', {
+                  nights: Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)),
+                  tariff: (selectedRoom.tariff_per_night_paise/100).toLocaleString('en-IN'),
+                  total: ((Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)) * selectedRoom.tariff_per_night_paise) / 100).toLocaleString('en-IN'),
+                })}
               </p>
             </div>
           )}
@@ -139,9 +144,9 @@ export function AddRoomCheckin() {
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : 'Confirm Booking'}
+            <Save size={16} /> {saving ? t('common.saving') : t('dharamshala.confirmBooking')}
           </button>
         </div>
       </form>

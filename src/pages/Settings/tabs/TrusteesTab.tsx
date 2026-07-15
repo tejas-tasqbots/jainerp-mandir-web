@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2, Users, X } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { useConfirm } from '../../../components/ConfirmDialog'
@@ -16,6 +17,7 @@ const EMPTY = { name: '', designation: '', mobile: '', email: '', since_year: ''
 
 /** Trustee board management (shown on receipts/80G docs and the public temple page). */
 export function TrusteesTab() {
+  const { t } = useTranslation()
   const confirm = useConfirm()
   const [rows, setRows] = useState<Trustee[]>([])
   const [form, setForm] = useState(EMPTY)
@@ -37,7 +39,7 @@ export function TrusteesTab() {
   }
 
   async function save() {
-    if (!form.name.trim()) { setErr('Name is required'); return }
+    if (!form.name.trim()) { setErr(t('settings.trustees.nameRequired')); return }
     setSaving(true); setErr('')
     const payload = {
       name: form.name.trim(),
@@ -50,37 +52,37 @@ export function TrusteesTab() {
       if (editingId) await api.patch(`/tenants/me/trustees/${editingId}`, payload)
       else await api.post('/tenants/me/trustees', payload)
       setForm(EMPTY); setEditingId(null); await load()
-    } catch (e: any) { setErr(e?.response?.data?.error?.message || 'Could not save trustee') }
+    } catch (e: any) { setErr(e?.response?.data?.error?.message || t('settings.trustees.saveFailed')) }
     finally { setSaving(false) }
   }
 
   async function remove(id: string) {
-    if (!(await confirm({ title: 'Remove trustee', message: 'Remove this trustee?', confirmLabel: 'Remove', danger: true }))) return
+    if (!(await confirm({ title: t('settings.trustees.removeTitle'), message: t('settings.trustees.removeMessage'), confirmLabel: t('settings.trustees.remove'), danger: true }))) return
     try { await api.delete(`/tenants/me/trustees/${id}`); await load() } catch { /* */ }
   }
 
   return (
     <div className="card">
-      <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><Users size={14} /> Trustees</h3></div>
+      <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><Users size={14} /> {t('settings.trustees.heading')}</h3></div>
       <div className="card-body space-y-4">
         <p className="text-xs text-slate-400">
-          The trustee board of your mandir. Trustees appear in statutory documents and on your temple's public profile.
+          {t('settings.trustees.helpText')}
         </p>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <input className="form-input" placeholder="Name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          <input className="form-input" placeholder="Designation (President…)" value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} />
-          <input className="form-input" type="tel" placeholder="Mobile" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
-          <input className="form-input" type="email" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-          <input className="form-input" type="number" placeholder="Since year" value={form.since_year} onChange={e => setForm(f => ({ ...f, since_year: e.target.value }))} />
+          <input className="form-input" placeholder={t('settings.trustees.namePlaceholder') as string} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          <input className="form-input" placeholder={t('settings.trustees.designationPlaceholder') as string} value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} />
+          <input className="form-input" type="tel" placeholder={t('settings.trustees.mobilePlaceholder') as string} value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
+          <input className="form-input" type="email" placeholder={t('settings.trustees.emailPlaceholder') as string} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <input className="form-input" type="number" placeholder={t('settings.trustees.sinceYearPlaceholder') as string} value={form.since_year} onChange={e => setForm(f => ({ ...f, since_year: e.target.value }))} />
         </div>
         {err && <p className="text-red-600 text-sm">{err}</p>}
         <div className="flex gap-2">
           <button onClick={save} disabled={saving} className="btn-primary btn-sm">
-            <Plus size={13} /> {saving ? 'Saving…' : editingId ? 'Update Trustee' : 'Add Trustee'}
+            <Plus size={13} /> {saving ? t('settings.saving') : editingId ? t('settings.trustees.updateTrustee') : t('settings.trustees.addTrustee')}
           </button>
           {editingId && (
-            <button onClick={() => { setEditingId(null); setForm(EMPTY) }} className="btn-secondary btn-sm"><X size={13} /> Cancel</button>
+            <button onClick={() => { setEditingId(null); setForm(EMPTY) }} className="btn-secondary btn-sm"><X size={13} /> {t('common.cancel')}</button>
           )}
         </div>
 
@@ -88,27 +90,27 @@ export function TrusteesTab() {
           <table className="w-full text-sm mt-2">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
-                <th className="py-2">Name</th><th>Designation</th><th>Mobile</th><th>Email</th><th>Since</th><th className="text-right">Actions</th>
+                <th className="py-2">{t('common.name')}</th><th>{t('settings.trustees.designation')}</th><th>{t('common.mobile')}</th><th>{t('common.email')}</th><th>{t('settings.trustees.since')}</th><th className="text-right">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(t => (
-                <tr key={t.id} className="border-b border-slate-100">
-                  <td className="py-2 font-medium">{t.name}</td>
-                  <td>{t.designation || '—'}</td>
-                  <td>{t.mobile || '—'}</td>
-                  <td>{t.email || '—'}</td>
-                  <td>{t.since_year || '—'}</td>
+              {rows.map(trustee => (
+                <tr key={trustee.id} className="border-b border-slate-100">
+                  <td className="py-2 font-medium">{trustee.name}</td>
+                  <td>{trustee.designation || '—'}</td>
+                  <td>{trustee.mobile || '—'}</td>
+                  <td>{trustee.email || '—'}</td>
+                  <td>{trustee.since_year || '—'}</td>
                   <td className="text-right whitespace-nowrap">
-                    <button onClick={() => startEdit(t)} className="text-slate-500 hover:text-navy-900 p-1"><Pencil size={14} /></button>
-                    <button onClick={() => remove(t.id)} className="text-slate-500 hover:text-brand-red p-1"><Trash2 size={14} /></button>
+                    <button onClick={() => startEdit(trustee)} className="text-slate-500 hover:text-navy-900 p-1"><Pencil size={14} /></button>
+                    <button onClick={() => remove(trustee.id)} className="text-slate-500 hover:text-brand-red p-1"><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="text-center text-slate-400 text-sm py-4">No trustees added yet.</p>
+          <p className="text-center text-slate-400 text-sm py-4">{t('settings.trustees.noTrustees')}</p>
         )}
       </div>
     </div>

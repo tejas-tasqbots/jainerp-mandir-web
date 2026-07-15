@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { DevoteeSelection } from '../../types'
 
 export function AddBoli() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -47,7 +49,7 @@ export function AddBoli() {
       }
 
       await api.post('/bolis', payload)
-      navigate('/boli')
+      navigate('/donations?tab=pledges')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
       setError(err.response?.data?.error?.message || 'Failed to save boli')
@@ -59,14 +61,14 @@ export function AddBoli() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">New Boli (Pledge)</h1>
-        <button onClick={() => navigate('/boli')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <h1 className="text-xl font-bold text-navy-900">{t('pledges.newPledgeTitle')}</h1>
+        <button onClick={() => navigate('/donations?tab=pledges')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <DevoteePicker
-            label="Devotee"
+            label={t('pledges.devotee')}
             value={devotee}
             onChange={setDevotee}
             showAnonymous
@@ -74,7 +76,7 @@ export function AddBoli() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Boli Type</label>
+              <label className="form-label">{t('pledges.boliType')}</label>
               <select className="form-select" value={form.boli_type}
                 onChange={e => setForm(f => ({ ...f, boli_type: e.target.value }))}>
                 <option value="aarti">Aarti</option>
@@ -85,27 +87,27 @@ export function AddBoli() {
               </select>
             </div>
             <div>
-              <label className="form-label">Pledged Amount (₹) *</label>
+              <label className="form-label">{t('pledges.pledgedAmount')}</label>
               <input type="number" min="1" step="0.01" className="form-input" value={form.pledged_amount}
                 onChange={e => setForm(f => ({ ...f, pledged_amount: e.target.value }))} />
             </div>
           </div>
 
           <div>
-            <label className="form-label">Description</label>
-            <input className="form-input" placeholder="e.g. Paryushan first-day aarti" value={form.description}
+            <label className="form-label">{t('pledges.description')}</label>
+            <input className="form-input" placeholder={t('pledges.descriptionPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Pledge Date</label>
+              <label className="form-label">{t('pledges.pledgeDate')}</label>
               <input type="date" className="form-input" value={form.pledge_date}
                 onChange={e => setForm(f => ({ ...f, pledge_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Event <span className="text-slate-400 font-normal">(optional)</span></label>
-              <input className="form-input" placeholder="e.g. Paryushan 2026" value={form.event_name}
+              <label className="form-label">{t('pledges.event2')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
+              <input className="form-input" placeholder={t('pledges.eventPlaceholder')} value={form.event_name}
                 onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
             </div>
           </div>
@@ -114,9 +116,9 @@ export function AddBoli() {
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/boli')} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => navigate('/donations?tab=pledges')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Boli'}
+            <Save size={16} /> {saving ? t('common.saving') : t('pledges.savePledge')}
           </button>
         </div>
       </form>

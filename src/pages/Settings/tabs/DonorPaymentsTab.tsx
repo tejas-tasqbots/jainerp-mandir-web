@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Save, Landmark, QrCode, Award } from 'lucide-react'
 import { api } from '../../../lib/api'
 
@@ -8,6 +9,7 @@ import { api } from '../../../lib/api'
  * for accepting those donor requests. Approvals happen in Donation Requests.
  */
 export function DonorPaymentsTab() {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     accept_donor_requests: true,
     upi_id: '',
@@ -55,7 +57,7 @@ export function DonorPaymentsTab() {
       setTimeout(() => setSuccess(false), 3000)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      setError(err.response?.data?.error?.message || 'Could not save')
+      setError(err.response?.data?.error?.message || t('settings.donorPayments.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -63,12 +65,12 @@ export function DonorPaymentsTab() {
 
   return (
     <form onSubmit={save} className="space-y-4 max-w-2xl">
-      {success && <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">Donor payment details saved!</div>}
+      {success && <div className="bg-green-50 border border-green-200 rounded-md px-4 py-2 text-sm text-green-700">{t('settings.donorPayments.saved')}</div>}
       {error && <div className="bg-red-50 border border-red-200 rounded-md px-4 py-2 text-sm text-red-700">{error}</div>}
 
       <div className="card">
         <div className="card-header">
-          <h3 className="font-semibold text-sm flex items-center gap-2"><Landmark size={15} /> Direct donations from devotees</h3>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Landmark size={15} /> {t('settings.donorPayments.heading')}</h3>
         </div>
         <div className="card-body space-y-4">
           <label className="flex items-start gap-3 border rounded-md p-3 cursor-pointer border-slate-200">
@@ -79,37 +81,35 @@ export function DonorPaymentsTab() {
               onChange={e => setForm(f => ({ ...f, accept_donor_requests: e.target.checked }))}
             />
             <div>
-              <p className="font-medium text-sm">Accept UPI / bank-transfer donation requests</p>
+              <p className="font-medium text-sm">{t('settings.donorPayments.acceptRequests')}</p>
               <p className="text-xs text-slate-400">
-                Devotees on the devotee portal see the details below, pay you directly, and submit the
-                transaction reference + screenshot. You verify and approve each one in
-                <strong> Donation Requests</strong> — only then is the receipt issued.
+                <Trans i18nKey="settings.donorPayments.acceptRequestsHelp" components={{ bold: <strong /> }} />
               </p>
             </div>
           </label>
           <p className="text-xs text-slate-400 flex items-center gap-1.5">
             <Award size={13} className={reg80g ? 'text-green-600' : 'text-amber-500'} />
             {reg80g
-              ? <>80G registered (<span className="font-mono">{reg80g}</span>) — devotees can claim 80G on these donations.</>
-              : <>No 80G registration on Temple Profile — devotees won't be offered 80G on donations here.</>}
+              ? t('settings.donorPayments.reg80gYes', { number: reg80g })
+              : t('settings.donorPayments.reg80gNo')}
           </p>
         </div>
       </div>
 
       <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><QrCode size={15} /> UPI</h3></div>
+        <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><QrCode size={15} /> {t('settings.donorPayments.upiHeading')}</h3></div>
         <div className="card-body space-y-4">
           <div>
-            <label className="form-label">UPI ID (VPA)</label>
+            <label className="form-label">{t('settings.donorPayments.upiId')}</label>
             <input type="text" className="form-input font-mono" placeholder="templename@sbi"
               value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} />
-            <p className="text-xs text-slate-400 mt-1">The devotee app also generates a scannable UPI QR from this ID automatically.</p>
+            <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiIdHelp')}</p>
           </div>
           <div>
-            <label className="form-label">UPI QR image URL (optional)</label>
+            <label className="form-label">{t('settings.donorPayments.upiQrUrl')}</label>
             <input type="url" className="form-input" placeholder="https://…/upi-qr.png"
               value={form.upi_qr_cdn_url} onChange={e => setForm(f => ({ ...f, upi_qr_cdn_url: e.target.value }))} />
-            <p className="text-xs text-slate-400 mt-1">If your bank issued a QR poster, host it and paste the image URL — it is shown instead of the generated QR.</p>
+            <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiQrUrlHelp')}</p>
             {form.upi_qr_cdn_url.trim() && (
               <img src={form.upi_qr_cdn_url.trim()} alt="UPI QR preview" className="mt-2 w-32 h-32 object-contain rounded-md border border-slate-200 bg-white" />
             )}
@@ -118,25 +118,25 @@ export function DonorPaymentsTab() {
       </div>
 
       <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm">Bank account (shown for NEFT / RTGS / IMPS)</h3></div>
+        <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.donorPayments.bankHeading')}</h3></div>
         <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Account holder name</label>
-            <input type="text" className="form-input" placeholder="Shree … Trust"
+            <label className="form-label">{t('settings.donorPayments.accountHolderName')}</label>
+            <input type="text" className="form-input" placeholder={t('settings.donorPayments.accountHolderPlaceholder') as string}
               value={form.bank_account_name} onChange={e => setForm(f => ({ ...f, bank_account_name: e.target.value }))} />
           </div>
           <div>
-            <label className="form-label">Account number</label>
+            <label className="form-label">{t('settings.donorPayments.accountNumber')}</label>
             <input type="text" className="form-input font-mono" maxLength={20}
               value={form.bank_account_no} onChange={e => setForm(f => ({ ...f, bank_account_no: e.target.value.replace(/\D/g, '') }))} />
           </div>
           <div>
-            <label className="form-label">IFSC</label>
+            <label className="form-label">{t('settings.donorPayments.ifsc')}</label>
             <input type="text" className="form-input font-mono uppercase" maxLength={11} placeholder="SBIN0001234"
               value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} />
           </div>
           <div>
-            <label className="form-label">Bank name</label>
+            <label className="form-label">{t('settings.donorPayments.bankName')}</label>
             <input type="text" className="form-input" placeholder="State Bank of India"
               value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} />
           </div>
@@ -144,7 +144,7 @@ export function DonorPaymentsTab() {
       </div>
 
       <button type="submit" disabled={saving} className="btn-primary">
-        <Save size={15} /> {saving ? 'Saving…' : 'Save Donor Payments'}
+        <Save size={15} /> {saving ? t('settings.saving') : t('settings.donorPayments.saveButton')}
       </button>
     </form>
   )

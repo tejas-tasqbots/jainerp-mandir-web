@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle, CloudOff, Eye, FileText, Landmark, Loader2, Printer, RefreshCw, Share2, ShieldCheck, XCircle } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { useConfirm } from '../../components/ConfirmDialog'
@@ -37,10 +38,10 @@ interface DonationRequest {
 interface DetailModal { open: boolean; loading: boolean; request: (DonationRequest & { proof_image_base64?: string | null }) | null }
 interface RejectModal { open: boolean; id: string; reason: string; loading: boolean; error: string }
 
-const TABS: { key: RequestStatus; label: string }[] = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'rejected', label: 'Rejected' },
+const TABS: { key: RequestStatus; labelKey: string }[] = [
+  { key: 'pending', labelKey: 'donationRequests.pending' },
+  { key: 'approved', labelKey: 'donationRequests.approved' },
+  { key: 'rejected', labelKey: 'donationRequests.rejected' },
 ]
 
 /**
@@ -50,6 +51,7 @@ const TABS: { key: RequestStatus; label: string }[] = [
  * central server, so the desktop app gates this page when offline.
  */
 export function DonationRequestsPage() {
+  const { t } = useTranslation()
   const confirm = useConfirm()
   const online = useIsOnline()
   const [tab, setTab] = useState<RequestStatus>('pending')
@@ -139,11 +141,11 @@ export function DonationRequestsPage() {
   if (online === false) {
     return (
       <div className="space-y-5">
-        <h1 className="text-xl font-bold text-navy-900">Donation Requests</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('donationRequests.title')}</h1>
         <div className="card py-16 text-center">
           <CloudOff size={36} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-600 font-medium text-sm">Donation requests need an internet connection</p>
-          <p className="text-slate-400 text-xs mt-1">Devotee requests are stored on the central server. They'll appear here when you reconnect.</p>
+          <p className="text-slate-600 font-medium text-sm">{t('donationRequests.offlineTitle')}</p>
+          <p className="text-slate-400 text-xs mt-1">{t('donationRequests.offlineBody')}</p>
         </div>
       </div>
     )
@@ -156,8 +158,8 @@ export function DonationRequestsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-navy-900">Donation Requests</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Bank/UPI transfers submitted by devotees — verify and issue receipts</p>
+          <h1 className="text-xl font-bold text-navy-900">{t('donationRequests.title')}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('donationRequests.subtitle')}</p>
         </div>
         <button onClick={fetchRows} className="btn-secondary btn-sm" title="Refresh">
           <RefreshCw size={14} />
@@ -166,17 +168,17 @@ export function DonationRequestsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
-        {TABS.map(t => (
+        {TABS.map(tabItem => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.key
+              tab === tabItem.key
                 ? 'border-brand-red text-brand-red'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            {t.label}
+            {t(tabItem.labelKey)}
           </button>
         ))}
       </div>
@@ -184,22 +186,22 @@ export function DonationRequestsPage() {
       {/* Table */}
       <div className="card overflow-x-auto">
         {loading ? (
-          <div className="py-12 text-center text-slate-400 text-sm">Loading...</div>
+          <div className="py-12 text-center text-slate-400 text-sm">{t('common.loading')}</div>
         ) : rows.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-sm">
-            {tab === 'pending' && 'No pending requests. Devotee bank/UPI donations will appear here for approval.'}
-            {tab === 'approved' && 'No approved requests yet.'}
-            {tab === 'rejected' && 'No rejected requests.'}
+            {tab === 'pending' && t('donationRequests.noPending')}
+            {tab === 'approved' && t('donationRequests.noApproved')}
+            {tab === 'rejected' && t('donationRequests.noRejected')}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Devotee</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-600">Amount</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Paid via</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Reference</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('donationRequests.devotee')}</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-600">{t('common.amount')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('donationRequests.paidVia')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('donationRequests.reference')}</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-600">{t('common.date')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -225,7 +227,7 @@ export function DonationRequestsPage() {
                     <div className="font-mono text-xs text-slate-600">{r.utr_number || '—'}</div>
                     {r.has_proof && (
                       <button onClick={() => viewDetail(r.id)} className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-0.5">
-                        <Eye size={11} /> View proof
+                        <Eye size={11} /> {t('donationRequests.viewProof')}
                       </button>
                     )}
                     {tab === 'approved' && r.receipt_no && (
@@ -247,21 +249,21 @@ export function DonationRequestsPage() {
                             onClick={() => viewDetail(r.id)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
                           >
-                            <Eye size={12} /> Review
+                            <Eye size={12} /> {t('donationRequests.review')}
                           </button>
                           <button
                             onClick={() => approve(r)}
                             disabled={actionId === r.id}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                           >
-                            {actionId === r.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} Approve
+                            {actionId === r.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} {t('donationRequests.approve')}
                           </button>
                           <button
                             onClick={() => setRejectModal({ open: true, id: r.id, reason: '', loading: false, error: '' })}
                             disabled={actionId === r.id}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 disabled:opacity-50"
                           >
-                            <XCircle size={12} /> Reject
+                            <XCircle size={12} /> {t('donationRequests.reject')}
                           </button>
                         </>
                       )}
@@ -270,14 +272,14 @@ export function DonationRequestsPage() {
                           <button
                             onClick={() => printDonationReceipt(r.donation_id!).catch(() => {})}
                             className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                            title="Print receipt"
+                            title={t('donationRequests.printReceipt')}
                           >
                             <Printer size={14} />
                           </button>
                           <button
                             onClick={() => shareReceiptPdf(r.donation_id!).catch(() => {})}
                             className="p-1.5 rounded text-slate-400 hover:text-green-700 hover:bg-green-50"
-                            title="Share receipt PDF (WhatsApp)"
+                            title={t('donationRequests.shareReceipt')}
                           >
                             <Share2 size={14} />
                           </button>
@@ -297,7 +299,7 @@ export function DonationRequestsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail({ open: false, loading: false, request: null })}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
             {detail.loading || !detail.request ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Loading…</div>
+              <div className="py-10 text-center text-slate-400 text-sm">{t('common.loading')}</div>
             ) : (
               <>
                 <div className="flex items-start justify-between">
@@ -306,7 +308,7 @@ export function DonationRequestsPage() {
                       <Landmark size={16} className="text-brand-red" /> ₹{fmtPaise(detail.request.amount_paise)}
                       {detail.request.is_80g && <span className="badge badge-green text-[10px]">80G</span>}
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5 uppercase">{detail.request.payment_mode} · {detail.request.category || 'General'}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 uppercase">{detail.request.payment_mode} · {detail.request.category || t('donationRequests.general')}</p>
                   </div>
                   <button onClick={() => setDetail({ open: false, loading: false, request: null })} className="p-1 text-slate-400 hover:text-slate-700">
                     <XCircle size={18} />
@@ -314,27 +316,27 @@ export function DonationRequestsPage() {
                 </div>
 
                 <div className="text-sm space-y-1.5 bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1"><FileText size={11} /> Receipt details</p>
-                  <p><span className="text-slate-500">Donor:</span> <b>{detail.request.donor_name || '—'}</b> · {detail.request.devotee_mobile}</p>
-                  {detail.request.donor_pan_masked && <p><span className="text-slate-500">PAN:</span> <span className="font-mono">{detail.request.donor_pan_masked}</span></p>}
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1"><FileText size={11} /> {t('donationRequests.receiptDetails')}</p>
+                  <p><span className="text-slate-500">{t('donationRequests.donorLabel')}</span> <b>{detail.request.donor_name || '—'}</b> · {detail.request.devotee_mobile}</p>
+                  {detail.request.donor_pan_masked && <p><span className="text-slate-500">{t('donationRequests.panLabel')}</span> <span className="font-mono">{detail.request.donor_pan_masked}</span></p>}
                   {(detail.request.donor_address || detail.request.donor_city) && (
-                    <p><span className="text-slate-500">Address:</span> {[detail.request.donor_address, detail.request.donor_city, detail.request.donor_state, detail.request.donor_pincode].filter(Boolean).join(', ')}</p>
+                    <p><span className="text-slate-500">{t('donationRequests.addressLabel')}</span> {[detail.request.donor_address, detail.request.donor_city, detail.request.donor_state, detail.request.donor_pincode].filter(Boolean).join(', ')}</p>
                   )}
-                  {detail.request.utr_number && <p><span className="text-slate-500">UTR:</span> <span className="font-mono">{detail.request.utr_number}</span></p>}
-                  {detail.request.paid_at && <p><span className="text-slate-500">Paid on:</span> {new Date(detail.request.paid_at).toLocaleDateString('en-IN')}</p>}
-                  {detail.request.remarks && <p><span className="text-slate-500">Remarks:</span> {detail.request.remarks}</p>}
+                  {detail.request.utr_number && <p><span className="text-slate-500">{t('donationRequests.utrLabel')}</span> <span className="font-mono">{detail.request.utr_number}</span></p>}
+                  {detail.request.paid_at && <p><span className="text-slate-500">{t('donationRequests.paidOnLabel')}</span> {new Date(detail.request.paid_at).toLocaleDateString('en-IN')}</p>}
+                  {detail.request.remarks && <p><span className="text-slate-500">{t('donationRequests.remarksLabel')}</span> {detail.request.remarks}</p>}
                   {detail.request.is_80g && (!detail.request.donor_pan_masked || !detail.request.donor_address) && (
-                    <p className="text-amber-600 text-xs">⚠ 80G requested but donor PAN/address incomplete — the 80G receipt needs both.</p>
+                    <p className="text-amber-600 text-xs">{t('donationRequests.eightyGIncomplete')}</p>
                   )}
                 </div>
 
                 {detail.request.proof_image_base64 ? (
                   <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment screenshot</p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t('donationRequests.paymentScreenshot')}</p>
                     <img src={detail.request.proof_image_base64} alt="Payment proof" className="w-full rounded-lg border border-slate-200" />
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400">No screenshot attached — verify via the UTR against your bank statement.</p>
+                  <p className="text-xs text-slate-400">{t('donationRequests.noScreenshot')}</p>
                 )}
 
                 {detail.request.status === 'pending' && (
@@ -343,14 +345,14 @@ export function DonationRequestsPage() {
                       onClick={() => setRejectModal({ open: true, id: detail.request!.id, reason: '', loading: false, error: '' })}
                       className="btn-secondary"
                     >
-                      <XCircle size={14} /> Reject
+                      <XCircle size={14} /> {t('donationRequests.reject')}
                     </button>
                     <button
                       onClick={() => approve(detail.request!)}
                       disabled={actionId === detail.request.id}
                       className="btn-primary"
                     >
-                      <CheckCircle size={14} /> Approve & create receipt
+                      <CheckCircle size={14} /> {t('donationRequests.approveAndCreateReceipt')}
                     </button>
                   </div>
                 )}
@@ -364,14 +366,14 @@ export function DonationRequestsPage() {
       {rejectModal.open && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-navy-900">Reject donation request</h2>
-            <p className="text-sm text-slate-500">The devotee will see this reason in their app notification.</p>
+            <h2 className="text-base font-bold text-navy-900">{t('donationRequests.rejectDonationRequest')}</h2>
+            <p className="text-sm text-slate-500">{t('donationRequests.rejectSubtitle')}</p>
             <div>
-              <label className="form-label">Reason *</label>
+              <label className="form-label">{t('common.reason')} *</label>
               <textarea
                 className="form-textarea"
                 rows={3}
-                placeholder="e.g. No matching credit found in bank statement for this UTR"
+                placeholder={t('donationRequests.rejectReasonPlaceholder')}
                 value={rejectModal.reason}
                 onChange={e => setRejectModal(m => ({ ...m, reason: e.target.value }))}
                 autoFocus
@@ -384,10 +386,10 @@ export function DonationRequestsPage() {
                 className="btn-secondary"
                 disabled={rejectModal.loading}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={submitReject} disabled={rejectModal.loading} className="btn-primary bg-red-600 hover:bg-red-700">
-                <XCircle size={14} /> {rejectModal.loading ? 'Rejecting…' : 'Reject request'}
+                <XCircle size={14} /> {rejectModal.loading ? t('donationRequests.rejecting') : t('donationRequests.rejectRequest')}
               </button>
             </div>
           </div>

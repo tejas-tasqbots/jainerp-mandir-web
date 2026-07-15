@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
 
 export function AddExpense() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -79,42 +81,42 @@ export function AddExpense() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">New Expense</h1>
-        <button onClick={() => navigate('/expenses')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <h1 className="text-xl font-bold text-navy-900">{t('expenses.newExpenseTitle')}</h1>
+        <button onClick={() => navigate('/expenses')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Vendor / Payee</label>
-              <input className="form-input" placeholder="Vendor name" value={form.vendor_name}
+              <label className="form-label">{t('expenses.vendorPayee')}</label>
+              <input className="form-input" placeholder={t('expenses.vendorPlaceholder')} value={form.vendor_name}
                 onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">Category</label>
+              <label className="form-label">{t('expenses.category')}</label>
               <select className="form-select" value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                <option value="">Select category...</option>
+                <option value="">{t('expenses.selectCategory')}</option>
                 {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="form-label">Description *</label>
-            <input className="form-input" placeholder="Brief description of expense" value={form.description}
+            <label className="form-label">{t('expenses.descriptionRequired')}</label>
+            <input className="form-input" placeholder={t('expenses.descriptionRequiredPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Amount (₹) *</label>
+              <label className="form-label">{t('expenses.amountLabel')}</label>
               <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
                 value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">GST Amount (₹)</label>
+              <label className="form-label">{t('expenses.gstAmount')}</label>
               <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.gst_amount} onChange={e => setForm(f => ({ ...f, gst_amount: e.target.value }))} />
             </div>
@@ -126,7 +128,7 @@ export function AddExpense() {
             return (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Payment Mode</label>
+                  <label className="form-label">{t('expenses.paymentMode')}</label>
                   <select className="form-select" value={form.payment_mode}
                     onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}
                     disabled={form.is_on_credit}>
@@ -134,16 +136,16 @@ export function AddExpense() {
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Bill Date</label>
+                  <label className="form-label">{t('expenses.billDate')}</label>
                   <input type="date" className="form-input" value={form.bill_date}
                     onChange={e => setForm(f => ({ ...f, bill_date: e.target.value }))} />
                 </div>
                 {!form.is_on_credit && relevantAccounts.length > 0 && (
                   <div className="col-span-2">
-                    <label className="form-label">Paid from Account *</label>
+                    <label className="form-label">{t('expenses.paidFromAccount')}</label>
                     <select className="form-select" value={form.payment_account_id}
                       onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
-                      <option value="">Select account…</option>
+                      <option value="">{t('expenses.selectAccount')}</option>
                       {relevantAccounts.map(a => (
                         <option key={a.id} value={a.id}>
                           {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
@@ -158,14 +160,14 @@ export function AddExpense() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Bill / Invoice Number</label>
-              <input className="form-input" placeholder="Bill no" value={form.bill_number}
+              <label className="form-label">{t('expenses.billInvoiceNumber')}</label>
+              <input className="form-input" placeholder={t('expenses.billNoPlaceholder')} value={form.bill_number}
                 onChange={e => setForm(f => ({ ...f, bill_number: e.target.value }))} />
             </div>
             {(form.payment_mode !== 'cash') && (
               <div>
-                <label className="form-label">UTR / Reference</label>
-                <input className="form-input" placeholder="Transaction reference" value={form.utr_number}
+                <label className="form-label">{t('expenses.utrReference')}</label>
+                <input className="form-input" placeholder={t('expenses.utrPlaceholder')} value={form.utr_number}
                   onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
               </div>
             )}
@@ -176,7 +178,7 @@ export function AddExpense() {
               onChange={e => setForm(f => ({ ...f, is_on_credit: e.target.checked }))}
               className="w-4 h-4 accent-orange-600" />
             <label htmlFor="on_credit" className="text-sm text-slate-700">
-              On Credit (creates creditor liability — payment to be made later)
+              {t('expenses.onCreditLabel')}
             </label>
           </div>
 
@@ -186,21 +188,21 @@ export function AddExpense() {
               onChange={e => setForm(f => ({ ...f, tds_deducted: e.target.checked }))}
               className="w-4 h-4 accent-blue-600" />
             <label htmlFor="tds_deducted" className="text-sm text-slate-700">
-              TDS Deducted (track for compliance / Form 26Q)
+              {t('expenses.tdsDeducted')}
             </label>
           </div>
           {form.tds_deducted && (
             <div className="grid grid-cols-2 gap-4 pl-7">
               <div>
-                <label htmlFor="tds-amount" className="form-label">TDS Amount (₹)</label>
+                <label htmlFor="tds-amount" className="form-label">{t('expenses.tdsAmount')}</label>
                 <input id="tds-amount" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                   value={form.tds_amount} onChange={e => setForm(f => ({ ...f, tds_amount: e.target.value }))} />
               </div>
               <div>
-                <label htmlFor="tds-section" className="form-label">TDS Section</label>
+                <label htmlFor="tds-section" className="form-label">{t('expenses.tdsSection')}</label>
                 <select id="tds-section" className="form-select" value={form.tds_section}
                   onChange={e => setForm(f => ({ ...f, tds_section: e.target.value }))}>
-                  <option value="">Select…</option>
+                  <option value="">{t('expenses.selectEllipsis')}</option>
                   <option value="194C">194C — Contractor</option>
                   <option value="194J">194J — Professional</option>
                   <option value="194I">194I — Rent</option>
@@ -215,9 +217,9 @@ export function AddExpense() {
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/expenses')} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => navigate('/expenses')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Expense'}
+            <Save size={16} /> {saving ? t('common.saving') : t('expenses.saveExpense')}
           </button>
         </div>
       </form>

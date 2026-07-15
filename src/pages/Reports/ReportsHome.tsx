@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, FileText, RefreshCw } from 'lucide-react'
 import { currentFY } from '../../lib/api'
 import { downloadReport, type ReportFormat } from '../../lib/downloadReport'
 
 export function ReportsHome() {
+  const { t } = useTranslation()
   const [fy, setFy] = useState(currentFY())
   const [from, setFrom] = useState(new Date().toISOString().slice(0, 8) + '01')
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
@@ -18,44 +20,44 @@ export function ReportsHome() {
     }
   }
 
-  const reports: { group: string; items: { label: string; key: string; params: Record<string, string>; formats?: ReportFormat[] }[] }[] = [
+  const reports: { groupKey: string; items: { label: string; labelKey: string; key: string; params: Record<string, string>; formats?: ReportFormat[] }[] }[] = [
     {
-      group: 'Daily & Transaction Reports',
+      groupKey: 'reports.groupDaily',
       items: [
-        { label: 'Daily Collection', key: 'daily-collection', params: { date: to } },
-        { label: 'Donation Register', key: 'donation-register', params: { from, to } },
-        { label: 'Expense Register', key: 'expense-register', params: { from, to } },
-        { label: 'Boli Register', key: 'boli-register', params: { fy } },
+        { label: 'Daily Collection', labelKey: 'reports.dailyCollection', key: 'daily-collection', params: { date: to } },
+        { label: 'Donation Register', labelKey: 'reports.donationRegister', key: 'donation-register', params: { from, to } },
+        { label: 'Expense Register', labelKey: 'reports.expenseRegister', key: 'expense-register', params: { from, to } },
+        { label: 'Pledge Register', labelKey: 'reports.pledgeRegister', key: 'boli-register', params: { fy } },
       ],
     },
     {
-      group: 'Analytics',
+      groupKey: 'reports.groupAnalytics',
       items: [
-        { label: 'Donation Trends', key: 'donation-trends', params: { granularity: 'monthly', fy } },
-        { label: 'Top Donors', key: 'top-donors', params: { fy, limit: '20' } },
-        { label: 'GST Summary', key: 'gst-summary', params: { fy } },
+        { label: 'Donation Trends', labelKey: 'reports.donationTrends', key: 'donation-trends', params: { granularity: 'monthly', fy } },
+        { label: 'Top Donors', labelKey: 'reports.topDonors', key: 'top-donors', params: { fy, limit: '20' } },
+        { label: 'GST Summary', labelKey: 'reports.gstSummary', key: 'gst-summary', params: { fy } },
       ],
     },
   ]
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-navy-900">Reports</h1>
+      <h1 className="text-xl font-bold text-navy-900">{t('reports.title')}</h1>
 
       {/* Filters */}
       <div className="card">
         <div className="card-body">
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-600">FY:</label>
+              <label className="text-sm font-medium text-slate-600">{t('reports.fy')}</label>
               <input className="form-input w-28" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-600">From:</label>
+              <label className="text-sm font-medium text-slate-600">{t('reports.from')}</label>
               <input type="date" className="form-input w-40" value={from} onChange={e => setFrom(e.target.value)} />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-600">To:</label>
+              <label className="text-sm font-medium text-slate-600">{t('reports.to')}</label>
               <input type="date" className="form-input w-40" value={to} onChange={e => setTo(e.target.value)} />
             </div>
           </div>
@@ -63,10 +65,10 @@ export function ReportsHome() {
       </div>
 
       {reports.map(group => (
-        <div key={group.group} className="card">
+        <div key={group.groupKey} className="card">
           <div className="card-header">
             <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-              <FileText size={15} /> {group.group}
+              <FileText size={15} /> {t(group.groupKey)}
             </h3>
           </div>
           <div className="card-body">
@@ -76,7 +78,7 @@ export function ReportsHome() {
                   key={r.label}
                   className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 gap-3"
                 >
-                  <span className="text-sm font-medium text-slate-700 min-w-0 truncate">{r.label}</span>
+                  <span className="text-sm font-medium text-slate-700 min-w-0 truncate">{t(r.labelKey)}</span>
                   <span className="flex gap-1.5 flex-shrink-0">
                     {(['csv', 'pdf'] as ReportFormat[]).map(fmt => (
                       <button
@@ -89,7 +91,7 @@ export function ReportsHome() {
                             ? 'border-red-200 text-red-700 hover:bg-red-50'
                             : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
-                        title={`Download ${r.label} as ${fmt.toUpperCase()}`}
+                        title={t('reports.downloadAs', { label: t(r.labelKey), format: fmt.toUpperCase() })}
                       >
                         {loading === `${r.label}:${fmt}`
                           ? <RefreshCw size={11} className="animate-spin" />
@@ -109,7 +111,7 @@ export function ReportsHome() {
       <div className="card">
         <div className="card-header">
           <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-            <FileText size={15} /> Chartered Accountant
+            <FileText size={15} /> {t('reports.charteredAccountant')}
           </h3>
         </div>
         <div className="card-body">
@@ -120,7 +122,7 @@ export function ReportsHome() {
             className="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 hover:border-brand-blue hover:bg-blue-50 transition-colors text-left group disabled:opacity-50 w-full md:w-1/2"
           >
             <span className="text-sm font-medium text-slate-700 group-hover:text-brand-blue">
-              CA Pack — all registers &amp; statements (ZIP)
+              {t('reports.caPackLabel')}
             </span>
             {loading === 'CA Pack:csv'
               ? <RefreshCw size={15} className="text-brand-blue animate-spin flex-shrink-0" />

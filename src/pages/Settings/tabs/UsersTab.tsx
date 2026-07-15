@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Crown, Plus, ShieldCheck, X } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { PhoneInput } from '../../../components/PhoneInput'
-import { ROLE_LABELS } from '../../../lib/rbac'
 import { useAuthStore } from '../../../store/authStore'
 import { useConfirm } from '../../../components/ConfirmDialog'
 
@@ -16,25 +16,12 @@ interface StaffUser {
   joined_at?: string
 }
 
-// Plain-language description of what each role can do (reference card below the table).
-const ROLE_PERMISSIONS: { role: string; desc: string; cls: string }[] = [
-  { role: 'temple_admin', desc: 'Full access — can void donations, delete data, manage all settings', cls: 'badge-red' },
-  { role: 'accountant', desc: 'Accounts, reports, fixed assets, loans, TDS entries', cls: 'badge-blue' },
-  { role: 'cashier', desc: 'Donations, expenses, bookings, prasad, seva, bhojanshala', cls: 'badge-green' },
-  { role: 'bhojanshala_cashier', desc: 'Bhojanshala only — record & redeem meal tokens', cls: 'badge-green' },
-  { role: 'priest', desc: 'View seva bookings, mark them done', cls: 'badge-yellow' },
-  { role: 'volunteer', desc: 'Event registrations, visitor count entries', cls: 'badge-gray' },
-  { role: 'viewer', desc: 'Read-only access to all data (no create/edit)', cls: 'badge-gray' },
-]
-
-const ROLES = [
-  { id: 'accountant', label: 'Accountant' },
-  { id: 'cashier', label: 'Cashier' },
-  { id: 'bhojanshala_cashier', label: 'Bhojanshala Cashier' },
-  { id: 'priest', label: 'Priest' },
-  { id: 'volunteer', label: 'Volunteer' },
-  { id: 'viewer', label: 'Viewer (read-only)' },
-]
+const ROLE_IDS = ['temple_admin', 'accountant', 'cashier', 'bhojanshala_cashier', 'priest', 'volunteer', 'viewer'] as const
+const ROLE_BADGE_CLS: Record<string, string> = {
+  temple_admin: 'badge-red', accountant: 'badge-blue', cashier: 'badge-green',
+  bhojanshala_cashier: 'badge-green', priest: 'badge-yellow', volunteer: 'badge-gray', viewer: 'badge-gray',
+}
+const ASSIGNABLE_ROLE_IDS = ['accountant', 'cashier', 'bhojanshala_cashier', 'priest', 'volunteer', 'viewer'] as const
 
 function toE164(m: string): string {
   const digits = m.replace(/\D/g, '')
@@ -49,6 +36,7 @@ function apiMessage(err: unknown, fallback: string): string {
 }
 
 export function UsersTab() {
+  const { t } = useTranslation()
   const me = useAuthStore(s => s.user)
   const confirm = useConfirm()
   const [users, setUsers] = useState<StaffUser[]>([])
@@ -66,7 +54,7 @@ export function UsersTab() {
 
   async function invite(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim()) { setError('Name is required'); return }
+    if (!form.name.trim()) { setError(t('settings.users.nameRequired')); return }
     setSaving(true)
     setError('')
     try {
@@ -79,7 +67,7 @@ export function UsersTab() {
       setShowInvite(false)
       load()
     } catch (err: unknown) {
-      setError(apiMessage(err, 'Failed to add user'))
+      setError(apiMessage(err, t('settings.users.inviteFailed')))
     } finally {
       setSaving(false)
     }
@@ -90,7 +78,7 @@ export function UsersTab() {
     try {
       await api.patch(`/users/${u.id}`, { is_active: !u.is_active })
     } catch (err) {
-      alert(apiMessage(err, 'Could not change status'))
+      alert(apiMessage(err, t('settings.users.statusChangeFailed')))
     }
     load()
   }
@@ -100,28 +88,25 @@ export function UsersTab() {
     try {
       await api.patch(`/users/${u.id}`, { roles: [role] })
     } catch (err) {
-      alert(apiMessage(err, 'Could not change role'))
+      alert(apiMessage(err, t('settings.users.roleChangeFailed')))
     }
     load()
   }
 
   async function transferAdmin(u: StaffUser) {
     if (!(await confirm({
-      title: 'Transfer Temple Admin',
-      message:
-        `Transfer the Temple Admin role to ${u.name || u.mobile}?\n\n` +
-        'They become the Temple Admin and you keep your other roles ' +
-        '(or become Viewer). This takes effect from your next login.',
-      confirmLabel: 'Transfer',
+      title: t('settings.users.transferTitle'),
+      message: t('settings.users.transferMessage', { name: u.name || u.mobile }),
+      confirmLabel: t('settings.users.transferConfirm'),
       danger: true,
     }))) return
     setNotice('')
     try {
       const { data } = await api.post(`/users/${u.id}/transfer-admin`)
-      setNotice(data.data?.note || 'Temple Admin transferred.')
+      setNotice(data.data?.note || t('settings.users.transferredDefault'))
       load()
     } catch (err) {
-      alert(apiMessage(err, 'Could not transfer Temple Admin'))
+      alert(apiMessage(err, t('settings.users.transferFailed')))
     }
   }
 
@@ -131,13 +116,12 @@ export function UsersTab() {
     <div className="card">
       <div className="card-header flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-sm">User Management</h3>
+          <h3 className="font-semibold text-sm">{t('settings.users.heading')}</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Staff who can log in to this mandir, and their roles. Every mandir always has exactly the
-            Temple Admin role holder in charge — it can only be transferred, never removed.
+            {t('settings.users.subheading')}
           </p>
         </div>
-        {!showInvite && <button onClick={() => setShowInvite(true)} className="btn-primary btn-sm"><Plus size={14} /> Add User</button>}
+        {!showInvite && <button onClick={() => setShowInvite(true)} className="btn-primary btn-sm"><Plus size={14} /> {t('settings.users.addUser')}</button>}
       </div>
       <div className="card-body space-y-3">
         {notice && (
@@ -146,29 +130,29 @@ export function UsersTab() {
         {showInvite && (
           <form onSubmit={invite} className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="form-label">Name *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-              <div><label className="form-label">Mobile *</label><PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} required /></div>
+              <div><label className="form-label">{t('common.name')} *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div><label className="form-label">{t('common.mobile')} *</label><PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} required /></div>
               <div>
-                <label className="form-label">Role</label>
+                <label className="form-label">{t('settings.users.roleCol')}</label>
                 <select className="form-select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-                  {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  {ASSIGNABLE_ROLE_IDS.map(r => <option key={r} value={r}>{t(`settings.users.roleLabels.${r}`)}</option>)}
                 </select>
               </div>
             </div>
             {error && <p className="text-sm text-brand-red">{error}</p>}
             <div className="flex gap-2">
-              <button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? 'Adding…' : 'Add User'}</button>
-              <button type="button" onClick={() => { setShowInvite(false); setError('') }} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+              <button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? t('settings.users.adding') : t('settings.users.addUser')}</button>
+              <button type="button" onClick={() => { setShowInvite(false); setError('') }} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
             </div>
           </form>
         )}
 
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Status</th><th>Joined</th><th className="text-right">Actions</th></tr></thead>
+            <thead><tr><th>{t('settings.users.nameCol')}</th><th>{t('settings.users.mobileCol')}</th><th>{t('settings.users.roleCol')}</th><th>{t('settings.users.statusCol')}</th><th>{t('settings.users.joinedCol')}</th><th className="text-right">{t('settings.users.actionsCol')}</th></tr></thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={6} className="text-center text-slate-400 py-6">No users yet.</td></tr>
+                <tr><td colSpan={6} className="text-center text-slate-400 py-6">{t('settings.users.noUsers')}</td></tr>
               ) : users.map(u => {
                 const isSelf = u.id === me?.id
                 const isAdminRow = u.roles?.includes('temple_admin')
@@ -176,13 +160,13 @@ export function UsersTab() {
                   <tr key={u.id} className={u.is_active ? '' : 'opacity-50'}>
                     <td className="font-medium">
                       {u.name || '—'}
-                      {isSelf && <span className="badge-blue ml-2">You</span>}
+                      {isSelf && <span className="badge-blue ml-2">{t('settings.users.you')}</span>}
                     </td>
                     <td className="text-sm text-slate-500">{u.mobile}</td>
                     <td>
                       {isAdminRow ? (
                         <span className="badge-gold inline-flex items-center gap-1">
-                          <Crown size={11} /> Temple Admin
+                          <Crown size={11} /> {t('settings.users.templeAdmin')}
                         </span>
                       ) : (
                         <select
@@ -191,18 +175,18 @@ export function UsersTab() {
                           onChange={e => changeRole(u, e.target.value)}
                           disabled={!iAmAdmin}
                         >
-                          {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                          {ASSIGNABLE_ROLE_IDS.map(r => <option key={r} value={r}>{t(`settings.users.roleLabels.${r}`)}</option>)}
                         </select>
                       )}
                     </td>
                     <td>
                       {isSelf || isAdminRow ? (
                         <span className={u.is_active ? 'badge-green' : 'badge-gray'}>
-                          {u.is_active ? 'Active' : 'Inactive'}
+                          {u.is_active ? t('common.active') : t('common.inactive')}
                         </span>
                       ) : (
                         <button onClick={() => toggleActive(u)} className={u.is_active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>
-                          {u.is_active ? 'Active' : 'Inactive'}
+                          {u.is_active ? t('common.active') : t('common.inactive')}
                         </button>
                       )}
                     </td>
@@ -214,13 +198,13 @@ export function UsersTab() {
                         <button
                           onClick={() => transferAdmin(u)}
                           className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 border border-amber-300 rounded-md px-2 py-1 hover:bg-amber-50"
-                          title="Hand the Temple Admin role to this member"
+                          title={t('settings.users.makeTempleAdminTitle') as string}
                         >
-                          <ShieldCheck size={12} /> Make Temple Admin
+                          <ShieldCheck size={12} /> {t('settings.users.makeTempleAdmin')}
                         </button>
                       )}
                       {isSelf && isAdminRow && (
-                        <span className="text-xs text-slate-400">Transfer the role to step down</span>
+                        <span className="text-xs text-slate-400">{t('settings.users.transferToStepDown')}</span>
                       )}
                     </td>
                   </tr>
@@ -230,17 +214,16 @@ export function UsersTab() {
           </table>
         </div>
         <p className="text-xs text-slate-400">
-          {ROLE_LABELS.temple_admin} can manage everything. Other roles only see and use the modules
-          that belong to their work — the sidebar adjusts automatically after they log in.
+          {t('settings.users.footerNote', { admin: t('settings.users.templeAdmin') })}
         </p>
 
         <div className="border-t border-slate-100 pt-4">
-          <h4 className="font-semibold text-sm mb-3">Role Permissions Reference</h4>
+          <h4 className="font-semibold text-sm mb-3">{t('settings.users.permissionsRefHeading')}</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-            {ROLE_PERMISSIONS.map(({ role, desc, cls }) => (
+            {ROLE_IDS.map(role => (
               <div key={role} className="flex gap-2">
-                <span className={`${cls} mt-0.5 flex-shrink-0`}>{role}</span>
-                <p className="text-slate-500 text-xs">{desc}</p>
+                <span className={`${ROLE_BADGE_CLS[role]} mt-0.5 flex-shrink-0`}>{role}</span>
+                <p className="text-slate-500 text-xs">{t(`settings.users.roles.${role}`)}</p>
               </div>
             ))}
           </div>

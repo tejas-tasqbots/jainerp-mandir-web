@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Building2, Phone, Mail, FileText, Landmark } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 
@@ -54,6 +55,7 @@ interface Profile {
 }
 
 export function VendorProfile() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState<Profile | null>(null)
@@ -64,19 +66,19 @@ export function VendorProfile() {
     if (!id) return
     api.get(`/vendors/${id}/profile`)
       .then(r => setData(r.data.data))
-      .catch(() => setError('Could not load vendor profile'))
+      .catch(() => setError(t('vendors.couldNotLoad')))
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <div className="text-center py-16 text-slate-400">Loading vendor…</div>
-  if (error || !data) return <div className="text-center py-16 text-red-500">{error || 'Not found'}</div>
+  if (loading) return <div className="text-center py-16 text-slate-400">{t('vendors.loadingVendor')}</div>
+  if (error || !data) return <div className="text-center py-16 text-red-500">{error || t('vendors.notFound')}</div>
 
   const v = data.vendor
 
   return (
     <div className="space-y-5 max-w-5xl">
       <button type="button" onClick={() => navigate('/masters/vendors')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft size={15} /> Back to Vendors
+        <ArrowLeft size={15} /> {t('vendors.backToVendors')}
       </button>
 
       {/* Header card */}
@@ -88,15 +90,15 @@ export function VendorProfile() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-navy-900">{v.name}</h1>
-              {v.is_active ? <span className="badge-green">Active</span> : <span className="badge-gray">Inactive</span>}
+              {v.is_active ? <span className="badge-green">{t('vendors.active')}</span> : <span className="badge-gray">{t('vendors.inactive')}</span>}
             </div>
-            {v.contact_person && <p className="text-sm text-slate-500 mt-0.5">Contact: {v.contact_person}</p>}
+            {v.contact_person && <p className="text-sm text-slate-500 mt-0.5">{t('vendors.contact', { name: v.contact_person })}</p>}
             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-sm text-slate-600">
               {v.mobile && <span className="flex items-center gap-1"><Phone size={13} className="text-slate-400" /> {v.mobile}</span>}
               {v.email && <span className="flex items-center gap-1"><Mail size={13} className="text-slate-400" /> {v.email}</span>}
-              {v.gstin && <span className="flex items-center gap-1"><FileText size={13} className="text-slate-400" /> GSTIN: <span className="font-mono">{v.gstin}</span></span>}
-              {v.pan_masked && <span className="flex items-center gap-1">PAN: <span className="font-mono">{v.pan_masked}</span></span>}
-              {v.tds_section && <span>TDS: {v.tds_section}</span>}
+              {v.gstin && <span className="flex items-center gap-1"><FileText size={13} className="text-slate-400" /> {t('vendors.gstin')}: <span className="font-mono">{v.gstin}</span></span>}
+              {v.pan_masked && <span className="flex items-center gap-1">{t('vendors.pan')}: <span className="font-mono">{v.pan_masked}</span></span>}
+              {v.tds_section && <span>{t('vendors.tds', { section: v.tds_section })}</span>}
               {(v.bank_account || v.bank_ifsc) && (
                 <span className="flex items-center gap-1"><Landmark size={13} className="text-slate-400" /> {[v.bank_account, v.bank_ifsc].filter(Boolean).join(' / ')}</span>
               )}
@@ -108,20 +110,20 @@ export function VendorProfile() {
 
       {/* Totals */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="card p-3"><p className="text-xs text-slate-400">Total Billed</p><p className="text-lg font-bold text-navy-900">₹{fmtPaise(data.totals.total_billed_paise)}</p></div>
-        <div className="card p-3"><p className="text-xs text-slate-400">Outstanding</p><p className="text-lg font-bold text-red-600">₹{fmtPaise(data.totals.outstanding_paise)}</p></div>
-        <div className="card p-3"><p className="text-xs text-slate-400">Bills</p><p className="text-lg font-bold text-navy-900">{data.totals.expense_count}</p></div>
-        <div className="card p-3"><p className="text-xs text-slate-400">Open Payables</p><p className="text-lg font-bold text-amber-600">{data.totals.open_payables}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-400">{t('vendors.totalBilled')}</p><p className="text-lg font-bold text-navy-900">₹{fmtPaise(data.totals.total_billed_paise)}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-400">{t('vendors.outstanding')}</p><p className="text-lg font-bold text-red-600">₹{fmtPaise(data.totals.outstanding_paise)}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-400">{t('vendors.bills')}</p><p className="text-lg font-bold text-navy-900">{data.totals.expense_count}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-400">{t('vendors.openPayables')}</p><p className="text-lg font-bold text-amber-600">{data.totals.open_payables}</p></div>
       </div>
 
       {/* Outstanding payables */}
       {data.creditors.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">Payables (Udhaar)</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">{t('vendors.payablesTitle')}</h3>
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Description</th><th>Original</th><th>Paid</th><th>Outstanding</th><th>Due</th><th>Status</th></tr></thead>
+                <thead><tr><th>{t('vendors.description')}</th><th>{t('vendors.original')}</th><th>{t('vendors.paid')}</th><th>{t('vendors.outstanding')}</th><th>{t('vendors.due')}</th><th>{t('vendors.status')}</th></tr></thead>
                 <tbody>
                   {data.creditors.map(c => (
                     <tr key={c.id}>
@@ -131,9 +133,9 @@ export function VendorProfile() {
                       <td className={c.outstanding_paise > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>₹{fmtPaise(c.outstanding_paise)}</td>
                       <td className="text-xs text-slate-400">{c.due_date ? new Date(c.due_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td>
-                        {c.status === 'paid' ? <span className="badge-green">Paid</span>
-                          : c.status === 'partially_paid' ? <span className="badge-yellow">Partial</span>
-                          : <span className="badge-red">Pending</span>}
+                        {c.status === 'paid' ? <span className="badge-green">{t('vendors.statusPaid')}</span>
+                          : c.status === 'partially_paid' ? <span className="badge-yellow">{t('vendors.statusPartial')}</span>
+                          : <span className="badge-red">{t('vendors.statusPending')}</span>}
                       </td>
                     </tr>
                   ))}
@@ -146,14 +148,14 @@ export function VendorProfile() {
 
       {/* Expense history */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-700 mb-2">Transaction History (Expenses)</h3>
+        <h3 className="text-sm font-semibold text-slate-700 mb-2">{t('vendors.transactionHistoryExpenses')}</h3>
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="data-table">
-              <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Bill No</th><th>Amount</th><th>TDS</th><th>Mode</th><th>Type</th></tr></thead>
+              <thead><tr><th>{t('vendors.date')}</th><th>{t('vendors.description')}</th><th>{t('vendors.category')}</th><th>{t('vendors.billNo')}</th><th>{t('vendors.amount')}</th><th>{t('vendors.tdsCol')}</th><th>{t('vendors.mode')}</th><th>{t('vendors.type')}</th></tr></thead>
               <tbody>
                 {data.expenses.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-8 text-slate-400">No transactions yet</td></tr>
+                  <tr><td colSpan={8} className="text-center py-8 text-slate-400">{t('vendors.noTransactionsYet')}</td></tr>
                 ) : data.expenses.map(e => (
                   <tr key={e.id}>
                     <td className="text-xs text-slate-500">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</td>
@@ -166,7 +168,7 @@ export function VendorProfile() {
                     </td>
                     <td>{e.tds_deducted ? <span className="badge-blue">₹{fmtPaise(e.tds_amount_paise ?? 0)}</span> : <span className="text-slate-300">—</span>}</td>
                     <td><span className="badge-gray">{e.payment_mode}</span></td>
-                    <td>{e.is_on_credit ? <span className="badge-red">Credit</span> : <span className="badge-green">Paid</span>}</td>
+                    <td>{e.is_on_credit ? <span className="badge-red">{t('vendors.credit')}</span> : <span className="badge-green">{t('vendors.statusPaid')}</span>}</td>
                   </tr>
                 ))}
               </tbody>

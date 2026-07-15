@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Save, X, Pencil, Trash2, RefreshCw } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useConfirm } from '../../components/ConfirmDialog'
@@ -52,6 +53,7 @@ function fromPaise(paise: unknown): string {
  * resource. Soft-deletes via is_active so historical records keep their value.
  */
 export function MasterEditor({ resource, title, description, fields, listParams, statusField = 'is_active' }: MasterEditorProps) {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -67,7 +69,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       const { data } = await api.get(`/${resource}`, { params: listParams })
       setRows(data.data || data || [])
     } catch {
-      setError('Failed to load')
+      setError(t('settings.masters.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -121,7 +123,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   async function save() {
     for (const field of fields) {
       if (field.required && !form[field.key] && form[field.key] !== 0) {
-        setError(`${field.label} is required`)
+        setError(t('settings.masters.fieldRequired', { field: field.label }))
         return
       }
     }
@@ -138,7 +140,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       await load()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string }; message?: string } } }
-      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to save')
+      setError(err.response?.data?.error?.message || err.response?.data?.message || t('settings.masters.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -150,19 +152,19 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       await api.patch(`/${resource}/${row.id}`, { [statusField]: next })
       await load()
     } catch {
-      setError('Failed to update status')
+      setError(t('settings.masters.statusUpdateFailed'))
     }
   }
 
   async function remove(row: Row) {
-    const name = (row.name ?? row.label ?? 'this entry') as string
-    if (!(await confirm({ title: 'Delete entry', message: `Delete "${name}"?\nPast records that reference it are kept.`, confirmLabel: 'Delete', danger: true }))) return
+    const name = (row.name ?? row.label ?? t('settings.masters.thisEntry')) as string
+    if (!(await confirm({ title: t('settings.masters.deleteTitle'), message: t('settings.masters.deleteMessage', { name }), confirmLabel: t('common.delete'), danger: true }))) return
     try {
       await api.delete(`/${resource}/${row.id}`)
       await load()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string }; message?: string } } }
-      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to delete')
+      setError(err.response?.data?.error?.message || err.response?.data?.message || t('settings.masters.deleteFailed'))
     }
   }
 
@@ -210,9 +212,9 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       <div className="flex gap-2">
         <button onClick={save} disabled={saving} className="btn-primary btn-sm">
           {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-          {editingId ? 'Update' : 'Add'}
+          {editingId ? t('settings.accounts.update') : t('common.add')}
         </button>
-        <button onClick={cancel} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <button onClick={cancel} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
     </div>
   )
@@ -225,24 +227,24 @@ export function MasterEditor({ resource, title, description, fields, listParams,
           {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
         </div>
         {!showAdd && !editingId && (
-          <button onClick={startAdd} className="btn-primary btn-sm"><Plus size={14} /> Add</button>
+          <button onClick={startAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('common.add')}</button>
         )}
       </div>
       <div className="card-body space-y-3">
         {showAdd && editorRow}
         {loading ? (
-          <p className="text-sm text-slate-400">Loading…</p>
+          <p className="text-sm text-slate-400">{t('common.loading')}</p>
         ) : rows.length === 0 && !showAdd ? (
-          <p className="text-sm text-slate-400">No entries yet. Click “Add” to create one.</p>
+          <p className="text-sm text-slate-400">{t('settings.masters.noEntries')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
                   {fields.filter(f => f.type !== 'checkbox').map(f => <th key={f.key}>{f.label}</th>)}
-                  {fields.some(f => f.type === 'checkbox') && <th>Flags</th>}
-                  <th>Status</th>
-                  <th className="text-right">Actions</th>
+                  {fields.some(f => f.type === 'checkbox') && <th>{t('settings.masters.flags')}</th>}
+                  <th>{t('common.status')}</th>
+                  <th className="text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -276,14 +278,14 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                       <td>
                         <button onClick={() => toggleActive(row)}
                           className={active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>
-                          {active ? 'Active' : 'Inactive'}
+                          {active ? t('common.active') : t('common.inactive')}
                         </button>
                       </td>
                       <td className="text-right">
-                        <button onClick={() => startEdit(row)} className="btn-icon" title="Edit">
+                        <button onClick={() => startEdit(row)} className="btn-icon" title={t('common.edit') as string}>
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => remove(row)} className="btn-icon text-slate-500 hover:text-brand-red" title="Delete">
+                        <button onClick={() => remove(row)} className="btn-icon text-slate-500 hover:text-brand-red" title={t('common.delete') as string}>
                           <Trash2 size={14} />
                         </button>
                       </td>

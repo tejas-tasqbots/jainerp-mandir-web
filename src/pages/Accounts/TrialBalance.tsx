@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
@@ -7,6 +8,7 @@ import { downloadRowsPdf } from '../../lib/pdfTable'
 interface TBRow { account_name: string; debit_paise: number; credit_paise: number }
 
 export function TrialBalance() {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<TBRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fy, setFy] = useState(currentFY())
@@ -31,47 +33,47 @@ export function TrialBalance() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Trial Balance</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('accounts.trialBalanceTitle')}</h1>
         <div className="flex gap-2">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> Print
+            <Printer size={14} /> {t('accounts.print')}
           </button>
           <button type="button"
             onClick={() => downloadRowsPdf(`trial-balance-${fy}.pdf`, 'Trial Balance', ['Account', 'Debit', 'Credit'],
               rows.map(r => [r.account_name, r.debit_paise > 0 ? rsFmt(r.debit_paise) : '', r.credit_paise > 0 ? rsFmt(r.credit_paise) : '']),
               { subtitle: `FY ${fy}`, totals: ['Total', rsFmt(totalDebit), rsFmt(totalCredit)] })}
             className="btn-secondary btn-sm">
-            <FileDown size={14} /> Download PDF
+            <FileDown size={14} /> {t('accounts.downloadPdf')}
           </button>
           <button type="button"
             onClick={() => exportRowsCsv(`trial-balance-${fy}.csv`, ['Account', 'Debit', 'Credit'],
               rows.map(r => [r.account_name, rsFmt(r.debit_paise), rsFmt(r.credit_paise)]))}
             className="btn-secondary btn-sm">
-            <Download size={14} /> Export CSV
+            <Download size={14} /> {t('accounts.exportCsv')}
           </button>
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm text-slate-500">FY:</label>
+        <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
         <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
         {totalDebit === totalCredit && totalDebit > 0 && (
-          <span className="badge-green">Balanced ✓</span>
+          <span className="badge-green">{t('accounts.balanced')}</span>
         )}
         {totalDebit !== totalCredit && totalDebit > 0 && (
-          <span className="badge-red">Imbalanced ✗</span>
+          <span className="badge-red">{t('accounts.imbalanced')}</span>
         )}
       </div>
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>Account</th><th className="text-right">Debit</th><th className="text-right">Credit</th></tr></thead>
+            <thead><tr><th>{t('accounts.account')}</th><th className="text-right">{t('accounts.debit')}</th><th className="text-right">{t('accounts.credit')}</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={3} className="text-center py-10 text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={3} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={3} className="text-center py-10 text-slate-400">No data for this FY</td></tr>
+                <tr><td colSpan={3} className="text-center py-10 text-slate-400">{t('accounts.noDataForFy')}</td></tr>
               ) : rows.map((r, i) => (
                 <tr key={i}>
                   <td className="font-medium">{r.account_name}</td>
@@ -83,7 +85,7 @@ export function TrialBalance() {
             {rows.length > 0 && (
               <tfoot>
                 <tr className="bg-navy-900 text-white">
-                  <td className="px-4 py-3 font-bold">Total</td>
+                  <td className="px-4 py-3 font-bold">{t('accounts.total')}</td>
                   <td className="px-4 py-3 text-right font-bold">₹{fmtPaise(totalDebit)}</td>
                   <td className="px-4 py-3 text-right font-bold">₹{fmtPaise(totalCredit)}</td>
                 </tr>

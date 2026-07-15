@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type Language = 'en' | 'hi' | 'mr'
+
 export interface AuthedUser {
   id: string
   mobile: string
@@ -20,9 +22,11 @@ interface AuthState {
   deviceId: string
   user: AuthedUser | null
   tenant: TenantInfo | null
+  language: Language
   isLoggedIn: boolean
   setTokens: (access: string, refresh: string) => void
   setUser: (user: AuthedUser, tenant: TenantInfo) => void
+  setLanguage: (language: Language) => void
   logout: () => void
 }
 
@@ -41,10 +45,12 @@ export const useAuthStore = create<AuthState>()(
       deviceId: genDeviceId(),
       user: null,
       tenant: null,
+      language: 'en',
       isLoggedIn: false,
       setTokens: (access, refresh) =>
         set({ accessToken: access, refreshToken: refresh, isLoggedIn: true }),
       setUser: (user, tenant) => set({ user, tenant }),
+      setLanguage: language => set({ language }),
       logout: () =>
         set({ accessToken: null, refreshToken: null, user: null, tenant: null, isLoggedIn: false }),
     }),
@@ -56,6 +62,7 @@ export const useAuthStore = create<AuthState>()(
         deviceId: state.deviceId,
         user: state.user,
         tenant: state.tenant,
+        language: state.language,
         isLoggedIn: state.isLoggedIn,
       }),
     }

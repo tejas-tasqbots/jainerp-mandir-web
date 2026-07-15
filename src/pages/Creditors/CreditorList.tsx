@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import type { Creditor } from '../../types'
@@ -23,6 +24,7 @@ interface AddModal {
 interface Account { id: string; name: string; type: string }
 
 export function CreditorList() {
+  const { t } = useTranslation()
   const [creditors, setCreditors] = useState<Creditor[]>([])
   const [loading, setLoading] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -70,9 +72,9 @@ export function CreditorList() {
     e.preventDefault()
     if (!payModal) return
     const payPaise = parsePaise(payAmt)
-    if (!payPaise || payPaise <= 0) { setError('Enter a valid amount'); return }
-    if (payPaise > payModal.outstanding) { setError(`Cannot pay more than outstanding ₹${fmtPaise(payModal.outstanding)}`); return }
-    if (payMode !== 'cash' && !payAccountId) { setError('Select the bank account this payment came from'); return }
+    if (!payPaise || payPaise <= 0) { setError(t('creditors.enterValidAmount')); return }
+    if (payPaise > payModal.outstanding) { setError(t('creditors.cannotExceedOutstanding', { amount: fmtPaise(payModal.outstanding) })); return }
+    if (payMode !== 'cash' && !payAccountId) { setError(t('creditors.selectBankAccountError')); return }
     setPaying(true)
     setError('')
     try {
@@ -109,7 +111,7 @@ export function CreditorList() {
       setAddModal({ open: false, vendor_name: '', description: '', amount: '', due_date: '' })
       load()
     } catch {
-      setError('Failed to add entry.')
+      setError(t('creditors.failedToAddEntry'))
     } finally {
       setAdding(false)
     }
@@ -120,16 +122,16 @@ export function CreditorList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">Creditors (Udhaar)</h1>
+        <h1 className="text-xl font-bold text-navy-900">{t('creditors.title')}</h1>
         <div className="flex items-center gap-4">
           {totalOutstanding > 0 && (
             <div className="text-right">
-              <p className="text-xs text-slate-400">Total Outstanding</p>
+              <p className="text-xs text-slate-400">{t('creditors.totalOutstanding')}</p>
               <p className="font-bold text-red-600 text-lg">₹{fmtPaise(totalOutstanding)}</p>
             </div>
           )}
           <button onClick={() => setAddModal(a => ({ ...a, open: true }))} className="btn-primary">
-            <Plus size={15} /> Add Entry
+            <Plus size={15} /> {t('creditors.addEntry')}
           </button>
         </div>
       </div>
@@ -139,21 +141,21 @@ export function CreditorList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Vendor / Payee</th>
-                <th>Description</th>
-                <th>Original</th>
-                <th>Paid</th>
-                <th>Outstanding</th>
-                <th>Due Date</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{t('creditors.vendorPayee')}</th>
+                <th>{t('creditors.description')}</th>
+                <th>{t('creditors.original')}</th>
+                <th>{t('creditors.paid')}</th>
+                <th>{t('creditors.outstanding')}</th>
+                <th>{t('creditors.dueDate')}</th>
+                <th>{t('creditors.status')}</th>
+                <th>{t('creditors.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
               ) : creditors.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">No creditor entries found</td></tr>
+                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('creditors.noEntriesFound')}</td></tr>
               ) : creditors.map(c => {
                 const outstanding = c.original_amount_paise - c.paid_amount_paise
                 return (
@@ -170,15 +172,15 @@ export function CreditorList() {
                     </td>
                     <td>
                       {c.status === 'paid'
-                        ? <span className="badge-green">Paid</span>
+                        ? <span className="badge-green">{t('creditors.statusPaid')}</span>
                         : c.status === 'partially_paid'
-                        ? <span className="badge-yellow">Partial</span>
-                        : <span className="badge-red">Pending</span>}
+                        ? <span className="badge-yellow">{t('creditors.statusPartial')}</span>
+                        : <span className="badge-red">{t('creditors.statusPending')}</span>}
                     </td>
                     <td>
                       {c.status !== 'paid' && (
                         <button onClick={() => openPayModal(c)} className="btn-success btn-sm">
-                          Pay
+                          {t('creditors.pay')}
                         </button>
                       )}
                     </td>
@@ -195,18 +197,18 @@ export function CreditorList() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="font-bold text-navy-900">Record Payment</h2>
+              <h2 className="font-bold text-navy-900">{t('creditors.recordPayment')}</h2>
               <button onClick={() => setPayModal(null)} className="text-slate-400 hover:text-slate-600">
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={submitPayment} className="p-6 space-y-4">
               <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
-                <p className="text-slate-500">Vendor: <span className="font-semibold text-slate-700">{payModal.vendorName}</span></p>
-                <p className="text-slate-500">Outstanding: <span className="font-bold text-red-600">₹{fmtPaise(payModal.outstanding)}</span></p>
+                <p className="text-slate-500">{t('creditors.vendorLabel', { name: payModal.vendorName })}</p>
+                <p className="text-slate-500">{t('creditors.outstandingLabel', { amount: fmtPaise(payModal.outstanding) })}</p>
               </div>
               <div>
-                <label className="form-label">Payment Amount (₹) *</label>
+                <label className="form-label">{t('creditors.paymentAmount')}</label>
                 <input
                   type="number" step="0.01" min="0.01"
                   max={(payModal.outstanding / 100).toFixed(2)}
@@ -217,37 +219,37 @@ export function CreditorList() {
                 />
                 <button type="button" className="mt-1 text-xs text-brand-red hover:underline"
                   onClick={() => setPayAmt((payModal.outstanding / 100).toFixed(2))}>
-                  Pay full outstanding (₹{fmtPaise(payModal.outstanding)})
+                  {t('creditors.payFullOutstanding', { amount: fmtPaise(payModal.outstanding) })}
                 </button>
               </div>
               <div>
-                <label className="form-label">Payment Mode *</label>
+                <label className="form-label">{t('creditors.paymentMode')}</label>
                 <select className="form-input" value={payMode}
                   onChange={e => { setPayMode(e.target.value as PayMode); setError('') }}>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="netbanking">Net Banking</option>
+                  <option value="cash">{t('common.cash')}</option>
+                  <option value="upi">{t('common.upi')}</option>
+                  <option value="cheque">{t('common.cheque')}</option>
+                  <option value="netbanking">{t('common.netbanking')}</option>
                 </select>
                 <p className="mt-1 text-xs text-slate-400">
-                  {payMode === 'cash' ? 'Paid from Cash in Hand.' : 'Paid from the selected bank account.'}
+                  {payMode === 'cash' ? t('creditors.paidFromCash') : t('creditors.paidFromBank')}
                 </p>
               </div>
               {payMode !== 'cash' && (
                 <div>
-                  <label className="form-label">Bank Account *</label>
+                  <label className="form-label">{t('creditors.bankAccount')}</label>
                   <select className="form-input" value={payAccountId}
                     onChange={e => { setPayAccountId(e.target.value); setError('') }}>
-                    <option value="">Select account…</option>
+                    <option value="">{t('creditors.selectAccount')}</option>
                     {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
                 </div>
               )}
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">Cancel</button>
+                <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">{t('common.cancel')}</button>
                 <button type="submit" disabled={paying} className="btn-success">
-                  {paying ? 'Recording...' : 'Record Payment'}
+                  {paying ? t('creditors.recording') : t('creditors.recordPayment')}
                 </button>
               </div>
             </form>
@@ -260,37 +262,37 @@ export function CreditorList() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="font-bold text-navy-900">Add Creditor Entry</h2>
+              <h2 className="font-bold text-navy-900">{t('creditors.addCreditorEntry')}</h2>
               <button onClick={() => setAddModal(a => ({ ...a, open: false }))} className="text-slate-400 hover:text-slate-600">
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={submitAdd} className="p-6 space-y-4">
               <div>
-                <label className="form-label">Vendor / Payee Name *</label>
+                <label className="form-label">{t('creditors.vendorPayeeName')}</label>
                 <input className="form-input" value={addModal.vendor_name}
                   onChange={e => setAddModal(a => ({ ...a, vendor_name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">Description *</label>
-                <input className="form-input" value={addModal.description} placeholder="e.g. June electricity bill"
+                <label className="form-label">{t('creditors.description')} *</label>
+                <input className="form-input" value={addModal.description} placeholder={t('creditors.descriptionPlaceholder')}
                   onChange={e => setAddModal(a => ({ ...a, description: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">Amount (₹) *</label>
+                <label className="form-label">{t('creditors.amountLabel')}</label>
                 <input type="number" step="0.01" min="1" className="form-input" value={addModal.amount}
                   onChange={e => setAddModal(a => ({ ...a, amount: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">Due Date</label>
+                <label className="form-label">{t('creditors.dueDate')}</label>
                 <input type="date" className="form-input" value={addModal.due_date}
                   onChange={e => setAddModal(a => ({ ...a, due_date: e.target.value }))} />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setAddModal(a => ({ ...a, open: false }))} className="btn-secondary">Cancel</button>
+                <button type="button" onClick={() => setAddModal(a => ({ ...a, open: false }))} className="btn-secondary">{t('common.cancel')}</button>
                 <button type="submit" disabled={adding} className="btn-primary">
-                  {adding ? 'Adding...' : 'Add Entry'}
+                  {adding ? t('donors.adding') : t('creditors.addEntry')}
                 </button>
               </div>
             </form>

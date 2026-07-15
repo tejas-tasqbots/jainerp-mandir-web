@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
@@ -11,6 +12,7 @@ import type { DonationCategory, DevoteeSelection } from '../../types'
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
 export function AddDonation() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id: editId } = useParams()
   const isEdit = !!editId
@@ -147,17 +149,17 @@ export function AddDonation() {
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-navy-900">{isEdit ? 'Edit Donation' : 'New Donation'}</h1>
-          {isEdit && <p className="text-xs text-amber-600 mt-0.5">Saving will void the original receipt and issue a corrected one (keeps the audit trail).</p>}
+          <h1 className="text-xl font-bold text-navy-900">{isEdit ? t('donations.editDonation') : t('donations.newDonationTitle')}</h1>
+          {isEdit && <p className="text-xs text-amber-600 mt-0.5">{t('donations.editWarning')}</p>}
         </div>
-        <button type="button" onClick={() => navigate('/donations')} className="btn-secondary btn-sm"><X size={14} /> Cancel</button>
+        <button type="button" onClick={() => navigate('/donations')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           {/* Devotee / Donor picker */}
           <DevoteePicker
-            label="Donor"
+            label={t('donations.donorLabel')}
             value={devotee}
             onChange={setDevotee}
             showAnonymous
@@ -166,13 +168,13 @@ export function AddDonation() {
 
           {/* Category */}
           <div>
-            <label htmlFor="donation-category" className="form-label">Donation Category *</label>
+            <label htmlFor="donation-category" className="form-label">{t('donations.donationCategory')}</label>
             <select id="donation-category" className="form-select" value={form.category_id}
               onChange={e => {
                 const cat = categories.find(c => c.id === e.target.value)
                 setForm(f => ({ ...f, category_id: e.target.value, is_80g_eligible: cat?.is_80g_eligible ?? true }))
               }}>
-              <option value="">Select category...</option>
+              <option value="">{t('donations.selectCategory')}</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
               ))}
@@ -186,12 +188,12 @@ export function AddDonation() {
             return (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Amount (₹) *</label>
+                  <label className="form-label">{t('donations.amountLabel')}</label>
                   <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
                     value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>
                 <div>
-                  <label htmlFor="payment-mode" className="form-label">Payment Mode *</label>
+                  <label htmlFor="payment-mode" className="form-label">{t('donations.paymentModeLabel')}</label>
                   <select id="payment-mode" className="form-select" value={form.payment_mode}
                     onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
                     {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
@@ -199,10 +201,10 @@ export function AddDonation() {
                 </div>
                 {relevantAccounts.length > 0 && (
                   <div className="col-span-2">
-                    <label htmlFor="payment-account" className="form-label">Received in Account *</label>
+                    <label htmlFor="payment-account" className="form-label">{t('donations.receivedInAccount')}</label>
                     <select id="payment-account" className="form-select" value={form.payment_account_id}
                       onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
-                      <option value="">Select account…</option>
+                      <option value="">{t('donations.selectAccount')}</option>
                       {relevantAccounts.map(a => (
                         <option key={a.id} value={a.id}>
                           {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
@@ -218,14 +220,14 @@ export function AddDonation() {
           {/* UTR / Cheque */}
           {(form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (
             <div>
-              <label className="form-label">UTR Number</label>
+              <label className="form-label">{t('donations.utrNumber')}</label>
               <input className="form-input" placeholder="Transaction reference" value={form.utr_number}
                 onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
             </div>
           )}
           {form.payment_mode === 'cheque' && (
             <div>
-              <label className="form-label">Cheque Number</label>
+              <label className="form-label">{t('donations.chequeNumber')}</label>
               <input className="form-input" placeholder="Cheque number" value={form.cheque_number}
                 onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
             </div>
@@ -239,24 +241,24 @@ export function AddDonation() {
                 disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000) || panBlocked || temple80gBlocked}
                 className="w-4 h-4 accent-green-600" />
               <label htmlFor="is_80g" className="text-sm text-slate-700">
-                80G Eligible donation
+                {t('donations.eightyGEligible')}
                 {temple80gBlocked && (
-                  <span className="text-orange-500 ml-2 text-xs">(Temple has no 80G registration — add it in Settings → Temple Profile to issue 80G receipts)</span>
+                  <span className="text-orange-500 ml-2 text-xs">{t('donations.templeNo80g')}</span>
                 )}
                 {devotee?.is_anonymous && (
-                  <span className="text-orange-500 ml-2 text-xs">(Anonymous / Dan Peti gifts are not 80G eligible)</span>
+                  <span className="text-orange-500 ml-2 text-xs">{t('donations.anonymousNo80g')}</span>
                 )}
                 {!devotee?.is_anonymous && form.payment_mode === 'cash' && parseFloat(form.amount) > 2000 && (
-                  <span className="text-orange-500 ml-2 text-xs">(Cash &gt;₹2,000 is not 80G eligible)</span>
+                  <span className="text-orange-500 ml-2 text-xs">{t('donations.cashLimitNo80g')}</span>
                 )}
                 {panBlocked && (
-                  <span className="text-orange-500 ml-2 text-xs">(Donor has no PAN on record — 80G needs a PAN)</span>
+                  <span className="text-orange-500 ml-2 text-xs">{t('donations.panBlockedWarning')}</span>
                 )}
               </label>
               {panBlocked && !showPanField && (
                 <button type="button" onClick={() => setShowPanField(true)}
                   className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2">
-                  Add PAN
+                  {t('donations.addPan')}
                 </button>
               )}
             </div>
@@ -266,9 +268,9 @@ export function AddDonation() {
                   value={donorPan} autoFocus
                   onChange={e => setDonorPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
                 {panValid ? (
-                  <p className="text-xs text-green-600">PAN will be saved to {devotee?.name || 'the donor'}&apos;s record with this donation.</p>
+                  <p className="text-xs text-green-600">{t('donations.panWillBeSaved', { name: devotee?.name || t('donations.theDonor') })}</p>
                 ) : (
-                  <p className="text-xs text-slate-400">PAN format: 5 letters, 4 digits, 1 letter — e.g. ABCDE1234F</p>
+                  <p className="text-xs text-slate-400">{t('donations.panFormatHint')}</p>
                 )}
               </div>
             )}
@@ -276,8 +278,8 @@ export function AddDonation() {
 
           {/* Note */}
           <div>
-            <label className="form-label">Note <span className="text-slate-400 font-normal">(optional)</span></label>
-            <textarea className="form-textarea" rows={2} placeholder="Any additional notes..."
+            <label className="form-label">{t('donations.note')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
+            <textarea className="form-textarea" rows={2} placeholder={t('donations.notePlaceholder')}
               value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
           </div>
 
@@ -285,9 +287,9 @@ export function AddDonation() {
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/donations')} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => navigate('/donations')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
-            <Save size={16} /> {saving ? 'Saving...' : isEdit ? 'Save Correction & Print' : 'Save & Print Receipt'}
+            <Save size={16} /> {saving ? t('common.saving') : isEdit ? t('donations.saveCorrection') : t('donations.saveAndPrint')}
           </button>
         </div>
       </form>
