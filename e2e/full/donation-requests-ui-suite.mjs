@@ -117,7 +117,8 @@ try {
   const errShown = /UTR|reference number|screenshot/i.test((await dev.textContent('body')) ?? '');
   record('UIDR-06', 'submit without UTR/screenshot blocked with helper message', errShown);
 
-  await dev.fill('input[placeholder*="415223"]', `UIS${Date.now()}`.slice(0, 16));
+  const utrRef = `UIS${Date.now()}`.slice(0, 16);
+  await dev.fill('input[placeholder*="415223"]', utrRef);
   await shot(dev, '02-devotee-request-form');
   await dev.click('button:has-text("Submit for verification")');
   await dev.waitForSelector('text=Sent for verification!', { timeout: 15000 });
@@ -141,11 +142,12 @@ try {
     await adm.waitForTimeout(1500);
   }
 
-  // Sidebar entry + badge
+  // Requests inbox lives inside the Donations hub (tab `?tab=requests`);
+  // the old /donation-requests URL redirects there.
+  await adm.waitForSelector('a:has-text("Donations")', { timeout: 12000 });
+  await adm.goto(`${MANDIR_WEB}/donations?tab=requests`, { waitUntil: 'networkidle' });
   await adm.waitForSelector('text=Donation Requests', { timeout: 12000 });
-  record('UIDR-09', 'sidebar shows Donation Requests entry', true);
-
-  await adm.goto(`${MANDIR_WEB}/donation-requests`, { waitUntil: 'networkidle' });
+  record('UIDR-09', 'Donations hub exposes the Requests tab (inbox)', true);
   await adm.waitForTimeout(1000);
   const inboxTxt = (await adm.textContent('body')) ?? '';
   record('UIDR-10', 'inbox lists the pending request from the devotee',
@@ -171,8 +173,10 @@ try {
   await adm.click('button:has-text("Later")');
   await adm.waitForTimeout(1000);
 
+  // Scope to this run's own UTR, not the shared "UI Smoke Devotee" display
+  // name — repeated suite runs leave other still-pending rows with that name.
   const pendingNow = (await adm.textContent('body')) ?? '';
-  record('UIDR-13', 'approved request left the pending tab', !/UI Smoke Devotee/.test(pendingNow));
+  record('UIDR-13', 'approved request left the pending tab', !pendingNow.includes(utrRef));
   await adm.click('button:has-text("Approved")');
   await adm.waitForTimeout(800);
   const approvedTab = (await adm.textContent('body')) ?? '';
@@ -221,8 +225,13 @@ try {
     await desk.click('text=Smoke Portal Mandir');
     await desk.waitForTimeout(1500);
   }
-  await desk.waitForSelector('a:has-text("Donation Requests")', { timeout: 12000 });
-  await desk.click('a:has-text("Donation Requests")');
+  // Desktop uses HashRouter (Electron file:// needs hash routing, toggled by
+  // __JAINERP_DESKTOP__), so a plain goto(path) doesn't navigate the SPA —
+  // click through the UI like a real user instead.
+  await desk.waitForSelector('a:has-text("Donations")', { timeout: 12000 });
+  await desk.click('a:has-text("Donations")');
+  await desk.waitForTimeout(800);
+  await desk.click('button:has-text("Requests")');
   await desk.waitForTimeout(1200);
   const deskTxt = (await desk.textContent('body')) ?? '';
   record('UIDR-18', 'desktop offline → inbox gates with "needs internet" state (no fetch)',
