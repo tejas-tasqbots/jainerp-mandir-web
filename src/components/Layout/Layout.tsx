@@ -7,12 +7,12 @@ import { RouteGuard } from '../RouteGuard'
 export function Layout() {
   return (
     <>
-      <OfflineBanner />
-      <div className="flex h-screen overflow-hidden bg-slate-50">
-        <Sidebar />
+      <div className="no-print"><OfflineBanner /></div>
+      <div className="flex h-screen overflow-hidden bg-slate-50 app-shell">
+        <div className="no-print"><Sidebar /></div>
         <div className="flex flex-col flex-1 overflow-hidden">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto p-6">
+          <div className="no-print"><TopBar /></div>
+          <main className="flex-1 overflow-y-auto p-6 app-main">
             <RouteGuard>
               <Outlet />
             </RouteGuard>

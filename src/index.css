@@ -121,4 +121,35 @@
   .badge-gray   { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700; }
 }
 
-@media print { .no-print { display: none !important; } }
+/* ── Print: isolate the report content ─────────────────────────────────────
+   window.print() on the account statements/reports otherwise prints the whole
+   app (sidebar, top bar, buttons) because the layout is a fixed-height,
+   overflow-hidden flex shell. Hide the chrome (.no-print) and release the
+   scroll containers so ONLY the on-screen report prints, full-width, from the
+   top of the page. Receipts/80G use their own iframe print (printReceipt.ts)
+   and are unaffected. */
+/* Shown only when printing (e.g. a static "FY 2026-27" caption replacing the
+   interactive selector). Hidden on screen. */
+.print-only { display: none; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  /* Release the fixed-height / overflow shell so the full report flows onto pages. */
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  /* Cards/tables should print crisp, not with screen shadows. */
+  .card { box-shadow: none !important; border-color: #cbd5e1 !important; break-inside: avoid; }
+  .data-table thead th { background: #0D1B2E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { break-inside: auto; }
+  tr { break-inside: avoid; }
+}

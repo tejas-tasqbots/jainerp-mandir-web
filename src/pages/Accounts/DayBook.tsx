@@ -41,8 +41,11 @@ export function DayBook() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">{t('accounts.dayBookTitle')}</h1>
-        <div className="flex gap-2">
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{t('accounts.dayBookTitle')}</h1>
+          <p className="print-only text-sm text-slate-600 mt-1">{from} — {to}</p>
+        </div>
+        <div className="flex gap-2 no-print">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
             <Printer size={14} /> {t('accounts.print')}
           </button>
@@ -64,7 +67,7 @@ export function DayBook() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 no-print">
         <div className="flex items-center gap-2 text-sm">
           <label className="text-slate-500">{t('accounts.from')}</label>
           <input type="date" className="form-input w-40" value={from} onChange={e => setFrom(e.target.value)} />

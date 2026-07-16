@@ -56,8 +56,11 @@ export function BalanceSheet() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">{t('accounts.balanceSheetTitle')}</h1>
-        <div className="flex gap-2">
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{t('accounts.balanceSheetTitle')}</h1>
+          <p className="print-only text-sm text-slate-600 mt-1">{t('accounts.fy')} {fy}</p>
+        </div>
+        <div className="flex gap-2 no-print">
           <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
             <Printer size={14} /> {t('accounts.print')}
           </button>
@@ -104,7 +107,7 @@ export function BalanceSheet() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 no-print">
         <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
         <FySelect value={fy} onChange={setFy} />
         {data && <span className="badge-green">{t('accounts.asOfEndOfFy')}</span>}

@@ -46,9 +46,16 @@ export function Ledger() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-navy-900">{t('accounts.ledgerTitle')}</h1>
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{t('accounts.ledgerTitle')}</h1>
+          {accountId && (
+            <p className="print-only text-sm text-slate-600 mt-1">
+              {accounts.find(a => a.id === accountId)?.name || ''} · {from} — {to}
+            </p>
+          )}
+        </div>
         {accountId && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 no-print">
             <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
               <Printer size={14} /> {t('accounts.print')}
             </button>
@@ -71,7 +78,7 @@ export function Ledger() {
         )}
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-4 flex-wrap no-print">
         <div>
           <label className="form-label">{t('accounts.account')}</label>
           <select className="form-select w-64" value={accountId} onChange={e => { setAccountId(e.target.value); setSearch('') }}>
