@@ -231,16 +231,21 @@ export function BoliList() {
                           </button>
                         </>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => openIntimation(b.id)}
-                        title={t('pledges.printIntimation')}
-                        aria-label={t('pledges.printIntimation')}
-                        disabled={intimating === b.id}
-                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-                      >
-                        <Bell size={14} className={intimating === b.id ? 'animate-pulse' : ''} />
-                      </button>
+                      {/* Intimation/reminder slip only makes sense while a balance
+                          is outstanding — a fully-paid or waived pledge has nothing
+                          to remind the donor about. */}
+                      {b.outstanding_paise > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => openIntimation(b.id)}
+                          title={t('pledges.printIntimation')}
+                          aria-label={t('pledges.printIntimation')}
+                          disabled={intimating === b.id}
+                          className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+                        >
+                          <Bell size={14} className={intimating === b.id ? 'animate-pulse' : ''} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

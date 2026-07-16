@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Edit2, Save, X, Eye, ShieldCheck, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { downloadReceiptPdf } from '../../lib/printReceipt'
+import { print80gCertificate } from '../../lib/print80gCertificate'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
@@ -30,39 +32,7 @@ export function DonorProfile() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '', pan: '' })
-
-  // OTP-gated full-PAN reveal
-  const [pan, setPan] = useState<{ open: boolean; stage: 'idle' | 'otp'; otp: string; value: string | null; hint: string | null; busy: boolean; error: string | null }>(
-    { open: false, stage: 'idle', otp: '', value: null, hint: null, busy: false, error: null },
-  )
-
-  async function requestPanOtp() {
-    setPan(p => ({ ...p, busy: true, error: null }))
-    try {
-      const r = await api.post(`/donors/${id}/pan/request-otp`)
-      const d = r.data.data
-      setPan(p => ({ ...p, stage: 'otp', hint: d.mobile_hint || null, busy: false, error: d.dev_otp ? `Dev OTP: ${d.dev_otp}` : null }))
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Could not send OTP'
-      setPan(p => ({ ...p, busy: false, error: msg }))
-    }
-  }
-
-  async function submitPanOtp() {
-    setPan(p => ({ ...p, busy: true, error: null }))
-    try {
-      const r = await api.post(`/donors/${id}/pan/reveal`, { otp: pan.otp })
-      setPan(p => ({ ...p, value: r.data.data.pan, stage: 'idle', busy: false, error: null }))
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Incorrect OTP'
-      setPan(p => ({ ...p, busy: false, error: msg }))
-    }
-  }
-
-  function closePanReveal() {
-    setPan({ open: false, stage: 'idle', otp: '', value: null, hint: null, busy: false, error: null })
-  }
+  const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '' })
 
   useEffect(() => { if (id) load() }, [id])
 
@@ -85,7 +55,6 @@ export function DonorProfile() {
           city: d.city || '',
           state: d.state || '',
           address: d.address_line1 || '',
-          pan: d.pan_masked || '',
         })
       }
       if (ledgerResp.status === 'fulfilled') {
@@ -104,6 +73,8 @@ export function DonorProfile() {
     if (form.mobile && !isValidPhone(form.mobile)) return
     setSaving(true)
     try {
+      // PAN is intentionally NOT edited here — it is captured with the donor's
+      // donation (needed for Form 10BD) and never shown/edited from this profile.
       await api.patch(`/donors/${id}`, {
         name: form.name,
         mobile: form.mobile || undefined,
@@ -113,12 +84,41 @@ export function DonorProfile() {
         city: form.city || undefined,
         state: form.state || undefined,
         address_line1: form.address || undefined,
-        pan: form.pan || undefined,
       })
       setEditing(false)
       load()
     } finally {
       setSaving(false)
+    }
+  }
+
+  const [cert80g, setCert80g] = useState(false)
+  const [receiptBusy, setReceiptBusy] = useState<string | null>(null)
+
+  async function download80g() {
+    if (!id) return
+    setCert80g(true)
+    try {
+      await print80gCertificate(id)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      alert(err.response?.data?.error?.message || t('donors.no80gForYear'))
+    } finally {
+      setCert80g(false)
+    }
+  }
+
+  // Download a donation's receipt as PDF. Only donation-type rows (with an invoice)
+  // have a printable receipt — boli/seva rows don't route through /donations.
+  async function downloadReceipt(row: LedgerRow) {
+    if (row.txn_type !== 'donation') return
+    setReceiptBusy(row.id)
+    try {
+      await downloadReceiptPdf(row.id)
+    } catch {
+      alert(t('donors.receiptFailed'))
+    } finally {
+      setReceiptBusy(null)
     }
   }
 
@@ -166,10 +166,6 @@ export function DonorProfile() {
               <div>
                 <label className="form-label">{t('donors.gotra')}</label>
                 <input className="form-input" value={form.gotra} onChange={e => setForm(f => ({ ...f, gotra: e.target.value }))} />
-              </div>
-              <div>
-                <label className="form-label">{t('donors.pan')}</label>
-                <input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} maxLength={10} />
               </div>
               <div>
                 <label className="form-label">{t('donors.country')}</label>
@@ -225,23 +221,9 @@ export function DonorProfile() {
                   <span className="font-medium">{value}</span>
                 </div>
               ))}
-              {/* PAN — masked by default, full value only after OTP reveal */}
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-500">{t('donors.pan')}</span>
-                {donor.pan_masked ? (
-                  <span className="flex items-center gap-2">
-                    <span className="font-medium font-mono">{pan.value || donor.pan_masked}</span>
-                    {pan.value ? (
-                      <span className="text-[10px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{t('donors.revealed')}</span>
-                    ) : (
-                      <button type="button" onClick={() => setPan(p => ({ ...p, open: true }))}
-                        className="flex items-center gap-1 text-xs text-navy-900 hover:underline">
-                        <Eye size={13} /> {t('donors.reveal')}
-                      </button>
-                    )}
-                  </span>
-                ) : <span className="font-medium">—</span>}
-              </div>
+              {/* PAN is intentionally not shown here — it is captured with the
+                  donor's donation (for Form 10BD) and never displayed/edited from
+                  this profile. */}
               {[
                 [t('donors.gotra'), donor.gotra || '—'],
                 [t('donors.city'), donor.city ? `${donor.city}${donor.state ? `, ${donor.state}` : ''}` : '—'],
@@ -264,11 +246,20 @@ export function DonorProfile() {
                 </p>
                 <p className="text-sm text-slate-400 mt-1">{t('donors.totalDonated')}</p>
               </div>
-              {totals && (
+              {totals && totals.receipts > 0 && (
                 <div className="text-center text-sm text-slate-500">
                   {t('donors.receiptsIssued', { count: totals.receipts })}
                 </div>
               )}
+              <button
+                type="button"
+                onClick={download80g}
+                disabled={cert80g}
+                className="btn-secondary btn-sm w-full justify-center"
+              >
+                {cert80g ? <RefreshCw size={14} className="animate-spin" /> : <Award size={14} />}
+                {t('donors.download80g')}
+              </button>
             </div>
           </div>
         </div>
@@ -281,11 +272,11 @@ export function DonorProfile() {
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
-              <tr><th>{t('donors.type')}</th><th>{t('donors.invoice')}</th><th>{t('donors.details')}</th><th>{t('donors.amount')}</th><th>{t('donors.mode')}</th><th>{t('donors.date')}</th></tr>
+              <tr><th>{t('donors.type')}</th><th>{t('donors.invoice')}</th><th>{t('donors.details')}</th><th>{t('donors.amount')}</th><th>{t('donors.mode')}</th><th>{t('donors.date')}</th><th className="text-right">{t('donors.receipt')}</th></tr>
             </thead>
             <tbody>
               {ledger.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-slate-400">{t('donors.noTransactions')}</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-slate-400">{t('donors.noTransactions')}</td></tr>
               ) : ledger.map(tx => (
                 <tr key={tx.id} className={tx.voided ? 'opacity-40 line-through' : ''}>
                   <td><span className={`badge ${txnBadge(tx.txn_type)}`}>{tx.txn_type}</span></td>
@@ -294,6 +285,21 @@ export function DonorProfile() {
                   <td className="font-semibold">₹{fmtPaise(tx.amount_paise)}</td>
                   <td>{tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : '—'}</td>
                   <td className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
+                  <td className="text-right">
+                    {/* Only donation-type rows have a printable receipt (via /donations). */}
+                    {tx.txn_type === 'donation' && !tx.voided && tx.invoice_no ? (
+                      <button
+                        type="button"
+                        onClick={() => downloadReceipt(tx)}
+                        disabled={receiptBusy === tx.id}
+                        title={t('donors.downloadReceipt')}
+                        aria-label={t('donors.downloadReceipt')}
+                        className="p-1 text-slate-400 hover:text-navy-900 rounded disabled:opacity-40"
+                      >
+                        {receiptBusy === tx.id ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                      </button>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -301,50 +307,6 @@ export function DonorProfile() {
         </div>
       </div>
 
-      {/* OTP-gated PAN reveal modal */}
-      {pan.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closePanReveal}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100">
-              <ShieldCheck size={18} className="text-navy-900" />
-              <h3 className="font-semibold text-sm">{t('donors.revealFullPan')}</h3>
-              <button onClick={closePanReveal} className="ml-auto text-slate-400 hover:text-slate-600"><X size={18} /></button>
-            </div>
-            <div className="px-5 py-4 space-y-3">
-              <p className="text-sm text-slate-600">
-                {t('donors.revealPanHint', { hint: pan.hint ? ` (${pan.hint})` : '' })}
-              </p>
-              {pan.stage === 'otp' && (
-                <div>
-                  <label className="form-label">{t('donors.enterOtpSent')}</label>
-                  <input className="form-input tracking-[0.4em] text-center font-mono" maxLength={6} inputMode="numeric"
-                    value={pan.otp} onChange={e => setPan(p => ({ ...p, otp: e.target.value.replace(/\D/g, '') }))}
-                    placeholder="______" autoFocus />
-                </div>
-              )}
-              {pan.error && (
-                <div className={`text-xs rounded-md px-3 py-2 ${pan.error.startsWith('Dev OTP') ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                  {pan.error}
-                </div>
-              )}
-            </div>
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
-              <button onClick={closePanReveal} className="btn-secondary btn-sm">{t('common.cancel')}</button>
-              {pan.stage === 'idle' ? (
-                <button onClick={requestPanOtp} disabled={pan.busy} className="btn-primary btn-sm">
-                  {pan.busy ? <RefreshCw size={14} className="animate-spin" /> : <Eye size={14} />}
-                  {pan.busy ? t('donors.sendingOtp') : t('donors.sendOtp')}
-                </button>
-              ) : (
-                <button onClick={submitPanOtp} disabled={pan.busy || pan.otp.length < 4} className="btn-primary btn-sm">
-                  {pan.busy ? <RefreshCw size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                  {pan.busy ? t('donors.verifying') : t('donors.verifyReveal')}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
