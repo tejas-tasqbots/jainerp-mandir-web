@@ -445,6 +445,10 @@
     "hi": "हिंदी (Hindi)",
     "mr": "मराठी (Marathi)"
   },
+  "topBar": {
+    "language": "Language",
+    "logout": "Logout"
+  },
   "common": {
     "loading": "Loading...",
     "cancel": "Cancel",

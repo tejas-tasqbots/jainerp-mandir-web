@@ -1,9 +1,12 @@
 import { LogOut, User, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { api } from '../../lib/api'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 export function TopBar() {
+  const { t } = useTranslation()
   const { user, tenant, logout } = useAuthStore()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -32,14 +35,15 @@ export function TopBar() {
             <span className="text-xs text-slate-400 capitalize">({user.roles[0].replace('_', ' ')})</span>
           )}
         </div>
+        <LanguageSwitcher />
         <button
           onClick={handleLogout}
           disabled={loggingOut}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-red transition-colors disabled:opacity-50"
-          title="Logout"
+          title={t('topBar.logout')}
         >
           {loggingOut ? <RefreshCw size={15} className="animate-spin" /> : <LogOut size={15} />}
-          <span>Logout</span>
+          <span>{t('topBar.logout')}</span>
         </button>
       </div>
     </header>
