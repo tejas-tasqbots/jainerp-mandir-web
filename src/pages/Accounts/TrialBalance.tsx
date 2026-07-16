@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
+import { FySelect } from '../../components/FySelect'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 
@@ -56,7 +57,7 @@ export function TrialBalance() {
 
       <div className="flex items-center gap-3">
         <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
-        <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
+        <FySelect value={fy} onChange={setFy} />
         {totalDebit === totalCredit && totalDebit > 0 && (
           <span className="badge-green">{t('accounts.balanced')}</span>
         )}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, FileText, RefreshCw } from 'lucide-react'
 import { currentFY } from '../../lib/api'
+import { FySelect } from '../../components/FySelect'
 import { downloadReport, type ReportFormat } from '../../lib/downloadReport'
 
 export function ReportsHome() {
@@ -50,7 +51,7 @@ export function ReportsHome() {
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-slate-600">{t('reports.fy')}</label>
-              <input className="form-input w-28" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
+              <FySelect value={fy} onChange={setFy} className="form-select w-28" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-slate-600">{t('reports.from')}</label>

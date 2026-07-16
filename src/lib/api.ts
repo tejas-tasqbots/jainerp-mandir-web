@@ -59,3 +59,26 @@ export function currentFY(): string {
   const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
   return `${year}-${String(year + 1).slice(-2)}`
 }
+
+/** Format an India FY label (April–March) from its starting calendar year, e.g. 2026 → "2026-27". */
+export function fyLabel(startYear: number): string {
+  return `${startYear}-${String(startYear + 1).slice(-2)}`
+}
+
+/**
+ * A list of selectable financial years for the FY dropdowns — `back` years before
+ * the current FY through `forward` years after (newest first). `ensure` guarantees
+ * a specific FY (e.g. a value already in state) is present even if outside the window.
+ */
+export function fyOptions({ back = 6, forward = 1, ensure }: { back?: number; forward?: number; ensure?: string } = {}): string[] {
+  const now = new Date()
+  const curStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+  const years: string[] = []
+  for (let y = curStart + forward; y >= curStart - back; y--) years.push(fyLabel(y))
+  if (ensure && !years.includes(ensure)) {
+    years.push(ensure)
+    // Keep newest-first by the starting year.
+    years.sort((a, b) => Number(b.slice(0, 4)) - Number(a.slice(0, 4)))
+  }
+  return years
+}

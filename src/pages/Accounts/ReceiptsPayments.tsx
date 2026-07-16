@@ -4,6 +4,7 @@ import { Download, FileDown, Printer } from 'lucide-react'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
+import { FySelect } from '../../components/FySelect'
 
 interface Section { head?: string; name?: string; amount_paise: number; entries?: number }
 interface RPData {
@@ -78,7 +79,7 @@ export function ReceiptsPayments() {
 
       <div className="flex items-center gap-3">
         <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
-        <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
+        <FySelect value={fy} onChange={setFy} />
       </div>
 
       {loading && <div className="text-center py-10 text-slate-400">{t('common.loading')}</div>}

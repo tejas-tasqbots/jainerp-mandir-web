@@ -4,6 +4,7 @@ import { Download, FileDown, Printer } from 'lucide-react'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
+import { FySelect } from '../../components/FySelect'
 
 interface CashBankEntry { account: string; type: string; balance_paise: number }
 
@@ -105,7 +106,7 @@ export function BalanceSheet() {
 
       <div className="flex items-center gap-3">
         <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
-        <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} />
+        <FySelect value={fy} onChange={setFy} />
         {data && <span className="badge-green">{t('accounts.asOfEndOfFy')}</span>}
       </div>
 

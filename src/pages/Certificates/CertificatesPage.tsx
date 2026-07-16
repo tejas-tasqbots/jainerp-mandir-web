@@ -4,6 +4,7 @@ import { Award, Download, RefreshCw, FileText } from 'lucide-react'
 import { api, currentFY, fmtPaise } from '../../lib/api'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { useConfirm } from '../../components/ConfirmDialog'
+import { FySelect } from '../../components/FySelect'
 
 // ── Authenticated download helpers ───────────────────────────────────────────
 // The compliance endpoints require a Bearer token, so opening them in a new
@@ -233,7 +234,7 @@ export function CertificatesPage() {
       {/* FY selector (shared) */}
       <div className="flex items-center gap-3">
         <label className="form-label mb-0">{t('certificates.financialYear')}</label>
-        <input className="form-input w-28" value={fy} onChange={e => setFy(e.target.value)} placeholder="2025-26" />
+        <FySelect value={fy} onChange={setFy} className="form-select w-28" />
       </div>
 
       {tab === '80g' && (

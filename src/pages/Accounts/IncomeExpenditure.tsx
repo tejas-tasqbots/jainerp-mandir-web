@@ -4,6 +4,7 @@ import { Download, FileDown, Printer } from 'lucide-react'
 import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { api, fmtPaise, currentFY } from '../../lib/api'
+import { FySelect } from '../../components/FySelect'
 
 interface Section { name: string; head?: string; amount_paise: number }
 interface IEData {
@@ -79,7 +80,7 @@ export function IncomeExpenditure() {
 
       <div className="flex items-center gap-3">
         <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
-        <input className="form-input w-32" value={fy} onChange={e => setFy(e.target.value)} />
+        <FySelect value={fy} onChange={setFy} />
         {data && (
           <span className={surplusPaise >= 0 ? 'badge-green' : 'badge-red'}>
             {surplusPaise >= 0 ? t('accounts.surplus') : t('accounts.deficit')}: ₹{fmtPaise(Math.abs(surplusPaise))}
