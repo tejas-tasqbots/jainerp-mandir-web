@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw, FileDown, Printer, Sheet } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
+import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { downloadRowsPdf } from '../../lib/pdfTable'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
@@ -18,6 +20,7 @@ interface LedgerRow {
   detail: string | null
   created_at: string
   voided: boolean
+  outstanding_paise: number | null
 }
 
 interface LedgerTotals { donated_paise: number; receipts: number }
@@ -125,7 +128,36 @@ export function DonorProfile() {
   const txnBadge = (type: string) => {
     if (type === 'donation') return 'badge-green'
     if (type === 'seva') return 'badge-blue'
-    return 'badge-gray'
+    return 'badge-yellow' // boli pledge — visually distinct from a settled donation, matches BoliList's "pledged" badge
+  }
+
+  const txnLabel = (tx: LedgerRow) => {
+    if (tx.txn_type === 'donation') return t('donors.txnDonation')
+    if (tx.txn_type === 'seva') return t('donors.txnSeva')
+    return tx.outstanding_paise === tx.amount_paise ? t('donors.txnBoliPledged') : t('donors.txnBoliPartial')
+  }
+
+  const exportHeaders = [t('donors.type'), t('donors.invoice'), t('donors.details'), t('donors.amount'), t('donors.mode'), t('donors.date')]
+  const exportRows = () => ledger.map(tx => [
+    txnLabel(tx),
+    tx.invoice_no || '',
+    tx.detail || '',
+    rsFmt(tx.amount_paise),
+    tx.payment_mode || '',
+    new Date(tx.created_at).toLocaleDateString('en-IN'),
+  ])
+
+  function exportCsv() {
+    exportRowsCsv(`${donor?.name || 'donor'}-transactions.csv`, exportHeaders, exportRows())
+  }
+
+  function exportPdf() {
+    downloadRowsPdf(
+      `${donor?.name || 'donor'}-transactions.pdf`,
+      `Transaction History — ${donor?.name || ''}`,
+      exportHeaders,
+      exportRows(),
+    )
   }
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-cta border-t-transparent rounded-full animate-spin" /></div>
@@ -266,26 +298,40 @@ export function DonorProfile() {
       )}
 
       <div className="card">
-        <div className="card-header">
+        <div className="card-header flex items-center justify-between">
           <h3 className="font-semibold text-sm text-navy-900">{t('donors.transactionHistory')}</h3>
+          <div className="flex gap-2 no-print">
+            <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('donors.exportPdf')}</button>
+            <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
+            <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Sheet size={14} /> {t('donors.exportCsv')}</button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
-              <tr><th>{t('donors.type')}</th><th>{t('donors.invoice')}</th><th>{t('donors.details')}</th><th>{t('donors.amount')}</th><th>{t('donors.mode')}</th><th>{t('donors.date')}</th><th className="text-right">{t('donors.receipt')}</th></tr>
+              <tr><th>{t('donors.type')}</th><th>{t('donors.invoice')}</th><th>{t('donors.details')}</th><th>{t('donors.amount')}</th><th>{t('donors.mode')}</th><th>{t('donors.date')}</th><th className="text-right no-print">{t('donors.receipt')}</th></tr>
             </thead>
             <tbody>
               {ledger.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-slate-400">{t('donors.noTransactions')}</td></tr>
               ) : ledger.map(tx => (
                 <tr key={tx.id} className={tx.voided ? 'opacity-40 line-through' : ''}>
-                  <td><span className={`badge ${txnBadge(tx.txn_type)}`}>{tx.txn_type}</span></td>
+                  <td><span className={`badge ${txnBadge(tx.txn_type)}`}>{txnLabel(tx)}</span></td>
                   <td className="font-mono text-xs text-brand-blue">{tx.invoice_no || '—'}</td>
-                  <td>{tx.detail || '—'}</td>
+                  <td>
+                    {tx.detail || '—'}
+                    {/* An outstanding boli pledge shows the balance still due — once fully
+                        paid the row disappears entirely (server excludes status='paid'). */}
+                    {tx.txn_type === 'boli' && tx.outstanding_paise != null && tx.outstanding_paise < tx.amount_paise && (
+                      <span className="block text-xs" style={{ color: 'var(--color-brand-gold-dark)' }}>
+                        {t('donors.balanceDue')}: ₹{fmtPaise(tx.outstanding_paise)}
+                      </span>
+                    )}
+                  </td>
                   <td className="font-semibold">₹{fmtPaise(tx.amount_paise)}</td>
                   <td>{tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : '—'}</td>
                   <td className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
-                  <td className="text-right">
+                  <td className="text-right no-print">
                     {/* Only donation-type rows have a printable receipt (via /donations). */}
                     {tx.txn_type === 'donation' && !tx.voided && tx.invoice_no ? (
                       <button
