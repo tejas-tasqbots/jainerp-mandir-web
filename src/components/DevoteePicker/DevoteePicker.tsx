@@ -205,7 +205,9 @@ export function DevoteePicker({
     if (isOnline && f.mobile) {
       setSaving(true); setError('')
       try {
-        const resp = await api.post('/devotees/register', registerPayload())
+        // Plain save must never message the devotee — OTP only via the explicit
+        // "Verify by OTP" button below.
+        const resp = await api.post('/devotees/register', { ...registerPayload(), send_otp: false })
         const data = resp.data?.data ?? resp.data
         onChange({
           global_user_id: data.user_id,
