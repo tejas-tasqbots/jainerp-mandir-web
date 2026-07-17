@@ -1110,8 +1110,17 @@ async function renderHtmlToCanvas(html: string): Promise<HTMLCanvasElement> {
     const doc = iframe.contentWindow?.document
     if (!doc) throw new Error('Could not create render frame')
     // Drop the auto-print script — we only want layout, not a print dialog.
+    // The "Ctrl+P to print or save as PDF" hint is only meant for someone
+    // looking at the receipt on screen before printing; @media print already
+    // hides it for real printing, but html2canvas rasterizes the live DOM and
+    // ignores print-media rules, so without stripping it here it would end up
+    // baked into every downloaded/shared PDF.
     doc.open()
-    doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
+    doc.write(
+      html
+        .replace('<script>window.onload=()=>{window.print()}</script>', '')
+        .replace(/<div class="print-hint">.*?<\/div>/, ''),
+    )
     doc.close()
 
     // Wait for fonts + images (logo) to settle before snapshotting.
