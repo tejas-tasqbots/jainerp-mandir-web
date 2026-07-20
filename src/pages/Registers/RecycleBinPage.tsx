@@ -29,6 +29,7 @@ export function RecycleBinPage() {
   const toast = useToast()
   const [items, setItems] = useState<BinItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [restoringKey, setRestoringKey] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
@@ -57,6 +58,13 @@ export function RecycleBinPage() {
   }
 
   function keyOf(item: BinItem) { return item.kind === 'expense' ? `expense:${item.id}` : `${item.resource}:${item.id}` }
+
+  const q = search.trim().toLowerCase()
+  const visible = q
+    ? items.filter(item => (item.kind === 'expense'
+        ? `${item.description} ${item.vendor_name ?? ''}`
+        : item.label).toLowerCase().includes(q))
+    : items
 
   async function restore(item: BinItem) {
     setRestoringKey(keyOf(item))
@@ -119,14 +127,17 @@ export function RecycleBinPage() {
 
       <DataTable
         columns={columns}
-        rows={items}
+        rows={visible}
         rowKey={item => keyOf(item)}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('recycleBin.search')}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}
-        limit={items.length || 1}
-        total={items.length}
+        limit={visible.length || 1}
+        total={visible.length}
         onPageChange={() => {}}
         emptyMessage={t('recycleBin.empty')}
       />

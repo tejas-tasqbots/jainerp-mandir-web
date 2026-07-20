@@ -1765,7 +1765,9 @@
     "statusIssued": "Issued",
     "issuedBounceWarning": "This will flag \"{{description}}\" as bounced. It did not clear the bank — you will need to re-pay the vendor separately.",
     "issuedBounceSuccess": "Cheque marked bounced",
-    "bounceReasonOptional": "Reason (optional)"
+    "bounceReasonOptional": "Reason (optional)",
+    "searchReceived": "Search donor, invoice...",
+    "searchIssued": "Search vendor, description..."
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",
@@ -1799,7 +1801,8 @@
     "restore": "Restore",
     "restored": "Restored",
     "restoreFailed": "Could not restore this record",
-    "empty": "Nothing in the recycle bin"
+    "empty": "Nothing in the recycle bin",
+    "search": "Search deleted items..."
   },
   "activityLog": {
     "title": "Activity Log",
@@ -1809,6 +1812,7 @@
     "action": "Action",
     "recordId": "ID",
     "system": "System",
-    "empty": "No activity in this period"
+    "empty": "No activity in this period",
+    "search": "Search actor, entity, record id..."
   }
 }

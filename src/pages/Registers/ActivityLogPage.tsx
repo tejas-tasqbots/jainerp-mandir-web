@@ -34,6 +34,7 @@ export function ActivityLogPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('activity-log', 'thisWeek'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [entityTypes, setEntityTypes] = useState<string[]>([])
@@ -64,13 +65,14 @@ export function ActivityLogPage() {
 
   function buildParams(): URLSearchParams {
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
+    if (search) params.set('q', search)
     if (range.from) params.set('from', range.from)
     if (range.to) params.set('to', range.to)
     for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
     return params
   }
 
-  useEffect(() => { load() }, [page, range, filterState])
+  useEffect(() => { load() }, [page, search, range, filterState])
 
   async function load() {
     setLoading(true)
@@ -105,6 +107,9 @@ export function ActivityLogPage() {
         rows={rows}
         rowKey={r => String(r.id)}
         loading={loading}
+        searchValue={search}
+        onSearchChange={v => { setSearch(v); setPage(1) }}
+        searchPlaceholder={t('activityLog.search')}
         onPrint={() => window.print()}
         filterState={filterState}
         onFilterChange={(key, s) => {

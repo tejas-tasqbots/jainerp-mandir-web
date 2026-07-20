@@ -78,6 +78,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
   const [meta, setMeta] = useState<{ total: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('cheques-received', 'thisMonth'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -138,13 +139,14 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit), payment_mode: 'cheque' })
+    if (search) params.set('q', search)
     if (range.from) params.set('from', range.from)
     if (range.to) params.set('to', range.to)
     for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
     return params
   }
 
-  useEffect(() => { load() }, [page, range, filterState])
+  useEffect(() => { load() }, [page, search, range, filterState])
 
   async function load() {
     setLoading(true)
@@ -247,6 +249,9 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
         rows={rows}
         rowKey={d => d.id}
         loading={loading}
+        searchValue={search}
+        onSearchChange={resetPageAnd(setSearch)}
+        searchPlaceholder={t('cheques.searchReceived')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}
@@ -317,6 +322,7 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
   const [meta, setMeta] = useState<{ total: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('cheques-issued', 'thisMonth'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -359,13 +365,14 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit), payment_mode: 'cheque' })
+    if (search) params.set('q', search)
     if (range.from) params.set('from', range.from)
     if (range.to) params.set('to', range.to)
     for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
     return params
   }
 
-  useEffect(() => { load() }, [page, range, filterState])
+  useEffect(() => { load() }, [page, search, range, filterState])
 
   async function load() {
     setLoading(true)
@@ -449,6 +456,9 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
         rows={rows}
         rowKey={e => e.id}
         loading={loading}
+        searchValue={search}
+        onSearchChange={resetPageAnd(setSearch)}
+        searchPlaceholder={t('cheques.searchIssued')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}
