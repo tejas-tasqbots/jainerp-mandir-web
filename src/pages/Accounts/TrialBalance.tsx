@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise, currentFY } from '../../lib/api'
-import { FySelect } from '../../components/FySelect'
-import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { FySelect } from '../../components/FySelect'
+import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface TBRow { account_name: string; debit_paise: number; credit_paise: number }
 
 export function TrialBalance() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [rows, setRows] = useState<TBRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fy, setFy] = useState(currentFY())
@@ -30,74 +35,79 @@ export function TrialBalance() {
 
   const totalDebit = rows.reduce((s, r) => s + r.debit_paise, 0)
   const totalCredit = rows.reduce((s, r) => s + r.credit_paise, 0)
+  const balanced = totalDebit === totalCredit && totalDebit > 0
+
+  const columns: ColumnDef<TBRow>[] = [
+    { key: 'account', label: t('accounts.account'), render: r => <span className="font-medium">{r.account_name}</span> },
+    { key: 'debit', label: t('accounts.debit'), align: 'right', render: r => r.debit_paise > 0 ? `₹${fmtPaise(r.debit_paise)}` : '—' },
+    { key: 'credit', label: t('accounts.credit'), align: 'right', render: r => r.credit_paise > 0 ? `₹${fmtPaise(r.credit_paise)}` : '—' },
+  ]
+
+  const stats: SummaryStat[] = rows.length ? [
+    { label: t('accounts.debit'), value: `₹${fmtPaise(totalDebit)}` },
+    { label: t('accounts.credit'), value: `₹${fmtPaise(totalCredit)}` },
+    { label: t('common.status'), value: totalDebit === totalCredit ? t('accounts.balanced') : t('accounts.imbalanced'), tone: balanced ? 'income' : 'expense' },
+  ] : []
+
+  async function exportExcel() {
+    if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('accounts.trialBalanceTitle'),
+        subtitle: `FY ${fy}`,
+        filename: `trial-balance-${fy}`,
+        columns: [
+          { header: t('accounts.account'), width: 26 },
+          { header: t('accounts.debit'), type: 'money' },
+          { header: t('accounts.credit'), type: 'money' },
+        ],
+        rows: rows.map(r => [r.account_name, r.debit_paise, r.credit_paise]),
+        totals: [t('kit.total'), totalDebit, totalCredit],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  function exportPdf() {
+    if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+    downloadRowsPdf(`trial-balance-${fy}.pdf`, 'Trial Balance', ['Account', 'Debit', 'Credit'],
+      rows.map(r => [r.account_name, r.debit_paise > 0 ? rsFmt(r.debit_paise) : '', r.credit_paise > 0 ? rsFmt(r.credit_paise) : '']),
+      { subtitle: `FY ${fy}`, totals: ['Total', rsFmt(totalDebit), rsFmt(totalCredit)] })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-navy-900">{t('accounts.trialBalanceTitle')}</h1>
-          <p className="print-only text-sm text-slate-600 mt-1">{t('accounts.fy')} {fy}</p>
-        </div>
-        <div className="flex gap-2 no-print">
-          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> {t('accounts.print')}
-          </button>
-          <button type="button"
-            onClick={() => downloadRowsPdf(`trial-balance-${fy}.pdf`, 'Trial Balance', ['Account', 'Debit', 'Credit'],
-              rows.map(r => [r.account_name, r.debit_paise > 0 ? rsFmt(r.debit_paise) : '', r.credit_paise > 0 ? rsFmt(r.credit_paise) : '']),
-              { subtitle: `FY ${fy}`, totals: ['Total', rsFmt(totalDebit), rsFmt(totalCredit)] })}
-            className="btn-secondary btn-sm">
-            <FileDown size={14} /> {t('accounts.downloadPdf')}
-          </button>
-          <button type="button"
-            onClick={() => exportRowsCsv(`trial-balance-${fy}.csv`, ['Account', 'Debit', 'Credit'],
-              rows.map(r => [r.account_name, rsFmt(r.debit_paise), rsFmt(r.credit_paise)]))}
-            className="btn-secondary btn-sm">
-            <Download size={14} /> {t('accounts.exportCsv')}
-          </button>
-        </div>
+      <PrintLetterhead title={t('accounts.trialBalanceTitle')} subtitle={`${t('accounts.fy')} ${fy}`} />
+
+      <div className="flex items-center justify-between no-print">
+        <h1 className="text-xl font-bold text-navy-900">{t('accounts.trialBalanceTitle')}</h1>
       </div>
 
-      <div className="flex items-center gap-3 no-print">
-        <label className="text-sm text-slate-500">{t('accounts.fy')}</label>
+      <div className="no-print">
+        <label className="text-sm text-slate-500 mr-2">{t('accounts.fy')}</label>
         <FySelect value={fy} onChange={setFy} />
-        {totalDebit === totalCredit && totalDebit > 0 && (
-          <span className="badge-green">{t('accounts.balanced')}</span>
-        )}
-        {totalDebit !== totalCredit && totalDebit > 0 && (
-          <span className="badge-red">{t('accounts.imbalanced')}</span>
-        )}
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('accounts.account')}</th><th className="text-right">{t('accounts.debit')}</th><th className="text-right">{t('accounts.credit')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={3} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : rows.length === 0 ? (
-                <tr><td colSpan={3} className="text-center py-10 text-slate-400">{t('accounts.noDataForFy')}</td></tr>
-              ) : rows.map((r, i) => (
-                <tr key={i}>
-                  <td className="font-medium">{r.account_name}</td>
-                  <td className="text-right">{r.debit_paise > 0 ? `₹${fmtPaise(r.debit_paise)}` : '—'}</td>
-                  <td className="text-right">{r.credit_paise > 0 ? `₹${fmtPaise(r.credit_paise)}` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-            {rows.length > 0 && (
-              <tfoot>
-                <tr className="bg-navy-900 text-white">
-                  <td className="px-4 py-3 font-bold">{t('accounts.total')}</td>
-                  <td className="px-4 py-3 text-right font-bold">₹{fmtPaise(totalDebit)}</td>
-                  <td className="px-4 py-3 text-right font-bold">₹{fmtPaise(totalCredit)}</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
+      <SummaryStrip stats={stats} />
+
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r, i) => `${r.account_name}-${i}`}
+        loading={loading}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        filterState={{}}
+        onFilterChange={() => {}}
+        page={1}
+        limit={rows.length || 1}
+        total={rows.length}
+        onPageChange={() => {}}
+        emptyMessage={t('accounts.noDataForFy')}
+      />
     </div>
   )
 }

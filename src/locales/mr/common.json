@@ -1476,7 +1476,19 @@
     "selectOtherAccount": "दुसरे खाते निवडा",
     "depositSuccess": "जमा नोंदवली",
     "withdrawSuccess": "पैसे काढणे नोंदवले",
-    "moveFailed": "हस्तांतरण नोंदवता आले नाही"
+    "moveFailed": "हस्तांतरण नोंदवता आले नाही",
+    "searchAssets": "मालमत्ता शोधा…",
+    "searchLoans": "पक्षाचे नाव शोधा…",
+    "assetAdded": "मालमत्ता जोडली",
+    "assetAddFailed": "मालमत्ता जोडता आली नाही",
+    "loanAdded": "कर्ज नोंदवले",
+    "loanAddFailed": "कर्ज नोंदवता आले नाही",
+    "totalTransferred": "एकूण हस्तांतरित",
+    "contraSuccess": "हस्तांतरण नोंदवले",
+    "contraFailed": "हस्तांतरण नोंदवता आले नाही",
+    "contraSameAccountError": "पासून आणि पर्यंत खाती वेगळी असावीत",
+    "section": "विभाग",
+    "head": "शीर्षक"
   },
   "reports": {
     "title": "अहवाल",

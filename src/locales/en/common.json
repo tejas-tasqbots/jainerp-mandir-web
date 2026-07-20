@@ -1476,7 +1476,19 @@
     "selectOtherAccount": "Select the other account",
     "depositSuccess": "Deposit recorded",
     "withdrawSuccess": "Withdrawal recorded",
-    "moveFailed": "Could not record the transfer"
+    "moveFailed": "Could not record the transfer",
+    "searchAssets": "Search assets…",
+    "searchLoans": "Search party name…",
+    "assetAdded": "Asset added",
+    "assetAddFailed": "Could not add asset",
+    "loanAdded": "Loan recorded",
+    "loanAddFailed": "Could not record loan",
+    "totalTransferred": "Total transferred",
+    "contraSuccess": "Transfer recorded",
+    "contraFailed": "Could not record transfer",
+    "contraSameAccountError": "From and To accounts must be different",
+    "section": "Section",
+    "head": "Head"
   },
   "reports": {
     "title": "Reports",

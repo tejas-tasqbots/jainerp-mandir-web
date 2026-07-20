@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, FileDown, Printer } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
-import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface Entry {
   date: string
@@ -16,17 +22,21 @@ interface Entry {
 
 export function DayBook() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
-  const [from, setFrom] = useState(new Date().toISOString().slice(0, 10))
-  const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange('day-book', 'today'))
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
-  useEffect(() => { load() }, [from, to])
+  useEffect(() => { load() }, [range])
 
   async function load() {
     setLoading(true)
     try {
-      const { data } = await api.get(`/accounting/day-book?from=${from}&to=${to}`)
+      const params = new URLSearchParams()
+      if (range.from) params.set('from', range.from)
+      if (range.to) params.set('to', range.to)
+      const { data } = await api.get(`/accounting/day-book?${params}`)
       setEntries(data.data || [])
     } catch {
       setEntries([])
@@ -35,83 +45,100 @@ export function DayBook() {
     }
   }
 
-  const totalDebit = entries.reduce((s, e) => s + e.debit_paise, 0)
-  const totalCredit = entries.reduce((s, e) => s + e.credit_paise, 0)
+  const types = Array.from(new Set(entries.map(e => e.type))).sort()
+  const filtered = filterState.type?.values?.length
+    ? entries.filter(e => filterState.type!.values!.includes(e.type))
+    : entries
+
+  const columns: ColumnDef<Entry>[] = [
+    { key: 'date', label: t('accounts.date'), render: e => <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString('en-IN')}</span> },
+    {
+      key: 'type', label: t('accounts.type'),
+      filter: { kind: 'enum', param: 'type', options: types.map(ty => ({ value: ty, label: ty.replace(/_/g, ' ') })) },
+      render: e => <span className="badge-blue capitalize">{e.type.replace(/_/g, ' ')}</span>,
+    },
+    { key: 'description', label: t('accounts.description'), render: e => e.description },
+    { key: 'reference', label: t('accounts.reference'), render: e => <span className="font-mono text-xs text-slate-400">{e.reference || '—'}</span> },
+    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => e.debit_paise > 0 ? <span className="text-red-600">₹{fmtPaise(e.debit_paise)}</span> : '—' },
+    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => e.credit_paise > 0 ? <span className="text-green-700">₹{fmtPaise(e.credit_paise)}</span> : '—' },
+  ]
+
+  const totalDebit = filtered.reduce((s, e) => s + e.debit_paise, 0)
+  const totalCredit = filtered.reduce((s, e) => s + e.credit_paise, 0)
+
+  const stats: SummaryStat[] = [
+    { label: t('accounts.totalCreditsIncome'), value: `₹${fmtPaise(totalCredit)}`, tone: 'income' },
+    { label: t('accounts.totalDebitsExpense'), value: `₹${fmtPaise(totalDebit)}`, tone: 'expense' },
+  ]
+
+  async function exportExcel() {
+    if (!filtered.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('accounts.dayBookTitle'),
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: 'day-book',
+        columns: [
+          { header: t('accounts.date'), type: 'date' },
+          { header: t('accounts.type'), width: 14 },
+          { header: t('accounts.description'), width: 28 },
+          { header: t('accounts.reference'), width: 16 },
+          { header: t('accounts.debit'), type: 'money' },
+          { header: t('accounts.credit'), type: 'money' },
+        ],
+        rows: filtered.map(e => [
+          new Date(e.date).toLocaleDateString('en-IN'), e.type.replace(/_/g, ' '), e.description, e.reference ?? '',
+          e.debit_paise, e.credit_paise,
+        ]),
+        totals: [t('kit.total'), '', '', '', totalDebit, totalCredit],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  function exportPdf() {
+    if (!filtered.length) { toast.info(t('kit.nothingToExport')); return }
+    downloadRowsPdf(`day-book-${range.from}_${range.to}.pdf`, 'Day Book',
+      ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
+      filtered.map(e => [new Date(e.date).toLocaleDateString('en-IN'), e.type.replace(/_/g, ' '), e.description, e.reference ?? '', rsFmt(e.debit_paise), rsFmt(e.credit_paise)]),
+      { subtitle: rangeCaption(range, t('dateRange.all')), totals: ['Total', '', '', '', rsFmt(totalDebit), rsFmt(totalCredit)] })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-navy-900">{t('accounts.dayBookTitle')}</h1>
-          <p className="print-only text-sm text-slate-600 mt-1">{from} — {to}</p>
-        </div>
-        <div className="flex gap-2 no-print">
-          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> {t('accounts.print')}
-          </button>
-          <button type="button"
-            onClick={() => downloadRowsPdf(`day-book-${from}_${to}.pdf`, 'Day Book',
-              ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
-              entries.map(e => [e.date, e.type, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise)]),
-              { subtitle: `${from} to ${to}`, totals: ['Total', '', '', '', rsFmt(totalDebit), rsFmt(totalCredit)] })}
-            className="btn-secondary btn-sm">
-            <FileDown size={14} /> {t('accounts.downloadPdf')}
-          </button>
-          <button type="button"
-            onClick={() => exportRowsCsv(`day-book-${from}_${to}.csv`,
-              ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
-              entries.map(e => [e.date, e.type, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise)]))}
-            className="btn-secondary btn-sm">
-            <Download size={14} /> {t('accounts.exportCsv')}
-          </button>
-        </div>
+      <PrintLetterhead title={t('accounts.dayBookTitle')} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center justify-between no-print">
+        <h1 className="text-xl font-bold text-navy-900">{t('accounts.dayBookTitle')}</h1>
       </div>
 
-      <div className="flex items-center gap-4 no-print">
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-slate-500">{t('accounts.from')}</label>
-          <input type="date" className="form-input w-40" value={from} onChange={e => setFrom(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-slate-500">{t('accounts.to')}</label>
-          <input type="date" className="form-input w-40" value={to} onChange={e => setTo(e.target.value)} />
-        </div>
+      <div className="no-print">
+        <DateRangePicker value={range} onChange={setRange} storageKey="day-book" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="card"><div className="card-body py-3">
-          <p className="text-xs text-slate-400">{t('accounts.totalCreditsIncome')}</p>
-          <p className="font-bold text-lg text-green-700">₹{fmtPaise(totalCredit)}</p>
-        </div></div>
-        <div className="card"><div className="card-body py-3">
-          <p className="text-xs text-slate-400">{t('accounts.totalDebitsExpense')}</p>
-          <p className="font-bold text-lg text-red-600">₹{fmtPaise(totalDebit)}</p>
-        </div></div>
-      </div>
+      <SummaryStrip stats={stats} />
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('accounts.date')}</th><th>{t('accounts.type')}</th><th>{t('accounts.description')}</th><th>{t('accounts.reference')}</th><th className="text-right">{t('accounts.debit')}</th><th className="text-right">{t('accounts.credit')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : entries.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('accounts.noEntries')}</td></tr>
-              ) : entries.map((e, i) => (
-                <tr key={i}>
-                  <td className="text-xs">{new Date(e.date).toLocaleDateString('en-IN')}</td>
-                  <td><span className="badge-blue capitalize">{e.type.replace(/_/g, ' ')}</span></td>
-                  <td>{e.description}</td>
-                  <td className="font-mono text-xs text-slate-400">{e.reference || '—'}</td>
-                  <td className="text-right text-red-600">{e.debit_paise > 0 ? `₹${fmtPaise(e.debit_paise)}` : '—'}</td>
-                  <td className="text-right text-green-700">{e.credit_paise > 0 ? `₹${fmtPaise(e.credit_paise)}` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        rowKey={(e, i) => `${e.date}-${i}`}
+        loading={loading}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
+        }}
+        page={1}
+        limit={filtered.length || 1}
+        total={filtered.length}
+        onPageChange={() => {}}
+        emptyMessage={t('accounts.noEntries')}
+        onClearFilters={() => setFilterState({})}
+      />
     </div>
   )
 }

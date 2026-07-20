@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, FileDown, Printer } from 'lucide-react'
-import { api, fmtPaise, currentFY } from '../../lib/api'
-import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
+import { api, fmtPaise } from '../../lib/api'
+import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface Entry {
   date: string
@@ -16,18 +22,22 @@ interface Entry {
 
 export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
   const { t } = useTranslation()
+  const toast = useToast()
+  const storageKey = bankMode ? 'bank-book' : 'cash-book'
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
-  const [from, setFrom] = useState(new Date().toISOString().slice(0, 8) + '01')
-  const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange(storageKey, 'thisMonth'))
 
-  useEffect(() => { load() }, [from, to, bankMode])
+  useEffect(() => { load() }, [range, bankMode])
 
   async function load() {
     setLoading(true)
     try {
       const type = bankMode ? 'bank' : 'cash'
-      const { data } = await api.get(`/accounting/ledger?type=${type}&from=${from}&to=${to}`)
+      const params = new URLSearchParams({ type })
+      if (range.from) params.set('from', range.from)
+      if (range.to) params.set('to', range.to)
+      const { data } = await api.get(`/accounting/ledger?${params}`)
       setEntries(data.data || [])
     } catch {
       setEntries([])
@@ -38,101 +48,89 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
 
   const totalDebit = entries.reduce((s, e) => s + e.debit_paise, 0)
   const totalCredit = entries.reduce((s, e) => s + e.credit_paise, 0)
+  const closingBalance = entries.length ? entries[entries.length - 1].balance_paise : 0
+  const title = bankMode ? t('accounts.bankBookTitle') : t('accounts.cashBookTitle')
+
+  const columns: ColumnDef<Entry>[] = [
+    { key: 'date', label: t('accounts.date'), render: e => <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString('en-IN')}</span> },
+    { key: 'description', label: t('accounts.description'), render: e => e.description },
+    { key: 'reference', label: t('accounts.reference'), render: e => <span className="font-mono text-xs text-slate-400">{e.reference || '—'}</span> },
+    { key: 'credit', label: t('accounts.receiptsCr'), align: 'right', render: e => e.credit_paise > 0 ? <span className="font-medium text-green-700">₹{fmtPaise(e.credit_paise)}</span> : '—' },
+    { key: 'debit', label: t('accounts.paymentsDr'), align: 'right', render: e => e.debit_paise > 0 ? <span className="font-medium text-red-600">₹{fmtPaise(e.debit_paise)}</span> : '—' },
+    { key: 'balance', label: t('accounts.balance'), align: 'right', render: e => <span className="font-semibold">₹{fmtPaise(e.balance_paise)}</span> },
+  ]
+
+  const stats: SummaryStat[] = [
+    { label: t('accounts.totalReceipts'), value: `₹${fmtPaise(totalCredit)}`, tone: 'income' },
+    { label: t('accounts.totalPayments'), value: `₹${fmtPaise(totalDebit)}`, tone: 'expense' },
+    { label: t('accounts.closingBalance'), value: `₹${fmtPaise(closingBalance)}` },
+  ]
+
+  async function exportExcel() {
+    if (!entries.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title,
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: storageKey,
+        columns: [
+          { header: t('accounts.date'), type: 'date' },
+          { header: t('accounts.description'), width: 28 },
+          { header: t('accounts.reference'), width: 16 },
+          { header: t('accounts.receiptsCr'), type: 'money' },
+          { header: t('accounts.paymentsDr'), type: 'money' },
+          { header: t('accounts.balance'), type: 'money' },
+        ],
+        rows: entries.map(e => [
+          new Date(e.date).toLocaleDateString('en-IN'), e.description, e.reference ?? '',
+          e.credit_paise, e.debit_paise, e.balance_paise,
+        ]),
+        totals: [t('kit.total'), '', '', totalCredit, totalDebit, closingBalance],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  function exportPdf() {
+    if (!entries.length) { toast.info(t('kit.nothingToExport')); return }
+    downloadRowsPdf(`${storageKey}-${range.from}_${range.to}.pdf`, title,
+      ['Date', 'Description', 'Reference', 'Receipts', 'Payments', 'Balance'],
+      entries.map(e => [new Date(e.date).toLocaleDateString('en-IN'), e.description, e.reference ?? '', rsFmt(e.credit_paise), rsFmt(e.debit_paise), rsFmt(e.balance_paise)]),
+      { subtitle: rangeCaption(range, t('dateRange.all')), totals: ['Total', '', '', rsFmt(totalCredit), rsFmt(totalDebit), rsFmt(closingBalance)] })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-navy-900">{bankMode ? t('accounts.bankBookTitle') : t('accounts.cashBookTitle')}</h1>
-          <p className="print-only text-sm text-slate-600 mt-1">{from} — {to}</p>
-        </div>
-        <div className="flex gap-2 no-print">
-          <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm">
-            <Printer size={14} /> {t('accounts.print')}
-          </button>
-          <button type="button"
-            onClick={() => downloadRowsPdf(`${bankMode ? 'bank' : 'cash'}-book-${from}_${to}.pdf`,
-              bankMode ? 'Bank Book' : 'Cash Book',
-              ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
-              entries.map(e => [e.date, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]),
-              { subtitle: `${from} to ${to}`, totals: ['Total', '', '', rsFmt(totalDebit), rsFmt(totalCredit), ''] })}
-            className="btn-secondary btn-sm">
-            <FileDown size={14} /> {t('accounts.downloadPdf')}
-          </button>
-          <button type="button"
-            onClick={() => exportRowsCsv(`${bankMode ? 'bank' : 'cash'}-book-${from}_${to}.csv`,
-              ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
-              entries.map(e => [e.date, e.description, e.reference, rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]))}
-            className="btn-secondary btn-sm">
-            <Download size={14} /> {t('accounts.exportCsv')}
-          </button>
-        </div>
+      <PrintLetterhead title={title} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center justify-between no-print">
+        <h1 className="text-xl font-bold text-navy-900">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-4 no-print">
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-slate-500">{t('accounts.from')}</label>
-          <input type="date" className="form-input w-40" value={from} onChange={e => setFrom(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <label className="text-slate-500">{t('accounts.to')}</label>
-          <input type="date" className="form-input w-40" value={to} onChange={e => setTo(e.target.value)} />
-        </div>
+      <div className="no-print">
+        <DateRangePicker value={range} onChange={setRange} storageKey={storageKey} />
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="card"><div className="card-body py-3">
-          <p className="text-xs text-slate-400">{t('accounts.totalReceipts')}</p>
-          <p className="font-bold text-lg text-green-700">₹{fmtPaise(totalCredit)}</p>
-        </div></div>
-        <div className="card"><div className="card-body py-3">
-          <p className="text-xs text-slate-400">{t('accounts.totalPayments')}</p>
-          <p className="font-bold text-lg text-red-600">₹{fmtPaise(totalDebit)}</p>
-        </div></div>
-        <div className="card"><div className="card-body py-3">
-          <p className="text-xs text-slate-400">{t('accounts.closingBalance')}</p>
-          <p className={`font-bold text-lg ${totalCredit >= totalDebit ? 'text-navy-900' : 'text-red-600'}`}>
-            ₹{fmtPaise(Math.abs(totalCredit - totalDebit))}
-          </p>
-        </div></div>
-      </div>
+      <SummaryStrip stats={stats} />
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr><th>{t('accounts.date')}</th><th>{t('accounts.description')}</th><th>{t('accounts.reference')}</th><th className="text-right">{t('accounts.receiptsCr')}</th><th className="text-right">{t('accounts.paymentsDr')}</th><th className="text-right">{t('accounts.balance')}</th></tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : entries.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('accounts.noEntriesForPeriod')}</td></tr>
-              ) : entries.map((e, i) => (
-                <tr key={i}>
-                  <td className="text-xs">{new Date(e.date).toLocaleDateString('en-IN')}</td>
-                  <td>{e.description}</td>
-                  <td className="font-mono text-xs text-slate-400">{e.reference || '—'}</td>
-                  <td className="text-right font-medium text-green-700">{e.credit_paise > 0 ? `₹${fmtPaise(e.credit_paise)}` : '—'}</td>
-                  <td className="text-right font-medium text-red-600">{e.debit_paise > 0 ? `₹${fmtPaise(e.debit_paise)}` : '—'}</td>
-                  <td className="text-right font-semibold">₹{fmtPaise(e.balance_paise)}</td>
-                </tr>
-              ))}
-            </tbody>
-            {entries.length > 0 && (
-              <tfoot>
-                <tr className="bg-navy-50">
-                  <td colSpan={3} className="px-4 py-2 font-semibold text-sm">{t('accounts.total')}</td>
-                  <td className="px-4 py-2 text-right font-bold text-green-700">₹{fmtPaise(totalCredit)}</td>
-                  <td className="px-4 py-2 text-right font-bold text-red-600">₹{fmtPaise(totalDebit)}</td>
-                  <td className="px-4 py-2 text-right font-bold">—</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={entries}
+        rowKey={(e, i) => `${e.date}-${i}`}
+        loading={loading}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        filterState={{}}
+        onFilterChange={() => {}}
+        page={1}
+        limit={entries.length || 1}
+        total={entries.length}
+        onPageChange={() => {}}
+        emptyMessage={t('accounts.noEntriesForPeriod')}
+      />
     </div>
   )
 }

@@ -1476,7 +1476,19 @@
     "selectOtherAccount": "दूसरा खाता चुनें",
     "depositSuccess": "जमा दर्ज हुआ",
     "withdrawSuccess": "निकासी दर्ज हुई",
-    "moveFailed": "स्थानांतरण दर्ज नहीं हो सका"
+    "moveFailed": "स्थानांतरण दर्ज नहीं हो सका",
+    "searchAssets": "संपत्ति खोजें…",
+    "searchLoans": "पार्टी का नाम खोजें…",
+    "assetAdded": "संपत्ति जोड़ी गई",
+    "assetAddFailed": "संपत्ति जोड़ी नहीं जा सकी",
+    "loanAdded": "ऋण दर्ज किया गया",
+    "loanAddFailed": "ऋण दर्ज नहीं किया जा सका",
+    "totalTransferred": "कुल स्थानांतरित",
+    "contraSuccess": "स्थानांतरण दर्ज किया गया",
+    "contraFailed": "स्थानांतरण दर्ज नहीं किया जा सका",
+    "contraSameAccountError": "से और को खाते अलग-अलग होने चाहिए",
+    "section": "खंड",
+    "head": "शीर्षक"
   },
   "reports": {
     "title": "रिपोर्ट",

@@ -2,14 +2,30 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, Calculator } from 'lucide-react'
 import { api, fmtPaise, parsePaise, currentFY } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
+import { FySelect } from '../../components/FySelect'
 import type { FixedAsset } from '../../types'
+
+const PAGE_SIZE = 20
 
 export function FixedAssets() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [assets, setAssets] = useState<FixedAsset[]>([])
+  const [meta, setMeta] = useState<{ total: number } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [depModal, setDepModal] = useState(false)
+  const [depFy, setDepFy] = useState(currentFY())
   const [running, setRunning] = useState(false)
   const [form, setForm] = useState({
     name: '', purchase_date: new Date().toISOString().slice(0, 10),
@@ -17,9 +33,47 @@ export function FixedAssets() {
     depreciation_method: 'SLM', depreciation_rate: '20',
   })
 
-  useEffect(() => {
-    api.get('/fixed-assets').then(r => setAssets(r.data.data || [])).finally(() => setLoading(false))
-  }, [])
+  const columns: ColumnDef<FixedAsset>[] = [
+    { key: 'name', label: t('accounts.asset'), sortable: true, render: a => <span className="font-medium">{a.name}</span> },
+    { key: 'purchase_date', label: t('accounts.purchaseDate'), render: a => <span className="text-xs text-slate-500">{new Date(a.purchase_date).toLocaleDateString('en-IN')}</span> },
+    { key: 'cost', label: t('accounts.cost'), align: 'right', render: a => `₹${fmtPaise(a.purchase_cost_paise)}` },
+    {
+      key: 'method', label: t('accounts.method'),
+      filter: { kind: 'enum', param: 'depreciation_method', options: [{ value: 'SLM', label: 'SLM' }, { value: 'WDV', label: 'WDV' }] },
+      render: a => a.depreciation_method,
+    },
+    { key: 'rate', label: t('accounts.rate'), align: 'right', render: a => `${a.depreciation_rate}%` },
+    { key: 'depreciation', label: t('accounts.depreciation'), align: 'right', render: a => `₹${fmtPaise(a.accumulated_depreciation_paise)}` },
+    { key: 'wdv', label: t('accounts.wdv'), align: 'right', render: a => <span className="font-semibold">₹{fmtPaise(a.purchase_cost_paise - a.accumulated_depreciation_paise)}</span> },
+    {
+      key: 'status', label: t('common.status'),
+      filter: { kind: 'enum', param: 'active', options: [{ value: 'true', label: t('accounts.active') }, { value: 'false', label: t('accounts.disposed') }] },
+      render: a => a.active ? <span className="badge-green">{t('accounts.active')}</span> : <span className="badge-gray">{t('accounts.disposed')}</span>,
+    },
+  ]
+
+  function buildParams(limit: number, forPage = 1): URLSearchParams {
+    const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
+    if (search) params.set('q', search)
+    for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+    return params
+  }
+
+  useEffect(() => { load() }, [page, search, filterState])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const { data } = await api.get(`/fixed-assets?${buildParams(PAGE_SIZE, page)}`)
+      setAssets(data.data || [])
+      setMeta(data.meta || null)
+    } catch {
+      setAssets([])
+      setMeta(null)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,41 +88,85 @@ export function FixedAssets() {
         depreciation_rate: parseFloat(form.depreciation_rate),
       })
       setShowForm(false)
-      api.get('/fixed-assets').then(r => setAssets(r.data.data || []))
-    } finally { setSaving(false) }
+      setForm({ name: '', purchase_date: new Date().toISOString().slice(0, 10), purchase_cost: '', useful_life_years: '5', depreciation_method: 'SLM', depreciation_rate: '20' })
+      toast.success(t('accounts.assetAdded'))
+      setPage(1)
+      load()
+    } catch (err: unknown) {
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(ex.response?.data?.error?.message || t('accounts.assetAddFailed'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function runDepreciation() {
-    const fy = window.prompt(t('accounts.runDepreciationPrompt'), currentFY())
-    if (!fy) return
     setRunning(true)
     try {
-      const { data } = await api.post('/fixed-assets/depreciation/run', { fy })
+      const { data } = await api.post('/fixed-assets/depreciation/run', { fy: depFy })
       const d = data.data || {}
-      alert(d.assets_charged
+      toast.success(d.assets_charged
         ? t('accounts.depreciationPosted', { fy: d.fy, count: d.assets_charged, amount: fmtPaise(d.total_depreciation_paise) })
         : t('accounts.depreciationNone', { fy: d.fy }))
-      api.get('/fixed-assets').then(r => setAssets(r.data.data || []))
+      setDepModal(false)
+      load()
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || t('accounts.couldNotRunDepreciation'))
-    } finally { setRunning(false) }
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(ex.response?.data?.error?.message || t('accounts.couldNotRunDepreciation'))
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const stats: SummaryStat[] = meta ? [
+    { label: t('accounts.cost'), value: `₹${fmtPaise(assets.reduce((s, a) => s + a.purchase_cost_paise, 0))}` },
+    { label: t('accounts.depreciation'), value: `₹${fmtPaise(assets.reduce((s, a) => s + a.accumulated_depreciation_paise, 0))}`, tone: 'expense' },
+    { label: t('accounts.wdv'), value: `₹${fmtPaise(assets.reduce((s, a) => s + (a.purchase_cost_paise - a.accumulated_depreciation_paise), 0))}` },
+  ] : []
+
+  async function exportExcel() {
+    try {
+      const { data } = await api.get(`/fixed-assets?${buildParams(1000)}`)
+      const rows: FixedAsset[] = data.data || []
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      await exportXlsx({
+        title: t('accounts.fixedAssetsTitle'),
+        filename: 'fixed-assets',
+        columns: [
+          { header: t('accounts.asset'), width: 24 }, { header: t('accounts.purchaseDate'), type: 'date' },
+          { header: t('accounts.cost'), type: 'money' }, { header: t('accounts.method'), width: 10 },
+          { header: t('accounts.rate'), width: 8 }, { header: t('accounts.depreciation'), type: 'money' },
+          { header: t('accounts.wdv'), type: 'money' }, { header: t('common.status'), width: 10 },
+        ],
+        rows: rows.map(a => [
+          a.name, new Date(a.purchase_date).toLocaleDateString('en-IN'), a.purchase_cost_paise, a.depreciation_method,
+          a.depreciation_rate, a.accumulated_depreciation_paise, a.purchase_cost_paise - a.accumulated_depreciation_paise,
+          a.active ? t('accounts.active') : t('accounts.disposed'),
+        ]),
+        totals: [t('kit.total'), '', rows.reduce((s, a) => s + a.purchase_cost_paise, 0), '', '', rows.reduce((s, a) => s + a.accumulated_depreciation_paise, 0), rows.reduce((s, a) => s + (a.purchase_cost_paise - a.accumulated_depreciation_paise), 0), ''],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('accounts.fixedAssetsTitle')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('accounts.fixedAssetsTitle')}</h1>
         <div className="flex gap-2">
-          <button onClick={runDepreciation} disabled={running} className="btn-secondary btn-sm" title={t('accounts.runDepreciationTooltip')}>
-            <Calculator size={14} /> {running ? t('accounts.running') : t('accounts.runDepreciation')}
+          <button onClick={() => setDepModal(true)} className="btn-secondary btn-sm" title={t('accounts.runDepreciationTooltip')}>
+            <Calculator size={14} /> {t('accounts.runDepreciation')}
           </button>
           <button onClick={() => setShowForm(!showForm)} className="btn-primary btn-sm"><Plus size={14} /> {t('accounts.addAsset')}</button>
         </div>
       </div>
 
       {showForm && (
-        <div className="card">
+        <div className="card no-print">
           <div className="card-header"><h3 className="font-semibold text-sm">{t('accounts.addFixedAsset')}</h3></div>
           <form onSubmit={submit} className="card-body space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -91,29 +189,47 @@ export function FixedAssets() {
         </div>
       )}
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('accounts.asset')}</th><th>{t('accounts.purchaseDate')}</th><th>{t('accounts.cost')}</th><th>{t('accounts.method')}</th><th>{t('accounts.rate')}</th><th>{t('accounts.depreciation')}</th><th>{t('accounts.wdv')}</th><th>{t('common.status')}</th></tr></thead>
-            <tbody>
-              {loading ? <tr><td colSpan={8} className="text-center py-8 text-slate-400">{t('common.loading')}</td></tr>
-                : assets.length === 0 ? <tr><td colSpan={8} className="text-center py-8 text-slate-400">{t('accounts.noAssets')}</td></tr>
-                : assets.map(a => (
-                  <tr key={a.id}>
-                    <td className="font-medium">{a.name}</td>
-                    <td className="text-xs">{new Date(a.purchase_date).toLocaleDateString('en-IN')}</td>
-                    <td>₹{fmtPaise(a.purchase_cost_paise)}</td>
-                    <td>{a.depreciation_method}</td>
-                    <td>{a.depreciation_rate}%</td>
-                    <td>₹{fmtPaise(a.accumulated_depreciation_paise)}</td>
-                    <td className="font-semibold">₹{fmtPaise(a.purchase_cost_paise - a.accumulated_depreciation_paise)}</td>
-                    <td>{a.active ? <span className="badge-green">{t('accounts.active')}</span> : <span className="badge-gray">{t('accounts.disposed')}</span>}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+      <SummaryStrip stats={stats} />
+
+      <DataTable
+        columns={columns}
+        rows={assets}
+        rowKey={a => a.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={v => { setSearch(v); setPage(1) }}
+        searchPlaceholder={t('accounts.searchAssets')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
+          setPage(1)
+        }}
+        page={page}
+        limit={PAGE_SIZE}
+        total={meta?.total ?? 0}
+        onPageChange={setPage}
+        emptyMessage={t('accounts.noAssets')}
+        emptyAction={{ label: t('accounts.addAsset'), onClick: () => setShowForm(true) }}
+        onClearFilters={() => { setFilterState({}); setPage(1) }}
+      />
+
+      {depModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 className="font-bold text-navy-900 mb-1">{t('accounts.runDepreciation')}</h3>
+            <p className="text-sm text-slate-500 mb-4">{t('accounts.runDepreciationPrompt')}</p>
+            <FySelect value={depFy} onChange={setDepFy} className="form-select w-full mb-4" />
+            <div className="flex gap-3 justify-end">
+              <button type="button" onClick={() => setDepModal(false)} className="btn-secondary">{t('common.cancel')}</button>
+              <button type="button" onClick={runDepreciation} disabled={running} className="btn-primary">
+                {running ? t('accounts.running') : t('accounts.runDepreciation')}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
