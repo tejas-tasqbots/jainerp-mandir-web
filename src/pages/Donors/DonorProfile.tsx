@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw, FileDown, Printer, Sheet } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -43,6 +44,8 @@ export function DonorProfile() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '' })
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('donor-statement', 'all'))
+  const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
   useEffect(() => { if (id) load() }, [id, range])
 
@@ -175,10 +178,72 @@ export function DonorProfile() {
 
   const exportHeaders = [t('donors.type'), t('donors.invoice'), t('donors.details'), t('donors.amount'), t('donors.mode'), t('donors.date')]
 
+  // Client-side search + column filters over the loaded ledger (statement is
+  // fetched whole per date range).
+  const paymentModes = Array.from(new Set(ledger.map(tx => tx.payment_mode).filter((m): m is string => !!m))).sort()
+  const q = search.trim().toLowerCase()
+  const visible = ledger.filter(tx => {
+    const typeF = filterState.type?.values
+    if (typeF?.length && !typeF.includes(tx.txn_type)) return false
+    const modeF = filterState.mode?.values
+    if (modeF?.length && !modeF.includes(tx.payment_mode ?? '')) return false
+    if (q && !(
+      (tx.invoice_no ?? '').toLowerCase().includes(q) ||
+      (tx.detail ?? '').toLowerCase().includes(q) ||
+      (tx.payment_mode ?? '').toLowerCase().includes(q)
+    )) return false
+    return true
+  })
+
+  const columns: ColumnDef<LedgerRow>[] = [
+    {
+      key: 'type', label: t('donors.type'),
+      filter: { kind: 'enum', param: 'txn_type', options: [
+        { value: 'donation', label: t('donors.txnDonation') },
+        { value: 'boli', label: t('donors.txnBoliPledged') },
+        { value: 'seva', label: t('donors.txnSeva') },
+      ] },
+      render: tx => <span className={`badge ${txnBadge(tx.txn_type)}`}>{txnLabel(tx)}</span>,
+    },
+    { key: 'invoice', label: t('donors.invoice'), render: tx => <span className="font-mono text-xs text-brand-blue">{tx.invoice_no || '—'}</span> },
+    {
+      key: 'details', label: t('donors.details'),
+      render: tx => (
+        <div className={tx.voided ? 'opacity-40 line-through' : ''}>
+          {tx.detail || '—'}
+          {tx.txn_type === 'boli' && tx.outstanding_paise != null && tx.outstanding_paise < tx.amount_paise && (
+            <span className="block text-xs" style={{ color: 'var(--color-brand-gold-dark)' }}>
+              {t('donors.balanceDue')}: ₹{fmtPaise(tx.outstanding_paise)}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    { key: 'amount', label: t('donors.amount'), align: 'right', render: tx => <span className="font-semibold">₹{fmtPaise(tx.amount_paise)}</span> },
+    {
+      key: 'mode', label: t('donors.mode'),
+      filter: { kind: 'enum', param: 'payment_mode', options: paymentModes.map(m => ({ value: m, label: m })) },
+      render: tx => tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : <span className="text-slate-300">—</span>,
+    },
+    { key: 'date', label: t('donors.date'), render: tx => <span className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</span> },
+    {
+      key: 'receipt', label: t('donors.receipt'), align: 'right',
+      render: tx => tx.txn_type === 'donation' && !tx.voided && tx.invoice_no ? (
+        <button
+          type="button" onClick={() => downloadReceipt(tx)} disabled={receiptBusy === tx.id}
+          title={t('donors.downloadReceipt')} aria-label={t('donors.downloadReceipt')}
+          className="p-1 text-slate-400 hover:text-navy-900 rounded disabled:opacity-40"
+        >
+          {receiptBusy === tx.id ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+        </button>
+      ) : <span className="text-slate-300">—</span>,
+    },
+  ]
+
   async function exportExcel() {
-    if (!ledger.length) { toast.info(t('kit.nothingToExport')); return }
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
     try {
-      const total = ledger.filter(tx => !tx.voided).reduce((s, tx) => s + tx.amount_paise, 0)
+      const total = visible.filter(tx => !tx.voided).reduce((s, tx) => s + tx.amount_paise, 0)
       await exportXlsx({
         title: t('donors.statementTitle', { name: donor?.name ?? '' }),
         subtitle: rangeCaption(range, t('dateRange.all')),
@@ -191,7 +256,7 @@ export function DonorProfile() {
           { header: t('donors.mode'), width: 12 },
           { header: t('donors.date'), type: 'date' },
         ],
-        rows: ledger.map(tx => [
+        rows: visible.map(tx => [
           txnLabel(tx), tx.invoice_no || '', tx.detail || '', tx.amount_paise,
           tx.payment_mode || '', new Date(tx.created_at).toLocaleDateString('en-IN'),
         ]),
@@ -208,7 +273,7 @@ export function DonorProfile() {
       `${donor?.name || 'donor'}-statement.pdf`,
       t('donors.statementTitle', { name: donor?.name ?? '' }),
       exportHeaders,
-      ledger.map(tx => [
+      visible.map(tx => [
         txnLabel(tx), tx.invoice_no || '', tx.detail || '',
         `₹${fmtPaise(tx.amount_paise)}`, tx.payment_mode || '',
         new Date(tx.created_at).toLocaleDateString('en-IN'),
@@ -399,63 +464,34 @@ export function DonorProfile() {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
           <h3 className="font-semibold text-sm text-navy-900">{t('donors.transactionHistory')}</h3>
-          <div className="flex items-center gap-3 flex-wrap no-print">
-            <DateRangePicker value={range} onChange={setRange} storageKey="donor-statement" />
-            <div className="flex gap-2">
-              <button type="button" onClick={exportExcel} className="btn-secondary btn-sm"><Sheet size={14} /> {t('kit.exportExcel')}</button>
-              <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('donors.exportPdf')}</button>
-              <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
-            </div>
-          </div>
+          <div className="no-print"><DateRangePicker value={range} onChange={setRange} storageKey="donor-statement" /></div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr><th>{t('donors.type')}</th><th>{t('donors.invoice')}</th><th>{t('donors.details')}</th><th>{t('donors.amount')}</th><th>{t('donors.mode')}</th><th>{t('donors.date')}</th><th className="text-right no-print">{t('donors.receipt')}</th></tr>
-            </thead>
-            <tbody>
-              {ledger.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-slate-400">{t('donors.noTransactions')}</td></tr>
-              ) : ledger.map(tx => (
-                <tr key={tx.id} className={tx.voided ? 'opacity-40 line-through' : ''}>
-                  <td><span className={`badge ${txnBadge(tx.txn_type)}`}>{txnLabel(tx)}</span></td>
-                  <td className="font-mono text-xs text-brand-blue">{tx.invoice_no || '—'}</td>
-                  <td>
-                    {tx.detail || '—'}
-                    {/* An outstanding boli pledge shows the balance still due — once fully
-                        paid the row disappears entirely (server excludes status='paid'). */}
-                    {tx.txn_type === 'boli' && tx.outstanding_paise != null && tx.outstanding_paise < tx.amount_paise && (
-                      <span className="block text-xs" style={{ color: 'var(--color-brand-gold-dark)' }}>
-                        {t('donors.balanceDue')}: ₹{fmtPaise(tx.outstanding_paise)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="font-semibold">₹{fmtPaise(tx.amount_paise)}</td>
-                  <td>{tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : '—'}</td>
-                  <td className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
-                  <td className="text-right no-print">
-                    {/* Only donation-type rows have a printable receipt (via /donations). */}
-                    {tx.txn_type === 'donation' && !tx.voided && tx.invoice_no ? (
-                      <button
-                        type="button"
-                        onClick={() => downloadReceipt(tx)}
-                        disabled={receiptBusy === tx.id}
-                        title={t('donors.downloadReceipt')}
-                        aria-label={t('donors.downloadReceipt')}
-                        className="p-1 text-slate-400 hover:text-navy-900 rounded disabled:opacity-40"
-                      >
-                        {receiptBusy === tx.id ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
-                      </button>
-                    ) : <span className="text-slate-300">—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          viewKey="donor-statement"
+          columns={columns}
+          rows={visible}
+          rowKey={tx => tx.id}
+          loading={loading}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t('donors.searchTransactions')}
+          onExportXlsx={exportExcel}
+          onExportPdf={exportPdf}
+          onPrint={() => window.print()}
+          filterState={filterState}
+          onFilterChange={(key, s) => {
+            setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
+          }}
+          page={1}
+          limit={visible.length || 1}
+          total={visible.length}
+          onPageChange={() => {}}
+          emptyMessage={t('donors.noTransactions')}
+          onClearFilters={() => setFilterState({})}
+        />
       </div>
 
     </div>

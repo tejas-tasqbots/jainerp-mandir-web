@@ -39,6 +39,14 @@ export function AddExpense() {
     if (id) setForm(f => ({ ...f, payment_account_id: id }))
   }, [form.payment_mode, accounts])
 
+  // Vendors master → autocomplete the Vendor/Payee field so an expense links to
+  // an existing vendor (vendor_id) instead of silently creating a duplicate on
+  // every typo. Typing a new name still works (backend find-or-creates).
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    api.get('/vendors?limit=500').then(r => setVendors(r.data.data || [])).catch(() => {})
+  }, [])
+
   const expenseCategories = useResourceNames('expense-categories', [
     'Electricity', 'Water', 'Salary', 'Maintenance', 'Food & Supplies',
     'Decoration', 'Pooja Material', 'Printing', 'Transport', 'Other',
@@ -62,7 +70,13 @@ export function AddExpense() {
         is_recurring: form.is_recurring,
         recurrence_rule: form.is_recurring ? 'monthly' : undefined,
       }
-      if (form.vendor_name) payload.vendor_name = form.vendor_name
+      if (form.vendor_name) {
+        payload.vendor_name = form.vendor_name
+        // Link to the existing vendor when the name matches the master, so we
+        // don't create a duplicate vendor row for the same supplier.
+        const matched = vendors.find(v => v.name.toLowerCase() === form.vendor_name.trim().toLowerCase())
+        if (matched) payload.vendor_id = matched.id
+      }
       if (form.category) payload.category = form.category
       if (form.bill_number) payload.bill_number = form.bill_number
       if (form.utr_number) payload.utr_number = form.utr_number
@@ -102,7 +116,11 @@ export function AddExpense() {
             <div>
               <label className="form-label">{t('expenses.vendorPayee')}</label>
               <input className="form-input" placeholder={t('expenses.vendorPlaceholder')} value={form.vendor_name}
+                list="vendor-options" autoComplete="off"
                 onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} />
+              <datalist id="vendor-options">
+                {vendors.map(v => <option key={v.id} value={v.name} />)}
+              </datalist>
             </div>
             <div>
               <label className="form-label">{t('expenses.category')}</label>

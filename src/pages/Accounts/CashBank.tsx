@@ -48,6 +48,7 @@ export function CashBank() {
 
   const [entries, setEntries] = useState<LedgerEntry[]>([])
   const [entriesLoading, setEntriesLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('cash-bank', 'thisMonth'))
 
   const [moveModal, setMoveModal] = useState<MoveDirection | null>(null)
@@ -103,6 +104,13 @@ export function CashBank() {
     { key: 'balance', label: t('accounts.balance'), align: 'right', render: e => <span className={`font-semibold ${e.balance_paise < 0 ? 'text-red-600' : ''}`}>₹{fmtPaise(e.balance_paise)}</span> },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
+
+  // Totals stay on the full set (running balance is cumulative); search only
+  // narrows which rows are shown.
+  const q = search.trim().toLowerCase()
+  const visibleEntries = q
+    ? entries.filter(e => e.description?.toLowerCase().includes(q) || e.reference?.toLowerCase().includes(q))
+    : entries
 
   const totalDebit = entries.reduce((s, e) => s + e.debit_paise, 0)
   const totalCredit = entries.reduce((s, e) => s + e.credit_paise, 0)
@@ -238,19 +246,23 @@ export function CashBank() {
             <SummaryStrip stats={stats} />
 
             <DataTable
+              viewKey="cash-bank-detail"
               columns={columns}
-              rows={entries}
+              rows={visibleEntries}
               rowKey={(e, i) => `${e.date}-${i}`}
               loading={entriesLoading}
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={t('accounts.searchDescRef')}
               onExportXlsx={exportExcel}
               onPrint={() => window.print()}
               filterState={{}}
               onFilterChange={() => {}}
               page={1}
-              limit={entries.length || 1}
-              total={entries.length}
+              limit={visibleEntries.length || 1}
+              total={visibleEntries.length}
               onPageChange={() => {}}
-              emptyMessage={t('accounts.noTransactionsInRange')}
+              emptyMessage={search ? t('accounts.noEntriesMatchSearch') : t('accounts.noTransactionsInRange')}
             />
           </>
         )}

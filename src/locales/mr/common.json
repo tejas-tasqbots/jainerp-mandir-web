@@ -1152,7 +1152,8 @@
     "addTag": "टॅग जोडा",
     "removeTag": "{{tag}} काढा",
     "customTagPlaceholder": "कस्टम टॅग…",
-    "tagUpdateFailed": "टॅग अपडेट होऊ शकले नाहीत"
+    "tagUpdateFailed": "टॅग अपडेट होऊ शकले नाहीत",
+    "searchTransactions": "पावती, तपशील, पद्धत शोधा..."
   },
   "creditors": {
     "title": "कर्जदार (उधारी)",
@@ -1489,7 +1490,9 @@
     "contraFailed": "हस्तांतरण नोंदवता आले नाही",
     "contraSameAccountError": "पासून आणि पर्यंत खाती वेगळी असावीत",
     "section": "विभाग",
-    "head": "शीर्षक"
+    "head": "शीर्षक",
+    "searchAccounts": "खाते शोधा...",
+    "searchTransfers": "खाते, तपशील शोधा..."
   },
   "reports": {
     "title": "अहवाल",

@@ -1152,7 +1152,8 @@
     "addTag": "टैग जोड़ें",
     "removeTag": "{{tag}} हटाएं",
     "customTagPlaceholder": "कस्टम टैग…",
-    "tagUpdateFailed": "टैग अपडेट नहीं हो सके"
+    "tagUpdateFailed": "टैग अपडेट नहीं हो सके",
+    "searchTransactions": "रसीद, विवरण, माध्यम खोजें..."
   },
   "creditors": {
     "title": "लेनदार (उधार)",
@@ -1489,7 +1490,9 @@
     "contraFailed": "स्थानांतरण दर्ज नहीं किया जा सका",
     "contraSameAccountError": "से और को खाते अलग-अलग होने चाहिए",
     "section": "खंड",
-    "head": "शीर्षक"
+    "head": "शीर्षक",
+    "searchAccounts": "खाता खोजें...",
+    "searchTransfers": "खाता, विवरण खोजें..."
   },
   "reports": {
     "title": "रिपोर्ट",

@@ -18,6 +18,7 @@ export function TrialBalance() {
   const [rows, setRows] = useState<TBRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fy, setFy] = useState(currentFY())
+  const [search, setSearch] = useState('')
 
   useEffect(() => { load() }, [fy])
 
@@ -36,6 +37,9 @@ export function TrialBalance() {
   const totalDebit = rows.reduce((s, r) => s + r.debit_paise, 0)
   const totalCredit = rows.reduce((s, r) => s + r.credit_paise, 0)
   const balanced = totalDebit === totalCredit && totalDebit > 0
+
+  const q = search.trim().toLowerCase()
+  const visible = q ? rows.filter(r => r.account_name.toLowerCase().includes(q)) : rows
 
   const columns: ColumnDef<TBRow>[] = [
     { key: 'account', label: t('accounts.account'), render: r => <span className="font-medium">{r.account_name}</span> },
@@ -93,18 +97,22 @@ export function TrialBalance() {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey="trial-balance-list"
         columns={columns}
-        rows={rows}
+        rows={visible}
         rowKey={(r, i) => `${r.account_name}-${i}`}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('accounts.searchAccounts')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
         onPrint={() => window.print()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}
-        limit={rows.length || 1}
-        total={rows.length}
+        limit={visible.length || 1}
+        total={visible.length}
         onPageChange={() => {}}
         emptyMessage={t('accounts.noDataForFy')}
       />

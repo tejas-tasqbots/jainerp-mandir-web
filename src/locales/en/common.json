@@ -1152,7 +1152,8 @@
     "addTag": "Add tag",
     "removeTag": "Remove {{tag}}",
     "customTagPlaceholder": "Custom tag…",
-    "tagUpdateFailed": "Could not update tags"
+    "tagUpdateFailed": "Could not update tags",
+    "searchTransactions": "Search invoice, detail, mode..."
   },
   "creditors": {
     "title": "Creditors (Udhaar)",
@@ -1489,7 +1490,9 @@
     "contraFailed": "Could not record transfer",
     "contraSameAccountError": "From and To accounts must be different",
     "section": "Section",
-    "head": "Head"
+    "head": "Head",
+    "searchAccounts": "Search account...",
+    "searchTransfers": "Search account, narration..."
   },
   "reports": {
     "title": "Reports",

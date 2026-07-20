@@ -118,8 +118,8 @@ export function Ledger() {
 
       <div className="flex items-end gap-3 flex-wrap no-print">
         <div>
-          <label className="form-label">{t('accounts.account')}</label>
-          <select className="form-select w-64" value={accountId} onChange={e => setAccountId(e.target.value)}>
+          <label className="form-label !text-xs !mb-0.5">{t('accounts.account')}</label>
+          <select className="form-select !py-1.5 !text-xs w-64" value={accountId} onChange={e => setAccountId(e.target.value)}>
             <option value="">{t('accounts.selectAccount')}</option>
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
           </select>

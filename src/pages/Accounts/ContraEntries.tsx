@@ -31,6 +31,7 @@ export function ContraEntries() {
   const [meta, setMeta] = useState<{ total: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('contra-entries', 'thisMonth'))
 
   const [showForm, setShowForm] = useState(false)
@@ -68,6 +69,13 @@ export function ContraEntries() {
     const map = new Map(accounts.map(a => [a.id, a.name]))
     return (id: string) => map.get(id) || '—'
   }, [accounts])
+
+  // Client-side search over the loaded page (account names / narration).
+  const q = search.trim().toLowerCase()
+  const visible = q ? entries.filter(e =>
+    accountName(e.from_account_id).toLowerCase().includes(q) ||
+    accountName(e.to_account_id).toLowerCase().includes(q) ||
+    (e.description ?? '').toLowerCase().includes(q)) : entries
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -196,10 +204,14 @@ export function ContraEntries() {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey="contra-entries-list"
         columns={columns}
-        rows={entries}
+        rows={visible}
         rowKey={e => e.id}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('accounts.searchTransfers')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={{}}
