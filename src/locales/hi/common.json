@@ -1544,7 +1544,22 @@
     "donationYoY": "वर्ष-दर-वर्ष",
     "month": "माह",
     "change": "परिवर्तन",
-    "growth": "वृद्धि"
+    "growth": "वृद्धि",
+    "collectionSummary": "संग्रह सारांश",
+    "donationByCategory": "श्रेणी अनुसार दान",
+    "expenseByCategory": "श्रेणी अनुसार व्यय",
+    "groupBreakdown": "श्रेणी विभाजन",
+    "category": "श्रेणी",
+    "share": "हिस्सा",
+    "eligible80g": "80G पात्र",
+    "funds": "निधियाँ",
+    "categories": "श्रेणियाँ",
+    "entries": "प्रविष्टियाँ",
+    "receipts": "रसीदें",
+    "totalCollection": "कुल संग्रह",
+    "totalExpenses": "कुल व्यय",
+    "byStream": "स्रोत अनुसार",
+    "byPaymentMode": "भुगतान माध्यम अनुसार"
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्र एवं टीडीएस",

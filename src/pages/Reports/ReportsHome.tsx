@@ -4,8 +4,11 @@ import { FileText, Download, RefreshCw } from 'lucide-react'
 import { currentFY } from '../../lib/api'
 import { downloadReport } from '../../lib/downloadReport'
 import { DailyCollectionReport } from './reports/DailyCollectionReport'
+import { CollectionSummaryReport } from './reports/CollectionSummaryReport'
 import { DonationRegisterReport } from './reports/DonationRegisterReport'
+import { DonationByCategoryReport } from './reports/DonationByCategoryReport'
 import { ExpenseRegisterReport } from './reports/ExpenseRegisterReport'
+import { ExpenseByCategoryReport } from './reports/ExpenseByCategoryReport'
 import { PledgeRegisterReport } from './reports/PledgeRegisterReport'
 import { CreditorAgingReport } from './reports/CreditorAgingReport'
 import { DonationTrendsReport } from './reports/DonationTrendsReport'
@@ -14,7 +17,8 @@ import { TopDonorsReport } from './reports/TopDonorsReport'
 import { GstSummaryReport } from './reports/GstSummaryReport'
 
 type ReportKey =
-  | 'daily-collection' | 'donation-register' | 'expense-register' | 'pledge-register' | 'creditor-aging'
+  | 'daily-collection' | 'collection-summary' | 'donation-register' | 'donation-by-category'
+  | 'expense-register' | 'expense-by-category' | 'pledge-register' | 'creditor-aging'
   | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'gst-summary'
 
 interface RailItem { key: ReportKey; labelKey: string }
@@ -25,10 +29,18 @@ const RAIL: RailGroup[] = [
     groupKey: 'reports.groupDaily',
     items: [
       { key: 'daily-collection', labelKey: 'reports.dailyCollection' },
+      { key: 'collection-summary', labelKey: 'reports.collectionSummary' },
       { key: 'donation-register', labelKey: 'reports.donationRegister' },
       { key: 'expense-register', labelKey: 'reports.expenseRegister' },
       { key: 'pledge-register', labelKey: 'reports.pledgeRegister' },
       { key: 'creditor-aging', labelKey: 'reports.creditorAging' },
+    ],
+  },
+  {
+    groupKey: 'reports.groupBreakdown',
+    items: [
+      { key: 'donation-by-category', labelKey: 'reports.donationByCategory' },
+      { key: 'expense-by-category', labelKey: 'reports.expenseByCategory' },
     ],
   },
   {
@@ -49,8 +61,11 @@ const RAIL: RailGroup[] = [
 
 const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
   'daily-collection': DailyCollectionReport,
+  'collection-summary': CollectionSummaryReport,
   'donation-register': DonationRegisterReport,
+  'donation-by-category': DonationByCategoryReport,
   'expense-register': ExpenseRegisterReport,
+  'expense-by-category': ExpenseByCategoryReport,
   'pledge-register': PledgeRegisterReport,
   'creditor-aging': CreditorAgingReport,
   'donation-trends': DonationTrendsReport,

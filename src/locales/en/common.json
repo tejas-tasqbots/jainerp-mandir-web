@@ -1544,7 +1544,22 @@
     "donationYoY": "Year-over-Year",
     "month": "Month",
     "change": "Change",
-    "growth": "Growth"
+    "growth": "Growth",
+    "collectionSummary": "Collection Summary",
+    "donationByCategory": "Donation by Category",
+    "expenseByCategory": "Expense by Category",
+    "groupBreakdown": "Category Breakdown",
+    "category": "Category",
+    "share": "Share",
+    "eligible80g": "80G Eligible",
+    "funds": "Funds",
+    "categories": "Categories",
+    "entries": "Entries",
+    "receipts": "Receipts",
+    "totalCollection": "Total Collection",
+    "totalExpenses": "Total Expenses",
+    "byStream": "By Stream",
+    "byPaymentMode": "By Payment Mode"
   },
   "certificates": {
     "title": "Compliance — Certificates & TDS",
