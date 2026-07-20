@@ -85,7 +85,7 @@ export function TopDonorsReport() {
       <div className="flex items-center gap-4 flex-wrap no-print">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-slate-600">{t('reports.fy')}</label>
-          <FySelect value={fy} onChange={setFy} className="form-select w-28" />
+          <FySelect value={fy} onChange={setFy} className="w-32" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-slate-600">{t('reports.limitLabel')}</label>

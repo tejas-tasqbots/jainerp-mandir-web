@@ -221,7 +221,7 @@ export function FixedAssets() {
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('accounts.runDepreciation')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('accounts.runDepreciationPrompt')}</p>
-            <FySelect value={depFy} onChange={setDepFy} className="form-select w-full mb-4" />
+            <FySelect value={depFy} onChange={setDepFy} className="w-full mb-4" />
             <div className="flex gap-3 justify-end">
               <button type="button" onClick={() => setDepModal(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button type="button" onClick={runDepreciation} disabled={running} className="btn-primary">

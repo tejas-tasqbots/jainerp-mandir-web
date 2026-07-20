@@ -234,7 +234,7 @@ export function CertificatesPage() {
       {/* FY selector (shared) */}
       <div className="flex items-center gap-3">
         <label className="form-label mb-0">{t('certificates.financialYear')}</label>
-        <FySelect value={fy} onChange={setFy} className="form-select w-28" />
+        <FySelect value={fy} onChange={setFy} className="w-32" />
       </div>
 
       {tab === '80g' && (

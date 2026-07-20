@@ -143,7 +143,7 @@ export function AccountingRulesTab() {
               <div className="flex items-end gap-3">
                 <div>
                   <label className="form-label text-xs">{t('settings.accounting.closeThroughFy')}</label>
-                  <FySelect value={closeFy} onChange={setCloseFy} className="form-select w-32" />
+                  <FySelect value={closeFy} onChange={setCloseFy} className="w-32" />
                 </div>
                 <button type="button" onClick={closeBooks} disabled={closing} className="btn-danger btn-sm">
                   <Lock size={13} /> {closing ? t('settings.saving') : t('settings.accounting.closeButton')}
