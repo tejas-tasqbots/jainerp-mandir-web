@@ -25,6 +25,7 @@ export function DayBook() {
   const toast = useToast()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('day-book', 'today'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
@@ -46,9 +47,12 @@ export function DayBook() {
   }
 
   const types = Array.from(new Set(entries.map(e => e.type))).sort()
-  const filtered = filterState.type?.values?.length
-    ? entries.filter(e => filterState.type!.values!.includes(e.type))
-    : entries
+  const q = search.trim().toLowerCase()
+  const filtered = entries.filter(e => {
+    if (filterState.type?.values?.length && !filterState.type.values.includes(e.type)) return false
+    if (q && !(e.description?.toLowerCase().includes(q) || e.reference?.toLowerCase().includes(q))) return false
+    return true
+  })
 
   const columns: ColumnDef<Entry>[] = [
     { key: 'date', label: t('accounts.date'), render: e => <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString('en-IN')}</span> },
@@ -121,10 +125,14 @@ export function DayBook() {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey="day-book-list"
         columns={columns}
         rows={filtered}
         rowKey={(e, i) => `${e.date}-${i}`}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('accounts.searchDescRef')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
         onPrint={() => window.print()}

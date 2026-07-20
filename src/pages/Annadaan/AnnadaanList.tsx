@@ -21,6 +21,7 @@ export function AnnadaanList() {
   // The bhojanshala counter works one day at a time (daily summary + token
   // redemption are day-scoped), so this screen keeps a single-date filter.
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10))
+  const [search, setSearch] = useState('')
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -44,9 +45,14 @@ export function AnnadaanList() {
     dinner: t('bhojanshala.dinner'),
   }
 
-  // Meal filter applies to the loaded day's sales (small set, day-scoped API).
+  // Meal filter + buyer search apply to the loaded day's sales (small set, day-scoped API).
   const mealFilter = filterState.meal?.values ?? []
-  const visible = mealFilter.length ? sales.filter(s => mealFilter.includes(s.meal_type)) : sales
+  const q = search.trim().toLowerCase()
+  const visible = sales.filter(s => {
+    if (mealFilter.length && !mealFilter.includes(s.meal_type)) return false
+    if (q && !(s.buyer_name?.toLowerCase().includes(q) || s.buyer_mobile?.toLowerCase().includes(q))) return false
+    return true
+  })
 
   const columns: ColumnDef<BhojanshalaSale>[] = useMemo(() => [
     { key: 'buyer', label: t('bhojanshala.buyer'), render: s => <span className="font-medium">{s.buyer_name || '—'}</span> },
@@ -289,10 +295,14 @@ export function AnnadaanList() {
       )}
 
       <DataTable
+        viewKey="annadaan-list"
         columns={columns}
         rows={visible}
         rowKey={s => s.id}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('bhojanshala.searchBuyer')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}

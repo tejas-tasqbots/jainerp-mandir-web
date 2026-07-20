@@ -30,6 +30,7 @@ export function DonationRegisterReport() {
   const toast = useToast()
   const [rows, setRows] = useState<DonationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('report-donation-register', 'thisMonth'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
@@ -78,14 +79,23 @@ export function DonationRegisterReport() {
     }
   }
 
-  const totalAmount = rows.reduce((s, r) => s + Number(r.amount_paise), 0)
+  const q = search.trim().toLowerCase()
+  const visible = q
+    ? rows.filter(r =>
+        r.donor?.toLowerCase().includes(q) ||
+        r.invoice_no?.toLowerCase().includes(q) ||
+        r.category?.toLowerCase().includes(q) ||
+        r.pan_masked?.toLowerCase().includes(q))
+    : rows
+
+  const totalAmount = visible.reduce((s, r) => s + Number(r.amount_paise), 0)
   const stats: SummaryStat[] = [
     { label: t('kit.total'), value: `₹${fmtPaise(totalAmount)}`, tone: 'income' },
-    { label: t('kit.receipts'), value: String(rows.length) },
+    { label: t('kit.receipts'), value: String(visible.length) },
   ]
 
   async function exportExcel() {
-    if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
     try {
       await exportXlsx({
         title: t('reports.donationRegister'),
@@ -101,7 +111,7 @@ export function DonationRegisterReport() {
           { header: t('common.amount'), type: 'money' },
           { header: t('donations.eightyG'), width: 8 },
         ],
-        rows: rows.map(r => [
+        rows: visible.map(r => [
           new Date(r.date).toLocaleDateString('en-IN'), r.invoice_no, r.donor, r.pan_masked ?? '',
           r.category ?? '', r.payment_mode, r.amount_paise, r.is_80g_eligible ? t('common.yes') : t('common.no'),
         ]),
@@ -125,9 +135,12 @@ export function DonationRegisterReport() {
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={visible}
         rowKey={r => r.invoice_no}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('donations.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}

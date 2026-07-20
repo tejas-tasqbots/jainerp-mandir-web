@@ -100,6 +100,7 @@ export function ActivityLogPage() {
       </div>
 
       <DataTable
+        viewKey="activity-log-list"
         columns={columns}
         rows={rows}
         rowKey={r => String(r.id)}

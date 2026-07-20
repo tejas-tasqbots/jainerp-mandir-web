@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, fmtPaise } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
@@ -26,6 +26,7 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
   const storageKey = bankMode ? 'bank-book' : 'cash-book'
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange(storageKey, 'thisMonth'))
 
   useEffect(() => { load() }, [range, bankMode])
@@ -45,6 +46,14 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
       setLoading(false)
     }
   }
+
+  // Totals/closing balance stay on the full set (running balance is cumulative);
+  // search only narrows which rows are shown so you can locate an entry.
+  const visible = useMemo(() => {
+    if (!search.trim()) return entries
+    const q = search.toLowerCase()
+    return entries.filter(e => e.description?.toLowerCase().includes(q) || e.reference?.toLowerCase().includes(q))
+  }, [entries, search])
 
   const totalDebit = entries.reduce((s, e) => s + e.debit_paise, 0)
   const totalCredit = entries.reduce((s, e) => s + e.credit_paise, 0)
@@ -116,20 +125,24 @@ export function CashBook({ bankMode = false }: { bankMode?: boolean }) {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey={`${storageKey}-list`}
         columns={columns}
-        rows={entries}
+        rows={visible}
         rowKey={(e, i) => `${e.date}-${i}`}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('accounts.searchDescRef')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
         onPrint={() => window.print()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}
-        limit={entries.length || 1}
-        total={entries.length}
+        limit={visible.length || 1}
+        total={visible.length}
         onPageChange={() => {}}
-        emptyMessage={t('accounts.noEntriesForPeriod')}
+        emptyMessage={search ? t('accounts.noEntriesMatchSearch') : t('accounts.noEntriesForPeriod')}
       />
     </div>
   )

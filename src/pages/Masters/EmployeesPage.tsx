@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X, Users } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
-import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -50,6 +50,10 @@ export function EmployeesPage() {
     },
     {
       key: 'status', label: t('employees.status'),
+      filter: { kind: 'enum', param: 'is_active', options: [
+        { value: 'true', label: t('employees.active') },
+        { value: 'false', label: t('employees.inactive') },
+      ] },
       render: emp => emp.is_active
         ? <span className="badge-green">{t('employees.active')}</span>
         : <span className="badge-gray">{t('employees.inactive')}</span>,
@@ -65,13 +69,14 @@ export function EmployeesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, tab])
 
-  useEffect(() => { load() }, [search, tab])
+  useEffect(() => { load() }, [search, tab, filterState])
 
   async function load() {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '200' })
       if (search) params.set('q', search)
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
       const resource = tab === 'employees' ? 'employees' : 'volunteers'
       const { data } = await api.get(`/${resource}?${params}`)
       setItems(data.data || [])

@@ -947,7 +947,8 @@
     "redeem": "Redeem",
     "printTokenSlip": "Print token slip",
     "saleRecorded": "Sale recorded",
-    "redeemFailed": "Could not redeem tokens"
+    "redeemFailed": "Could not redeem tokens",
+    "searchBuyer": "Search buyer name / mobile..."
   },
   "events": {
     "title": "Events",

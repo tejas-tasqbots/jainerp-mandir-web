@@ -30,6 +30,7 @@ export function ExpenseRegisterReport() {
   const toast = useToast()
   const [rows, setRows] = useState<ExpenseRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('report-expense-register', 'thisMonth'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
@@ -76,15 +77,24 @@ export function ExpenseRegisterReport() {
     }
   }
 
-  const totalAmount = rows.reduce((s, r) => s + Number(r.amount_paise), 0)
-  const totalGst = rows.reduce((s, r) => s + Number(r.gst_paid_paise ?? 0), 0)
+  const q = search.trim().toLowerCase()
+  const visible = q
+    ? rows.filter(r =>
+        r.description?.toLowerCase().includes(q) ||
+        r.vendor?.toLowerCase().includes(q) ||
+        r.category?.toLowerCase().includes(q) ||
+        r.bill_number?.toLowerCase().includes(q))
+    : rows
+
+  const totalAmount = visible.reduce((s, r) => s + Number(r.amount_paise), 0)
+  const totalGst = visible.reduce((s, r) => s + Number(r.gst_paid_paise ?? 0), 0)
   const stats: SummaryStat[] = [
     { label: t('kit.total'), value: `₹${fmtPaise(totalAmount)}`, tone: 'expense' },
-    { label: t('expenses.totalExpenses'), value: String(rows.length) },
+    { label: t('expenses.totalExpenses'), value: String(visible.length) },
   ]
 
   async function exportExcel() {
-    if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
     try {
       await exportXlsx({
         title: t('reports.expenseRegister'),
@@ -102,7 +112,7 @@ export function ExpenseRegisterReport() {
           { header: t('expenses.tds'), type: 'money' },
           { header: t('expenses.type'), width: 10 },
         ],
-        rows: rows.map(r => [
+        rows: visible.map(r => [
           new Date(r.date).toLocaleDateString('en-IN'), r.description, r.vendor ?? '', r.category ?? '',
           r.bill_number ?? '', r.payment_mode, r.amount_paise, r.gst_paid_paise ?? 0, r.tds_amount_paise ?? 0,
           r.is_on_credit ? t('expenses.credit') : t('expenses.paid'),
@@ -127,9 +137,12 @@ export function ExpenseRegisterReport() {
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={visible}
         rowKey={(r, i) => `${r.bill_number ?? 'nb'}-${r.date}-${i}`}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('expenses.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}

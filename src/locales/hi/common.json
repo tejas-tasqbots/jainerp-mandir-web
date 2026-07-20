@@ -947,7 +947,8 @@
     "redeem": "भुनाएं",
     "printTokenSlip": "टोकन पर्ची प्रिंट करें",
     "saleRecorded": "बिक्री दर्ज हुई",
-    "redeemFailed": "टोकन रिडीम नहीं हो सके"
+    "redeemFailed": "टोकन रिडीम नहीं हो सके",
+    "searchBuyer": "खरीदार नाम / मोबाइल खोजें..."
   },
   "events": {
     "title": "कार्यक्रम",

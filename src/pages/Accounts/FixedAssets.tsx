@@ -192,6 +192,7 @@ export function FixedAssets() {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey="fixed-assets-list"
         columns={columns}
         rows={assets}
         rowKey={a => a.id}

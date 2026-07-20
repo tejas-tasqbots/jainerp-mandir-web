@@ -164,6 +164,7 @@ export function Loans() {
       <SummaryStrip stats={stats} />
 
       <DataTable
+        viewKey="loans-list"
         columns={columns}
         rows={loans}
         rowKey={l => l.id}

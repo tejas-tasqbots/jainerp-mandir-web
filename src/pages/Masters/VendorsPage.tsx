@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
-import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -49,6 +49,10 @@ export function VendorsPage() {
     { key: 'pan', label: t('vendors.pan'), render: v => <span className="font-mono text-xs">{v.pan_masked || '—'}</span> },
     {
       key: 'status', label: t('vendors.status'),
+      filter: { kind: 'enum', param: 'is_active', options: [
+        { value: 'true', label: t('vendors.active') },
+        { value: 'false', label: t('vendors.inactive') },
+      ] },
       render: v => v.is_active
         ? <span className="badge-green">{t('vendors.active')}</span>
         : <span className="badge-gray">{t('vendors.inactive')}</span>,
@@ -94,13 +98,14 @@ export function VendorsPage() {
     }
   }
 
-  useEffect(() => { load() }, [search])
+  useEffect(() => { load() }, [search, filterState])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '50' })
+      const params = new URLSearchParams({ limit: '200' })
       if (search) params.set('q', search)
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
       const { data } = await api.get(`/vendors?${params}`)
       setVendors(data.data || [])
     } finally {

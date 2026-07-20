@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
-import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -47,6 +47,10 @@ export function PriestsPage() {
     },
     {
       key: 'status', label: t('priests.status'),
+      filter: { kind: 'enum', param: 'is_active', options: [
+        { value: 'true', label: t('priests.active') },
+        { value: 'false', label: t('priests.inactive') },
+      ] },
       render: p => p.is_active
         ? <span className="badge-green">{t('priests.active')}</span>
         : <span className="badge-gray">{t('priests.inactive')}</span>,
@@ -62,13 +66,14 @@ export function PriestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
 
-  useEffect(() => { load() }, [search])
+  useEffect(() => { load() }, [search, filterState])
 
   async function load() {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '200' })
       if (search) params.set('q', search)
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
       const { data } = await api.get(`/priests?${params}`)
       setPriests(data.data || [])
     } finally {

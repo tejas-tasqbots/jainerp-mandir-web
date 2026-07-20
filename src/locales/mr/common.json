@@ -947,7 +947,8 @@
     "redeem": "वापरा",
     "printTokenSlip": "टोकन पावती प्रिंट करा",
     "saleRecorded": "विक्री नोंदवली",
-    "redeemFailed": "टोकन रिडीम होऊ शकले नाहीत"
+    "redeemFailed": "टोकन रिडीम होऊ शकले नाहीत",
+    "searchBuyer": "खरेदीदार नाव / मोबाइल शोधा..."
   },
   "events": {
     "title": "कार्यक्रम",

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X, Package, AlertTriangle } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
-import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -42,6 +42,11 @@ export function InventoryPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(items.map(i => i.category).filter((c): c is string => !!c))).sort(),
+    [items],
+  )
+
   const columns: ColumnDef<InventoryItem>[] = useMemo(() => [
     {
       key: 'name', label: t('inventory.item'),
@@ -56,7 +61,11 @@ export function InventoryPage() {
         </span>
       ),
     },
-    { key: 'category', label: t('inventory.category'), render: i => <span className="text-slate-600">{i.category || '—'}</span> },
+    {
+      key: 'category', label: t('inventory.category'),
+      filter: { kind: 'enum', param: 'category', options: categoryOptions.map(c => ({ value: c, label: c })) },
+      render: i => <span className="text-slate-600">{i.category || '—'}</span>,
+    },
     { key: 'unit', label: t('inventory.unit'), render: i => <span className="text-slate-600">{i.unit || '—'}</span> },
     {
       key: 'stock', label: t('inventory.stock'), align: 'right',
@@ -83,6 +92,10 @@ export function InventoryPage() {
     },
     {
       key: 'status', label: t('inventory.status'),
+      filter: { kind: 'enum', param: 'is_active', options: [
+        { value: 'true', label: t('inventory.active') },
+        { value: 'false', label: t('inventory.inactive') },
+      ] },
       render: i => i.is_active
         ? <span className="badge-green">{t('inventory.active')}</span>
         : <span className="badge-gray">{t('inventory.inactive')}</span>,
@@ -100,15 +113,16 @@ export function InventoryPage() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t])
+  ], [t, categoryOptions])
 
-  useEffect(() => { load() }, [search])
+  useEffect(() => { load() }, [search, filterState])
 
   async function load() {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: String(FETCH_LIMIT) })
       if (search) params.set('q', search)
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
       const { data } = await api.get(`/inventory-items?${params}`)
       setItems(data.data || [])
     } finally {

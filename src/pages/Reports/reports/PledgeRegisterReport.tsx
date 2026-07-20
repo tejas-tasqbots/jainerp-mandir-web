@@ -28,6 +28,7 @@ export function PledgeRegisterReport() {
   const [fy, setFy] = useState(currentFY())
   const [rows, setRows] = useState<PledgeRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
   const statusLabel: Record<string, string> = {
@@ -72,16 +73,25 @@ export function PledgeRegisterReport() {
     }
   }
 
-  const totalPledged = rows.reduce((s, r) => s + Number(r.committed_amount_paise), 0)
-  const totalOutstanding = rows.reduce((s, r) => s + Number(r.outstanding_paise), 0)
+  const q = search.trim().toLowerCase()
+  const visible = q
+    ? rows.filter(r =>
+        r.donor_name?.toLowerCase().includes(q) ||
+        r.seva_description?.toLowerCase().includes(q) ||
+        r.event_name?.toLowerCase().includes(q) ||
+        r.donor_mobile?.toLowerCase().includes(q))
+    : rows
+
+  const totalPledged = visible.reduce((s, r) => s + Number(r.committed_amount_paise), 0)
+  const totalOutstanding = visible.reduce((s, r) => s + Number(r.outstanding_paise), 0)
   const stats: SummaryStat[] = [
     { label: t('pledges.pledged'), value: `₹${fmtPaise(totalPledged)}` },
     { label: t('pledges.outstanding'), value: `₹${fmtPaise(totalOutstanding)}`, tone: totalOutstanding > 0 ? 'expense' : 'default' },
-    { label: t('kit.receipts'), value: String(rows.length) },
+    { label: t('kit.receipts'), value: String(visible.length) },
   ]
 
   async function exportExcel() {
-    if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
     try {
       await exportXlsx({
         title: t('reports.pledgeRegister'),
@@ -98,13 +108,13 @@ export function PledgeRegisterReport() {
           { header: t('pledges.outstanding'), type: 'money' },
           { header: t('common.status'), width: 14 },
         ],
-        rows: rows.map(r => [
+        rows: visible.map(r => [
           new Date(r.boli_date).toLocaleDateString('en-IN'), r.donor_name, r.donor_mobile ?? '',
           r.seva_description ?? '', r.event_name ?? '',
           r.committed_amount_paise, r.paid_amount_paise, r.outstanding_paise,
           statusLabel[r.status] ?? r.status,
         ]),
-        totals: [t('kit.total'), '', '', '', '', totalPledged, rows.reduce((s, r) => s + r.paid_amount_paise, 0), totalOutstanding, ''],
+        totals: [t('kit.total'), '', '', '', '', totalPledged, visible.reduce((s, r) => s + r.paid_amount_paise, 0), totalOutstanding, ''],
       })
       toast.success(t('kit.exportReady'))
     } catch {
@@ -125,9 +135,12 @@ export function PledgeRegisterReport() {
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={visible}
         rowKey={(r, i) => `${r.donor_name}-${r.boli_date}-${i}`}
         loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('pledges.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onPrint={() => window.print()}
         filterState={filterState}

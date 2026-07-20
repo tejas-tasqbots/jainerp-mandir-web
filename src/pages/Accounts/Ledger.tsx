@@ -135,6 +135,7 @@ export function Ledger() {
         <>
           <SummaryStrip stats={stats} />
           <DataTable
+            viewKey="ledger-list"
             columns={columns}
             rows={filtered}
             rowKey={(e, i) => `${e.date}-${i}`}
