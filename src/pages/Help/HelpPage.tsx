@@ -1,4 +1,6 @@
-import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, CheckCircle } from 'lucide-react'
+import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, CheckCircle, Keyboard } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { SHORTCUTS } from '../../lib/shortcuts'
 
 const topics = [
   {
@@ -135,9 +137,29 @@ const apiCoverage = [
 ]
 
 export function HelpPage() {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-5xl">
       <h1 className="text-xl font-bold text-navy-900">User Guide & Help</h1>
+
+      {/* Keyboard shortcuts */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
+            <Keyboard size={15} /> {t('shortcuts.title')}
+          </h3>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+            {SHORTCUTS.map(s => (
+              <div key={s.keys} className="flex items-center justify-between text-sm py-1">
+                <span className="text-slate-600">{t(s.labelKey)}</span>
+                <kbd className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-xs text-slate-600">{s.keys}</kbd>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Quick guides */}
       <div className="card">

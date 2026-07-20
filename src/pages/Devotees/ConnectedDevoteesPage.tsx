@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link2, UserPlus, ShieldCheck, CheckCircle, XCircle, Trash2, RefreshCw } from 'lucide-react'
+import { Link2, UserPlus, ShieldCheck, CheckCircle, XCircle, Trash2, RefreshCw, Search, FileSpreadsheet } from 'lucide-react'
 import { api } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { useToast } from '../../components/kit/Toast'
 import { useConfirm } from '../../components/ConfirmDialog'
 
 type LinkStatus = 'approved' | 'requested' | 'invited'
@@ -30,11 +32,42 @@ const TABS: { key: LinkStatus; labelKey: string }[] = [
 export function ConnectedDevoteesPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const toast = useToast()
   const [tab, setTab] = useState<LinkStatus>('approved')
   const [links, setLinks] = useState<DevoteeLink[]>([])
   const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
   const [modal, setModal] = useState<InviteModalState>({ open: false, mobile: '', loading: false, error: '' })
   const [actionId, setActionId] = useState<string | null>(null)
+
+  const visible = search
+    ? links.filter(l =>
+        l.name.toLowerCase().includes(search.toLowerCase()) ||
+        l.mobile.includes(search) ||
+        (l.city ?? '').toLowerCase().includes(search.toLowerCase()))
+    : links
+
+  async function exportExcel() {
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('devoteesPage.title'),
+        subtitle: t(TABS.find(x => x.key === tab)?.labelKey ?? ''),
+        filename: `devotees-${tab}`,
+        columns: [
+          { header: t('devoteesPage.name'), width: 26 },
+          { header: t('devoteesPage.mobile'), width: 16 },
+          { header: t('devoteesPage.city'), width: 18 },
+          { header: t('devoteesPage.pan'), width: 13 },
+          { header: t('common.status'), width: 14 },
+        ],
+        rows: visible.map(l => [l.name, l.mobile, l.city ?? '', l.pan_masked ?? '', l.status]),
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
 
   const fetchLinks = useCallback(async () => {
     setLoading(true)
@@ -102,10 +135,26 @@ export function ConnectedDevoteesPage() {
           <button onClick={fetchLinks} className="btn-secondary btn-sm" title="Refresh">
             <RefreshCw size={14} />
           </button>
+          <button onClick={exportExcel} className="btn-icon !text-green-700 hover:!bg-green-50" title={t('kit.exportExcel')} aria-label={t('kit.exportExcel')}>
+            <FileSpreadsheet size={16} />
+          </button>
           <button onClick={() => setModal({ open: true, mobile: '', loading: false, error: '' })} className="btn-primary btn-sm">
             <UserPlus size={14} /> {t('devoteesPage.inviteDevotee')}
           </button>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-64">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input className="form-input pl-9" placeholder={t('devoteesPage.searchPlaceholder')}
+          value={search} onChange={e => setSearch(e.target.value)} />
+        {search && (
+          <button type="button" title={t('kit.clearSearch')} aria-label={t('kit.clearSearch')} onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <XCircle size={14} />
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -129,7 +178,7 @@ export function ConnectedDevoteesPage() {
       <div className="card">
         {loading ? (
           <div className="py-12 text-center text-slate-400 text-sm">{t('common.loading')}</div>
-        ) : links.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-sm">
             {tab === 'approved' && t('devoteesPage.noConnectedYet')}
             {tab === 'requested' && t('devoteesPage.noPendingRequests')}

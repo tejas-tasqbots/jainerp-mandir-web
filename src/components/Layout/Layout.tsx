@@ -3,6 +3,8 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { OfflineBanner } from '../OfflineBanner'
 import { RouteGuard } from '../RouteGuard'
+import { CommandPalette } from '../kit/CommandPalette'
+import { KeyboardShortcuts } from '../kit/KeyboardShortcuts'
 
 export function Layout() {
   return (
@@ -19,6 +21,8 @@ export function Layout() {
           </main>
         </div>
       </div>
+      <CommandPalette />
+      <KeyboardShortcuts />
     </>
   )
 }

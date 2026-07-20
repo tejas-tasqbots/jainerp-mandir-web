@@ -1,84 +1,61 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Download, Search, XCircle, Receipt, Ban, Award, Filter, Pencil, FileDown } from 'lucide-react'
+import { Plus, Upload, Receipt, Ban, Award, Pencil, FileDown, XCircle } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
 import { downloadReport } from '../../lib/downloadReport'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import {
+  DataTable, filterStateToParams,
+  type ColumnDef, type ColumnFilterState, type SortState,
+} from '../../components/kit/DataTable'
+import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { Donation, DonationCategory } from '../../types'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
+const PAGE_SIZE = 20
+
+interface ListMeta {
+  total: number
+  total_amount_paise: number
+  prev_period_amount_paise: number | null
+  mode_breakdown?: Record<string, number>
+  day_totals?: { date: string; amount_paise: number }[]
+}
 
 export function DonationsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const toast = useToast()
+
   const [donations, setDonations] = useState<Donation[]>([])
+  const [meta, setMeta] = useState<ListMeta | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange('donations'))
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+  const [sort, setSort] = useState<SortState | undefined>()
+
   const [voidModal, setVoidModal] = useState<{ id: string; invoiceNo: string } | null>(null)
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-
-  // Filters
-  const [showFilters, setShowFilters] = useState(false)
   const [categories, setCategories] = useState<DonationCategory[]>([])
-  const [fCategory, setFCategory] = useState('')
-  const [fMode, setFMode] = useState('')
-  const [f80g, setF80g] = useState('')
-  const [fFrom, setFFrom] = useState('')
-  const [fTo, setFTo] = useState('')
+  const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
+  const [pdfLoading, setPdfLoading] = useState<string | null>(null)
+  const [certLoading, setCertLoading] = useState<string | null>(null)
 
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } })
       .then(r => setCategories(r.data.data || [])).catch(() => {})
   }, [])
-
-  useEffect(() => { load() }, [page, search, fCategory, fMode, f80g, fFrom, fTo])
-
-  async function load() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
-      if (search) params.set('q', search)
-      if (fCategory) params.set('category', fCategory)
-      if (fMode) params.set('payment_mode', fMode)
-      if (fFrom) params.set('from', fFrom)
-      if (fTo) params.set('to', fTo)
-      const { data } = await api.get(`/donations?${params}`)
-      let rows: Donation[] = data.data || []
-      // 80G filter is client-side (API has no flag for it yet)
-      if (f80g === 'yes') rows = rows.filter(d => d.is_80g_eligible)
-      else if (f80g === 'no') rows = rows.filter(d => !d.is_80g_eligible)
-      setDonations(rows)
-      setTotal(data.meta?.total || 0)
-    } catch {
-      setDonations([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function clearFilters() {
-    setFCategory(''); setFMode(''); setF80g(''); setFFrom(''); setFTo(''); setPage(1)
-  }
-  const activeFilterCount = [fCategory, fMode, f80g, fFrom, fTo].filter(Boolean).length
-
-  const [certLoading, setCertLoading] = useState<string | null>(null)
-  async function download80g(donorId: string) {
-    setCertLoading(donorId)
-    try {
-      await print80gCertificate(donorId)
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: { message?: string } } } }
-      alert(err.response?.data?.error?.message || 'No 80G-eligible donations for this donor this year')
-    } finally {
-      setCertLoading(null)
-    }
-  }
 
   function paymentModeBadge(mode: string) {
     const map: Record<string, string> = {
@@ -88,29 +65,223 @@ export function DonationsList() {
     return map[mode] || 'badge-gray'
   }
 
-  const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
-  const [pdfLoading, setPdfLoading] = useState<string | null>(null)
+  const columns: ColumnDef<Donation>[] = useMemo(() => [
+    {
+      key: 'invoice', label: t('donations.invoiceNo'), sortable: true,
+      render: d => <span className="font-mono text-xs text-brand-blue">{d.invoice_no}</span>,
+    },
+    {
+      key: 'donor', label: t('donations.donor'), sortable: true,
+      render: d => (
+        <div>
+          <p className="font-medium">{d.donor_name || '—'}</p>
+          {d.donor_mobile && <p className="text-xs text-slate-400">{d.donor_mobile}</p>}
+          {d.is_anonymous && (
+            <p className="text-xs text-slate-400 italic">
+              {d.anonymous_category === 'dan_peti' ? t('donations.danPeti') : t('donations.anonymousGuptDan')}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'category', label: t('donations.category'), sortable: true,
+      filter: { kind: 'enum', param: 'category', options: categories.map(c => ({ value: c.name, label: c.name })) },
+      render: d => <span className="text-slate-600">{d.category_name || '—'}</span>,
+    },
+    {
+      key: 'amount', label: t('common.amount'), align: 'right', sortable: true,
+      filter: { kind: 'amount', gteParam: 'amount_gte', lteParam: 'amount_lte' },
+      render: d => <span className="font-semibold">₹{fmtPaise(d.amount_paise)}</span>,
+    },
+    {
+      key: 'mode', label: t('donations.mode'),
+      filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`) })) },
+      render: d => <span className={paymentModeBadge(d.payment_mode)}>{d.payment_mode}</span>,
+    },
+    {
+      key: 'eightyG', label: t('donations.eightyG'),
+      filter: {
+        kind: 'enum', param: 'is_80g',
+        options: [
+          { value: 'true', label: t('donations.eightyGOnly') },
+          { value: 'false', label: t('donations.nonEightyG') },
+        ],
+      },
+      render: d => d.is_80g_eligible
+        ? <span className="badge-green">{t('common.yes')}</span>
+        : <span className="badge-gray">{t('common.no')}</span>,
+    },
+    {
+      key: 'date', label: t('common.date'), sortable: true,
+      render: d => <span className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</span>,
+    },
+    {
+      key: 'status', label: t('common.status'),
+      render: d => d.is_voided
+        ? <span className="badge-red">{t('donations.voided')}</span>
+        : <span className="badge-green">{t('common.active')}</span>,
+    },
+    {
+      key: 'actions', label: t('common.actions'),
+      render: d => (
+        <div className="flex gap-1">
+          <button
+            type="button" onClick={() => openReceipt(d.id)}
+            title={t('donations.printReceipt')} aria-label={t('donations.printReceipt')}
+            disabled={receiptLoading === d.id}
+            className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+          >
+            <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
+          </button>
+          <button
+            type="button" onClick={() => savePdf(d.id)}
+            title={t('donations.downloadPdf')} aria-label={t('donations.downloadPdf')}
+            disabled={pdfLoading === d.id}
+            className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+          >
+            <FileDown size={14} className={pdfLoading === d.id ? 'animate-pulse' : ''} />
+          </button>
+          {d.is_80g_eligible && d.donor_id && !d.is_anonymous && (
+            <button
+              type="button" onClick={() => download80g(d.donor_id!)}
+              title={t('donations.download80gCertificate')} aria-label={t('donations.download80gCertificate')}
+              disabled={certLoading === d.donor_id}
+              className="p-1 text-slate-400 hover:text-green-600 rounded disabled:opacity-40"
+            >
+              <Award size={14} className={certLoading === d.donor_id ? 'animate-pulse' : ''} />
+            </button>
+          )}
+          {!d.is_voided && (
+            <>
+              <button
+                type="button" onClick={() => navigate(`/donations/${d.id}/edit`)}
+                title={t('donations.editVoidReissue')} aria-label={t('donations.editVoidReissue')}
+                className="p-1 text-slate-400 hover:text-amber-600 rounded"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button" onClick={() => setVoidModal({ id: d.id, invoiceNo: d.invoice_no })}
+                title={t('donations.voidDonation')} aria-label={t('donations.voidDonation')}
+                className="p-1 text-slate-400 hover:text-brand-red rounded"
+              >
+                <Ban size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, categories, receiptLoading, pdfLoading, certLoading])
+
+  function buildParams(limit: number, forPage = 1): URLSearchParams {
+    const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
+    if (search) params.set('q', search)
+    if (range.from) params.set('from', range.from)
+    if (range.to) params.set('to', range.to)
+    if (sort) params.set('sort', `${sort.key}:${sort.dir}`)
+    for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+    return params
+  }
+
+  useEffect(() => { load() }, [page, search, range, filterState, sort, categories.length])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const { data } = await api.get(`/donations?${buildParams(PAGE_SIZE, page)}`)
+      setDonations(data.data || [])
+      setMeta(data.meta || null)
+    } catch {
+      setDonations([])
+      setMeta(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function resetPageAnd<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setPage(1) }
+  }
+
+  const stats: SummaryStat[] = meta ? [
+    {
+      label: t('donations.title'),
+      value: `₹${fmtPaise(meta.total_amount_paise)}`,
+      deltaPct: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise),
+      sub: t('kit.vsPrevPeriodSub'),
+      tone: 'income',
+    },
+    { label: t('kit.receipts'), value: String(meta.total) },
+    { label: t('common.cash'), value: `₹${fmtPaise(meta.mode_breakdown?.cash ?? 0)}` },
+    {
+      label: t('kit.digital'),
+      value: `₹${fmtPaise((meta.mode_breakdown?.upi ?? 0) + (meta.mode_breakdown?.online ?? 0) + (meta.mode_breakdown?.netbanking ?? 0))}`,
+    },
+  ] : []
+
+  async function exportExcel() {
+    try {
+      const { data } = await api.get(`/donations?${buildParams(1000)}`)
+      const rows: Donation[] = data.data || []
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      await exportXlsx({
+        title: t('reports.donationRegister'),
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: 'donation-register',
+        columns: [
+          { header: t('common.date'), type: 'date' },
+          { header: t('donations.invoiceNo') },
+          { header: t('donations.donor'), width: 26 },
+          { header: t('donations.category') },
+          { header: t('donations.mode'), width: 12 },
+          { header: t('common.amount'), type: 'money' },
+          { header: t('donations.eightyG'), width: 8 },
+          { header: t('common.status'), width: 10 },
+        ],
+        rows: rows.map(d => [
+          new Date(d.created_at).toLocaleDateString('en-IN'), d.invoice_no, d.donor_name ?? '',
+          d.category_name ?? '', d.payment_mode, d.amount_paise,
+          d.is_80g_eligible ? t('common.yes') : t('common.no'),
+          d.is_voided ? t('donations.voided') : t('common.active'),
+        ]),
+        totals: [t('kit.total'), '', '', '', '', rows.filter(d => !d.is_voided).reduce((s, d) => s + d.amount_paise, 0), '', ''],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  function exportPdf() {
+    const p: Record<string, string> = {}
+    buildParams(1000).forEach((v, k) => { if (!['page', 'limit', 'sort'].includes(k)) p[k] = v })
+    downloadReport('donation-register', p, 'pdf')
+  }
 
   async function openReceipt(id: string) {
     setReceiptLoading(id)
-    try {
-      await printDonationReceipt(id)
-    } catch {
-      alert('Could not load receipt. Please try again.')
-    } finally {
-      setReceiptLoading(null)
-    }
+    try { await printDonationReceipt(id) }
+    catch { toast.error(t('donations.receiptLoadFailed')) }
+    finally { setReceiptLoading(null) }
   }
 
   async function savePdf(id: string) {
     setPdfLoading(id)
-    try {
-      await downloadReceiptPdf(id)
-    } catch {
-      alert('Could not generate the PDF. Please try again.')
-    } finally {
-      setPdfLoading(null)
-    }
+    try { await downloadReceiptPdf(id) }
+    catch { toast.error(t('donations.pdfGenerateFailed')) }
+    finally { setPdfLoading(null) }
+  }
+
+  async function download80g(donorId: string) {
+    setCertLoading(donorId)
+    try { await print80gCertificate(donorId) }
+    catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(err.response?.data?.error?.message || t('donations.no80gThisYear'))
+    } finally { setCertLoading(null) }
   }
 
   async function confirmVoid() {
@@ -118,52 +289,32 @@ export function DonationsList() {
     setVoiding(true)
     try {
       await api.patch(`/donations/${voidModal.id}/void`, { reason: voidReason })
+      toast.success(t('donations.voidSuccess', { invoiceNo: voidModal.invoiceNo }))
       setVoidModal(null)
       setVoidReason('')
       load()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      alert(err.response?.data?.error?.message || 'Failed to void donation')
+      toast.error(err.response?.data?.error?.message || t('donations.voidFailed'))
     } finally {
       setVoiding(false)
     }
   }
 
+  const graphData = (meta?.day_totals ?? []).map(d => ({
+    label: new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+    value: d.amount_paise / 100,
+  }))
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('reports.donationRegister')} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('donations.title')}</h1>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const p: Record<string, string> = {}
-              if (fFrom) p.from = fFrom
-              if (fTo) p.to = fTo
-              if (fCategory) p.category = fCategory
-              if (fMode) p.payment_mode = fMode
-              downloadReport('donation-register', p, 'pdf')
-            }}
-            className="btn-secondary btn-sm"
-          >
-            <FileDown size={14} /> {t('donations.exportPdf')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const p: Record<string, string> = {}
-              if (fFrom) p.from = fFrom
-              if (fTo) p.to = fTo
-              if (fCategory) p.category = fCategory
-              if (fMode) p.payment_mode = fMode
-              downloadReport('donation-register', p)
-            }}
-            className="btn-secondary btn-sm"
-          >
-            <Download size={14} /> {t('donations.exportCsv')}
-          </button>
           <button onClick={() => setImportOpen(true)} className="btn-secondary btn-sm">
-            <FileDown size={14} /> {t('donations.importOldRegister')}
+            <Upload size={14} /> {t('donations.importOldRegister')}
           </button>
           <button onClick={() => navigate('/donations/add')} className="btn-primary btn-sm">
             <Plus size={14} /> {t('donations.newDonation')}
@@ -173,181 +324,45 @@ export function DonationsList() {
 
       {importOpen && <BulkImportModal onClose={ok => { setImportOpen(false); if (ok) load() }} />}
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative w-72">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            className="form-input pl-9"
-            placeholder={t('donations.searchPlaceholder')}
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
-          />
-          {search && (
-            <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <XCircle size={14} />
-            </button>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowFilters(s => !s)}
-          className={`btn-secondary btn-sm ${activeFilterCount ? 'border-brand-blue text-brand-blue' : ''}`}
-        >
-          <Filter size={14} /> {t('common.filters')}{activeFilterCount ? ` (${activeFilterCount})` : ''}
-        </button>
-        {activeFilterCount > 0 && (
-          <button type="button" onClick={clearFilters} className="text-xs text-slate-400 hover:text-red-500">{t('common.clearAll')}</button>
-        )}
+      <div className="no-print">
+        <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="donations" />
       </div>
 
-      {showFilters && (
-        <div className="card p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div>
-            <label htmlFor="f-category" className="form-label text-xs">{t('donations.category')}</label>
-            <select id="f-category" className="form-select" value={fCategory} onChange={e => { setFCategory(e.target.value); setPage(1) }}>
-              <option value="">{t('common.all')}</option>
-              {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="f-mode" className="form-label text-xs">{t('donations.paymentMode')}</label>
-            <select id="f-mode" className="form-select" value={fMode} onChange={e => { setFMode(e.target.value); setPage(1) }}>
-              <option value="">{t('common.all')}</option>
-              {PAYMENT_MODES.map(m => <option key={m} value={m}>{t(`common.${m}`)}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="f-80g" className="form-label text-xs">{t('donations.eightyG')}</label>
-            <select id="f-80g" className="form-select" value={f80g} onChange={e => { setF80g(e.target.value); setPage(1) }}>
-              <option value="">{t('common.all')}</option>
-              <option value="yes">{t('donations.eightyGOnly')}</option>
-              <option value="no">{t('donations.nonEightyG')}</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="f-from" className="form-label text-xs">{t('donations.from')}</label>
-            <input id="f-from" type="date" title="From date" className="form-input" value={fFrom} onChange={e => { setFFrom(e.target.value); setPage(1) }} />
-          </div>
-          <div>
-            <label htmlFor="f-to" className="form-label text-xs">{t('donations.to')}</label>
-            <input id="f-to" type="date" title="To date" className="form-input" value={fTo} onChange={e => { setFTo(e.target.value); setPage(1) }} />
-          </div>
-        </div>
-      )}
+      <SummaryStrip stats={stats} />
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('donations.invoiceNo')}</th>
-                <th>{t('donations.donor')}</th>
-                <th>{t('donations.category')}</th>
-                <th>{t('common.amount')}</th>
-                <th>{t('donations.mode')}</th>
-                <th>{t('donations.eightyG')}</th>
-                <th>{t('common.date')}</th>
-                <th>{t('common.status')}</th>
-                <th>{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : donations.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">{t('donations.noDonationsFound')}</td></tr>
-              ) : donations.map(d => (
-                <tr key={d.id}>
-                  <td className="font-mono text-xs text-brand-blue">{d.invoice_no}</td>
-                  <td>
-                    <p className="font-medium">{d.donor_name || '—'}</p>
-                    {d.donor_mobile && <p className="text-xs text-slate-400">{d.donor_mobile}</p>}
-                    {d.is_anonymous && (
-                      <p className="text-xs text-slate-400 italic">
-                        {d.anonymous_category === 'dan_peti' ? t('donations.danPeti') : t('donations.anonymousGuptDan')}
-                      </p>
-                    )}
-                  </td>
-                  <td className="text-slate-600">{d.category_name || '—'}</td>
-                  <td className="font-semibold">₹{fmtPaise(d.amount_paise)}</td>
-                  <td><span className={paymentModeBadge(d.payment_mode)}>{d.payment_mode}</span></td>
-                  <td>{d.is_80g_eligible ? <span className="badge-green">{t('common.yes')}</span> : <span className="badge-gray">{t('common.no')}</span>}</td>
-                  <td className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</td>
-                  <td>{d.is_voided ? <span className="badge-red">{t('donations.voided')}</span> : <span className="badge-green">{t('common.active')}</span>}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => openReceipt(d.id)}
-                        title={t('donations.printReceipt')}
-                        aria-label={t('donations.printReceipt')}
-                        disabled={receiptLoading === d.id}
-                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-                      >
-                        <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => savePdf(d.id)}
-                        title={t('donations.downloadPdf')}
-                        aria-label={t('donations.downloadPdf')}
-                        disabled={pdfLoading === d.id}
-                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-                      >
-                        <FileDown size={14} className={pdfLoading === d.id ? 'animate-pulse' : ''} />
-                      </button>
-                      {d.is_80g_eligible && d.donor_id && !d.is_anonymous && (
-                        <button
-                          type="button"
-                          onClick={() => download80g(d.donor_id!)}
-                          title={t('donations.download80gCertificate')}
-                          aria-label={t('donations.download80gCertificate')}
-                          disabled={certLoading === d.donor_id}
-                          className="p-1 text-slate-400 hover:text-green-600 rounded disabled:opacity-40"
-                        >
-                          <Award size={14} className={certLoading === d.donor_id ? 'animate-pulse' : ''} />
-                        </button>
-                      )}
-                      {!d.is_voided && (
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/donations/${d.id}/edit`)}
-                          title={t('donations.editVoidReissue')}
-                          aria-label={t('donations.editVoidReissue')}
-                          className="p-1 text-slate-400 hover:text-amber-600 rounded"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      )}
-                      {!d.is_voided && (
-                        <button
-                          type="button"
-                          onClick={() => setVoidModal({ id: d.id, invoiceNo: d.invoice_no })}
-                          title={t('donations.voidDonation')}
-                          aria-label={t('donations.voidDonation')}
-                          className="p-1 text-slate-400 hover:text-brand-red rounded"
-                        >
-                          <Ban size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {total > 20 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>{t('donations.showing', { from: ((page-1)*20)+1, to: Math.min(page*20, total), total })}</span>
-          <div className="flex gap-2">
-            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary btn-sm">{t('common.prev')}</button>
-            <button disabled={page * 20 >= total} onClick={() => setPage(p => p+1)} className="btn-secondary btn-sm">{t('common.next')}</button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        viewKey="donations-list"
+        columns={columns}
+        rows={donations}
+        rowKey={d => d.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={resetPageAnd(setSearch)}
+        searchPlaceholder={t('donations.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        graphData={graphData}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+          setPage(1)
+        }}
+        sort={sort}
+        onSortChange={resetPageAnd(setSort)}
+        page={page}
+        limit={PAGE_SIZE}
+        total={meta?.total ?? 0}
+        onPageChange={setPage}
+        emptyMessage={t('donations.noDonationsFound')}
+        emptyAction={{ label: t('donations.newDonation'), onClick: () => navigate('/donations/add') }}
+        onClearFilters={() => { setFilterState({}); setPage(1) }}
+      />
 
       {/* Void confirmation modal */}
       {voidModal && (

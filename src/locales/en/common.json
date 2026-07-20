@@ -38,7 +38,12 @@
     "lostFound": "Lost & Found",
     "visitorCount": "Visitor Count",
     "settings": "Settings",
-    "userGuide": "User Guide"
+    "userGuide": "User Guide",
+    "cheques": "Cheques",
+    "cashBank": "Cash & Bank",
+    "reconciliation": "Bank Reconciliation",
+    "recycleBin": "Recycle Bin",
+    "activityLog": "Activity Log"
   },
   "donationsHub": {
     "donations": "Donations",
@@ -246,7 +251,20 @@
       "depreciationHeading": "Fixed Asset Depreciation",
       "enableDepreciation": "Enable depreciation tracking for fixed assets",
       "depreciationHelp": "When on, the Balance Sheet shows fixed assets net of depreciation; when off, at gross cost. Use \"Run Depreciation\" on the Fixed Assets page to compute & post each year's charge (straight-line or written-down value).",
-      "saveButton": "Save Accounting Rules"
+      "saveButton": "Save Accounting Rules",
+      "closeBooksHeading": "Close Books",
+      "closeBooksHelp": "Locks every donation and expense entry dated in or before the chosen financial year — no one but a temple admin can post to a closed year afterwards. Use this once a year's accounts are finalised and handed to the CA.",
+      "closeThroughFy": "Close through FY",
+      "closeButton": "Close books",
+      "closeConfirmTitle": "Close the books?",
+      "closeConfirmMessage": "This locks all entries in FY {{fy}} and every year before it. Only a temple admin will be able to post or edit entries dated in that range afterwards.",
+      "closeSuccess": "Books closed through FY {{fy}}",
+      "closeFailed": "Could not close the books",
+      "lockedThrough": "Books are closed through FY {{fy}}",
+      "reopenButton": "Reopen",
+      "reopenConfirmTitle": "Reopen the books?",
+      "reopenConfirmMessage": "This removes the lock — every role will be able to post entries into the previously closed years again.",
+      "reopenSuccess": "Books reopened"
     },
     "masters": {
       "loadFailed": "Failed to load",
@@ -482,7 +500,8 @@
     "email": "Email",
     "type": "Type",
     "noneYet": "None yet.",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "saved": "Saved"
   },
   "donations": {
     "title": "Donations",
@@ -543,7 +562,12 @@
     "panBlockedWarning": "(Donor has no PAN on record — 80G needs a PAN)",
     "panWillBeSaved": "PAN will be saved to {{name}}'s record with this donation.",
     "panFormatHint": "PAN format: 5 letters, 4 digits, 1 letter — e.g. ABCDE1234F",
-    "theDonor": "the donor"
+    "theDonor": "the donor",
+    "receiptLoadFailed": "Could not load the receipt. Please try again.",
+    "pdfGenerateFailed": "Could not generate the PDF. Please try again.",
+    "no80gThisYear": "No 80G-eligible donations for this donor this year",
+    "voidSuccess": "Receipt {{invoiceNo}} voided",
+    "voidFailed": "Could not void the donation"
   },
   "donationRequests": {
     "title": "Donation Requests",
@@ -581,7 +605,8 @@
     "utrLabel": "UTR:",
     "paidOnLabel": "Paid on:",
     "remarksLabel": "Remarks:",
-    "eightyGIncomplete": "⚠ 80G requested but donor PAN/address incomplete — the 80G receipt needs both."
+    "eightyGIncomplete": "⚠ 80G requested but donor PAN/address incomplete — the 80G receipt needs both.",
+    "searchPlaceholder": "Search donor, mobile, UTR or receipt…"
   },
   "pledges": {
     "title": "Pledges",
@@ -624,7 +649,12 @@
     "pledgeDate": "Pledge Date",
     "event2": "Event",
     "eventPlaceholder": "e.g. Paryushan 2026",
-    "savePledge": "Save Pledge"
+    "savePledge": "Save Pledge",
+    "paymentSuccess": "Payment recorded",
+    "paymentFailed": "Could not record the payment",
+    "waiveSuccess": "Pledge waived",
+    "waiveFailed": "Could not waive the pledge",
+    "intimationFailed": "Could not generate the intimation slip"
   },
   "expenses": {
     "title": "Expenses",
@@ -672,7 +702,26 @@
     "tdsAmount": "TDS Amount (₹)",
     "tdsSection": "TDS Section",
     "selectEllipsis": "Select…",
-    "saveExpense": "Save Expense"
+    "saveExpense": "Save Expense",
+    "updateSuccess": "Expense updated",
+    "updateFailed": "Could not update the expense",
+    "deleteSuccess": "Expense deleted",
+    "deleteFailed": "Could not delete the expense",
+    "deleteConfirm": "Delete this expense? This cannot be undone.",
+    "recurringLabel": "Repeat monthly (salary, electricity, AMC…)",
+    "recurringLink": "Recurring expenses",
+    "recurringTitle": "Recurring Expenses",
+    "recurringSubtitle": "Confirm this month's salary, electricity, AMC and other repeating bills — amount pre-filled from last time, editable before you confirm.",
+    "lastAmount": "Last amount",
+    "lastDate": "Last date",
+    "loggedThisMonth": "Logged this month",
+    "pendingThisMonth": "Pending",
+    "confirmThisMonth": "Confirm",
+    "pendingCount": "{{count}} pending",
+    "recurringConfirmed": "{{description}} logged for this month",
+    "recurringConfirmFailed": "Could not confirm this expense",
+    "noRecurringExpenses": "No expenses marked recurring yet — tick \"Repeat monthly\" when adding one",
+    "enterValidAmount": "Enter a valid amount"
   },
   "dharamshala": {
     "roomsTitle": "Dharamshala — Rooms",
@@ -742,7 +791,15 @@
     "sessionEvening": "Evening (12PM–8PM)",
     "sessionFullDay": "Full Day",
     "sessionHourly": "Hourly",
-    "bookerContact": "Booker / Contact"
+    "bookerContact": "Booker / Contact",
+    "searchPlaceholder": "Search guest, mobile or invoice…",
+    "hallSearchPlaceholder": "Search event or booker…",
+    "checkinSuccess": "Guest checked in",
+    "checkinFailed": "Check-in failed",
+    "checkoutSuccess": "Guest checked out",
+    "checkoutFailed": "Check-out failed",
+    "cancelSuccess": "Booking cancelled",
+    "cancelFailed": "Could not cancel the booking"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",
@@ -848,7 +905,14 @@
     "paymentMode": "Payment Mode",
     "receivedInAccount": "Received in Account *",
     "selectAccount": "Select account…",
-    "bookSeva": "Book Seva"
+    "bookSeva": "Book Seva",
+    "bookings": "Bookings",
+    "pageCollection": "Collection (this page)",
+    "confirmedToast": "Booking confirmed",
+    "completedToast": "Seva marked done",
+    "cancelledToast": "Booking cancelled",
+    "updateFailed": "Could not update the booking",
+    "cancelFailed": "Could not cancel the booking"
   },
   "bhojanshala": {
     "title": "Bhojanshala",
@@ -881,7 +945,9 @@
     "confirmRedeem": "Confirm redeem",
     "cancelRedeem": "Cancel redeem",
     "redeem": "Redeem",
-    "printTokenSlip": "Print token slip"
+    "printTokenSlip": "Print token slip",
+    "saleRecorded": "Sale recorded",
+    "redeemFailed": "Could not redeem tokens"
   },
   "events": {
     "title": "Events",
@@ -937,7 +1003,17 @@
     "noRegistrationsYet": "No registrations yet",
     "regStatusRegistered": "Registered",
     "regStatusAttended": "Attended",
-    "regStatusCancelled": "Cancelled"
+    "regStatusCancelled": "Cancelled",
+    "spent": "Spent",
+    "searchPlaceholder": "Search events…",
+    "updatedToast": "Event updated",
+    "deletedToast": "Event deleted",
+    "deleteFailed": "Could not delete the event",
+    "pnlTitle": "Collections vs Expenses",
+    "pnlCollected": "Collected",
+    "pnlExpenses": "Expenses",
+    "pnlNet": "Net",
+    "pnlScope": "Collections = paid boli pledges + paid registrations linked to this event. General donations and seva bookings aren't linked to a specific event in the system, so they aren't included here."
   },
   "maharaj": {
     "title": "Maharaj / Mataji",
@@ -1001,7 +1077,8 @@
     "mobileNumber": "Mobile Number *",
     "mobilePlaceholder": "10-digit mobile",
     "sendInvite": "Send Invite",
-    "invalidMobile": "Enter a valid 10-digit mobile number"
+    "invalidMobile": "Enter a valid 10-digit mobile number",
+    "searchPlaceholder": "Search name, mobile or city…"
   },
   "donors": {
     "title": "Donors / Devotees",
@@ -1067,7 +1144,14 @@
     "sendOtp": "Send OTP",
     "sendingOtp": "Sending…",
     "verifyReveal": "Verify & reveal",
-    "verifying": "Verifying…"
+    "verifying": "Verifying…",
+    "statementTitle": "Statement — {{name}}",
+    "fullHistory": "Full history",
+    "tags": "Tags",
+    "addTag": "Add tag",
+    "removeTag": "Remove {{tag}}",
+    "customTagPlaceholder": "Custom tag…",
+    "tagUpdateFailed": "Could not update tags"
   },
   "creditors": {
     "title": "Creditors (Udhaar)",
@@ -1104,7 +1188,16 @@
     "enterValidAmount": "Enter a valid amount",
     "cannotExceedOutstanding": "Cannot pay more than outstanding ₹{{amount}}",
     "selectBankAccountError": "Select the bank account this payment came from",
-    "failedToAddEntry": "Failed to add entry."
+    "failedToAddEntry": "Failed to add entry.",
+    "openEntries": "Open entries",
+    "searchPlaceholder": "Search vendor…",
+    "paymentRecorded": "Payment recorded",
+    "entryAdded": "Payable entry added",
+    "due": "due",
+    "oldestBill": "Oldest bill",
+    "daysCount": "{{count}} days",
+    "daysCount_one": "{{count}} day",
+    "daysCount_other": "{{count}} days"
   },
   "vendors": {
     "title": "Vendors / Suppliers",
@@ -1159,7 +1252,8 @@
     "mode": "Mode",
     "type": "Type",
     "noTransactionsYet": "No transactions yet",
-    "credit": "Credit"
+    "credit": "Credit",
+    "statementTitle": "Statement — {{name}}"
   },
   "priests": {
     "title": "Priests",
@@ -1241,7 +1335,12 @@
     "unitPair": "Pair",
     "currentStock": "Current Stock",
     "reorderAt": "Reorder At",
-    "unitPriceAmount": "Unit Price (₹)"
+    "unitPriceAmount": "Unit Price (₹)",
+    "lowStock": "Low stock",
+    "stockValue": "Stock value",
+    "showLowStockOnly": "Show low-stock items only",
+    "itemUpdated": "Item updated",
+    "itemAdded": "Item added"
   },
   "accounts": {
     "print": "Print",
@@ -1360,7 +1459,24 @@
     "loansTakenOutstanding": "Loans Taken (Outstanding)",
     "corpusNetWorth": "Corpus / Net Worth",
     "asOfEndOfFy": "As of end of FY",
-    "noDataAvailable": "No data available"
+    "noDataAvailable": "No data available",
+    "cashBankTitle": "Cash & Bank",
+    "currentBalance": "Current balance",
+    "moneyIn": "Money in",
+    "moneyOut": "Money out",
+    "noAccountsFound": "No accounts found",
+    "selectAnAccount": "Select an account to see its transactions",
+    "noTransactionsInRange": "No transactions in this period",
+    "deposit": "Deposit",
+    "withdraw": "Withdraw",
+    "depositTo": "Deposit into {{account}}",
+    "withdrawFrom": "Withdraw from {{account}}",
+    "depositHint": "Money moving from another account into this one — e.g. cash deposited into the bank.",
+    "withdrawHint": "Money moving out of this account into another — e.g. cash withdrawn from the bank.",
+    "selectOtherAccount": "Select the other account",
+    "depositSuccess": "Deposit recorded",
+    "withdrawSuccess": "Withdrawal recorded",
+    "moveFailed": "Could not record the transfer"
   },
   "reports": {
     "title": "Reports",
@@ -1378,7 +1494,44 @@
     "gstSummary": "GST Summary",
     "downloadAs": "Download {{label}} as {{format}}",
     "charteredAccountant": "Chartered Accountant",
-    "caPackLabel": "CA Pack — all registers & statements (ZIP)"
+    "caPackLabel": "CA Pack — all registers & statements (ZIP)",
+    "groupStatutory": "Statutory",
+    "stream": "Stream",
+    "streamDonations": "Donations",
+    "streamSeva": "Seva",
+    "streamPrasad": "Prasad",
+    "streamBhojanshala": "Bhojanshala",
+    "streamRoomAdvance": "Room Advance",
+    "streamHallAdvance": "Hall Advance",
+    "streamTotalCollection": "Total Collection",
+    "streamExpenses": "Expenses",
+    "streamNet": "Net",
+    "noData": "No data for the selected period",
+    "period": "Period",
+    "granularityLabel": "View by",
+    "granularity_monthly": "Monthly",
+    "granularity_weekly": "Weekly",
+    "rank": "#",
+    "limitLabel": "Show top",
+    "head": "Head",
+    "gstOutputRooms": "Output GST — Rooms",
+    "gstOutputHalls": "Output GST — Halls",
+    "gstOutputPrasad": "Output GST — Prasad",
+    "gstOutputTotal": "Output GST — Total",
+    "gstInput": "Input GST (on expenses)",
+    "gstNetPayable": "Net GST Payable",
+    "caPackShort": "Download CA Pack (ZIP)",
+    "creditorAging": "Creditor Aging",
+    "aging0to30": "0–30 days",
+    "aging31to60": "31–60 days",
+    "aging60plus": "60+ days",
+    "ageDays": "Age (days)",
+    "agingBucket": "Aging",
+    "noOpenPayables": "No open payables — everything is settled",
+    "donationYoY": "Year-over-Year",
+    "month": "Month",
+    "change": "Change",
+    "growth": "Growth"
   },
   "certificates": {
     "title": "Compliance — Certificates & TDS",
@@ -1483,6 +1636,148 @@
     "morning": "Morning",
     "evening": "Evening",
     "totalCol": "Total",
-    "noRecords": "No records"
+    "noRecords": "No records",
+    "searchPlaceholder": "Search description or claimant…",
+    "itemRecorded": "Item recorded",
+    "claimRecorded": "Claim recorded",
+    "claimFailed": "Could not record the claim",
+    "claimantName": "Claimant name",
+    "claimantMobile": "Claimant mobile",
+    "countSaved": "Visitor count saved"
+  },
+  "dateRange": {
+    "all": "All dates",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This Week",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "thisQuarter": "This Quarter",
+    "thisFY": "This FY",
+    "lastFY": "Last FY",
+    "custom": "Custom range",
+    "from": "From",
+    "to": "To"
+  },
+  "kit": {
+    "filterColumn": "Filter column",
+    "contains": "Contains…",
+    "min": "Min ₹",
+    "max": "Max ₹",
+    "clear": "Clear",
+    "apply": "Apply",
+    "search": "Search…",
+    "clearSearch": "Clear search",
+    "graph": "Show graph",
+    "exportExcel": "Download Excel",
+    "exportPdf": "Download PDF",
+    "print": "Print",
+    "noGraphData": "Choose a bounded date range to see the day-wise graph",
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "clearFilters": "Clear filters",
+    "vsPrevPeriod": "vs previous period",
+    "vsPrevPeriodSub": "vs previous period",
+    "receipts": "Receipts",
+    "digital": "UPI / Online",
+    "total": "Total",
+    "nothingToExport": "Nothing to export for the current filters",
+    "exportReady": "Download ready",
+    "exportFailed": "Could not export. Please try again.",
+    "columns": "Columns",
+    "savedViews": "Saved views",
+    "noSavedViews": "No saved views yet",
+    "deleteView": "Delete view",
+    "viewNamePlaceholder": "View name…",
+    "saveCurrentView": "Save current filters as a view"
+  },
+  "palette": {
+    "placeholder": "Search donors, receipts, bolis, vendors, or jump to a screen…",
+    "searchEllipsis": "Search",
+    "openTitle": "Open search (Ctrl+K)",
+    "screens": "Go to",
+    "noResults": "No matches for “{{q}}”",
+    "hint": "Type at least 2 letters to search across the temple's records",
+    "navigate": "Navigate",
+    "open": "Open",
+    "close": "Close"
+  },
+  "cheques": {
+    "title": "Cheques",
+    "statusReceived": "Received",
+    "statusDeposited": "Deposited",
+    "statusCleared": "Cleared",
+    "statusBounced": "Bounced",
+    "chequeNo": "Cheque No.",
+    "bank": "Bank",
+    "chequeDate": "Cheque Date",
+    "deposit": "Deposit",
+    "markCleared": "Mark cleared",
+    "markBounced": "Mark bounced",
+    "noCheques": "No cheque donations for the selected period",
+    "pendingClearance": "Pending clearance",
+    "pendingCount": "{{count}} cheques",
+    "depositTitle": "Deposit cheque",
+    "depositSubtitle": "Receipt {{invoiceNo}}",
+    "depositTo": "Deposit to",
+    "depositDate": "Deposit date",
+    "depositSuccess": "Cheque marked deposited",
+    "depositFailed": "Could not record the deposit",
+    "clearSuccess": "Cheque marked cleared",
+    "clearFailed": "Could not mark the cheque cleared",
+    "bounceTitle": "Mark cheque bounced",
+    "bounceWarning": "This will void receipt {{invoiceNo}} — the donation never actually settled. The donor will be notified.",
+    "bounceReasonPlaceholder": "e.g. Insufficient funds, signature mismatch",
+    "bounceSuccess": "Receipt {{invoiceNo}} voided — cheque marked bounced",
+    "bounceFailed": "Could not mark the cheque bounced",
+    "tabReceived": "Received (Donations)",
+    "tabIssued": "Issued (Expenses)",
+    "statusIssued": "Issued",
+    "issuedBounceWarning": "This will flag \"{{description}}\" as bounced. It did not clear the bank — you will need to re-pay the vendor separately.",
+    "issuedBounceSuccess": "Cheque marked bounced",
+    "bounceReasonOptional": "Reason (optional)"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "search": "Open search",
+    "newDonation": "New donation",
+    "newExpense": "New expense",
+    "newPledge": "New pledge (Boli)",
+    "showShortcuts": "Show this list",
+    "closeDialog": "Close dialog"
+  },
+  "bankRecon": {
+    "title": "Bank Reconciliation",
+    "subtitle": "Match your bank's own statement against the Bank Book for the same period — a point-in-time check, not stored.",
+    "uploadTitle": "Bank statement",
+    "uploadHint": "CSV with a header row: Date + either Amount, or separate Debit/Credit columns. Dates as yyyy-mm-dd or dd/mm/yyyy.",
+    "uploadCsv": "Upload CSV",
+    "orPasteBelow": "or paste it below",
+    "parsedCount": "{{count}} statement rows read",
+    "csvFormatError": "Couldn't find a Date column and an Amount/Debit/Credit column in the header row",
+    "matched": "Matched",
+    "unmatchedInBooks": "In books, not on statement",
+    "unmatchedInStatement": "On statement, not in books",
+    "noneMatchedYet": "No matches yet"
+  },
+  "recycleBin": {
+    "title": "Recycle Bin",
+    "subtitle": "Records deleted in the last 90 days. Restore brings them back exactly as they were.",
+    "type": "Type",
+    "item": "Item",
+    "deletedAt": "Deleted",
+    "restore": "Restore",
+    "restored": "Restored",
+    "restoreFailed": "Could not restore this record",
+    "empty": "Nothing in the recycle bin"
+  },
+  "activityLog": {
+    "title": "Activity Log",
+    "subtitle": "Who did what, when — every create, edit, delete, void and restore across the account.",
+    "actor": "By",
+    "entity": "Record type",
+    "action": "Action",
+    "recordId": "ID",
+    "system": "System",
+    "empty": "No activity in this period"
   }
 }

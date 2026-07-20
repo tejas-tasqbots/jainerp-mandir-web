@@ -66,6 +66,11 @@ export interface Donation {
   is_voided: boolean
   void_reason?: string
   created_at: string
+  /** Present only when payment_mode is 'cheque' (tenant-migration 007). */
+  cheque_number?: string | null
+  cheque_bank?: string | null
+  cheque_date?: string | null
+  cheque_status?: 'received' | 'deposited' | 'cleared' | 'bounced' | null
 }
 
 // ─── Donors ──────────────────────────────────────────────────────────────────
@@ -82,6 +87,8 @@ export interface Donor {
   cumulative_amount_current_fy_paise?: number
   is_active: boolean
   created_at: string
+  /** Free-form donor labels, e.g. "Trustee Family", "NRI" (tenant-migration 008). */
+  tags?: string[]
 }
 
 // ─── Boli ────────────────────────────────────────────────────────────────────
@@ -131,6 +138,16 @@ export interface Expense {
   event_id?: string
   receipt_cdn_url?: string
   created_at: string
+  /** Present only when is_on_credit — the linked {s}.creditors row (§ payable tracking). */
+  creditor_id?: string | null
+  credit_paid_paise?: number | null
+  credit_status?: 'pending' | 'partially_paid' | 'paid' | null
+  credit_due_date?: string | null
+  /** Present only when payment_mode is 'cheque' (tenant-migration 008). */
+  cheque_number?: string | null
+  cheque_bank?: string | null
+  cheque_date?: string | null
+  cheque_status?: 'issued' | 'cleared' | 'bounced' | null
 }
 
 // ─── Rooms ───────────────────────────────────────────────────────────────────

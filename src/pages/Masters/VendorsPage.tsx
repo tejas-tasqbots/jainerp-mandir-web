@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Pencil, X } from 'lucide-react'
+import { Plus, Pencil, X } from 'lucide-react'
 import { api } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface Vendor {
   id: string
@@ -28,13 +32,67 @@ const emptyForm = {
 export function VendorsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const toast = useToast()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  const columns: ColumnDef<Vendor>[] = useMemo(() => [
+    { key: 'name', label: t('vendors.name'), render: v => <span className="font-medium text-brand-blue">{v.name}</span> },
+    { key: 'mobile', label: t('vendors.mobile'), render: v => <>{v.mobile || '—'}</> },
+    { key: 'gstin', label: t('vendors.gstin'), render: v => <span className="font-mono text-xs">{v.gstin || '—'}</span> },
+    { key: 'pan', label: t('vendors.pan'), render: v => <span className="font-mono text-xs">{v.pan_masked || '—'}</span> },
+    {
+      key: 'status', label: t('vendors.status'),
+      render: v => v.is_active
+        ? <span className="badge-green">{t('vendors.active')}</span>
+        : <span className="badge-gray">{t('vendors.inactive')}</span>,
+    },
+    {
+      key: 'actions', label: t('vendors.actions'),
+      render: v => (
+        <span onClick={e => e.stopPropagation()}>
+          <button type="button" onClick={() => openEdit(v)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('vendors.edit')} aria-label="Edit vendor">
+            <Pencil size={14} />
+          </button>
+        </span>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
+
+  async function exportExcel() {
+    if (!vendors.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('vendors.title'),
+        filename: 'vendors',
+        columns: [
+          { header: t('vendors.name'), width: 26 },
+          { header: t('vendors.contactPerson'), width: 20 },
+          { header: t('vendors.mobile'), width: 16 },
+          { header: t('vendors.email'), width: 24 },
+          { header: t('vendors.gstin'), width: 18 },
+          { header: t('vendors.pan'), width: 13 },
+          { header: t('vendors.tdsSection'), width: 10 },
+          { header: t('vendors.status'), width: 10 },
+        ],
+        rows: vendors.map(v => [
+          v.name, v.contact_person ?? '', v.mobile ?? '', v.email ?? '', v.gstin ?? '',
+          v.pan_masked ?? '', v.tds_section ?? '',
+          v.is_active ? t('vendors.active') : t('vendors.inactive'),
+        ]),
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
 
   useEffect(() => { load() }, [search])
 
@@ -90,44 +148,40 @@ export function VendorsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('vendors.title')} />
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('vendors.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('vendors.addVendor')}</button>
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="form-input pl-9" placeholder={t('vendors.searchPlaceholder')}
-          value={search} onChange={e => setSearch(e.target.value)} />
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('vendors.name')}</th><th>{t('vendors.mobile')}</th><th>{t('vendors.gstin')}</th><th>{t('vendors.pan')}</th><th>{t('vendors.status')}</th><th>{t('vendors.actions')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : vendors.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-slate-400">{t('vendors.noVendorsFound')}</td></tr>
-              ) : vendors.map(v => (
-                <tr key={v.id} className="cursor-pointer hover:bg-slate-50" onClick={() => navigate(`/masters/vendors/${v.id}`)}>
-                  <td className="font-medium text-brand-blue">{v.name}</td>
-                  <td>{v.mobile || '—'}</td>
-                  <td className="font-mono text-xs">{v.gstin || '—'}</td>
-                  <td className="font-mono text-xs">{v.pan_masked || '—'}</td>
-                  <td>{v.is_active ? <span className="badge-green">{t('vendors.active')}</span> : <span className="badge-gray">{t('vendors.inactive')}</span>}</td>
-                  <td onClick={e => e.stopPropagation()}>
-                    <button type="button" onClick={() => openEdit(v)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('vendors.edit')} aria-label="Edit vendor">
-                      <Pencil size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        viewKey="vendors-list"
+        columns={columns}
+        rows={vendors}
+        rowKey={v => v.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('vendors.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, st) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (st) next[key] = st
+            else delete next[key]
+            return next
+          })
+        }}
+        page={1}
+        limit={200}
+        total={vendors.length}
+        onPageChange={() => {}}
+        emptyMessage={t('vendors.noVendorsFound')}
+        emptyAction={{ label: t('vendors.addVendor'), onClick: openAdd }}
+        onRowClick={v => navigate(`/masters/vendors/${v.id}`)}
+      />
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

@@ -56,6 +56,9 @@ const navItems: NavItem[] = [
   {
     labelKey: 'nav.accounts', icon: <Landmark size={18} />,
     children: [
+      { labelKey: 'nav.cashBank', to: '/accounts/cash-bank' },
+      { labelKey: 'nav.reconciliation', to: '/accounts/reconciliation' },
+      { labelKey: 'nav.cheques', to: '/accounts/cheques' },
       { labelKey: 'nav.contra', to: '/accounts/contra' },
       { labelKey: 'nav.fixedAssets', to: '/accounts/fixed-assets' },
       { labelKey: 'nav.loans', to: '/accounts/loans' },
@@ -76,6 +79,8 @@ const navItems: NavItem[] = [
     children: [
       { labelKey: 'nav.lostFound', to: '/registers/lost-found' },
       { labelKey: 'nav.visitorCount', to: '/registers/visitor-count' },
+      { labelKey: 'nav.recycleBin', to: '/registers/recycle-bin' },
+      { labelKey: 'nav.activityLog', to: '/registers/activity-log' },
     ],
   },
   { labelKey: 'nav.settings', icon: <Settings size={18} />, to: '/settings' },

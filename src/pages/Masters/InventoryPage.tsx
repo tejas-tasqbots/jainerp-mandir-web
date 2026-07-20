@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, X, Search, Package } from 'lucide-react'
+import { Plus, Pencil, X, Package, AlertTriangle } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface InventoryItem {
   id: string
@@ -17,27 +22,138 @@ interface InventoryItem {
 
 const emptyForm = { name: '', category: '', unit: 'piece', current_stock: '0', reorder_level: '0', unit_price: '' }
 
+// Bhandar item masters are small — load the full set so the low-stock filter
+// and stock-value summary see every item, and let the table paginate visually.
+const FETCH_LIMIT = 200
+
+const isLowStock = (i: InventoryItem) =>
+  i.current_stock !== undefined && i.reorder_level !== undefined && i.current_stock <= i.reorder_level
+
 export function InventoryPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+  const [lowOnly, setLowOnly] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  const columns: ColumnDef<InventoryItem>[] = useMemo(() => [
+    {
+      key: 'name', label: t('inventory.item'),
+      render: i => (
+        <span className="font-medium inline-flex items-center gap-1.5">
+          {i.name}
+          {isLowStock(i) && (
+            <span className="badge-red inline-flex items-center gap-1" title={t('inventory.lowStock')}>
+              <AlertTriangle size={10} /> {t('inventory.lowStock')}
+            </span>
+          )}
+        </span>
+      ),
+    },
+    { key: 'category', label: t('inventory.category'), render: i => <span className="text-slate-600">{i.category || '—'}</span> },
+    { key: 'unit', label: t('inventory.unit'), render: i => <span className="text-slate-600">{i.unit || '—'}</span> },
+    {
+      key: 'stock', label: t('inventory.stock'), align: 'right',
+      render: i => (
+        <span className={`font-semibold ${isLowStock(i) ? 'text-red-600' : 'text-slate-700'}`}>
+          {i.current_stock ?? 0}
+        </span>
+      ),
+    },
+    {
+      key: 'reorder', label: t('inventory.reorderLevel'), align: 'right',
+      render: i => <span className="text-slate-500">{i.reorder_level ?? 0}</span>,
+    },
+    {
+      key: 'unitPrice', label: t('inventory.unitPrice'), align: 'right',
+      render: i => <>{i.unit_price_paise ? `₹${fmtPaise(i.unit_price_paise)}` : '—'}</>,
+    },
+    {
+      key: 'value', label: t('inventory.stockValue'), align: 'right',
+      render: i => {
+        const value = (i.unit_price_paise ?? 0) * (i.current_stock ?? 0)
+        return <span className="text-slate-600">{value ? `₹${fmtPaise(value)}` : '—'}</span>
+      },
+    },
+    {
+      key: 'status', label: t('inventory.status'),
+      render: i => i.is_active
+        ? <span className="badge-green">{t('inventory.active')}</span>
+        : <span className="badge-gray">{t('inventory.inactive')}</span>,
+    },
+    {
+      key: 'actions', label: t('inventory.actions'),
+      render: i => (
+        <button
+          onClick={() => openEdit(i)}
+          className="p-1 text-slate-400 hover:text-brand-blue rounded"
+          title={t('inventory.editItem')} aria-label={t('inventory.editItem')}
+        >
+          <Pencil size={14} />
+        </button>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
 
   useEffect(() => { load() }, [search])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '50' })
+      const params = new URLSearchParams({ limit: String(FETCH_LIMIT) })
       if (search) params.set('q', search)
       const { data } = await api.get(`/inventory-items?${params}`)
       setItems(data.data || [])
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Low-stock is a computed condition (stock ≤ reorder level), so it filters
+  // over the fully-loaded item set on the client.
+  const visible = lowOnly ? items.filter(isLowStock) : items
+  const lowCount = items.filter(isLowStock).length
+  const stockValue = items.reduce((s, i) => s + (i.unit_price_paise ?? 0) * (i.current_stock ?? 0), 0)
+
+  const stats: SummaryStat[] = [
+    { label: t('inventory.title'), value: String(items.length) },
+    { label: t('inventory.stockValue'), value: `₹${fmtPaise(stockValue)}` },
+    { label: t('inventory.lowStock'), value: String(lowCount), tone: lowCount ? 'expense' : 'default' },
+  ]
+
+  async function exportExcel() {
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('inventory.title'),
+        filename: 'inventory',
+        columns: [
+          { header: t('inventory.item'), width: 26 },
+          { header: t('inventory.category'), width: 16 },
+          { header: t('inventory.unit'), width: 10 },
+          { header: t('inventory.stock'), type: 'number' },
+          { header: t('inventory.reorderLevel'), type: 'number' },
+          { header: t('inventory.unitPrice'), type: 'money' },
+          { header: t('inventory.stockValue'), type: 'money' },
+          { header: t('inventory.status'), width: 10 },
+        ],
+        rows: visible.map(i => [
+          i.name, i.category ?? '', i.unit ?? '', i.current_stock ?? 0, i.reorder_level ?? 0,
+          i.unit_price_paise ?? 0, (i.unit_price_paise ?? 0) * (i.current_stock ?? 0),
+          i.is_active ? t('inventory.active') : t('inventory.inactive'),
+        ]),
+        totals: [t('kit.total'), '', '', '', '', '', stockValue, ''],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
     }
   }
 
@@ -66,6 +182,7 @@ export function InventoryPage() {
       if (editId) await api.patch(`/inventory-items/${editId}`, body)
       else await api.post('/inventory-items', body)
       setShowForm(false); setForm(emptyForm); setEditId(null)
+      toast.success(editId ? t('inventory.itemUpdated') : t('inventory.itemAdded'))
       load()
     } finally {
       setSaving(false)
@@ -74,46 +191,55 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('inventory.title')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2"><Package size={18} /> {t('inventory.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('inventory.addItem')}</button>
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="form-input pl-9" placeholder={t('inventory.searchPlaceholder')}
-          value={search} onChange={e => setSearch(e.target.value)} />
+      <SummaryStrip stats={stats} />
+
+      <div className="no-print">
+        <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={lowOnly}
+            onChange={e => setLowOnly(e.target.checked)}
+            className="accent-[var(--color-cta)]"
+          />
+          {t('inventory.showLowStockOnly')}
+          {lowCount > 0 && <span className="badge-red">{lowCount}</span>}
+        </label>
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('inventory.item')}</th><th>{t('inventory.category')}</th><th>{t('inventory.unit')}</th><th>{t('inventory.stock')}</th><th>{t('inventory.reorderLevel')}</th><th>{t('inventory.unitPrice')}</th><th>{t('inventory.status')}</th><th>{t('inventory.actions')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">{t('inventory.noItemsFound')}</td></tr>
-              ) : items.map(item => (
-                <tr key={item.id}>
-                  <td className="font-medium">{item.name}</td>
-                  <td className="text-slate-600">{item.category || '—'}</td>
-                  <td className="text-slate-600">{item.unit || '—'}</td>
-                  <td className={`font-semibold ${item.current_stock !== undefined && item.reorder_level !== undefined && item.current_stock <= item.reorder_level ? 'text-red-600' : 'text-slate-700'}`}>
-                    {item.current_stock ?? 0}
-                  </td>
-                  <td className="text-slate-500">{item.reorder_level ?? 0}</td>
-                  <td>{item.unit_price_paise ? `₹${fmtPaise(item.unit_price_paise)}` : '—'}</td>
-                  <td>{item.is_active ? <span className="badge-green">{t('inventory.active')}</span> : <span className="badge-gray">{t('inventory.inactive')}</span>}</td>
-                  <td>
-                    <button onClick={() => openEdit(item)} className="p-1 text-slate-400 hover:text-brand-blue rounded"><Pencil size={14} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        viewKey="inventory-list"
+        columns={columns}
+        rows={visible}
+        rowKey={i => i.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('inventory.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+        }}
+        page={1}
+        limit={FETCH_LIMIT}
+        total={visible.length}
+        onPageChange={() => {}}
+        emptyMessage={t('inventory.noItemsFound')}
+        emptyAction={{ label: t('inventory.addItem'), onClick: openAdd }}
+      />
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

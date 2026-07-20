@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Building2, Phone, Mail, FileText, Landmark } from 'lucide-react'
+import { ArrowLeft, Building2, Phone, Mail, FileText, Landmark, Sheet, Printer } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface VendorDetail {
   id: string
@@ -56,6 +59,7 @@ interface Profile {
 
 export function VendorProfile() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState<Profile | null>(null)
@@ -75,11 +79,57 @@ export function VendorProfile() {
 
   const v = data.vendor
 
+  async function exportExcel() {
+    if (!data) return
+    if (!data.expenses.length && !data.creditors.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('vendors.statementTitle', { name: v.name }),
+        subtitle: t('donors.fullHistory'),
+        filename: `${v.name}-statement`,
+        columns: [
+          { header: t('vendors.date'), type: 'date' },
+          { header: t('vendors.description'), width: 30 },
+          { header: t('vendors.category'), width: 16 },
+          { header: t('vendors.billNo'), width: 14 },
+          { header: t('vendors.amount'), type: 'money' },
+          { header: 'GST', type: 'money' },
+          { header: t('vendors.tdsCol'), type: 'money' },
+          { header: t('vendors.mode'), width: 10 },
+          { header: t('vendors.type'), width: 10 },
+        ],
+        rows: data.expenses.map(e => [
+          new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN'), e.description, e.category ?? '',
+          e.bill_number ?? '', e.amount_paise, e.gst_paid_paise ?? 0, e.tds_amount_paise ?? 0,
+          e.payment_mode, e.is_on_credit ? t('vendors.credit') : t('vendors.statusPaid'),
+        ]),
+        totals: [
+          t('kit.total'), '', '', '',
+          data.expenses.reduce((s, e) => s + e.amount_paise, 0),
+          data.expenses.reduce((s, e) => s + (e.gst_paid_paise ?? 0), 0),
+          data.expenses.reduce((s, e) => s + (e.tds_amount_paise ?? 0), 0),
+          '', '',
+        ],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
   return (
     <div className="space-y-5 max-w-5xl">
-      <button type="button" onClick={() => navigate('/masters/vendors')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
-        <ArrowLeft size={15} /> {t('vendors.backToVendors')}
-      </button>
+      <PrintLetterhead title={t('vendors.statementTitle', { name: v.name })} subtitle={t('donors.fullHistory')} />
+
+      <div className="flex items-center justify-between no-print">
+        <button type="button" onClick={() => navigate('/masters/vendors')} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+          <ArrowLeft size={15} /> {t('vendors.backToVendors')}
+        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={exportExcel} className="btn-secondary btn-sm"><Sheet size={14} /> {t('kit.exportExcel')}</button>
+          <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
+        </div>
+      </div>
 
       {/* Header card */}
       <div className="card p-5">

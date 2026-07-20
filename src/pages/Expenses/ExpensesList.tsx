@@ -1,88 +1,299 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Download, FileDown, Search, Pencil, Trash2, XCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, Landmark } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import { useResourceNames } from '../../lib/useDropdownOptions'
+import {
+  DataTable, filterStateToParams,
+  type ColumnDef, type ColumnFilterState, type SortState,
+} from '../../components/kit/DataTable'
+import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { Expense } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
+
+const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'credit']
+const PAGE_SIZE = 20
+
+interface ListMeta {
+  total: number
+  total_amount_paise: number
+  prev_period_amount_paise: number | null
+  day_totals?: { date: string; amount_paise: number }[]
+}
+
+interface Account { id: string; name: string; type: string }
+type PayMode = 'cash' | 'upi' | 'cheque' | 'netbanking'
 
 export function ExpensesList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const toast = useToast()
+  const confirm = useConfirm()
+
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [meta, setMeta] = useState<ListMeta | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [totalAmount, setTotalAmount] = useState(0)
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange('expenses'))
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+  const [sort, setSort] = useState<SortState | undefined>()
+
   const [editModal, setEditModal] = useState<Expense | null>(null)
   const [editForm, setEditForm] = useState({ description: '', amount_paise: '', bill_number: '' })
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const confirm = useConfirm()
 
-  // Filters
-  const [fFrom, setFFrom] = useState('')
-  const [fTo, setFTo] = useState('')
-  const [fCredit, setFCredit] = useState('')
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [payModal, setPayModal] = useState<{ creditorId: string; vendorName: string; outstanding: number } | null>(null)
+  const [payAmt, setPayAmt] = useState('')
+  const [payMode, setPayMode] = useState<PayMode>('cash')
+  const [payAccountId, setPayAccountId] = useState('')
+  const [payError, setPayError] = useState('')
+  const [paying, setPaying] = useState(false)
 
-  useEffect(() => { load() }, [page, search, fFrom, fTo, fCredit])
+  const categoryNames = useResourceNames('expense-categories')
+  const bankAccounts = accounts.filter(a => a.type !== 'cash')
+
+  useEffect(() => {
+    api.get('/accounts?is_active=true').then(r => setAccounts(r.data.data || [])).catch(() => {})
+  }, [])
+
+  function creditOutstanding(e: Expense): number {
+    return e.amount_paise - (e.credit_paid_paise ?? 0)
+  }
+
+  function openPay(e: Expense) {
+    if (!e.creditor_id) return
+    setPayModal({ creditorId: e.creditor_id, vendorName: e.vendor_name || e.description, outstanding: creditOutstanding(e) })
+    setPayAmt(''); setPayMode('cash'); setPayAccountId(''); setPayError('')
+  }
+
+  async function submitPay(ev: React.FormEvent) {
+    ev.preventDefault()
+    if (!payModal) return
+    const payPaise = parsePaise(payAmt)
+    if (!payPaise || payPaise <= 0) { setPayError(t('creditors.enterValidAmount')); return }
+    if (payPaise > payModal.outstanding) { setPayError(t('creditors.cannotExceedOutstanding', { amount: fmtPaise(payModal.outstanding) })); return }
+    if (payMode !== 'cash' && !payAccountId) { setPayError(t('creditors.selectBankAccountError')); return }
+    setPaying(true); setPayError('')
+    try {
+      await api.post(`/creditors/${payModal.creditorId}/pay`, {
+        amount_paise: payPaise,
+        payment_mode: payMode,
+        payment_account_id: payMode === 'cash' ? undefined : payAccountId,
+        payment_date: new Date().toISOString().slice(0, 10),
+      })
+      setPayModal(null)
+      toast.success(t('creditors.paymentRecorded'))
+      load()
+    } catch (err: unknown) {
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      setPayError(ex.response?.data?.error?.message || t('pledges.paymentFailed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  const columns: ColumnDef<Expense>[] = useMemo(() => [
+    {
+      key: 'description', label: t('expenses.description'),
+      render: e => <span className="font-medium">{e.description}</span>,
+    },
+    {
+      key: 'vendor', label: t('expenses.vendor'), sortable: true,
+      filter: { kind: 'text', param: 'vendor' },
+      render: e => <span className="text-slate-600">{e.vendor_name || '—'}</span>,
+    },
+    {
+      key: 'category', label: t('expenses.category'), sortable: true,
+      filter: { kind: 'enum', param: 'category', options: categoryNames.map(n => ({ value: n, label: n })) },
+      render: e => <span className="text-slate-500">{e.category || '—'}</span>,
+    },
+    {
+      key: 'amount', label: t('common.amount'), align: 'right', sortable: true,
+      filter: { kind: 'amount', gteParam: 'amount_gte', lteParam: 'amount_lte' },
+      render: e => (
+        <span className="font-semibold">
+          ₹{fmtPaise(e.amount_paise)}
+          {!!e.gst_paid_paise && <span className="block text-xs text-slate-400 font-normal">+GST ₹{fmtPaise(e.gst_paid_paise)}</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'mode', label: t('expenses.mode'),
+      filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`, m) })) },
+      render: e => <span className="badge-gray">{e.payment_mode}</span>,
+    },
+    {
+      key: 'bill_number', label: t('expenses.billNo'), sortable: true,
+      render: e => <span className="text-xs text-slate-400 font-mono">{e.bill_number || '—'}</span>,
+    },
+    {
+      key: 'tds', label: t('expenses.tds'),
+      render: e => e.tds_deducted
+        ? <span className="badge-blue">₹{fmtPaise(e.tds_amount_paise ?? 0)}</span>
+        : <span className="text-slate-300">—</span>,
+    },
+    {
+      key: 'date', label: t('common.date'), sortable: true,
+      render: e => <span className="text-slate-500 text-xs">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</span>,
+    },
+    {
+      key: 'type', label: t('expenses.type'),
+      filter: {
+        kind: 'enum', param: 'credit',
+        options: [
+          { value: 'false', label: t('expenses.paid') },
+          { value: 'true', label: t('expenses.onCredit') },
+        ],
+      },
+      render: e => {
+        if (!e.is_on_credit) return <span className="badge-green">{t('expenses.paid')}</span>
+        const outstanding = creditOutstanding(e)
+        return (
+          <div>
+            <span className="badge-red">{t('expenses.credit')}</span>
+            {outstanding > 0 ? (
+              <span className="block text-xs text-red-600 font-semibold mt-0.5">₹{fmtPaise(outstanding)} {t('creditors.due')}</span>
+            ) : (
+              <span className="block text-xs text-green-600 mt-0.5">{t('creditors.statusPaid')}</span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'actions', label: t('common.actions'),
+      render: e => (
+        <div className="flex gap-1">
+          {e.is_on_credit && e.creditor_id && creditOutstanding(e) > 0 && (
+            <button
+              type="button" onClick={() => openPay(e)}
+              className="p-1 text-slate-400 hover:text-green-600 rounded"
+              title={t('creditors.recordPayment')} aria-label={t('creditors.recordPayment')}
+            >
+              <Landmark size={14} />
+            </button>
+          )}
+          <button
+            type="button" onClick={() => openEdit(e)}
+            className="p-1 text-slate-400 hover:text-brand-blue rounded"
+            title={t('expenses.edit')} aria-label={t('expenses.edit')}
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button" onClick={() => deleteExpense(e.id)} disabled={deleteId === e.id}
+            className="p-1 text-slate-400 hover:text-brand-red rounded"
+            title={t('expenses.delete')} aria-label={t('expenses.delete')}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, categoryNames, deleteId])
+
+  function buildParams(limit: number, forPage = 1): URLSearchParams {
+    const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
+    if (search) params.set('q', search)
+    if (range.from) params.set('from', range.from)
+    if (range.to) params.set('to', range.to)
+    if (sort) params.set('sort', `${sort.key}:${sort.dir}`)
+    for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+    return params
+  }
+
+  useEffect(() => { load() }, [page, search, range, filterState, sort])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
-      if (search) params.set('q', search)
-      if (fFrom) params.set('from', fFrom)
-      if (fTo) params.set('to', fTo)
-      const { data } = await api.get(`/expenses?${params}`)
-      let rows: Expense[] = data.data || []
-      // Credit filter is client-side
-      if (fCredit === 'credit') rows = rows.filter(e => e.is_on_credit)
-      else if (fCredit === 'paid') rows = rows.filter(e => !e.is_on_credit)
-      setExpenses(rows)
-      setTotal(data.meta?.total || 0)
-      setTotalAmount(data.meta?.total_amount_paise || 0)
+      const { data } = await api.get(`/expenses?${buildParams(PAGE_SIZE, page)}`)
+      setExpenses(data.data || [])
+      setMeta(data.meta || null)
     } catch {
       setExpenses([])
+      setMeta(null)
     } finally {
       setLoading(false)
     }
   }
 
-  function exportCsv() {
-    const params = new URLSearchParams({ limit: '1000' })
-    if (search) params.set('q', search)
-    if (fFrom) params.set('from', fFrom)
-    if (fTo) params.set('to', fTo)
-    api.get(`/expenses?${params}`).then(r => {
-      const rows: Expense[] = r.data.data || []
-      if (!rows.length) { alert('No expenses to export'); return }
-      const headers = ['Date', 'Description', 'Vendor', 'Category', 'Amount', 'GST', 'Mode', 'Bill No', 'TDS', 'Credit']
-      const csv = [headers.join(',')].concat(
-        rows.map(e => [
-          e.bill_date || e.created_at, `"${(e.description || '').replace(/"/g, '""')}"`, e.vendor_name ?? '',
-          e.category ?? '', e.amount_paise / 100, (e.gst_paid_paise ?? 0) / 100, e.payment_mode,
-          e.bill_number ?? '', e.tds_deducted ? (e.tds_amount_paise ?? 0) / 100 : '', e.is_on_credit ? 'Yes' : 'No',
-        ].join(','))
-      ).join('\n')
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = 'expenses.csv'; a.click()
-      URL.revokeObjectURL(url)
-    }).catch(() => alert('Export failed'))
+  function resetPageAnd<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setPage(1) }
   }
 
-  function exportPdf() {
-    const params = new URLSearchParams({ limit: '1000' })
-    if (search) params.set('q', search)
-    if (fFrom) params.set('from', fFrom)
-    if (fTo) params.set('to', fTo)
-    api.get(`/expenses?${params}`).then(r => {
-      const rows: Expense[] = r.data.data || []
+  const stats: SummaryStat[] = meta ? [
+    {
+      label: t('expenses.totalAmount'),
+      value: `₹${fmtPaise(meta.total_amount_paise)}`,
+      deltaPct: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise),
+      sub: t('kit.vsPrevPeriodSub'),
+      tone: 'expense',
+      invert: true,
+    },
+    { label: t('expenses.totalExpenses'), value: String(meta.total) },
+  ] : []
+
+  async function fetchAllFiltered(): Promise<Expense[]> {
+    const { data } = await api.get(`/expenses?${buildParams(1000)}`)
+    return data.data || []
+  }
+
+  async function exportExcel() {
+    try {
+      const rows = await fetchAllFiltered()
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      await exportXlsx({
+        title: t('reports.expenseRegister'),
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: 'expense-register',
+        columns: [
+          { header: t('common.date'), type: 'date' },
+          { header: t('expenses.description'), width: 30 },
+          { header: t('expenses.vendor'), width: 22 },
+          { header: t('expenses.category') },
+          { header: t('common.amount'), type: 'money' },
+          { header: 'GST', type: 'money' },
+          { header: t('expenses.mode'), width: 10 },
+          { header: t('expenses.billNo'), width: 14 },
+          { header: t('expenses.tds'), type: 'money' },
+          { header: t('expenses.type'), width: 10 },
+        ],
+        rows: rows.map(e => [
+          (e.bill_date || e.created_at || '').slice(0, 10), e.description ?? '', e.vendor_name ?? '',
+          e.category ?? '', e.amount_paise, e.gst_paid_paise ?? 0, e.payment_mode,
+          e.bill_number ?? '', e.tds_deducted ? (e.tds_amount_paise ?? 0) : 0,
+          e.is_on_credit ? t('expenses.credit') : t('expenses.paid'),
+        ]),
+        totals: [
+          t('kit.total'), '', '', '',
+          rows.reduce((s, e) => s + e.amount_paise, 0),
+          rows.reduce((s, e) => s + (e.gst_paid_paise ?? 0), 0),
+          '', '', '', '',
+        ],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  async function exportPdf() {
+    try {
+      const rows = await fetchAllFiltered()
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
       const total = rows.reduce((s, e) => s + e.amount_paise, 0)
       downloadRowsPdf('expenses.pdf', 'Expense Register',
         ['Date', 'Description', 'Vendor', 'Category', 'Amount', 'GST', 'Mode', 'Bill No', 'TDS', 'Credit'],
@@ -92,11 +303,13 @@ export function ExpensesList() {
           e.bill_number ?? '', e.tds_deducted ? rsFmt(e.tds_amount_paise ?? 0) : '', e.is_on_credit ? 'Yes' : 'No',
         ]),
         {
-          subtitle: fFrom || fTo ? `${fFrom || '…'} to ${fTo || '…'}` : 'All dates',
+          subtitle: rangeCaption(range, t('dateRange.all')),
           landscape: true,
           totals: ['Total', '', '', '', rsFmt(total), '', '', '', '', ''],
         })
-    }).catch(() => alert('Export failed'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
   }
 
   function openEdit(e: Expense) {
@@ -119,149 +332,90 @@ export function ExpensesList() {
         bill_number: editForm.bill_number || undefined,
       })
       setEditModal(null)
+      toast.success(t('expenses.updateSuccess'))
       load()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || 'Update failed')
+      toast.error(e.response?.data?.error?.message || t('expenses.updateFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   async function deleteExpense(id: string) {
-    if (!(await confirm({ title: 'Delete expense', message: 'Delete this expense? This cannot be undone.', confirmLabel: 'Delete', danger: true }))) return
+    if (!(await confirm({ title: t('expenses.delete'), message: t('expenses.deleteConfirm'), confirmLabel: t('expenses.delete'), danger: true }))) return
     setDeleteId(id)
     try {
       await api.delete(`/expenses/${id}`)
+      toast.success(t('expenses.deleteSuccess'))
       load()
+    } catch {
+      toast.error(t('expenses.deleteFailed'))
     } finally {
       setDeleteId(null)
     }
   }
 
+  const graphData = (meta?.day_totals ?? []).map(d => ({
+    label: new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+    value: d.amount_paise / 100,
+  }))
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('reports.expenseRegister')} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('expenses.title')}</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => navigate('/expenses/recurring')} className="text-sm text-brand-blue hover:underline">
+            {t('expenses.recurringLink')}
+          </button>
           <button type="button" onClick={() => navigate('/expenses/add')} className="btn-primary btn-sm">
             <Plus size={14} /> {t('expenses.newExpense')}
           </button>
-          <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('expenses.exportPdf')}</button>
-          <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Download size={14} /> {t('expenses.exportCsv')}</button>
         </div>
       </div>
 
-      {total > 0 && (
-        <div className="grid grid-cols-2 gap-3 max-w-md">
-          <div className="card p-3"><p className="text-xs text-slate-400">{t('expenses.totalExpenses')}</p><p className="text-lg font-bold text-navy-900">{total}</p></div>
-          <div className="card p-3"><p className="text-xs text-slate-400">{t('expenses.totalAmount')}</p><p className="text-lg font-bold text-red-600">₹{fmtPaise(totalAmount)}</p></div>
-        </div>
-      )}
-
-      <div className="flex items-end gap-3 flex-wrap">
-        <div className="relative w-64">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="form-input pl-9" placeholder={t('expenses.searchPlaceholder')}
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
-          {search && (
-            <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <XCircle size={14} />
-            </button>
-          )}
-        </div>
-        <div>
-          <label htmlFor="exp-from" className="form-label text-xs">{t('donations.from')}</label>
-          <input id="exp-from" type="date" title="From date" className="form-input" value={fFrom} onChange={e => { setFFrom(e.target.value); setPage(1) }} />
-        </div>
-        <div>
-          <label htmlFor="exp-to" className="form-label text-xs">{t('donations.to')}</label>
-          <input id="exp-to" type="date" title="To date" className="form-input" value={fTo} onChange={e => { setFTo(e.target.value); setPage(1) }} />
-        </div>
-        <div>
-          <label htmlFor="exp-credit" className="form-label text-xs">{t('expenses.type')}</label>
-          <select id="exp-credit" className="form-select" value={fCredit} onChange={e => { setFCredit(e.target.value); setPage(1) }}>
-            <option value="">{t('common.all')}</option>
-            <option value="paid">{t('expenses.paid')}</option>
-            <option value="credit">{t('expenses.onCredit')}</option>
-          </select>
-        </div>
-        {(fFrom || fTo || fCredit) && (
-          <button type="button" onClick={() => { setFFrom(''); setFTo(''); setFCredit(''); setPage(1) }}
-            className="text-xs text-slate-400 hover:text-red-500 pb-2">{t('expenses.clearFilters')}</button>
-        )}
+      <div className="no-print">
+        <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="expenses" />
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('expenses.description')}</th>
-                <th>{t('expenses.vendor')}</th>
-                <th>{t('expenses.category')}</th>
-                <th>{t('common.amount')}</th>
-                <th>{t('expenses.mode')}</th>
-                <th>{t('expenses.billNo')}</th>
-                <th>{t('expenses.tds')}</th>
-                <th>{t('common.date')}</th>
-                <th>{t('expenses.type')}</th>
-                <th>{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={10} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : expenses.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-10 text-slate-400">{t('expenses.noExpensesFound')}</td></tr>
-              ) : expenses.map(e => (
-                <tr key={e.id}>
-                  <td className="font-medium">{e.description}</td>
-                  <td className="text-slate-600">{e.vendor_name || '—'}</td>
-                  <td className="text-slate-500">{e.category || '—'}</td>
-                  <td className="font-semibold">
-                    ₹{fmtPaise(e.amount_paise)}
-                    {!!e.gst_paid_paise && <span className="block text-xs text-slate-400 font-normal">+GST ₹{fmtPaise(e.gst_paid_paise)}</span>}
-                  </td>
-                  <td><span className="badge-gray">{e.payment_mode}</span></td>
-                  <td className="text-xs text-slate-400 font-mono">{e.bill_number || '—'}</td>
-                  <td>{e.tds_deducted ? <span className="badge-blue">₹{fmtPaise(e.tds_amount_paise ?? 0)}</span> : <span className="text-slate-300">—</span>}</td>
-                  <td className="text-slate-500 text-xs">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</td>
-                  <td>{e.is_on_credit ? <span className="badge-red">{t('expenses.credit')}</span> : <span className="badge-green">{t('expenses.paid')}</span>}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => openEdit(e)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('expenses.edit')} aria-label="Edit expense">
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteExpense(e.id)}
-                        disabled={deleteId === e.id}
-                        className="p-1 text-slate-400 hover:text-brand-red rounded"
-                        title={t('expenses.delete')}
-                        aria-label="Delete expense"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SummaryStrip stats={stats} />
 
-      {total > 20 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>{t('expenses.showing', { from: ((page-1)*20)+1, to: Math.min(page*20, total), total })}</span>
-          <div className="flex gap-2">
-            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary btn-sm">{t('common.prev')}</button>
-            <button disabled={page * 20 >= total} onClick={() => setPage(p => p+1)} className="btn-secondary btn-sm">{t('common.next')}</button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        viewKey="expenses-list"
+        columns={columns}
+        rows={expenses}
+        rowKey={e => e.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={resetPageAnd(setSearch)}
+        searchPlaceholder={t('expenses.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        graphData={graphData}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+          setPage(1)
+        }}
+        sort={sort}
+        onSortChange={resetPageAnd(setSort)}
+        page={page}
+        limit={PAGE_SIZE}
+        total={meta?.total ?? 0}
+        onPageChange={setPage}
+        emptyMessage={t('expenses.noExpensesFound')}
+        emptyAction={{ label: t('expenses.newExpense'), onClick: () => navigate('/expenses/add') }}
+        onClearFilters={() => { setFilterState({}); setPage(1) }}
+      />
 
       {/* Edit modal */}
       {editModal && (
@@ -287,6 +441,53 @@ export function ExpensesList() {
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setEditModal(null)} className="btn-secondary">{t('common.cancel')}</button>
                 <button type="submit" disabled={saving} className="btn-primary">{saving ? t('common.saving') : t('common.save')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pay-off modal for credit expenses — records a real cash/bank outflow via the same flow as Creditors. */}
+      {payModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 className="font-bold text-navy-900 mb-1">{t('creditors.recordPayment')}</h3>
+            <p className="text-sm text-slate-500 mb-4">{t('creditors.outstandingLabel', { amount: fmtPaise(payModal.outstanding) })}</p>
+            <form onSubmit={submitPay} className="space-y-4">
+              <div>
+                <label className="form-label">{t('creditors.paymentAmount')}</label>
+                <input
+                  type="number" step="0.01" min="0.01" max={(payModal.outstanding / 100).toFixed(2)}
+                  className="form-input" placeholder="0.00" autoFocus required
+                  value={payAmt} onChange={e => { setPayAmt(e.target.value); setPayError('') }}
+                />
+                <button type="button" className="mt-1 text-xs text-brand-red hover:underline"
+                  onClick={() => setPayAmt((payModal.outstanding / 100).toFixed(2))}>
+                  {t('creditors.payFullOutstanding', { amount: fmtPaise(payModal.outstanding) })}
+                </button>
+              </div>
+              <div>
+                <label className="form-label">{t('creditors.paymentMode')}</label>
+                <select className="form-input" value={payMode} onChange={e => { setPayMode(e.target.value as PayMode); setPayError('') }}>
+                  <option value="cash">{t('common.cash')}</option>
+                  <option value="upi">{t('common.upi')}</option>
+                  <option value="cheque">{t('common.cheque')}</option>
+                  <option value="netbanking">{t('common.netbanking')}</option>
+                </select>
+              </div>
+              {payMode !== 'cash' && (
+                <div>
+                  <label className="form-label">{t('creditors.bankAccount')}</label>
+                  <select className="form-input" value={payAccountId} onChange={e => { setPayAccountId(e.target.value); setPayError('') }}>
+                    <option value="">{t('creditors.selectAccount')}</option>
+                    {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
+              {payError && <p className="text-sm text-red-600">{payError}</p>}
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">{t('common.cancel')}</button>
+                <button type="submit" disabled={paying} className="btn-success">{paying ? t('creditors.recording') : t('creditors.recordPayment')}</button>
               </div>
             </form>
           </div>

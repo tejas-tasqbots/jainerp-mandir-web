@@ -1,105 +1,41 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Download, FileDown, Search, XCircle, Receipt, Ban } from 'lucide-react'
+import { Plus, Receipt, Ban } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { printDonationReceipt } from '../../lib/printReceipt'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import {
+  DataTable, filterStateToParams,
+  type ColumnDef, type ColumnFilterState,
+} from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { SevaBooking } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
+
+const PAGE_SIZE = 20
+const STATUSES = ['booked', 'confirmed', 'completed', 'cancelled'] as const
 
 export function SevaBookingsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const toast = useToast()
+
   const [bookings, setBookings] = useState<SevaBooking[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [dateFilter, setDateFilter] = useState('')   // empty = all dates
-  const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange('seva'))
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
-
-  useEffect(() => { load() }, [dateFilter, statusFilter, search])
-
-  async function load() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ limit: '50' })
-      if (dateFilter) params.set('date', dateFilter)
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      if (search) params.set('q', search)
-      const { data } = await api.get(`/seva-bookings?${params}`)
-      setBookings(data.data || [])
-    } catch {
-      setBookings([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function openReceipt(id: string) {
-    setReceiptLoading(id)
-    try {
-      // seva receipt payload is shape-compatible with the donation receipt renderer
-      await printDonationReceipt(id, '/seva-bookings')
-    } catch {
-      alert('Could not load receipt. Please try again.')
-    } finally {
-      setReceiptLoading(null)
-    }
-  }
-
-  async function cancelBooking(id: string) {
-    if (!(await confirm({ title: t('seva.cancelBookingTitle'), message: t('seva.cancelBookingMessage'), confirmLabel: t('seva.cancelBookingConfirm'), cancelLabel: t('seva.keep'), danger: true }))) return
-    try {
-      await api.patch(`/seva-bookings/${id}`, { status: 'cancelled' })
-      load()
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || 'Cancel failed')
-    }
-  }
-
-  function exportCsv() {
-    const params = new URLSearchParams({ limit: '1000' })
-    if (dateFilter) params.set('date', dateFilter)
-    if (statusFilter !== 'all') params.set('status', statusFilter)
-    api.get(`/seva-bookings?${params}`).then(r => {
-      const rows: SevaBooking[] = r.data.data || []
-      if (!rows.length) { alert('No bookings to export'); return }
-      const headers = ['Date', 'Devotee', 'Mobile', 'Seva', 'Slot', 'Amount', 'Mode', 'Status']
-      const csv = [headers.join(',')].concat(
-        rows.map(b => [
-          b.booking_date, `"${(b.devotee_name || '').replace(/"/g, '""')}"`, b.devotee_mobile ?? '',
-          `"${(b.seva_name || '').replace(/"/g, '""')}"`, b.slot_time ?? '', b.amount_paise / 100,
-          b.payment_mode, b.status,
-        ].join(','))
-      ).join('\n')
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = 'seva-bookings.csv'; a.click()
-      URL.revokeObjectURL(url)
-    }).catch(() => alert('Export failed'))
-  }
-
-  function exportPdf() {
-    const params = new URLSearchParams({ limit: '1000' })
-    if (dateFilter) params.set('date', dateFilter)
-    if (statusFilter !== 'all') params.set('status', statusFilter)
-    api.get(`/seva-bookings?${params}`).then(r => {
-      const rows: SevaBooking[] = r.data.data || []
-      const total = rows.reduce((s, b) => s + b.amount_paise, 0)
-      downloadRowsPdf('seva-bookings.pdf', 'Seva Bookings',
-        ['Date', 'Devotee', 'Mobile', 'Seva', 'Slot', 'Amount', 'Mode', 'Status'],
-        rows.map(b => [
-          b.booking_date, b.devotee_name ?? '', b.devotee_mobile ?? '',
-          b.seva_name ?? '', b.slot_time ?? '', rsFmt(b.amount_paise), b.payment_mode, b.status,
-        ]),
-        { subtitle: dateFilter || 'All dates', totals: ['Total', '', '', '', '', rsFmt(total), '', ''] })
-    }).catch(() => alert('Export failed'))
-  }
 
   function statusBadge(s: string) {
     if (s === 'booked') return <span className="badge-yellow">{t('seva.statusBooked')}</span>
@@ -109,133 +45,263 @@ export function SevaBookingsList() {
     return <span className="badge-gray">{s}</span>
   }
 
-  async function markCompleted(id: string) {
-    await api.patch(`/seva-bookings/${id}`, { status: 'completed' })
-    load()
+  const statusLabel: Record<string, string> = {
+    booked: t('seva.filterBooked'),
+    confirmed: t('seva.filterConfirmed'),
+    completed: t('seva.filterCompleted'),
+    cancelled: t('seva.filterCancelled'),
+  }
+
+  const columns: ColumnDef<SevaBooking>[] = useMemo(() => [
+    {
+      key: 'devotee', label: t('seva.devotee'),
+      render: b => (
+        <div>
+          <p className="font-medium">{b.devotee_name}</p>
+          <p className="text-xs text-slate-400">{b.devotee_mobile}</p>
+          {b.gotra && <p className="text-xs text-slate-300">{t('seva.gotraLabel', { gotra: b.gotra })}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'seva', label: t('seva.sevaCol'),
+      render: b => <span className="text-slate-700">{b.seva_name || '—'}</span>,
+    },
+    {
+      key: 'date', label: t('common.date'),
+      render: b => <span className="text-xs">{new Date(b.booking_date).toLocaleDateString('en-IN')}</span>,
+    },
+    {
+      key: 'slot', label: t('seva.slot'),
+      render: b => <span className="text-slate-500 text-xs">{b.slot_time || '—'}</span>,
+    },
+    {
+      key: 'amount', label: t('common.amount'), align: 'right',
+      render: b => <span className="font-semibold">₹{fmtPaise(b.amount_paise)}</span>,
+    },
+    {
+      key: 'mode', label: t('seva.mode'),
+      render: b => <span className="badge-gray">{b.payment_mode}</span>,
+    },
+    {
+      key: 'status', label: t('common.status'),
+      filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
+      render: b => statusBadge(b.status),
+    },
+    {
+      key: 'actions', label: t('common.actions'),
+      render: b => (
+        <div className="flex gap-1 flex-wrap items-center">
+          {b.status === 'booked' && (
+            <button type="button" onClick={() => setStatus(b.id, 'confirmed')}
+              className="btn-secondary btn-sm text-xs">{t('seva.confirm')}</button>
+          )}
+          {(b.status === 'booked' || b.status === 'confirmed') && (
+            <button type="button" onClick={() => setStatus(b.id, 'completed')} className="btn-success btn-sm text-xs">
+              {t('seva.markDone')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => openReceipt(b.id)}
+            title={t('seva.printReceipt')} aria-label={t('seva.printReceipt')}
+            disabled={receiptLoading === b.id}
+            className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
+          >
+            <Receipt size={14} className={receiptLoading === b.id ? 'animate-pulse' : ''} />
+          </button>
+          {b.status !== 'cancelled' && b.status !== 'completed' && (
+            <button
+              type="button"
+              onClick={() => cancelBooking(b.id)}
+              title={t('seva.cancelBooking')} aria-label={t('seva.cancelBooking')}
+              className="p-1 text-slate-400 hover:text-brand-red rounded"
+            >
+              <Ban size={14} />
+            </button>
+          )}
+        </div>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, receiptLoading])
+
+  function buildParams(limit: number, forPage = 1): URLSearchParams {
+    const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
+    if (search) params.set('q', search)
+    if (range.from) params.set('from', range.from)
+    if (range.to) params.set('to', range.to)
+    for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+    return params
+  }
+
+  useEffect(() => { load() }, [page, search, range, filterState])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const { data } = await api.get(`/seva-bookings?${buildParams(PAGE_SIZE, page)}`)
+      setBookings(data.data || [])
+      setTotal(data.meta?.total || 0)
+    } catch {
+      setBookings([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function resetPageAnd<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setPage(1) }
+  }
+
+  // Collection figure from the loaded page keeps the strip honest without an
+  // aggregate endpoint; the count is the true filtered total.
+  const pageAmount = bookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + b.amount_paise, 0)
+  const stats: SummaryStat[] = [
+    { label: t('seva.bookings'), value: String(total) },
+    { label: t('seva.pageCollection'), value: `₹${fmtPaise(pageAmount)}`, tone: 'income' },
+  ]
+
+  async function fetchAllFiltered(): Promise<SevaBooking[]> {
+    const { data } = await api.get(`/seva-bookings?${buildParams(1000)}`)
+    return data.data || []
+  }
+
+  async function exportExcel() {
+    try {
+      const rows = await fetchAllFiltered()
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      await exportXlsx({
+        title: t('seva.title'),
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: 'seva-bookings',
+        columns: [
+          { header: t('common.date'), type: 'date' },
+          { header: t('seva.devotee'), width: 24 },
+          { header: t('donors.mobile'), width: 15 },
+          { header: t('seva.sevaCol'), width: 24 },
+          { header: t('seva.slot'), width: 12 },
+          { header: t('common.amount'), type: 'money' },
+          { header: t('seva.mode'), width: 10 },
+          { header: t('common.status'), width: 12 },
+        ],
+        rows: rows.map(b => [
+          new Date(b.booking_date).toLocaleDateString('en-IN'), b.devotee_name ?? '', b.devotee_mobile ?? '',
+          b.seva_name ?? '', b.slot_time ?? '', b.amount_paise, b.payment_mode,
+          statusLabel[b.status] ?? b.status,
+        ]),
+        totals: [
+          t('kit.total'), '', '', '', '',
+          rows.filter(b => b.status !== 'cancelled').reduce((s, b) => s + b.amount_paise, 0),
+          '', '',
+        ],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  async function exportPdf() {
+    try {
+      const rows = await fetchAllFiltered()
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      const totalAmt = rows.reduce((s, b) => s + b.amount_paise, 0)
+      downloadRowsPdf('seva-bookings.pdf', 'Seva Bookings',
+        ['Date', 'Devotee', 'Mobile', 'Seva', 'Slot', 'Amount', 'Mode', 'Status'],
+        rows.map(b => [
+          b.booking_date, b.devotee_name ?? '', b.devotee_mobile ?? '',
+          b.seva_name ?? '', b.slot_time ?? '', rsFmt(b.amount_paise), b.payment_mode, b.status,
+        ]),
+        { subtitle: rangeCaption(range, t('dateRange.all')), totals: ['Total', '', '', '', '', rsFmt(totalAmt), '', ''] })
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
+  async function openReceipt(id: string) {
+    setReceiptLoading(id)
+    try {
+      // seva receipt payload is shape-compatible with the donation receipt renderer
+      await printDonationReceipt(id, '/seva-bookings')
+    } catch {
+      toast.error(t('donations.receiptLoadFailed'))
+    } finally {
+      setReceiptLoading(null)
+    }
+  }
+
+  async function setStatus(id: string, status: 'confirmed' | 'completed') {
+    try {
+      await api.patch(`/seva-bookings/${id}`, { status })
+      toast.success(status === 'confirmed' ? t('seva.confirmedToast') : t('seva.completedToast'))
+      load()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(e.response?.data?.error?.message || t('seva.updateFailed'))
+    }
+  }
+
+  async function cancelBooking(id: string) {
+    if (!(await confirm({ title: t('seva.cancelBookingTitle'), message: t('seva.cancelBookingMessage'), confirmLabel: t('seva.cancelBookingConfirm'), cancelLabel: t('seva.keep'), danger: true }))) return
+    try {
+      await api.patch(`/seva-bookings/${id}`, { status: 'cancelled' })
+      toast.success(t('seva.cancelledToast'))
+      load()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(e.response?.data?.error?.message || t('seva.cancelFailed'))
+    }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('seva.title')} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('seva.title')}</h1>
-        <div className="flex gap-2">
-          <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('seva.exportPdf')}</button>
-          <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Download size={14} /> {t('seva.exportCsv')}</button>
-          <button type="button" onClick={() => navigate('/seva/add')} className="btn-primary btn-sm">
-            <Plus size={14} /> {t('seva.newBooking')}
-          </button>
-        </div>
+        <button type="button" onClick={() => navigate('/seva/add')} className="btn-primary btn-sm">
+          <Plus size={14} /> {t('seva.newBooking')}
+        </button>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative w-56">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="form-input pl-9" placeholder={t('seva.searchPlaceholder')}
-            value={search} onChange={e => setSearch(e.target.value)} />
-          {search && (
-            <button type="button" title="Clear search" aria-label="Clear search" onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <XCircle size={14} />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="seva-date" className="text-sm text-slate-600">{t('seva.date')}</label>
-          <input id="seva-date" type="date" title="Filter by date" className="form-input w-40" value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)} />
-          {dateFilter && (
-            <button type="button" onClick={() => setDateFilter('')} className="text-xs text-slate-400 hover:text-red-500">{t('seva.allDates')}</button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {(['all', 'booked', 'confirmed', 'completed', 'cancelled'] as const).map(s => (
-            <button key={s} type="button" onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1 text-xs rounded-md font-medium capitalize transition-colors ${statusFilter === s ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-              {{
-                all: t('seva.filterAll'),
-                booked: t('seva.filterBooked'),
-                confirmed: t('seva.filterConfirmed'),
-                completed: t('seva.filterCompleted'),
-                cancelled: t('seva.filterCancelled'),
-              }[s]}
-            </button>
-          ))}
-        </div>
+      <div className="no-print">
+        <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="seva" />
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('seva.devotee')}</th>
-                <th>{t('seva.sevaCol')}</th>
-                <th>{t('common.date')}</th>
-                <th>{t('seva.slot')}</th>
-                <th>{t('common.amount')}</th>
-                <th>{t('seva.mode')}</th>
-                <th>{t('common.status')}</th>
-                <th>{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : bookings.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('seva.noBookingsFound')}</td></tr>
-              ) : bookings.map(b => (
-                <tr key={b.id}>
-                  <td>
-                    <p className="font-medium">{b.devotee_name}</p>
-                    <p className="text-xs text-slate-400">{b.devotee_mobile}</p>
-                    {b.gotra && <p className="text-xs text-slate-300">{t('seva.gotraLabel', { gotra: b.gotra })}</p>}
-                  </td>
-                  <td className="text-slate-700">{b.seva_name || '—'}</td>
-                  <td className="text-xs">{new Date(b.booking_date).toLocaleDateString('en-IN')}</td>
-                  <td className="text-slate-500 text-xs">{b.slot_time || '—'}</td>
-                  <td className="font-semibold">₹{fmtPaise(b.amount_paise)}</td>
-                  <td><span className="badge-gray">{b.payment_mode}</span></td>
-                  <td>{statusBadge(b.status)}</td>
-                  <td>
-                    <div className="flex gap-1 flex-wrap items-center">
-                      {b.status === 'booked' && (
-                        <button type="button" onClick={async () => { await api.patch(`/seva-bookings/${b.id}`, { status: 'confirmed' }); load() }}
-                          className="btn-secondary btn-sm text-xs">{t('seva.confirm')}</button>
-                      )}
-                      {(b.status === 'booked' || b.status === 'confirmed') && (
-                        <button type="button" onClick={() => markCompleted(b.id)} className="btn-success btn-sm text-xs">
-                          {t('seva.markDone')}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => openReceipt(b.id)}
-                        title={t('seva.printReceipt')}
-                        aria-label={t('seva.printReceipt')}
-                        disabled={receiptLoading === b.id}
-                        className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-                      >
-                        <Receipt size={14} className={receiptLoading === b.id ? 'animate-pulse' : ''} />
-                      </button>
-                      {b.status !== 'cancelled' && b.status !== 'completed' && (
-                        <button
-                          type="button"
-                          onClick={() => cancelBooking(b.id)}
-                          title={t('seva.cancelBooking')}
-                          aria-label={t('seva.cancelBooking')}
-                          className="p-1 text-slate-400 hover:text-brand-red rounded"
-                        >
-                          <Ban size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SummaryStrip stats={stats} />
+
+      <DataTable
+        viewKey="seva-list"
+        columns={columns}
+        rows={bookings}
+        rowKey={b => b.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={resetPageAnd(setSearch)}
+        searchPlaceholder={t('seva.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onExportPdf={exportPdf}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+          setPage(1)
+        }}
+        page={page}
+        limit={PAGE_SIZE}
+        total={total}
+        onPageChange={setPage}
+        emptyMessage={t('seva.noBookingsFound')}
+        emptyAction={{ label: t('seva.newBooking'), onClick: () => navigate('/seva/add') }}
+        onClearFilters={() => { setFilterState({}); setPage(1) }}
+      />
     </div>
   )
 }

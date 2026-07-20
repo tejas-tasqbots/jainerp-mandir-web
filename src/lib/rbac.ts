@@ -39,9 +39,18 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/masters/employees': ['cashier'],
   '/masters/inventory': ['cashier', 'accountant'],
   '/accounts': ['accountant'],
+  // Depositing/clearing a received cheque, or moving cash to/from the bank, is
+  // a routine cashier-counter action, not bookkeeping — narrower than the
+  // general '/accounts' (accountant-only) module.
+  '/accounts/cheques': ['cashier', 'accountant'],
+  '/accounts/cash-bank': ['cashier', 'accountant'],
   '/reports': ['accountant', 'viewer'],
   '/certificates': ['accountant'],
   '/registers': ['cashier', 'volunteer', 'viewer'],
+  // Restoring a deleted record needs the same permission as deleting it did.
+  '/registers/recycle-bin': ['cashier', 'accountant'],
+  // Who-did-what is sensitive — narrower than the rest of Registers.
+  '/registers/activity-log': ['accountant'],
   '/settings': [], // temple_admin only
   '/help': ALL_STAFF,
 }

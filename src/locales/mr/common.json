@@ -38,7 +38,12 @@
     "lostFound": "हरवले-सापडले",
     "visitorCount": "भेट देणाऱ्यांची संख्या",
     "settings": "सेटिंग्ज",
-    "userGuide": "वापरकर्ता मार्गदर्शक"
+    "userGuide": "वापरकर्ता मार्गदर्शक",
+    "cheques": "चेक",
+    "cashBank": "रोख आणि बँक",
+    "reconciliation": "बँक जुळणी",
+    "recycleBin": "रीसायकल बिन",
+    "activityLog": "अ‍ॅक्टिव्हिटी लॉग"
   },
   "donationsHub": {
     "donations": "देणगी",
@@ -246,7 +251,20 @@
       "depreciationHeading": "स्थिर मालमत्ता घसारा",
       "enableDepreciation": "स्थिर मालमत्तांसाठी घसारा ट्रॅकिंग सक्षम करा",
       "depreciationHelp": "चालू असताना, ताळेबंद घसारा वजा करून स्थिर मालमत्ता दाखवतो; बंद असताना एकूण किमतीवर. प्रत्येक वर्षाचा घसारा शुल्क (सरळ-रेषा किंवा घटती शिल्लक पद्धत) मोजण्यासाठी आणि पोस्ट करण्यासाठी स्थिर मालमत्ता पानावरील \"घसारा चालवा\" वापरा.",
-      "saveButton": "लेखा नियम जतन करा"
+      "saveButton": "लेखा नियम जतन करा",
+      "closeBooksHeading": "बहीखाते बंद करा",
+      "closeBooksHelp": "निवडलेल्या आर्थिक वर्षापर्यंतच्या प्रत्येक देणगी आणि खर्च नोंदी लॉक करते — यानंतर फक्त मंदिर अ‍ॅडमिनच बंद वर्षात नोंद करू शकेल. वर्षाचे खाते CA कडे सोपवल्यानंतर हे वापरा.",
+      "closeThroughFy": "या आर्थिक वर्षापर्यंत बंद करा",
+      "closeButton": "बहीखाते बंद करा",
+      "closeConfirmTitle": "बहीखाते बंद करायचे?",
+      "closeConfirmMessage": "हे FY {{fy}} आणि त्यापूर्वीच्या सर्व वर्षांच्या नोंदी लॉक करेल. यानंतर फक्त मंदिर अ‍ॅडमिनच त्या कालावधीत नोंद/संपादन करू शकेल.",
+      "closeSuccess": "बहीखाते FY {{fy}} पर्यंत बंद झाले",
+      "closeFailed": "बहीखाते बंद करता आले नाही",
+      "lockedThrough": "बहीखाते FY {{fy}} पर्यंत बंद आहे",
+      "reopenButton": "पुन्हा उघडा",
+      "reopenConfirmTitle": "बहीखाते पुन्हा उघडायचे?",
+      "reopenConfirmMessage": "हे लॉक काढून टाकेल — प्रत्येक भूमिका आधी बंद केलेल्या वर्षांत पुन्हा नोंद करू शकेल.",
+      "reopenSuccess": "बहीखाते पुन्हा उघडले"
     },
     "masters": {
       "loadFailed": "लोड करण्यात अयशस्वी",
@@ -482,7 +500,8 @@
     "email": "ईमेल",
     "type": "प्रकार",
     "noneYet": "अजून काहीही नाही.",
-    "notSet": "सेट केलेले नाही"
+    "notSet": "सेट केलेले नाही",
+    "saved": "जतन केले"
   },
   "donations": {
     "title": "देणगी",
@@ -543,7 +562,12 @@
     "panBlockedWarning": "(देणगीदाराकडे पॅन नोंदवलेला नाही — 80G साठी पॅन आवश्यक आहे)",
     "panWillBeSaved": "हा पॅन या देणगीसह {{name}} यांच्या नोंदीत जतन केला जाईल.",
     "panFormatHint": "पॅन नमुना: 5 अक्षरे, 4 अंक, 1 अक्षर — उदा. ABCDE1234F",
-    "theDonor": "देणगीदार"
+    "theDonor": "देणगीदार",
+    "receiptLoadFailed": "पावती लोड होऊ शकली नाही. पुन्हा प्रयत्न करा.",
+    "pdfGenerateFailed": "PDF तयार होऊ शकला नाही. पुन्हा प्रयत्न करा.",
+    "no80gThisYear": "या वर्षी या दात्याचे 80G-पात्र दान नाही",
+    "voidSuccess": "पावती {{invoiceNo}} रद्द केली",
+    "voidFailed": "दान रद्द होऊ शकले नाही"
   },
   "donationRequests": {
     "title": "देणगी विनंत्या",
@@ -581,7 +605,8 @@
     "utrLabel": "यूटीआर:",
     "paidOnLabel": "भरणा तारीख:",
     "remarksLabel": "टीप:",
-    "eightyGIncomplete": "⚠ 80G विनंती केली आहे परंतु देणगीदाराचा पॅन/पत्ता अपूर्ण आहे — 80G पावतीसाठी दोन्ही आवश्यक आहेत."
+    "eightyGIncomplete": "⚠ 80G विनंती केली आहे परंतु देणगीदाराचा पॅन/पत्ता अपूर्ण आहे — 80G पावतीसाठी दोन्ही आवश्यक आहेत.",
+    "searchPlaceholder": "दाता, मोबाइल, UTR किंवा पावती शोधा…"
   },
   "pledges": {
     "title": "संकल्प",
@@ -624,7 +649,12 @@
     "pledgeDate": "संकल्प तारीख",
     "event2": "कार्यक्रम",
     "eventPlaceholder": "उदा. पर्युषण 2026",
-    "savePledge": "संकल्प जतन करा"
+    "savePledge": "संकल्प जतन करा",
+    "paymentSuccess": "पेमेंट नोंदवले",
+    "paymentFailed": "पेमेंट नोंदवता आले नाही",
+    "waiveSuccess": "बोली माफ केली",
+    "waiveFailed": "बोली माफ करता आली नाही",
+    "intimationFailed": "सूचना पावती तयार होऊ शकली नाही"
   },
   "expenses": {
     "title": "खर्च",
@@ -672,7 +702,26 @@
     "tdsAmount": "टीडीएस रक्कम (₹)",
     "tdsSection": "टीडीएस कलम",
     "selectEllipsis": "निवडा…",
-    "saveExpense": "खर्च जतन करा"
+    "saveExpense": "खर्च जतन करा",
+    "updateSuccess": "खर्च अपडेट झाला",
+    "updateFailed": "खर्च अपडेट होऊ शकला नाही",
+    "deleteSuccess": "खर्च हटवला",
+    "deleteFailed": "खर्च हटवता आला नाही",
+    "deleteConfirm": "हा खर्च हटवायचा? हे पूर्ववत करता येणार नाही.",
+    "recurringLabel": "मासिक पुनरावृत्ती करा (पगार, वीज, AMC…)",
+    "recurringLink": "आवर्ती खर्च",
+    "recurringTitle": "आवर्ती खर्च",
+    "recurringSubtitle": "या महिन्याचा पगार, वीज, AMC आणि इतर पुनरावृत्ती होणारी बिले पुष्टी करा — रक्कम मागील वेळेप्रमाणे आधीच भरलेली, पुष्टी करण्यापूर्वी संपादनयोग्य.",
+    "lastAmount": "मागील रक्कम",
+    "lastDate": "मागील तारीख",
+    "loggedThisMonth": "या महिन्यात नोंदवले",
+    "pendingThisMonth": "प्रलंबित",
+    "confirmThisMonth": "पुष्टी करा",
+    "pendingCount": "{{count}} प्रलंबित",
+    "recurringConfirmed": "{{description}} या महिन्यासाठी नोंदवले",
+    "recurringConfirmFailed": "हा खर्च पुष्टी करता आला नाही",
+    "noRecurringExpenses": "अद्याप कोणताही खर्च आवर्ती म्हणून चिन्हांकित नाही — खर्च जोडताना \"मासिक पुनरावृत्ती करा\" निवडा",
+    "enterValidAmount": "वैध रक्कम टाका"
   },
   "dharamshala": {
     "roomsTitle": "धर्मशाळा — खोल्या",
@@ -742,7 +791,15 @@
     "sessionEvening": "संध्याकाळ (12PM–8PM)",
     "sessionFullDay": "पूर्ण दिवस",
     "sessionHourly": "प्रति तास",
-    "bookerContact": "बुकिंग करणारे / संपर्क"
+    "bookerContact": "बुकिंग करणारे / संपर्क",
+    "searchPlaceholder": "पाहुणे, मोबाइल किंवा पावती शोधा…",
+    "hallSearchPlaceholder": "कार्यक्रम किंवा बुक करणारे शोधा…",
+    "checkinSuccess": "पाहुणे चेक-इन झाले",
+    "checkinFailed": "चेक-इन अयशस्वी",
+    "checkoutSuccess": "पाहुणे चेक-आउट झाले",
+    "checkoutFailed": "चेक-आउट अयशस्वी",
+    "cancelSuccess": "बुकिंग रद्द झाले",
+    "cancelFailed": "बुकिंग रद्द करता आले नाही"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -848,7 +905,14 @@
     "paymentMode": "देयक पद्धत",
     "receivedInAccount": "देयक खाते *",
     "selectAccount": "खाते निवडा…",
-    "bookSeva": "सेवा बुक करा"
+    "bookSeva": "सेवा बुक करा",
+    "bookings": "बुकिंग",
+    "pageCollection": "संकलन (हे पान)",
+    "confirmedToast": "बुकिंग निश्चित झाले",
+    "completedToast": "सेवा पूर्ण झाली",
+    "cancelledToast": "बुकिंग रद्द झाले",
+    "updateFailed": "बुकिंग अपडेट होऊ शकले नाही",
+    "cancelFailed": "बुकिंग रद्द होऊ शकले नाही"
   },
   "bhojanshala": {
     "title": "भोजनशाळा",
@@ -881,7 +945,9 @@
     "confirmRedeem": "वापर निश्चित करा",
     "cancelRedeem": "वापर रद्द करा",
     "redeem": "वापरा",
-    "printTokenSlip": "टोकन पावती प्रिंट करा"
+    "printTokenSlip": "टोकन पावती प्रिंट करा",
+    "saleRecorded": "विक्री नोंदवली",
+    "redeemFailed": "टोकन रिडीम होऊ शकले नाहीत"
   },
   "events": {
     "title": "कार्यक्रम",
@@ -937,7 +1003,17 @@
     "noRegistrationsYet": "अद्याप कोणतीही नोंदणी नाही",
     "regStatusRegistered": "नोंदणीकृत",
     "regStatusAttended": "उपस्थित राहिले",
-    "regStatusCancelled": "रद्द"
+    "regStatusCancelled": "रद्द",
+    "spent": "खर्च झाला",
+    "searchPlaceholder": "कार्यक्रम शोधा…",
+    "updatedToast": "कार्यक्रम अपडेट झाला",
+    "deletedToast": "कार्यक्रम हटवला",
+    "deleteFailed": "कार्यक्रम हटवता आला नाही",
+    "pnlTitle": "संकलन विरुद्ध खर्च",
+    "pnlCollected": "संकलन",
+    "pnlExpenses": "खर्च",
+    "pnlNet": "निव्वळ",
+    "pnlScope": "संकलन = या कार्यक्रमाशी जोडलेल्या भरलेल्या बोली आणि नोंदणी. सामान्य देणग्या आणि सेवा बुकिंग विशिष्ट कार्यक्रमाशी जोडलेले नसतात, त्यामुळे येथे समाविष्ट नाहीत."
   },
   "maharaj": {
     "title": "महाराज / माताजी",
@@ -1001,7 +1077,8 @@
     "mobileNumber": "मोबाइल क्रमांक *",
     "mobilePlaceholder": "10-अंकी मोबाइल",
     "sendInvite": "आमंत्रण पाठवा",
-    "invalidMobile": "वैध 10-अंकी मोबाइल क्रमांक नमूद करा"
+    "invalidMobile": "वैध 10-अंकी मोबाइल क्रमांक नमूद करा",
+    "searchPlaceholder": "नाव, मोबाइल किंवा शहर शोधा…"
   },
   "donors": {
     "title": "देणगीदार / भाविक",
@@ -1067,7 +1144,14 @@
     "sendOtp": "ओटीपी पाठवा",
     "sendingOtp": "पाठवत आहे…",
     "verifyReveal": "पडताळा आणि उघड करा",
-    "verifying": "पडताळत आहे…"
+    "verifying": "पडताळत आहे…",
+    "statementTitle": "विवरणपत्र — {{name}}",
+    "fullHistory": "संपूर्ण इतिहास",
+    "tags": "टॅग",
+    "addTag": "टॅग जोडा",
+    "removeTag": "{{tag}} काढा",
+    "customTagPlaceholder": "कस्टम टॅग…",
+    "tagUpdateFailed": "टॅग अपडेट होऊ शकले नाहीत"
   },
   "creditors": {
     "title": "कर्जदार (उधारी)",
@@ -1104,7 +1188,16 @@
     "enterValidAmount": "वैध रक्कम नमूद करा",
     "cannotExceedOutstanding": "बाकी ₹{{amount}} पेक्षा जास्त भरणा करता येणार नाही",
     "selectBankAccountError": "हे देयक ज्या बँक खात्यातून आले ते खाते निवडा",
-    "failedToAddEntry": "नोंद जोडण्यात अयशस्वी."
+    "failedToAddEntry": "नोंद जोडण्यात अयशस्वी.",
+    "openEntries": "खुल्या नोंदी",
+    "searchPlaceholder": "विक्रेता शोधा…",
+    "paymentRecorded": "पेमेंट नोंदवले",
+    "entryAdded": "देय नोंद जोडली",
+    "due": "थकीत",
+    "oldestBill": "सर्वात जुने बिल",
+    "daysCount": "{{count}} दिवस",
+    "daysCount_one": "{{count}} दिवस",
+    "daysCount_other": "{{count}} दिवस"
   },
   "vendors": {
     "title": "विक्रेते / पुरवठादार",
@@ -1159,7 +1252,8 @@
     "mode": "पद्धत",
     "type": "प्रकार",
     "noTransactionsYet": "अद्याप कोणताही व्यवहार नाही",
-    "credit": "उधारी"
+    "credit": "उधारी",
+    "statementTitle": "विवरणपत्र — {{name}}"
   },
   "priests": {
     "title": "पुजारी",
@@ -1241,7 +1335,12 @@
     "unitPair": "जोडी",
     "currentStock": "सध्याचा साठा",
     "reorderAt": "पुनर्क्रम स्तर",
-    "unitPriceAmount": "एकक किंमत (₹)"
+    "unitPriceAmount": "एकक किंमत (₹)",
+    "lowStock": "कमी साठा",
+    "stockValue": "साठा मूल्य",
+    "showLowStockOnly": "फक्त कमी साठ्याच्या वस्तू दाखवा",
+    "itemUpdated": "वस्तू अपडेट झाली",
+    "itemAdded": "वस्तू जोडली"
   },
   "accounts": {
     "print": "प्रिंट करा",
@@ -1360,7 +1459,24 @@
     "loansTakenOutstanding": "घेतलेली कर्जे (बाकी)",
     "corpusNetWorth": "निधी / निव्वळ मूल्य",
     "asOfEndOfFy": "आर्थिक वर्षाच्या अखेरीपर्यंत",
-    "noDataAvailable": "डेटा उपलब्ध नाही"
+    "noDataAvailable": "डेटा उपलब्ध नाही",
+    "cashBankTitle": "रोख आणि बँक",
+    "currentBalance": "सध्याची शिल्लक",
+    "moneyIn": "आवक",
+    "moneyOut": "जावक",
+    "noAccountsFound": "कोणतेही खाते सापडले नाही",
+    "selectAnAccount": "व्यवहार पाहण्यासाठी खाते निवडा",
+    "noTransactionsInRange": "या कालावधीत व्यवहार नाहीत",
+    "deposit": "जमा",
+    "withdraw": "पैसे काढा",
+    "depositTo": "{{account}} मध्ये जमा करा",
+    "withdrawFrom": "{{account}} मधून काढा",
+    "depositHint": "दुसऱ्या खात्यातून या खात्यात पैसे — उदा. रोख बँकेत जमा.",
+    "withdrawHint": "या खात्यातून दुसऱ्या खात्यात पैसे — उदा. बँकेतून रोख काढणे.",
+    "selectOtherAccount": "दुसरे खाते निवडा",
+    "depositSuccess": "जमा नोंदवली",
+    "withdrawSuccess": "पैसे काढणे नोंदवले",
+    "moveFailed": "हस्तांतरण नोंदवता आले नाही"
   },
   "reports": {
     "title": "अहवाल",
@@ -1378,7 +1494,44 @@
     "gstSummary": "जीएसटी सारांश",
     "downloadAs": "{{label}} {{format}} स्वरूपात डाउनलोड करा",
     "charteredAccountant": "सनदी लेखापाल",
-    "caPackLabel": "सीए पॅक — सर्व नोंदवह्या व विवरणपत्रे (ZIP)"
+    "caPackLabel": "सीए पॅक — सर्व नोंदवह्या व विवरणपत्रे (ZIP)",
+    "groupStatutory": "वैधानिक",
+    "stream": "स्रोत",
+    "streamDonations": "देणग्या",
+    "streamSeva": "सेवा",
+    "streamPrasad": "प्रसाद",
+    "streamBhojanshala": "भोजनशाळा",
+    "streamRoomAdvance": "खोली आगाऊ रक्कम",
+    "streamHallAdvance": "हॉल आगाऊ रक्कम",
+    "streamTotalCollection": "एकूण संकलन",
+    "streamExpenses": "खर्च",
+    "streamNet": "निव्वळ",
+    "noData": "निवडलेल्या कालावधीसाठी डेटा नाही",
+    "period": "कालावधी",
+    "granularityLabel": "पहा",
+    "granularity_monthly": "मासिक",
+    "granularity_weekly": "साप्ताहिक",
+    "rank": "#",
+    "limitLabel": "शीर्ष दाखवा",
+    "head": "मद",
+    "gstOutputRooms": "आउटपुट GST — खोल्या",
+    "gstOutputHalls": "आउटपुट GST — हॉल",
+    "gstOutputPrasad": "आउटपुट GST — प्रसाद",
+    "gstOutputTotal": "आउटपुट GST — एकूण",
+    "gstInput": "इनपुट GST (खर्चावर)",
+    "gstNetPayable": "निव्वळ देय GST",
+    "caPackShort": "CA पॅक डाउनलोड करा (ZIP)",
+    "creditorAging": "देय वयोमान विश्लेषण",
+    "aging0to30": "0–30 दिवस",
+    "aging31to60": "31–60 दिवस",
+    "aging60plus": "60+ दिवस",
+    "ageDays": "वय (दिवस)",
+    "agingBucket": "वयोगट",
+    "noOpenPayables": "कोणतेही उघडे देय नाही — सर्व चुकते झाले",
+    "donationYoY": "वर्ष-दर-वर्ष",
+    "month": "महिना",
+    "change": "बदल",
+    "growth": "वाढ"
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्रे व टीडीएस",
@@ -1483,6 +1636,148 @@
     "morning": "सकाळ",
     "evening": "संध्याकाळ",
     "totalCol": "एकूण",
-    "noRecords": "कोणतीही नोंद नाही"
+    "noRecords": "कोणतीही नोंद नाही",
+    "searchPlaceholder": "वर्णन किंवा दावेदार शोधा…",
+    "itemRecorded": "वस्तू नोंदवली",
+    "claimRecorded": "दावा नोंदवला",
+    "claimFailed": "दावा नोंदवता आला नाही",
+    "claimantName": "दावेदाराचे नाव",
+    "claimantMobile": "दावेदाराचा मोबाइल",
+    "countSaved": "दर्शनार्थी संख्या जतन केली"
+  },
+  "dateRange": {
+    "all": "सर्व तारखा",
+    "today": "आज",
+    "yesterday": "काल",
+    "thisWeek": "या आठवड्यात",
+    "thisMonth": "या महिन्यात",
+    "lastMonth": "मागील महिना",
+    "thisQuarter": "या तिमाहीत",
+    "thisFY": "हे आर्थिक वर्ष",
+    "lastFY": "मागील आर्थिक वर्ष",
+    "custom": "कस्टम कालावधी",
+    "from": "पासून",
+    "to": "पर्यंत"
+  },
+  "kit": {
+    "filterColumn": "स्तंभ फिल्टर",
+    "contains": "यामध्ये आहे…",
+    "min": "किमान ₹",
+    "max": "कमाल ₹",
+    "clear": "काढा",
+    "apply": "लागू करा",
+    "search": "शोधा…",
+    "clearSearch": "शोध काढा",
+    "graph": "आलेख पहा",
+    "exportExcel": "एक्सेल डाउनलोड करा",
+    "exportPdf": "PDF डाउनलोड करा",
+    "print": "प्रिंट",
+    "noGraphData": "दिवसनिहाय आलेख पाहण्यासाठी तारीख श्रेणी निवडा",
+    "showing": "{{total}} पैकी {{from}}–{{to}} दाखवत आहोत",
+    "clearFilters": "फिल्टर काढा",
+    "vsPrevPeriod": "मागील कालावधीच्या तुलनेत",
+    "vsPrevPeriodSub": "मागील कालावधीच्या तुलनेत",
+    "receipts": "पावत्या",
+    "digital": "UPI / ऑनलाइन",
+    "total": "एकूण",
+    "nothingToExport": "सध्याच्या फिल्टरसाठी निर्यात करण्यासारखे काही नाही",
+    "exportReady": "डाउनलोड तयार",
+    "exportFailed": "निर्यात होऊ शकला नाही. पुन्हा प्रयत्न करा.",
+    "columns": "स्तंभ",
+    "savedViews": "जतन केलेली दृश्ये",
+    "noSavedViews": "अद्याप कोणतेही दृश्य जतन केलेले नाही",
+    "deleteView": "दृश्य हटवा",
+    "viewNamePlaceholder": "दृश्याचे नाव…",
+    "saveCurrentView": "सध्याचे फिल्टर दृश्य म्हणून जतन करा"
+  },
+  "palette": {
+    "placeholder": "दाते, पावत्या, बोली, विक्रेते शोधा किंवा स्क्रीनवर जा…",
+    "searchEllipsis": "शोधा",
+    "openTitle": "शोध उघडा (Ctrl+K)",
+    "screens": "येथे जा",
+    "noResults": "“{{q}}” साठी जुळणी नाही",
+    "hint": "मंदिराच्या नोंदींमध्ये शोधण्यासाठी किमान 2 अक्षरे टाइप करा",
+    "navigate": "नेव्हिगेट",
+    "open": "उघडा",
+    "close": "बंद करा"
+  },
+  "cheques": {
+    "title": "चेक",
+    "statusReceived": "प्राप्त",
+    "statusDeposited": "जमा केला",
+    "statusCleared": "क्लिअर झाला",
+    "statusBounced": "बाउंस झाला",
+    "chequeNo": "चेक क्रमांक",
+    "bank": "बँक",
+    "chequeDate": "चेक तारीख",
+    "deposit": "जमा करा",
+    "markCleared": "क्लिअर म्हणून चिन्हांकित करा",
+    "markBounced": "बाउंस म्हणून चिन्हांकित करा",
+    "noCheques": "निवडलेल्या कालावधीसाठी चेक देणग्या नाहीत",
+    "pendingClearance": "क्लिअरन्स प्रलंबित",
+    "pendingCount": "{{count}} चेक",
+    "depositTitle": "चेक जमा करा",
+    "depositSubtitle": "पावती {{invoiceNo}}",
+    "depositTo": "जमा करा",
+    "depositDate": "जमा तारीख",
+    "depositSuccess": "चेक जमा म्हणून चिन्हांकित झाला",
+    "depositFailed": "जमा नोंदवता आली नाही",
+    "clearSuccess": "चेक क्लिअर म्हणून चिन्हांकित झाला",
+    "clearFailed": "चेक क्लिअर करता आला नाही",
+    "bounceTitle": "चेक बाउंस चिन्हांकित करा",
+    "bounceWarning": "यामुळे पावती {{invoiceNo}} रद्द होईल — देणगी प्रत्यक्षात जमा झाली नाही. दात्याला कळवले जाईल.",
+    "bounceReasonPlaceholder": "उदा. अपुरी शिल्लक, स्वाक्षरी जुळत नाही",
+    "bounceSuccess": "पावती {{invoiceNo}} रद्द झाली — चेक बाउंस चिन्हांकित",
+    "bounceFailed": "चेक बाउंस चिन्हांकित करता आला नाही",
+    "tabReceived": "प्राप्त (देणगी)",
+    "tabIssued": "जारी (खर्च)",
+    "statusIssued": "जारी",
+    "issuedBounceWarning": "\"{{description}}\" बाऊन्स म्हणून चिन्हांकित केले जाईल. ते बँकेत क्लिअर झाले नाही — तुम्हाला विक्रेत्याला वेगळे पेमेंट करावे लागेल.",
+    "issuedBounceSuccess": "धनादेश बाऊन्स म्हणून चिन्हांकित",
+    "bounceReasonOptional": "कारण (ऐच्छिक)"
+  },
+  "shortcuts": {
+    "title": "कीबोर्ड शॉर्टकट",
+    "search": "शोध उघडा",
+    "newDonation": "नवीन देणगी",
+    "newExpense": "नवीन खर्च",
+    "newPledge": "नवीन बोली",
+    "showShortcuts": "ही यादी दाखवा",
+    "closeDialog": "संवाद बंद करा"
+  },
+  "bankRecon": {
+    "title": "बँक जुळणी",
+    "subtitle": "त्याच कालावधीसाठी तुमच्या बँकेचे स्टेटमेंट बँक बुकशी जुळवा — ही एक क्षणिक तपासणी आहे, जतन केली जात नाही.",
+    "uploadTitle": "बँक स्टेटमेंट",
+    "uploadHint": "हेडर ओळीसह CSV: तारीख + एकतर रक्कम, किंवा स्वतंत्र डेबिट/क्रेडिट स्तंभ. तारखा yyyy-mm-dd किंवा dd/mm/yyyy मध्ये.",
+    "uploadCsv": "CSV अपलोड करा",
+    "orPasteBelow": "किंवा खाली पेस्ट करा",
+    "parsedCount": "{{count}} स्टेटमेंट ओळी वाचल्या",
+    "csvFormatError": "हेडर ओळीत तारीख स्तंभ आणि रक्कम/डेबिट/क्रेडिट स्तंभ सापडला नाही",
+    "matched": "जुळले",
+    "unmatchedInBooks": "बहीखात्यात, स्टेटमेंटमध्ये नाही",
+    "unmatchedInStatement": "स्टेटमेंटमध्ये, बहीखात्यात नाही",
+    "noneMatchedYet": "अद्याप कोणतेही जुळलेले नाही"
+  },
+  "recycleBin": {
+    "title": "रीसायकल बिन",
+    "subtitle": "मागील 90 दिवसांत हटवलेल्या नोंदी. पुनर्संचयित केल्यास त्या पूर्वीप्रमाणे परत येतात.",
+    "type": "प्रकार",
+    "item": "वस्तू",
+    "deletedAt": "हटवले",
+    "restore": "पुनर्संचयित करा",
+    "restored": "पुनर्संचयित झाले",
+    "restoreFailed": "ही नोंद पुनर्संचयित करता आली नाही",
+    "empty": "रीसायकल बिन रिकामे आहे"
+  },
+  "activityLog": {
+    "title": "अ‍ॅक्टिव्हिटी लॉग",
+    "subtitle": "कोणी काय आणि केव्हा केले — खात्यातील प्रत्येक तयार करणे, संपादन, हटवणे, रद्द करणे आणि पुनर्संचयन.",
+    "actor": "द्वारे",
+    "entity": "नोंद प्रकार",
+    "action": "क्रिया",
+    "recordId": "ID",
+    "system": "सिस्टीम",
+    "empty": "या कालावधीत कोणतीही क्रिया नाही"
   }
 }

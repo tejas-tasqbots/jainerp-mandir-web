@@ -1,7 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import {
+  DataTable, filterStateToParams,
+  type ColumnDef, type ColumnFilterState, type SortState,
+} from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { Creditor } from '../../types'
 
 type PayMode = 'cash' | 'upi' | 'cheque' | 'netbanking'
@@ -23,10 +31,18 @@ interface AddModal {
 
 interface Account { id: string; name: string; type: string }
 
+// Payables are a short register — load them in one go (API cap) so the
+// outstanding total reflects every entry, and let the table paginate visually.
+const FETCH_LIMIT = 200
+
 export function CreditorList() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [creditors, setCreditors] = useState<Creditor[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+  const [sort, setSort] = useState<SortState | undefined>()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [payModal, setPayModal] = useState<PayModal | null>(null)
   const [payAmt, setPayAmt] = useState('')
@@ -39,13 +55,101 @@ export function CreditorList() {
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  const statusLabel: Record<string, string> = {
+    pending: t('creditors.statusPending'),
+    partially_paid: t('creditors.statusPartial'),
+    paid: t('creditors.statusPaid'),
+  }
+
+  // Generic resource API: single sort column + order.
+  const sortColumn: Record<string, string> = {
+    original: 'original_amount_paise',
+    due_date: 'due_date',
+  }
+
+  const columns: ColumnDef<Creditor>[] = useMemo(() => [
+    {
+      key: 'vendor', label: t('creditors.vendorPayee'),
+      render: c => <span className="font-medium">{c.vendor_name || '—'}</span>,
+    },
+    {
+      key: 'description', label: t('creditors.description'),
+      render: c => <span className="text-slate-600">{c.description}</span>,
+    },
+    {
+      key: 'original', label: t('creditors.original'), align: 'right', sortable: true,
+      render: c => <>₹{fmtPaise(c.original_amount_paise)}</>,
+    },
+    {
+      key: 'paid', label: t('creditors.paid'), align: 'right',
+      render: c => <span className="text-green-700">₹{fmtPaise(c.paid_amount_paise)}</span>,
+    },
+    {
+      key: 'outstanding', label: t('creditors.outstanding'), align: 'right',
+      render: c => {
+        const outstanding = c.original_amount_paise - c.paid_amount_paise
+        return (
+          <span className={outstanding > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
+            ₹{fmtPaise(outstanding)}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'due_date', label: t('creditors.dueDate'), sortable: true,
+      render: c => {
+        const age = ageDaysOf(c)
+        return (
+          <div>
+            <span className="text-xs text-slate-400">
+              {c.due_date ? new Date(c.due_date).toLocaleDateString('en-IN') : '—'}
+            </span>
+            {c.status !== 'paid' && age > 30 && (
+              <span className={`block text-xs font-semibold ${age > 60 ? 'text-red-600' : 'text-amber-600'}`}>
+                {t('creditors.daysCount', { count: age })}
+              </span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'status', label: t('creditors.status'),
+      filter: {
+        kind: 'enum', param: 'status',
+        options: (['pending', 'partially_paid', 'paid'] as const).map(s => ({ value: s, label: statusLabel[s] })),
+      },
+      render: c => c.status === 'paid'
+        ? <span className="badge-green">{t('creditors.statusPaid')}</span>
+        : c.status === 'partially_paid'
+        ? <span className="badge-yellow">{t('creditors.statusPartial')}</span>
+        : <span className="badge-red">{t('creditors.statusPending')}</span>,
+    },
+    {
+      key: 'actions', label: t('creditors.actions'),
+      render: c => c.status !== 'paid' ? (
+        <button onClick={() => openPayModal(c)} className="btn-success btn-sm">
+          {t('creditors.pay')}
+        </button>
+      ) : null,
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
+
+  useEffect(() => { load() }, [search, filterState, sort])
 
   async function load() {
     setLoading(true)
     try {
+      const params = new URLSearchParams({ limit: String(FETCH_LIMIT) })
+      if (search) params.set('q', search)
+      if (sort && sortColumn[sort.key]) {
+        params.set('sort', sortColumn[sort.key])
+        params.set('order', sort.dir)
+      }
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
       const [cr, ac] = await Promise.all([
-        api.get('/creditors?limit=100'),
+        api.get(`/creditors?${params}`),
         api.get('/accounts?is_active=true'),
       ])
       setCreditors(cr.data.data || [])
@@ -58,6 +162,55 @@ export function CreditorList() {
   }
 
   const bankAccounts = accounts.filter(a => a.type !== 'cash')
+  const totalOutstanding = creditors.reduce((s, c) => s + (c.original_amount_paise - c.paid_amount_paise), 0)
+  const openEntries = creditors.filter(c => c.status !== 'paid').length
+  const ageDaysOf = (c: Creditor) => Math.max(0, Math.floor((Date.now() - new Date(c.due_date || c.created_at).getTime()) / 86_400_000))
+  const oldestAge = creditors.filter(c => c.status !== 'paid').reduce((max, c) => Math.max(max, ageDaysOf(c)), 0)
+  const overdue60 = creditors
+    .filter(c => c.status !== 'paid' && ageDaysOf(c) > 60)
+    .reduce((s, c) => s + (c.original_amount_paise - c.paid_amount_paise), 0)
+
+  const stats: SummaryStat[] = [
+    { label: t('creditors.totalOutstanding'), value: `₹${fmtPaise(totalOutstanding)}`, tone: 'expense' },
+    { label: t('creditors.openEntries'), value: String(openEntries) },
+    { label: t('reports.aging60plus'), value: `₹${fmtPaise(overdue60)}`, tone: overdue60 > 0 ? 'expense' : 'default' },
+    { label: t('creditors.oldestBill'), value: openEntries ? t('creditors.daysCount', { count: oldestAge }) : '—' },
+  ]
+
+  async function exportExcel() {
+    if (!creditors.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('creditors.title'),
+        filename: 'creditors',
+        columns: [
+          { header: t('creditors.vendorPayee'), width: 24 },
+          { header: t('creditors.description'), width: 30 },
+          { header: t('creditors.original'), type: 'money' },
+          { header: t('creditors.paid'), type: 'money' },
+          { header: t('creditors.outstanding'), type: 'money' },
+          { header: t('creditors.dueDate'), type: 'date' },
+          { header: t('creditors.status'), width: 14 },
+        ],
+        rows: creditors.map(c => [
+          c.vendor_name ?? '', c.description ?? '',
+          c.original_amount_paise, c.paid_amount_paise,
+          c.original_amount_paise - c.paid_amount_paise,
+          c.due_date ? new Date(c.due_date).toLocaleDateString('en-IN') : '',
+          statusLabel[c.status] ?? c.status,
+        ]),
+        totals: [
+          t('kit.total'), '',
+          creditors.reduce((s, c) => s + c.original_amount_paise, 0),
+          creditors.reduce((s, c) => s + c.paid_amount_paise, 0),
+          totalOutstanding, '', '',
+        ],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
 
   function openPayModal(c: Creditor) {
     const outstanding = c.original_amount_paise - c.paid_amount_paise
@@ -87,6 +240,7 @@ export function CreditorList() {
         payment_date: new Date().toISOString().slice(0, 10),
       })
       setPayModal(null)
+      toast.success(t('creditors.paymentRecorded'))
       load()
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: { message?: string } } } }
@@ -109,6 +263,7 @@ export function CreditorList() {
         status: 'pending',
       })
       setAddModal({ open: false, vendor_name: '', description: '', amount: '', due_date: '' })
+      toast.success(t('creditors.entryAdded'))
       load()
     } catch {
       setError(t('creditors.failedToAddEntry'))
@@ -117,80 +272,49 @@ export function CreditorList() {
     }
   }
 
-  const totalOutstanding = creditors.reduce((s, c) => s + (c.original_amount_paise - c.paid_amount_paise), 0)
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('creditors.title')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('creditors.title')}</h1>
-        <div className="flex items-center gap-4">
-          {totalOutstanding > 0 && (
-            <div className="text-right">
-              <p className="text-xs text-slate-400">{t('creditors.totalOutstanding')}</p>
-              <p className="font-bold text-red-600 text-lg">₹{fmtPaise(totalOutstanding)}</p>
-            </div>
-          )}
-          <button onClick={() => setAddModal(a => ({ ...a, open: true }))} className="btn-primary">
-            <Plus size={15} /> {t('creditors.addEntry')}
-          </button>
-        </div>
+        <button onClick={() => setAddModal(a => ({ ...a, open: true }))} className="btn-primary btn-sm">
+          <Plus size={14} /> {t('creditors.addEntry')}
+        </button>
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('creditors.vendorPayee')}</th>
-                <th>{t('creditors.description')}</th>
-                <th>{t('creditors.original')}</th>
-                <th>{t('creditors.paid')}</th>
-                <th>{t('creditors.outstanding')}</th>
-                <th>{t('creditors.dueDate')}</th>
-                <th>{t('creditors.status')}</th>
-                <th>{t('creditors.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : creditors.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">{t('creditors.noEntriesFound')}</td></tr>
-              ) : creditors.map(c => {
-                const outstanding = c.original_amount_paise - c.paid_amount_paise
-                return (
-                  <tr key={c.id}>
-                    <td className="font-medium">{c.vendor_name || '—'}</td>
-                    <td className="text-slate-600">{c.description}</td>
-                    <td>₹{fmtPaise(c.original_amount_paise)}</td>
-                    <td className="text-green-700">₹{fmtPaise(c.paid_amount_paise)}</td>
-                    <td className={outstanding > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
-                      ₹{fmtPaise(outstanding)}
-                    </td>
-                    <td className="text-xs text-slate-400">
-                      {c.due_date ? new Date(c.due_date).toLocaleDateString('en-IN') : '—'}
-                    </td>
-                    <td>
-                      {c.status === 'paid'
-                        ? <span className="badge-green">{t('creditors.statusPaid')}</span>
-                        : c.status === 'partially_paid'
-                        ? <span className="badge-yellow">{t('creditors.statusPartial')}</span>
-                        : <span className="badge-red">{t('creditors.statusPending')}</span>}
-                    </td>
-                    <td>
-                      {c.status !== 'paid' && (
-                        <button onClick={() => openPayModal(c)} className="btn-success btn-sm">
-                          {t('creditors.pay')}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SummaryStrip stats={stats} />
+
+      <DataTable
+        viewKey="creditors-list"
+        columns={columns}
+        rows={creditors}
+        rowKey={c => c.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('creditors.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+        }}
+        sort={sort}
+        onSortChange={setSort}
+        page={1}
+        limit={FETCH_LIMIT}
+        total={creditors.length}
+        onPageChange={() => {}}
+        emptyMessage={t('creditors.noEntriesFound')}
+        emptyAction={{ label: t('creditors.addEntry'), onClick: () => setAddModal(a => ({ ...a, open: true })) }}
+        onClearFilters={() => setFilterState({})}
+      />
 
       {/* Payment Modal */}
       {payModal && (

@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save } from 'lucide-react'
 import { api } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { LostFoundItem } from '../../types'
+
+const STATUSES = ['unclaimed', 'claimed', 'donated', 'disposed'] as const
 
 export function LostFoundPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [items, setItems] = useState<LostFoundItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -16,16 +25,83 @@ export function LostFoundPage() {
     found_location: '',
     notes: '',
   })
+  const [claimModal, setClaimModal] = useState<{ id: string } | null>(null)
+  const [claimForm, setClaimForm] = useState({ name: '', mobile: '' })
 
-  useEffect(() => { load() }, [])
+  function statusBadge(s: string) {
+    if (s === 'unclaimed') return <span className="badge-yellow">{t('registers.statusUnclaimed')}</span>
+    if (s === 'claimed') return <span className="badge-green">{t('registers.statusClaimed')}</span>
+    if (s === 'donated') return <span className="badge-blue">{t('registers.statusDonated')}</span>
+    return <span className="badge-gray">{t('registers.statusDisposed')}</span>
+  }
+
+  const statusLabel: Record<string, string> = {
+    unclaimed: t('registers.statusUnclaimed'),
+    claimed: t('registers.statusClaimed'),
+    donated: t('registers.statusDonated'),
+    disposed: t('registers.statusDisposed'),
+  }
+
+  const columns: ColumnDef<LostFoundItem>[] = useMemo(() => [
+    { key: 'description', label: t('registers.descriptionCol'), render: i => <span className="font-medium">{i.description}</span> },
+    {
+      key: 'found_date', label: t('registers.foundDateCol'),
+      render: i => <span className="text-xs">{new Date(i.found_date).toLocaleDateString('en-IN')}</span>,
+    },
+    { key: 'location', label: t('registers.location'), render: i => <span className="text-slate-500">{i.found_location || '—'}</span> },
+    {
+      key: 'status', label: t('registers.status'),
+      filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
+      render: i => statusBadge(i.status),
+    },
+    { key: 'claimant', label: t('registers.claimant'), render: i => <>{i.claimant_name || '—'}</> },
+    {
+      key: 'actions', label: t('registers.actions'),
+      render: i => i.status === 'unclaimed' ? (
+        <button onClick={() => { setClaimForm({ name: '', mobile: '' }); setClaimModal({ id: i.id }) }} className="btn-success btn-sm">
+          {t('registers.markClaimed')}
+        </button>
+      ) : null,
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
+
+  useEffect(() => { load() }, [search, filterState])
 
   async function load() {
     setLoading(true)
     try {
-      const { data } = await api.get('/lost-found?limit=50')
+      const params = new URLSearchParams({ limit: '200' })
+      if (search) params.set('q', search)
+      for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+      const { data } = await api.get(`/lost-found?${params}`)
       setItems(data.data || [])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function exportExcel() {
+    if (!items.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('registers.lostFoundTitle'),
+        filename: 'lost-found',
+        columns: [
+          { header: t('registers.foundDateCol'), type: 'date' },
+          { header: t('registers.descriptionCol'), width: 32 },
+          { header: t('registers.location'), width: 20 },
+          { header: t('registers.status'), width: 12 },
+          { header: t('registers.claimant'), width: 22 },
+        ],
+        rows: items.map(i => [
+          new Date(i.found_date).toLocaleDateString('en-IN'), i.description,
+          i.found_location ?? '', statusLabel[i.status] ?? i.status, i.claimant_name ?? '',
+        ]),
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
     }
   }
 
@@ -41,30 +117,34 @@ export function LostFoundPage() {
       })
       setForm({ description: '', found_date: new Date().toISOString().slice(0, 10), found_location: '', notes: '' })
       setShowForm(false)
+      toast.success(t('registers.itemRecorded'))
       load()
     } finally {
       setSaving(false)
     }
   }
 
-  async function markClaimed(id: string) {
-    const name = window.prompt(t('registers.claimantNamePrompt'))
-    const mobile = window.prompt(t('registers.claimantMobilePrompt'))
-    if (!name) return
-    await api.patch(`/lost-found/${id}/claim`, { claimant_name: name, claimant_mobile: mobile || undefined })
-    load()
-  }
-
-  function statusBadge(s: string) {
-    if (s === 'unclaimed') return <span className="badge-yellow">{t('registers.statusUnclaimed')}</span>
-    if (s === 'claimed') return <span className="badge-green">{t('registers.statusClaimed')}</span>
-    if (s === 'donated') return <span className="badge-blue">{t('registers.statusDonated')}</span>
-    return <span className="badge-gray">{t('registers.statusDisposed')}</span>
+  async function submitClaim(e: React.FormEvent) {
+    e.preventDefault()
+    if (!claimModal || !claimForm.name.trim()) return
+    try {
+      await api.patch(`/lost-found/${claimModal.id}/claim`, {
+        claimant_name: claimForm.name.trim(),
+        claimant_mobile: claimForm.mobile || undefined,
+      })
+      setClaimModal(null)
+      toast.success(t('registers.claimRecorded'))
+      load()
+    } catch {
+      toast.error(t('registers.claimFailed'))
+    }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('registers.lostFoundTitle')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('registers.lostFoundTitle')}</h1>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary btn-sm">
           <Plus size={14} /> {t('registers.reportFoundItem')}
@@ -72,7 +152,7 @@ export function LostFoundPage() {
       </div>
 
       {showForm && (
-        <div className="card">
+        <div className="card no-print">
           <div className="card-header"><h3 className="font-semibold text-sm">{t('registers.reportFoundItem')}</h3></div>
           <form onSubmit={submit} className="card-body space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -105,31 +185,59 @@ export function LostFoundPage() {
         </div>
       )}
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('registers.descriptionCol')}</th><th>{t('registers.foundDateCol')}</th><th>{t('registers.location')}</th><th>{t('registers.status')}</th><th>{t('registers.claimant')}</th><th>{t('registers.actions')}</th></tr></thead>
-            <tbody>
-              {loading ? <tr><td colSpan={6} className="text-center py-8 text-slate-400">{t('common.loading')}</td></tr>
-                : items.length === 0 ? <tr><td colSpan={6} className="text-center py-8 text-slate-400">{t('registers.noItemsInRegister')}</td></tr>
-                : items.map(item => (
-                  <tr key={item.id}>
-                    <td className="font-medium">{item.description}</td>
-                    <td className="text-xs">{new Date(item.found_date).toLocaleDateString('en-IN')}</td>
-                    <td className="text-slate-500">{item.found_location || '—'}</td>
-                    <td>{statusBadge(item.status)}</td>
-                    <td>{item.claimant_name || '—'}</td>
-                    <td>
-                      {item.status === 'unclaimed' && (
-                        <button onClick={() => markClaimed(item.id)} className="btn-success btn-sm">{t('registers.markClaimed')}</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+      <DataTable
+        viewKey="lost-found-list"
+        columns={columns}
+        rows={items}
+        rowKey={i => i.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('registers.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, st) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (st) next[key] = st
+            else delete next[key]
+            return next
+          })
+        }}
+        page={1}
+        limit={200}
+        total={items.length}
+        onPageChange={() => {}}
+        emptyMessage={t('registers.noItemsInRegister')}
+        emptyAction={{ label: t('registers.reportFoundItem'), onClick: () => setShowForm(true) }}
+        onClearFilters={() => setFilterState({})}
+      />
+
+      {/* Claim modal — replaces the old window.prompt flow */}
+      {claimModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 className="font-bold text-navy-900 mb-4">{t('registers.markClaimed')}</h3>
+            <form onSubmit={submitClaim} className="space-y-4">
+              <div>
+                <label className="form-label">{t('registers.claimantName')} *</label>
+                <input className="form-input" autoFocus value={claimForm.name}
+                  onChange={e => setClaimForm(f => ({ ...f, name: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="form-label">{t('registers.claimantMobile')}</label>
+                <input type="tel" className="form-input" value={claimForm.mobile}
+                  onChange={e => setClaimForm(f => ({ ...f, mobile: e.target.value }))} />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setClaimModal(null)} className="btn-secondary">{t('common.cancel')}</button>
+                <button type="submit" disabled={!claimForm.name.trim()} className="btn-success">{t('registers.markClaimed')}</button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

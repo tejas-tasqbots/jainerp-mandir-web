@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfirmProvider } from './components/ConfirmDialog'
+import { ToastProvider } from './components/kit/Toast'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
@@ -8,6 +9,7 @@ import { DonationsHub } from './pages/Donations/DonationsHub'
 import { AddDonation } from './pages/Donations/AddDonation'
 import { ExpensesList } from './pages/Expenses/ExpensesList'
 import { AddExpense } from './pages/Expenses/AddExpense'
+import { RecurringExpenses } from './pages/Expenses/RecurringExpenses'
 import { RoomsList } from './pages/Dharamshala/Rooms/RoomsList'
 import { AddRoomCheckin } from './pages/Dharamshala/Rooms/AddRoomCheckin'
 import { HallBookingsList } from './pages/Dharamshala/Hall/HallBookingsList'
@@ -40,9 +42,14 @@ import { TrialBalance } from './pages/Accounts/TrialBalance'
 import { ReceiptsPayments } from './pages/Accounts/ReceiptsPayments'
 import { IncomeExpenditure } from './pages/Accounts/IncomeExpenditure'
 import { BalanceSheet } from './pages/Accounts/BalanceSheet'
+import { Cheques } from './pages/Accounts/Cheques'
+import { CashBank } from './pages/Accounts/CashBank'
+import { BankReconciliation } from './pages/Accounts/BankReconciliation'
 import { ReportsHome } from './pages/Reports/ReportsHome'
 import { CertificatesPage } from './pages/Certificates/CertificatesPage'
 import { LostFoundPage } from './pages/Registers/LostFoundPage'
+import { RecycleBinPage } from './pages/Registers/RecycleBinPage'
+import { ActivityLogPage } from './pages/Registers/ActivityLogPage'
 import { VisitorCountPage } from './pages/Registers/VisitorCountPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
 import { MaharajPage } from './pages/Maharaj/MaharajPage'
@@ -90,6 +97,7 @@ export default function App() {
 
   return (
     <Router>
+      <ToastProvider>
       <ConfirmProvider>
       <Routes>
         {!isLoggedIn ? (
@@ -108,6 +116,7 @@ export default function App() {
             {/* Expenses */}
             <Route path="/expenses" element={<ExpensesList />} />
             <Route path="/expenses/add" element={<AddExpense />} />
+            <Route path="/expenses/recurring" element={<RecurringExpenses />} />
 
             {/* Dharamshala */}
             <Route path="/rooms" element={<RoomsList />} />
@@ -149,6 +158,9 @@ export default function App() {
             <Route path="/masters/inventory" element={<InventoryPage />} />
 
             {/* Accounts */}
+            <Route path="/accounts/cash-bank" element={<CashBank />} />
+            <Route path="/accounts/reconciliation" element={<BankReconciliation />} />
+            <Route path="/accounts/cheques" element={<Cheques />} />
             <Route path="/accounts/contra" element={<ContraEntries />} />
             <Route path="/accounts/fixed-assets" element={<FixedAssets />} />
             <Route path="/accounts/loans" element={<Loans />} />
@@ -170,6 +182,8 @@ export default function App() {
             {/* Registers */}
             <Route path="/registers/lost-found" element={<LostFoundPage />} />
             <Route path="/registers/visitor-count" element={<VisitorCountPage />} />
+            <Route path="/registers/recycle-bin" element={<RecycleBinPage />} />
+            <Route path="/registers/activity-log" element={<ActivityLogPage />} />
 
             {/* Settings & Help */}
             <Route path="/maharaj" element={<MaharajPage />} />
@@ -181,6 +195,7 @@ export default function App() {
         )}
       </Routes>
       </ConfirmProvider>
+      </ToastProvider>
     </Router>
   )
 }

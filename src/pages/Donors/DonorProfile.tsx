@@ -5,11 +5,16 @@ import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw, FileDown, Printe
 import { api, fmtPaise } from '../../lib/api'
 import { downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
-import { exportRowsCsv, printCurrentView, rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { rangeCaption, type DateRange } from '../../lib/dateRanges'
+import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
+import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
 
 interface LedgerRow {
   id: string
@@ -27,6 +32,7 @@ interface LedgerTotals { donated_paise: number; receipts: number }
 
 export function DonorProfile() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { id } = useParams()
   const navigate = useNavigate()
   const [donor, setDonor] = useState<Donor | null>(null)
@@ -36,15 +42,19 @@ export function DonorProfile() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '' })
+  const [range, setRange] = useState<DateRange>(() => loadStoredRange('donor-statement', 'all'))
 
-  useEffect(() => { if (id) load() }, [id])
+  useEffect(() => { if (id) load() }, [id, range])
 
   async function load() {
     setLoading(true)
     try {
+      const ledgerParams = new URLSearchParams()
+      if (range.from) ledgerParams.set('from', range.from)
+      if (range.to) ledgerParams.set('to', range.to)
       const [donorResp, ledgerResp] = await Promise.allSettled([
         api.get(`/donors/${id}`),
-        api.get(`/donors/${id}/ledger`),
+        api.get(`/donors/${id}/ledger?${ledgerParams}`),
       ])
       if (donorResp.status === 'fulfilled') {
         const d = donorResp.value.data.data
@@ -97,6 +107,32 @@ export function DonorProfile() {
 
   const [cert80g, setCert80g] = useState(false)
   const [receiptBusy, setReceiptBusy] = useState<string | null>(null)
+  const [tagsSaving, setTagsSaving] = useState(false)
+  const [tagPicker, setTagPicker] = useState(false)
+  const [customTag, setCustomTag] = useState('')
+
+  async function saveTags(nextTags: string[]) {
+    if (!id) return
+    setTagsSaving(true)
+    try {
+      await api.patch(`/donors/${id}`, { tags: nextTags })
+      setDonor(d => d ? { ...d, tags: nextTags } : d)
+    } catch {
+      toast.error(t('donors.tagUpdateFailed'))
+    } finally {
+      setTagsSaving(false)
+    }
+  }
+  function addTag(tag: string) {
+    const clean = tag.trim()
+    if (!clean || donor?.tags?.includes(clean)) { setTagPicker(false); setCustomTag(''); return }
+    saveTags([...(donor?.tags ?? []), clean])
+    setTagPicker(false)
+    setCustomTag('')
+  }
+  function removeTag(tag: string) {
+    saveTags((donor?.tags ?? []).filter(tg => tg !== tag))
+  }
 
   async function download80g() {
     if (!id) return
@@ -138,25 +174,46 @@ export function DonorProfile() {
   }
 
   const exportHeaders = [t('donors.type'), t('donors.invoice'), t('donors.details'), t('donors.amount'), t('donors.mode'), t('donors.date')]
-  const exportRows = () => ledger.map(tx => [
-    txnLabel(tx),
-    tx.invoice_no || '',
-    tx.detail || '',
-    rsFmt(tx.amount_paise),
-    tx.payment_mode || '',
-    new Date(tx.created_at).toLocaleDateString('en-IN'),
-  ])
 
-  function exportCsv() {
-    exportRowsCsv(`${donor?.name || 'donor'}-transactions.csv`, exportHeaders, exportRows())
+  async function exportExcel() {
+    if (!ledger.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      const total = ledger.filter(tx => !tx.voided).reduce((s, tx) => s + tx.amount_paise, 0)
+      await exportXlsx({
+        title: t('donors.statementTitle', { name: donor?.name ?? '' }),
+        subtitle: rangeCaption(range, t('dateRange.all')),
+        filename: `${donor?.name || 'donor'}-statement`,
+        columns: [
+          { header: t('donors.type'), width: 14 },
+          { header: t('donors.invoice'), width: 14 },
+          { header: t('donors.details'), width: 30 },
+          { header: t('common.amount'), type: 'money' },
+          { header: t('donors.mode'), width: 12 },
+          { header: t('donors.date'), type: 'date' },
+        ],
+        rows: ledger.map(tx => [
+          txnLabel(tx), tx.invoice_no || '', tx.detail || '', tx.amount_paise,
+          tx.payment_mode || '', new Date(tx.created_at).toLocaleDateString('en-IN'),
+        ]),
+        totals: [t('kit.total'), '', '', total, '', ''],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
   }
 
   function exportPdf() {
     downloadRowsPdf(
-      `${donor?.name || 'donor'}-transactions.pdf`,
-      `Transaction History — ${donor?.name || ''}`,
+      `${donor?.name || 'donor'}-statement.pdf`,
+      t('donors.statementTitle', { name: donor?.name ?? '' }),
       exportHeaders,
-      exportRows(),
+      ledger.map(tx => [
+        txnLabel(tx), tx.invoice_no || '', tx.detail || '',
+        `₹${fmtPaise(tx.amount_paise)}`, tx.payment_mode || '',
+        new Date(tx.created_at).toLocaleDateString('en-IN'),
+      ]),
+      { subtitle: rangeCaption(range, t('dateRange.all')) },
     )
   }
 
@@ -165,7 +222,9 @@ export function DonorProfile() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-4">
+      <PrintLetterhead title={t('donors.statementTitle', { name: donor.name })} subtitle={rangeCaption(range, t('dateRange.all'))} />
+
+      <div className="flex items-center gap-4 no-print">
         <button onClick={() => navigate('/donors')} className="btn-icon"><ArrowLeft size={18} /></button>
         <h1 className="text-xl font-bold text-navy-900">{donor.name}</h1>
         {donor.is_active ? <span className="badge-green">{t('donors.active')}</span> : <span className="badge-gray">{t('donors.inactive')}</span>}
@@ -266,6 +325,49 @@ export function DonorProfile() {
                   <span className="font-medium">{value}</span>
                 </div>
               ))}
+
+              {/* Tags */}
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs text-slate-400 mb-1.5">{t('donors.tags')}</p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(donor.tags ?? []).map(tag => (
+                    <span key={tag} className="badge-blue inline-flex items-center gap-1">
+                      {tag}
+                      <button type="button" onClick={() => removeTag(tag)} disabled={tagsSaving} aria-label={t('donors.removeTag', { tag })} className="hover:text-red-600">
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  <div className="relative">
+                    <button
+                      type="button" onClick={() => setTagPicker(o => !o)} disabled={tagsSaving}
+                      className="text-xs text-brand-blue hover:underline disabled:opacity-50"
+                    >
+                      + {t('donors.addTag')}
+                    </button>
+                    {tagPicker && (
+                      <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-48">
+                        {DONOR_TAG_OPTIONS.filter(tg => !donor.tags?.includes(tg)).map(tg => (
+                          <button
+                            key={tg} type="button" onClick={() => addTag(tg)}
+                            className="w-full text-left px-2 py-1 rounded text-xs text-slate-700 hover:bg-slate-50"
+                          >
+                            {tg}
+                          </button>
+                        ))}
+                        <form onSubmit={e => { e.preventDefault(); addTag(customTag) }} className="flex gap-1 mt-1 pt-1 border-t border-slate-100">
+                          <input
+                            autoFocus className="form-input !py-1 !text-xs flex-1"
+                            placeholder={t('donors.customTagPlaceholder')}
+                            value={customTag} onChange={e => setCustomTag(e.target.value)}
+                          />
+                          <button type="submit" className="text-xs font-semibold text-white bg-navy-900 hover:bg-navy-800 rounded px-2">{t('kit.apply')}</button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -298,12 +400,15 @@ export function DonorProfile() {
       )}
 
       <div className="card">
-        <div className="card-header flex items-center justify-between">
+        <div className="card-header flex items-center justify-between flex-wrap gap-3">
           <h3 className="font-semibold text-sm text-navy-900">{t('donors.transactionHistory')}</h3>
-          <div className="flex gap-2 no-print">
-            <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('donors.exportPdf')}</button>
-            <button type="button" onClick={printCurrentView} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
-            <button type="button" onClick={exportCsv} className="btn-secondary btn-sm"><Sheet size={14} /> {t('donors.exportCsv')}</button>
+          <div className="flex items-center gap-3 flex-wrap no-print">
+            <DateRangePicker value={range} onChange={setRange} storageKey="donor-statement" />
+            <div className="flex gap-2">
+              <button type="button" onClick={exportExcel} className="btn-secondary btn-sm"><Sheet size={14} /> {t('kit.exportExcel')}</button>
+              <button type="button" onClick={exportPdf} className="btn-secondary btn-sm"><FileDown size={14} /> {t('donors.exportPdf')}</button>
+              <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">

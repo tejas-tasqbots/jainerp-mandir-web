@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, X, Search, Users } from 'lucide-react'
+import { Plus, Pencil, X, Users } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface Employee {
   id: string
@@ -20,28 +24,92 @@ const emptyForm = { name: '', mobile: '', email: '', designation: '', department
 
 export function EmployeesPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [tab, setTab] = useState<'employees' | 'volunteers'>('employees')
   const [items, setItems] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const columns: ColumnDef<Employee>[] = useMemo(() => [
+    { key: 'name', label: t('employees.name'), render: emp => <span className="font-medium">{emp.name}</span> },
+    { key: 'mobile', label: t('employees.mobile'), render: emp => <>{emp.mobile || '—'}</> },
+    {
+      key: 'designation', label: tab === 'employees' ? t('employees.designation') : t('employees.role'),
+      render: emp => <span className="text-slate-600">{emp.designation || '—'}</span>,
+    },
+    { key: 'department', label: t('employees.department'), render: emp => <span className="text-slate-600">{emp.department || '—'}</span> },
+    {
+      key: 'salary', label: t('employees.salary'), align: 'right',
+      render: emp => <>{emp.monthly_salary_paise ? `₹${fmtPaise(emp.monthly_salary_paise)}${t('employees.perMonth')}` : '—'}</>,
+    },
+    {
+      key: 'status', label: t('employees.status'),
+      render: emp => emp.is_active
+        ? <span className="badge-green">{t('employees.active')}</span>
+        : <span className="badge-gray">{t('employees.inactive')}</span>,
+    },
+    {
+      key: 'actions', label: t('employees.actions'),
+      render: emp => (
+        <button onClick={() => openEdit(emp)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('common.save')} aria-label="Edit">
+          <Pencil size={14} />
+        </button>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, tab])
+
   useEffect(() => { load() }, [search, tab])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '50' })
+      const params = new URLSearchParams({ limit: '200' })
       if (search) params.set('q', search)
       const resource = tab === 'employees' ? 'employees' : 'volunteers'
       const { data } = await api.get(`/${resource}?${params}`)
       setItems(data.data || [])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function exportExcel() {
+    if (!items.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: `${t('employees.title')} — ${tab === 'employees' ? t('employees.tabEmployees') : t('employees.tabVolunteers')}`,
+        filename: tab,
+        columns: [
+          { header: t('employees.name'), width: 26 },
+          { header: t('employees.mobile'), width: 16 },
+          { header: t('employees.email'), width: 24 },
+          { header: tab === 'employees' ? t('employees.designation') : t('employees.role'), width: 18 },
+          { header: t('employees.department'), width: 16 },
+          { header: t('employees.salary'), type: 'money' },
+          { header: t('employees.joiningDate'), type: 'date' },
+          { header: t('employees.status'), width: 10 },
+        ],
+        rows: items.map(emp => [
+          emp.name, emp.mobile ?? '', emp.email ?? '', emp.designation ?? '', emp.department ?? '',
+          emp.monthly_salary_paise ?? 0,
+          emp.joining_date ? new Date(emp.joining_date).toLocaleDateString('en-IN') : '',
+          emp.is_active ? t('employees.active') : t('employees.inactive'),
+        ]),
+        totals: [
+          t('kit.total'), '', '', '', '',
+          items.reduce((s, emp) => s + (emp.monthly_salary_paise ?? 0), 0), '', '',
+        ],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
     }
   }
 
@@ -73,6 +141,7 @@ export function EmployeesPage() {
       if (editId) await api.patch(`/${resource}/${editId}`, body)
       else await api.post(`/${resource}`, body)
       setShowForm(false); setForm(emptyForm); setEditId(null)
+      toast.success(t('common.saved'))
       load()
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { error?: { message?: string } } } }
@@ -84,12 +153,14 @@ export function EmployeesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('employees.title')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2"><Users size={18} /> {t('employees.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {tab === 'employees' ? t('employees.addEmployee') : t('employees.addVolunteer')}</button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 no-print">
         {(['employees', 'volunteers'] as const).map(tabKey => (
           <button key={tabKey} onClick={() => { setTab(tabKey); setSearch('') }}
             className={`px-4 py-1.5 text-sm rounded-md font-medium capitalize ${tab === tabKey ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
@@ -98,38 +169,33 @@ export function EmployeesPage() {
         ))}
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="form-input pl-9" placeholder={t('employees.searchPlaceholder')}
-          value={search} onChange={e => setSearch(e.target.value)} />
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('employees.name')}</th><th>{t('employees.mobile')}</th><th>{tab === 'employees' ? t('employees.designation') : t('employees.role')}</th><th>{t('employees.department')}</th><th>{t('employees.salary')}</th><th>{t('employees.status')}</th><th>{t('employees.actions')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-slate-400">{tab === 'employees' ? t('employees.noEmployeesFound') : t('employees.noVolunteersFound')}</td></tr>
-              ) : items.map(emp => (
-                <tr key={emp.id}>
-                  <td className="font-medium">{emp.name}</td>
-                  <td>{emp.mobile || '—'}</td>
-                  <td className="text-slate-600">{emp.designation || '—'}</td>
-                  <td className="text-slate-600">{emp.department || '—'}</td>
-                  <td>{emp.monthly_salary_paise ? `₹${fmtPaise(emp.monthly_salary_paise)}${t('employees.perMonth')}` : '—'}</td>
-                  <td>{emp.is_active ? <span className="badge-green">{t('employees.active')}</span> : <span className="badge-gray">{t('employees.inactive')}</span>}</td>
-                  <td>
-                    <button onClick={() => openEdit(emp)} className="p-1 text-slate-400 hover:text-brand-blue rounded"><Pencil size={14} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        viewKey="employees-list"
+        columns={columns}
+        rows={items}
+        rowKey={emp => emp.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('employees.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, st) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (st) next[key] = st
+            else delete next[key]
+            return next
+          })
+        }}
+        page={1}
+        limit={200}
+        total={items.length}
+        onPageChange={() => {}}
+        emptyMessage={tab === 'employees' ? t('employees.noEmployeesFound') : t('employees.noVolunteersFound')}
+        emptyAction={{ label: tab === 'employees' ? t('employees.addEmployee') : t('employees.addVolunteer'), onClick: openAdd }}
+      />
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

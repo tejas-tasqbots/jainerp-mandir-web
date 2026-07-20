@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Download, XCircle, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import type { Donor } from '../../types'
+import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
+
+const PAGE_SIZE = 20
 
 const emptyForm = {
   name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '', pan: '', is_80g_eligible: true,
@@ -14,30 +21,114 @@ const emptyForm = {
 export function DonorList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const toast = useToast()
   const [donors, setDonors] = useState<Donor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [page, search])
+  const columns: ColumnDef<Donor>[] = useMemo(() => [
+    {
+      key: 'name', label: t('donors.name'),
+      render: d => (
+        <div>
+          <p className="font-medium">{d.name}</p>
+          {d.gotra && <p className="text-xs text-slate-400">{t('donors.gotraLabel', { gotra: d.gotra })}</p>}
+        </div>
+      ),
+    },
+    { key: 'mobile', label: t('donors.mobile'), render: d => <>{d.mobile}</> },
+    {
+      key: 'city', label: t('donors.city'),
+      render: d => <span className="text-slate-600">{d.city || '—'}{d.state ? `, ${d.state}` : ''}</span>,
+    },
+    {
+      key: 'pan', label: t('donors.pan'),
+      render: d => <span className="font-mono text-xs">{d.pan_masked || '—'}</span>,
+    },
+    {
+      key: 'thisFy', label: t('donors.thisFy'), align: 'right',
+      render: d => (
+        <span className="font-medium text-green-700">
+          {d.cumulative_amount_current_fy_paise ? `₹${fmtPaise(d.cumulative_amount_current_fy_paise)}` : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'tags', label: t('donors.tags'),
+      filter: { kind: 'enum', param: 'tag', options: DONOR_TAG_OPTIONS.map(tg => ({ value: tg, label: tg })) },
+      render: d => d.tags?.length ? (
+        <div className="flex flex-wrap gap-1">
+          {d.tags.map(tg => <span key={tg} className="badge-blue">{tg}</span>)}
+        </div>
+      ) : <span className="text-slate-300">—</span>,
+    },
+    {
+      key: 'status', label: t('donors.status'),
+      render: d => d.is_active
+        ? <span className="badge-green">{t('donors.active')}</span>
+        : <span className="badge-gray">{t('donors.inactive')}</span>,
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
+
+  function buildParams(limit: number, forPage = 1): URLSearchParams {
+    const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
+    if (search) params.set('q', search)
+    for (const [k, v] of Object.entries(filterStateToParams(columns, filterState))) params.set(k, v)
+    return params
+  }
+
+  useEffect(() => { load() }, [page, search, filterState])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
-      if (search) params.set('q', search)
-      const { data } = await api.get(`/donors?${params}`)
+      const { data } = await api.get(`/donors?${buildParams(PAGE_SIZE, page)}`)
       setDonors(data.data || [])
       setTotal(data.meta?.total || 0)
     } catch {
       setDonors([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function exportExcel() {
+    try {
+      const { data } = await api.get(`/donors?${buildParams(200)}`)
+      const rows: Donor[] = data.data || []
+      if (!rows.length) { toast.info(t('kit.nothingToExport')); return }
+      await exportXlsx({
+        title: t('donors.title'),
+        filename: 'donors',
+        columns: [
+          { header: t('donors.name'), width: 26 },
+          { header: t('donors.gotra'), width: 14 },
+          { header: t('donors.mobile'), width: 16 },
+          { header: t('donors.email'), width: 24 },
+          { header: t('donors.city'), width: 18 },
+          { header: t('donors.state'), width: 16 },
+          { header: t('donors.pan'), width: 13 },
+          { header: t('donors.thisFy'), type: 'money' },
+          { header: t('donors.tags'), width: 20 },
+          { header: t('donors.status'), width: 10 },
+        ],
+        rows: rows.map(d => [
+          d.name, d.gotra ?? '', d.mobile ?? '', d.email ?? '', d.city ?? '', d.state ?? '',
+          d.pan_masked ?? '', d.cumulative_amount_current_fy_paise ?? 0, (d.tags ?? []).join(', '),
+          d.is_active ? t('donors.active') : t('donors.inactive'),
+        ]),
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
     }
   }
 
@@ -69,8 +160,8 @@ export function DonorList() {
       setForm(emptyForm)
       navigate(`/donors/${data.data.id}`)
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: { message?: string } } } }
-      setError(e.response?.data?.error?.message || 'Failed to add donor')
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      setError(e2.response?.data?.error?.message || 'Failed to add donor')
     } finally {
       setSaving(false)
     }
@@ -78,76 +169,45 @@ export function DonorList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('donors.title')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('donors.title')}</h1>
-        <div className="flex gap-2">
-          <button className="btn-secondary btn-sm" onClick={() => {}}>
-            <Download size={14} /> {t('donors.export')}
-          </button>
-          <button onClick={() => setShowAdd(true)} className="btn-primary btn-sm">
-            <Plus size={14} /> {t('donors.addDonor')}
-          </button>
-        </div>
+        <button onClick={() => setShowAdd(true)} className="btn-primary btn-sm">
+          <Plus size={14} /> {t('donors.addDonor')}
+        </button>
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="form-input pl-9" placeholder={t('donors.searchPlaceholder')}
-          value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-            <XCircle size={14} />
-          </button>
-        )}
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('donors.name')}</th>
-                <th>{t('donors.mobile')}</th>
-                <th>{t('donors.city')}</th>
-                <th>{t('donors.pan')}</th>
-                <th>{t('donors.thisFy')}</th>
-                <th>{t('donors.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : donors.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">{t('donors.noDonorsFound')}</td></tr>
-              ) : donors.map(d => (
-                <tr key={d.id} className="cursor-pointer" onClick={() => navigate(`/donors/${d.id}`)}>
-                  <td>
-                    <p className="font-medium">{d.name}</p>
-                    {d.gotra && <p className="text-xs text-slate-400">{t('donors.gotraLabel', { gotra: d.gotra })}</p>}
-                  </td>
-                  <td>{d.mobile}</td>
-                  <td className="text-slate-600">{d.city || '—'}{d.state ? `, ${d.state}` : ''}</td>
-                  <td className="font-mono text-xs">{d.pan_masked || '—'}</td>
-                  <td className="font-medium text-green-700">
-                    {d.cumulative_amount_current_fy_paise ? `₹${fmtPaise(d.cumulative_amount_current_fy_paise)}` : '—'}
-                  </td>
-                  <td>{d.is_active ? <span className="badge-green">{t('donors.active')}</span> : <span className="badge-gray">{t('donors.inactive')}</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {total > 20 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>{t('donors.showing', { from: ((page-1)*20)+1, to: Math.min(page*20, total), total })}</span>
-          <div className="flex gap-2">
-            <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="btn-secondary btn-sm">{t('common.prev')}</button>
-            <button disabled={page * 20 >= total} onClick={() => setPage(p => p+1)} className="btn-secondary btn-sm">{t('common.next')}</button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        viewKey="donors-list"
+        columns={columns}
+        rows={donors}
+        rowKey={d => d.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={v => { setSearch(v); setPage(1) }}
+        searchPlaceholder={t('donors.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, s) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (s) next[key] = s
+            else delete next[key]
+            return next
+          })
+          setPage(1)
+        }}
+        onClearFilters={() => { setFilterState({}); setPage(1) }}
+        page={page}
+        limit={PAGE_SIZE}
+        total={total}
+        onPageChange={setPage}
+        emptyMessage={t('donors.noDonorsFound')}
+        emptyAction={{ label: t('donors.addDonor'), onClick: () => setShowAdd(true) }}
+        onRowClick={d => navigate(`/donors/${d.id}`)}
+      />
 
       {/* Add Donor Modal */}
       {showAdd && (

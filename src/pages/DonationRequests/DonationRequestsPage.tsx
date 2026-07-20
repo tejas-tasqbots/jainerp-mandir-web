@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, CloudOff, Eye, FileText, Landmark, Loader2, Printer, RefreshCw, Share2, ShieldCheck, XCircle } from 'lucide-react'
+import { CheckCircle, CloudOff, Eye, FileSpreadsheet, FileText, Landmark, Loader2, Printer, RefreshCw, Search, Share2, ShieldCheck, XCircle } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { useToast } from '../../components/kit/Toast'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { useIsOnline } from '../../lib/useIsOnline'
 import { printDonationReceipt, shareReceiptPdf } from '../../lib/printReceipt'
@@ -53,10 +55,12 @@ const TABS: { key: RequestStatus; labelKey: string }[] = [
 export function DonationRequestsPage() {
   const { t } = useTranslation()
   const confirm = useConfirm()
+  const toast = useToast()
   const online = useIsOnline()
   const [tab, setTab] = useState<RequestStatus>('pending')
   const [rows, setRows] = useState<DonationRequest[]>([])
   const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
   const [actionId, setActionId] = useState<string | null>(null)
   const [detail, setDetail] = useState<DetailModal>({ open: false, loading: false, request: null })
   const [rejectModal, setRejectModal] = useState<RejectModal>({ open: false, id: '', reason: '', loading: false, error: '' })
@@ -154,6 +158,46 @@ export function DonationRequestsPage() {
   const donorLocation = (r: DonationRequest) =>
     [r.donor_city, r.donor_state].filter(Boolean).join(', ')
 
+  const visible = search
+    ? rows.filter(r => {
+        const needle = search.toLowerCase()
+        return (r.donor_name ?? '').toLowerCase().includes(needle)
+          || r.devotee_mobile.includes(search)
+          || (r.utr_number ?? '').toLowerCase().includes(needle)
+          || (r.receipt_no ?? '').toLowerCase().includes(needle)
+      })
+    : rows
+
+  async function exportExcel() {
+    if (!visible.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('donationRequests.title'),
+        subtitle: t(TABS.find(x => x.key === tab)?.labelKey ?? ''),
+        filename: `donation-requests-${tab}`,
+        columns: [
+          { header: t('common.date'), type: 'date' },
+          { header: t('donationRequests.devotee'), width: 24 },
+          { header: t('devoteesPage.mobile'), width: 16 },
+          { header: t('common.amount'), type: 'money' },
+          { header: t('donationRequests.paidVia'), width: 12 },
+          { header: t('donationRequests.reference'), width: 20 },
+          { header: '80G', width: 8 },
+          { header: t('common.status'), width: 12 },
+        ],
+        rows: visible.map(r => [
+          new Date(r.created_at).toLocaleDateString('en-IN'),
+          r.donor_name ?? '', r.devotee_mobile, r.amount_paise, r.payment_mode,
+          r.utr_number ?? r.receipt_no ?? '', r.is_80g ? t('common.yes') : t('common.no'), r.status,
+        ]),
+        totals: [t('kit.total'), '', '', visible.reduce((s, r) => s + r.amount_paise, 0), '', '', '', ''],
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -161,9 +205,27 @@ export function DonationRequestsPage() {
           <h1 className="text-xl font-bold text-navy-900">{t('donationRequests.title')}</h1>
           <p className="text-sm text-slate-500 mt-0.5">{t('donationRequests.subtitle')}</p>
         </div>
-        <button onClick={fetchRows} className="btn-secondary btn-sm" title="Refresh">
-          <RefreshCw size={14} />
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportExcel} className="btn-icon !text-green-700 hover:!bg-green-50" title={t('kit.exportExcel')} aria-label={t('kit.exportExcel')}>
+            <FileSpreadsheet size={16} />
+          </button>
+          <button onClick={fetchRows} className="btn-secondary btn-sm" title="Refresh">
+            <RefreshCw size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-64">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input className="form-input pl-9" placeholder={t('donationRequests.searchPlaceholder')}
+          value={search} onChange={e => setSearch(e.target.value)} />
+        {search && (
+          <button type="button" title={t('kit.clearSearch')} aria-label={t('kit.clearSearch')} onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <XCircle size={14} />
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -187,7 +249,7 @@ export function DonationRequestsPage() {
       <div className="card overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center text-slate-400 text-sm">{t('common.loading')}</div>
-        ) : rows.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-sm">
             {tab === 'pending' && t('donationRequests.noPending')}
             {tab === 'approved' && t('donationRequests.noApproved')}
@@ -206,7 +268,7 @@ export function DonationRequestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map(r => (
+              {visible.map(r => (
                 <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

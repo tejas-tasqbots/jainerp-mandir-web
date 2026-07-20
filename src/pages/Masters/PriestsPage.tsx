@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, X, Search } from 'lucide-react'
+import { Plus, Pencil, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { exportXlsx } from '../../lib/exportXlsx'
+import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 
 interface Priest {
   id: string
@@ -19,25 +23,84 @@ const emptyForm = { name: '', mobile: '', email: '', specialization: '', monthly
 
 export function PriestsPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [priests, setPriests] = useState<Priest[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  const columns: ColumnDef<Priest>[] = useMemo(() => [
+    { key: 'name', label: t('priests.name'), render: p => <span className="font-medium">{p.name}</span> },
+    { key: 'mobile', label: t('priests.mobile'), render: p => <>{p.mobile || '—'}</> },
+    { key: 'specialization', label: t('priests.specialization'), render: p => <span className="text-slate-600">{p.specialization || '—'}</span> },
+    {
+      key: 'stipend', label: t('priests.monthlyStipend'), align: 'right',
+      render: p => <>{p.monthly_stipend_paise ? `₹${fmtPaise(p.monthly_stipend_paise)}` : '—'}</>,
+    },
+    {
+      key: 'joined', label: t('priests.joined'),
+      render: p => <span className="text-xs text-slate-400">{p.joining_date ? new Date(p.joining_date).toLocaleDateString('en-IN') : '—'}</span>,
+    },
+    {
+      key: 'status', label: t('priests.status'),
+      render: p => p.is_active
+        ? <span className="badge-green">{t('priests.active')}</span>
+        : <span className="badge-gray">{t('priests.inactive')}</span>,
+    },
+    {
+      key: 'actions', label: t('priests.actions'),
+      render: p => (
+        <button onClick={() => openEdit(p)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('priests.editPriest')} aria-label={t('priests.editPriest')}>
+          <Pencil size={14} />
+        </button>
+      ),
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t])
 
   useEffect(() => { load() }, [search])
 
   async function load() {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '50' })
+      const params = new URLSearchParams({ limit: '200' })
       if (search) params.set('q', search)
       const { data } = await api.get(`/priests?${params}`)
       setPriests(data.data || [])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function exportExcel() {
+    if (!priests.length) { toast.info(t('kit.nothingToExport')); return }
+    try {
+      await exportXlsx({
+        title: t('priests.title'),
+        filename: 'priests',
+        columns: [
+          { header: t('priests.name'), width: 26 },
+          { header: t('priests.mobile'), width: 16 },
+          { header: t('priests.email'), width: 24 },
+          { header: t('priests.specialization'), width: 22 },
+          { header: t('priests.monthlyStipend'), type: 'money' },
+          { header: t('priests.joined'), type: 'date' },
+          { header: t('priests.status'), width: 10 },
+        ],
+        rows: priests.map(p => [
+          p.name, p.mobile ?? '', p.email ?? '', p.specialization ?? '',
+          p.monthly_stipend_paise ?? 0,
+          p.joining_date ? new Date(p.joining_date).toLocaleDateString('en-IN') : '',
+          p.is_active ? t('priests.active') : t('priests.inactive'),
+        ]),
+      })
+      toast.success(t('kit.exportReady'))
+    } catch {
+      toast.error(t('kit.exportFailed'))
     }
   }
 
@@ -68,6 +131,7 @@ export function PriestsPage() {
       if (editId) await api.patch(`/priests/${editId}`, body)
       else await api.post('/priests', body)
       setShowForm(false); setForm(emptyForm); setEditId(null)
+      toast.success(t('common.saved'))
       load()
     } finally {
       setSaving(false)
@@ -76,43 +140,40 @@ export function PriestsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <PrintLetterhead title={t('priests.title')} />
+
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('priests.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('priests.addPriest')}</button>
       </div>
 
-      <div className="relative w-72">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input className="form-input pl-9" placeholder={t('priests.searchPlaceholder')}
-          value={search} onChange={e => setSearch(e.target.value)} />
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('priests.name')}</th><th>{t('priests.mobile')}</th><th>{t('priests.specialization')}</th><th>{t('priests.monthlyStipend')}</th><th>{t('priests.joined')}</th><th>{t('priests.status')}</th><th>{t('priests.actions')}</th></tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-slate-400">{t('common.loading')}</td></tr>
-              ) : priests.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-slate-400">{t('priests.noPriestsFound')}</td></tr>
-              ) : priests.map(p => (
-                <tr key={p.id}>
-                  <td className="font-medium">{p.name}</td>
-                  <td>{p.mobile || '—'}</td>
-                  <td className="text-slate-600">{p.specialization || '—'}</td>
-                  <td>{p.monthly_stipend_paise ? `₹${fmtPaise(p.monthly_stipend_paise)}` : '—'}</td>
-                  <td className="text-xs text-slate-400">{p.joining_date ? new Date(p.joining_date).toLocaleDateString('en-IN') : '—'}</td>
-                  <td>{p.is_active ? <span className="badge-green">{t('priests.active')}</span> : <span className="badge-gray">{t('priests.inactive')}</span>}</td>
-                  <td>
-                    <button onClick={() => openEdit(p)} className="p-1 text-slate-400 hover:text-brand-blue rounded"><Pencil size={14} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        viewKey="priests-list"
+        columns={columns}
+        rows={priests}
+        rowKey={p => p.id}
+        loading={loading}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('priests.searchPlaceholder')}
+        onExportXlsx={exportExcel}
+        onPrint={() => window.print()}
+        filterState={filterState}
+        onFilterChange={(key, st) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (st) next[key] = st
+            else delete next[key]
+            return next
+          })
+        }}
+        page={1}
+        limit={200}
+        total={priests.length}
+        onPageChange={() => {}}
+        emptyMessage={t('priests.noPriestsFound')}
+        emptyAction={{ label: t('priests.addPriest'), onClick: openAdd }}
+      />
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

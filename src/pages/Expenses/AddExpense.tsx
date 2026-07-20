@@ -27,6 +27,10 @@ export function AddExpense() {
     tds_amount: '',
     tds_section: '',
     note: '',
+    is_recurring: false,
+    cheque_number: '',
+    cheque_bank: '',
+    cheque_date: new Date().toISOString().slice(0, 10),
   })
 
   const accounts = useAccounts()
@@ -55,11 +59,18 @@ export function AddExpense() {
         payment_account_id: form.payment_account_id || undefined,
         is_on_credit: form.is_on_credit,
         bill_date: form.bill_date,
+        is_recurring: form.is_recurring,
+        recurrence_rule: form.is_recurring ? 'monthly' : undefined,
       }
       if (form.vendor_name) payload.vendor_name = form.vendor_name
       if (form.category) payload.category = form.category
       if (form.bill_number) payload.bill_number = form.bill_number
       if (form.utr_number) payload.utr_number = form.utr_number
+      if (form.payment_mode === 'cheque') {
+        if (form.cheque_number) payload.cheque_number = form.cheque_number
+        if (form.cheque_bank) payload.cheque_bank = form.cheque_bank
+        payload.cheque_date = form.cheque_date
+      }
       if (form.gst_amount) payload.gst_paid_paise = parsePaise(form.gst_amount)
       if (form.tds_deducted) {
         payload.tds_deducted = true
@@ -164,7 +175,7 @@ export function AddExpense() {
               <input className="form-input" placeholder={t('expenses.billNoPlaceholder')} value={form.bill_number}
                 onChange={e => setForm(f => ({ ...f, bill_number: e.target.value }))} />
             </div>
-            {(form.payment_mode !== 'cash') && (
+            {(form.payment_mode !== 'cash' && form.payment_mode !== 'cheque') && (
               <div>
                 <label className="form-label">{t('expenses.utrReference')}</label>
                 <input className="form-input" placeholder={t('expenses.utrPlaceholder')} value={form.utr_number}
@@ -173,12 +184,41 @@ export function AddExpense() {
             )}
           </div>
 
+          {form.payment_mode === 'cheque' && (
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="form-label">{t('cheques.chequeNo')}</label>
+                <input className="form-input" value={form.cheque_number}
+                  onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">{t('cheques.bank')}</label>
+                <input className="form-input" value={form.cheque_bank}
+                  onChange={e => setForm(f => ({ ...f, cheque_bank: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">{t('cheques.chequeDate')}</label>
+                <input type="date" className="form-input" value={form.cheque_date}
+                  onChange={e => setForm(f => ({ ...f, cheque_date: e.target.value }))} />
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
             <input type="checkbox" id="on_credit" checked={form.is_on_credit}
               onChange={e => setForm(f => ({ ...f, is_on_credit: e.target.checked }))}
               className="w-4 h-4 accent-orange-600" />
             <label htmlFor="on_credit" className="text-sm text-slate-700">
               {t('expenses.onCreditLabel')}
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="is_recurring" checked={form.is_recurring}
+              onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))}
+              className="w-4 h-4 accent-brand-blue" />
+            <label htmlFor="is_recurring" className="text-sm text-slate-700">
+              {t('expenses.recurringLabel')}
             </label>
           </div>
 

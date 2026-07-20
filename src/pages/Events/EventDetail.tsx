@@ -3,7 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Send } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import type { Event, EventRegistration } from '../../types'
+
+interface EventPnL {
+  registrations_paise: number
+  registrations_count: number
+  boli_pledged_paise: number
+  boli_collected_paise: number
+  total_collected_paise: number
+  expenses_paise: number
+  expenses_count: number
+  net_paise: number
+}
 
 const eventStatusKeys: Record<string, string> = {
   planned: 'events.statusPlanned', executing: 'events.statusOngoing',
@@ -19,6 +31,7 @@ export function EventDetail() {
   const navigate = useNavigate()
   const [event, setEvent] = useState<Event | null>(null)
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
+  const [pnl, setPnl] = useState<EventPnL | null>(null)
   const [loading, setLoading] = useState(true)
   const [announcing, setAnnouncing] = useState(false)
   const [announcement, setAnnouncement] = useState('')
@@ -29,12 +42,14 @@ export function EventDetail() {
   async function load() {
     setLoading(true)
     try {
-      const [evResp, regResp] = await Promise.allSettled([
+      const [evResp, regResp, pnlResp] = await Promise.allSettled([
         api.get(`/events/${id}`),
         api.get(`/events/${id}/registrations`),
+        api.get(`/events/${id}/pnl`),
       ])
       if (evResp.status === 'fulfilled') setEvent(evResp.value.data.data)
       if (regResp.status === 'fulfilled') setRegistrations(regResp.value.data.data || [])
+      if (pnlResp.status === 'fulfilled') setPnl(pnlResp.value.data.data)
     } finally {
       setLoading(false)
     }
@@ -108,6 +123,22 @@ export function EventDetail() {
           </div>
         </div>
       </div>
+
+      {pnl && (pnl.total_collected_paise > 0 || pnl.expenses_paise > 0) && (
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-sm text-navy-900">{t('events.pnlTitle')}</h3>
+          </div>
+          <div className="card-body">
+            <SummaryStrip stats={([
+              { label: t('events.pnlCollected'), value: `₹${fmtPaise(pnl.total_collected_paise)}`, tone: 'income' },
+              { label: t('events.pnlExpenses'), value: `₹${fmtPaise(pnl.expenses_paise)}`, tone: 'expense' },
+              { label: t('events.pnlNet'), value: `₹${fmtPaise(pnl.net_paise)}`, tone: pnl.net_paise >= 0 ? 'income' : 'expense' },
+            ] as SummaryStat[])} />
+            <p className="text-xs text-slate-400 mt-3">{t('events.pnlScope')}</p>
+          </div>
+        </div>
+      )}
 
       {event.allow_registration && (
         <div className="card">
