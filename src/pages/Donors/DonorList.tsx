@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Upload } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
@@ -12,6 +12,7 @@ import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Donor } from '../../types'
 import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
+import { DonorImportModal } from './DonorImportModal'
 
 const PAGE_SIZE = 20
 
@@ -24,6 +25,7 @@ export function DonorList() {
   const navigate = useNavigate()
   const toast = useToast()
   const [donors, setDonors] = useState<Donor[]>([])
+  const [showImport, setShowImport] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -184,10 +186,19 @@ export function DonorList() {
 
       <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('donors.title')}</h1>
+        <div className="flex gap-2">
+        <button onClick={() => setShowImport(true)} className="btn-secondary btn-sm">
+          <Upload size={14} /> {t('donors.importDonors')}
+        </button>
         <button onClick={() => setShowAdd(true)} className="btn-primary btn-sm">
           <Plus size={14} /> {t('donors.addDonor')}
         </button>
+        </div>
       </div>
+
+      {showImport && (
+        <DonorImportModal onClose={imported => { setShowImport(false); if (imported) load() }} />
+      )}
 
       <SummaryStrip stats={stats} />
 
