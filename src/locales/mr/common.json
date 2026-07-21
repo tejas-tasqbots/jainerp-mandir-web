@@ -501,7 +501,8 @@
     "type": "प्रकार",
     "noneYet": "अजून काहीही नाही.",
     "notSet": "सेट केलेले नाही",
-    "saved": "जतन केले"
+    "saved": "जतन केले",
+    "category": "श्रेणी"
   },
   "donations": {
     "title": "देणगी",
@@ -726,7 +727,18 @@
     "recurringConfirmed": "{{description}} या महिन्यासाठी नोंदवले",
     "recurringConfirmFailed": "हा खर्च पुष्टी करता आला नाही",
     "noRecurringExpenses": "अद्याप कोणताही खर्च आवर्ती म्हणून चिन्हांकित नाही — खर्च जोडताना \"मासिक पुनरावृत्ती करा\" निवडा",
-    "enterValidAmount": "वैध रक्कम टाका"
+    "enterValidAmount": "वैध रक्कम टाका",
+    "billAttachment": "बिल / पावती",
+    "attachBill": "बिल जोडा",
+    "billAttached": "बिल जोडलेले आहे",
+    "billAttachmentHint": "बिलाचा फोटो किंवा PDF. प्रतिमा आपोआप संकुचित होतात.",
+    "billTooLarge": "ही फाईल खूप मोठी आहे. कृपया फोटो किंवा लहान PDF जोडा.",
+    "billReadFailed": "ही फाईल वाचता आली नाही.",
+    "noBillAttached": "बिल जोडलेले नाही",
+    "billLoadFailed": "जोडलेले बिल लोड होऊ शकले नाही.",
+    "openBillPdf": "बिल PDF उघडा",
+    "openFullSize": "पूर्ण आकारात उघडा",
+    "outstanding": "बाकी"
   },
   "dharamshala": {
     "roomsTitle": "धर्मशाळा — खोल्या",
@@ -1621,7 +1633,22 @@
     "txnType_prasad": "प्रसाद",
     "txnType_bhojanshala": "भोजनशाळा",
     "txnType_room": "खोली",
-    "txnType_hall": "सभागृह"
+    "txnType_hall": "सभागृह",
+    "depreciationSchedule": "घसारा तक्ता",
+    "loanSchedule": "कर्ज तक्ता",
+    "openingWdv": "प्रारंभिक WDV",
+    "closingWdv": "अंतिम WDV",
+    "depreciation": "घसारा",
+    "posted": "नोंदवले",
+    "estimated": "अंदाजित",
+    "depreciationPending": "{{count}} मालमत्तेचा या वर्षाचा घसारा नोंदवलेला नाही. दाखवलेली रक्कम अंदाजित आहे.",
+    "outstandingPrincipal": "बाकी",
+    "interestAccrued": "जमा व्याज",
+    "totalPayable": "एकूण",
+    "interestBasis": "{{days}} दिवसांसाठी {{rate}}%",
+    "loansTakenOutstanding": "घेतलेली कर्जे",
+    "loansGivenOutstanding": "दिलेली कर्जे",
+    "loanInterestNote": "व्याज हे प्रारंभ तारखेपासून आजपर्यंत (बंद कर्जासाठी समाप्ती तारखेपर्यंत) बाकी मुद्दलावरील साधे व्याज आहे."
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्रे व टीडीएस",
@@ -1878,5 +1905,22 @@
   },
   "lostFound": {
     "statusUnclaimed": "दावा न केलेले"
+  },
+  "loans": {
+    "party": "पक्ष",
+    "principal": "मुद्दल",
+    "repaid": "परतफेड",
+    "taken": "घेतले",
+    "given": "दिले",
+    "active": "सक्रिय",
+    "closed": "बंद",
+    "searchPlaceholder": "पक्ष किंवा मोबाइल शोधा"
+  },
+  "assets": {
+    "assetName": "मालमत्ता",
+    "method": "पद्धत",
+    "cost": "किंमत",
+    "disposed": "निकाली",
+    "searchPlaceholder": "मालमत्ता किंवा श्रेणी शोधा"
   }
 }

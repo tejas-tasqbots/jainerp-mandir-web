@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, X } from 'lucide-react'
+import { Save, X, Paperclip, Trash2 } from 'lucide-react'
 import { api, parsePaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
+import { compressImage } from '../../lib/imageCompress'
 
 export function AddExpense() {
   const { t } = useTranslation()
@@ -43,6 +44,9 @@ export function AddExpense() {
   // an existing vendor (vendor_id) instead of silently creating a duplicate on
   // every typo. Typing a new name still works (backend find-or-creates).
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([])
+  // Scanned bill (plan §05) — compressed client-side, stored inline.
+  const [billPhoto, setBillPhoto] = useState<string>('')
+  const [billName, setBillName] = useState('')
   useEffect(() => {
     api.get('/vendors?limit=500').then(r => setVendors(r.data.data || [])).catch(() => {})
   }, [])
@@ -92,6 +96,7 @@ export function AddExpense() {
         if (form.tds_section) payload.tds_section = form.tds_section
       }
       if (form.note) payload.notes = form.note
+      if (billPhoto) payload.bill_photo_base64 = billPhoto
 
       await api.post('/expenses', payload)
       navigate('/expenses')
@@ -221,6 +226,36 @@ export function AddExpense() {
               </div>
             </div>
           )}
+
+          <div>
+            <label className="form-label">{t('expenses.billAttachment')}</label>
+            {billPhoto ? (
+              <div className="flex items-center gap-3">
+                {billPhoto.startsWith('data:application/pdf')
+                  ? <span className="badge-gray">PDF</span>
+                  : <img src={billPhoto} alt={t('expenses.billAttachment')} className="h-16 w-16 object-cover rounded border border-slate-200" />}
+                <span className="text-xs text-slate-500 flex-1 truncate">{billName}</span>
+                <button type="button" onClick={() => { setBillPhoto(''); setBillName('') }}
+                  className="p-1 text-slate-400 hover:text-red-600 rounded" aria-label={t('common.delete')}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ) : (
+              <label className="btn-secondary btn-sm cursor-pointer inline-flex">
+                <Paperclip size={14} /> {t('expenses.attachBill')}
+                <input type="file" accept="image/*,application/pdf" className="hidden"
+                  onChange={async e => {
+                    const f = e.target.files?.[0]; if (!f) return
+                    try {
+                      const out = await compressImage(f)
+                      if (out.length * 0.75 > 1_000_000) { setError(t('expenses.billTooLarge')); return }
+                      setBillPhoto(out); setBillName(f.name); setError('')
+                    } catch { setError(t('expenses.billReadFailed')) }
+                  }} />
+              </label>
+            )}
+            <p className="text-xs text-slate-400 mt-1">{t('expenses.billAttachmentHint')}</p>
+          </div>
 
           <div className="flex items-center gap-3">
             <input type="checkbox" id="on_credit" checked={form.is_on_credit}

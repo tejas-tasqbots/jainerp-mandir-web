@@ -501,7 +501,8 @@
     "type": "Type",
     "noneYet": "None yet.",
     "notSet": "Not set",
-    "saved": "Saved"
+    "saved": "Saved",
+    "category": "Category"
   },
   "donations": {
     "title": "Donations",
@@ -726,7 +727,18 @@
     "recurringConfirmed": "{{description}} logged for this month",
     "recurringConfirmFailed": "Could not confirm this expense",
     "noRecurringExpenses": "No expenses marked recurring yet — tick \"Repeat monthly\" when adding one",
-    "enterValidAmount": "Enter a valid amount"
+    "enterValidAmount": "Enter a valid amount",
+    "billAttachment": "Bill / Receipt",
+    "attachBill": "Attach bill",
+    "billAttached": "Bill attached",
+    "billAttachmentHint": "Photo or PDF of the bill. Images are compressed automatically.",
+    "billTooLarge": "This file is too large. Please attach a photo or a smaller PDF.",
+    "billReadFailed": "Could not read that file.",
+    "noBillAttached": "No bill attached",
+    "billLoadFailed": "Could not load the attached bill.",
+    "openBillPdf": "Open bill PDF",
+    "openFullSize": "Open full size",
+    "outstanding": "Outstanding"
   },
   "dharamshala": {
     "roomsTitle": "Dharamshala — Rooms",
@@ -1621,7 +1633,22 @@
     "txnType_prasad": "Prasad",
     "txnType_bhojanshala": "Bhojanshala",
     "txnType_room": "Room",
-    "txnType_hall": "Hall"
+    "txnType_hall": "Hall",
+    "depreciationSchedule": "Depreciation Schedule",
+    "loanSchedule": "Loan Schedule",
+    "openingWdv": "Opening WDV",
+    "closingWdv": "Closing WDV",
+    "depreciation": "Depreciation",
+    "posted": "Posted",
+    "estimated": "Estimated",
+    "depreciationPending": "{{count}} asset(s) have not had depreciation posted for this year. Amounts shown are estimates.",
+    "outstandingPrincipal": "Outstanding",
+    "interestAccrued": "Interest accrued",
+    "totalPayable": "Total",
+    "interestBasis": "{{rate}}% for {{days}} days",
+    "loansTakenOutstanding": "Loans taken",
+    "loansGivenOutstanding": "Loans given",
+    "loanInterestNote": "Interest is simple interest on the outstanding principal from the start date to today (or to the close date for closed loans)."
   },
   "certificates": {
     "title": "Compliance — Certificates & TDS",
@@ -1878,5 +1905,22 @@
   },
   "lostFound": {
     "statusUnclaimed": "Unclaimed"
+  },
+  "loans": {
+    "party": "Party",
+    "principal": "Principal",
+    "repaid": "Repaid",
+    "taken": "Taken",
+    "given": "Given",
+    "active": "Active",
+    "closed": "Closed",
+    "searchPlaceholder": "Search party or mobile"
+  },
+  "assets": {
+    "assetName": "Asset",
+    "method": "Method",
+    "cost": "Cost",
+    "disposed": "Disposed",
+    "searchPlaceholder": "Search asset or category"
   }
 }

@@ -148,6 +148,9 @@ export interface Expense {
   cheque_bank?: string | null
   cheque_date?: string | null
   cheque_status?: 'issued' | 'cleared' | 'bounced' | null
+  /** True when a scanned bill is attached (tenant-migration 010). The image
+   *  itself comes from GET /expenses/:id/bill-photo so lists stay light. */
+  has_bill_photo?: boolean
 }
 
 // ─── Rooms ───────────────────────────────────────────────────────────────────

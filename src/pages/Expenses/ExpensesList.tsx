@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, Trash2, Landmark } from 'lucide-react'
+import { Plus, Pencil, Trash2, Landmark, Paperclip } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
@@ -18,6 +18,7 @@ import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Expense } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
+import { ExpenseDetail } from './ExpenseDetail'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'credit']
 const PAGE_SIZE = 20
@@ -106,7 +107,12 @@ export function ExpensesList() {
   const columns: ColumnDef<Expense>[] = useMemo(() => [
     {
       key: 'description', label: t('expenses.description'),
-      render: e => <span className="font-medium">{e.description}</span>,
+      render: e => (
+        <span className="font-medium inline-flex items-center gap-1.5">
+          {e.description}
+          {e.has_bill_photo && <Paperclip size={12} className="text-slate-400" aria-label={t('expenses.billAttached')} />}
+        </span>
+      ),
     },
     {
       key: 'vendor', label: t('expenses.vendor'), sortable: true,
@@ -415,6 +421,8 @@ export function ExpensesList() {
         emptyMessage={t('expenses.noExpensesFound')}
         emptyAction={{ label: t('expenses.newExpense'), onClick: () => navigate('/expenses/add') }}
         onClearFilters={() => { setFilterState({}); setPage(1) }}
+        detailTitle={e => e.description}
+        renderDetail={e => <ExpenseDetail expense={e} />}
       />
 
       {/* Edit modal */}

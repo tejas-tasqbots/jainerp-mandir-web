@@ -501,7 +501,8 @@
     "type": "प्रकार",
     "noneYet": "अभी तक कोई नहीं।",
     "notSet": "सेट नहीं है",
-    "saved": "सहेजा गया"
+    "saved": "सहेजा गया",
+    "category": "श्रेणी"
   },
   "donations": {
     "title": "दान",
@@ -726,7 +727,18 @@
     "recurringConfirmed": "{{description}} इस माह के लिए दर्ज हुआ",
     "recurringConfirmFailed": "इस व्यय की पुष्टि नहीं हो सकी",
     "noRecurringExpenses": "अभी तक कोई व्यय आवर्ती चिह्नित नहीं — व्यय जोड़ते समय \"मासिक दोहराएं\" चुनें",
-    "enterValidAmount": "एक मान्य राशि दर्ज करें"
+    "enterValidAmount": "एक मान्य राशि दर्ज करें",
+    "billAttachment": "बिल / रसीद",
+    "attachBill": "बिल संलग्न करें",
+    "billAttached": "बिल संलग्न है",
+    "billAttachmentHint": "बिल का फोटो या PDF। छवियाँ स्वतः संपीड़ित होती हैं।",
+    "billTooLarge": "यह फ़ाइल बहुत बड़ी है। कृपया फोटो या छोटी PDF संलग्न करें।",
+    "billReadFailed": "यह फ़ाइल पढ़ी नहीं जा सकी।",
+    "noBillAttached": "कोई बिल संलग्न नहीं",
+    "billLoadFailed": "संलग्न बिल लोड नहीं हो सका।",
+    "openBillPdf": "बिल PDF खोलें",
+    "openFullSize": "पूरा आकार खोलें",
+    "outstanding": "बकाया"
   },
   "dharamshala": {
     "roomsTitle": "धर्मशाला — कमरे",
@@ -1621,7 +1633,22 @@
     "txnType_prasad": "प्रसाद",
     "txnType_bhojanshala": "भोजनशाला",
     "txnType_room": "कक्ष",
-    "txnType_hall": "हॉल"
+    "txnType_hall": "हॉल",
+    "depreciationSchedule": "मूल्यह्रास अनुसूची",
+    "loanSchedule": "ऋण अनुसूची",
+    "openingWdv": "प्रारंभिक WDV",
+    "closingWdv": "अंतिम WDV",
+    "depreciation": "मूल्यह्रास",
+    "posted": "दर्ज",
+    "estimated": "अनुमानित",
+    "depreciationPending": "{{count}} संपत्ति के लिए इस वर्ष का मूल्यह्रास दर्ज नहीं हुआ है। दिखाई गई राशि अनुमानित है।",
+    "outstandingPrincipal": "बकाया",
+    "interestAccrued": "अर्जित ब्याज",
+    "totalPayable": "कुल",
+    "interestBasis": "{{days}} दिनों के लिए {{rate}}%",
+    "loansTakenOutstanding": "लिए गए ऋण",
+    "loansGivenOutstanding": "दिए गए ऋण",
+    "loanInterestNote": "ब्याज प्रारंभ तिथि से आज तक (बंद ऋण के लिए समाप्ति तिथि तक) बकाया मूलधन पर साधारण ब्याज है।"
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्र एवं टीडीएस",
@@ -1878,5 +1905,22 @@
   },
   "lostFound": {
     "statusUnclaimed": "अदावाकृत"
+  },
+  "loans": {
+    "party": "पक्ष",
+    "principal": "मूलधन",
+    "repaid": "चुकाया",
+    "taken": "लिया",
+    "given": "दिया",
+    "active": "सक्रिय",
+    "closed": "बंद",
+    "searchPlaceholder": "पक्ष या मोबाइल खोजें"
+  },
+  "assets": {
+    "assetName": "संपत्ति",
+    "method": "विधि",
+    "cost": "लागत",
+    "disposed": "निपटान",
+    "searchPlaceholder": "संपत्ति या श्रेणी खोजें"
   }
 }
