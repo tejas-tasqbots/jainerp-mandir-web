@@ -5,6 +5,9 @@ import { currentFY } from '../../lib/api'
 import { downloadReport } from '../../lib/downloadReport'
 import { DailyCollectionReport } from './reports/DailyCollectionReport'
 import { CollectionSummaryReport } from './reports/CollectionSummaryReport'
+import { AllTransactionsReport } from './reports/AllTransactionsReport'
+import { CashFlowReport } from './reports/CashFlowReport'
+import { EventCollectionReport } from './reports/EventCollectionReport'
 import { DonationRegisterReport } from './reports/DonationRegisterReport'
 import { DonationByCategoryReport } from './reports/DonationByCategoryReport'
 import { ExpenseRegisterReport } from './reports/ExpenseRegisterReport'
@@ -17,9 +20,9 @@ import { TopDonorsReport } from './reports/TopDonorsReport'
 import { GstSummaryReport } from './reports/GstSummaryReport'
 
 type ReportKey =
-  | 'daily-collection' | 'collection-summary' | 'donation-register' | 'donation-by-category'
+  | 'daily-collection' | 'collection-summary' | 'all-transactions' | 'donation-register' | 'donation-by-category'
   | 'expense-register' | 'expense-by-category' | 'pledge-register' | 'creditor-aging'
-  | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'gst-summary'
+  | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'cash-flow' | 'event-collection' | 'gst-summary'
 
 interface RailItem { key: ReportKey; labelKey: string }
 interface RailGroup { groupKey: string; items: RailItem[] }
@@ -30,6 +33,7 @@ const RAIL: RailGroup[] = [
     items: [
       { key: 'daily-collection', labelKey: 'reports.dailyCollection' },
       { key: 'collection-summary', labelKey: 'reports.collectionSummary' },
+      { key: 'all-transactions', labelKey: 'reports.allTransactions' },
       { key: 'donation-register', labelKey: 'reports.donationRegister' },
       { key: 'expense-register', labelKey: 'reports.expenseRegister' },
       { key: 'pledge-register', labelKey: 'reports.pledgeRegister' },
@@ -49,6 +53,8 @@ const RAIL: RailGroup[] = [
       { key: 'donation-trends', labelKey: 'reports.donationTrends' },
       { key: 'donation-yoy', labelKey: 'reports.donationYoY' },
       { key: 'top-donors', labelKey: 'reports.topDonors' },
+      { key: 'cash-flow', labelKey: 'reports.cashFlow' },
+      { key: 'event-collection', labelKey: 'reports.eventCollection' },
     ],
   },
   {
@@ -62,6 +68,9 @@ const RAIL: RailGroup[] = [
 const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
   'daily-collection': DailyCollectionReport,
   'collection-summary': CollectionSummaryReport,
+  'all-transactions': AllTransactionsReport,
+  'cash-flow': CashFlowReport,
+  'event-collection': EventCollectionReport,
   'donation-register': DonationRegisterReport,
   'donation-by-category': DonationByCategoryReport,
   'expense-register': ExpenseRegisterReport,
