@@ -132,7 +132,7 @@ const apiCoverage = [
   { endpoint: 'GET/POST/PATCH /users', ui: 'Settings → Users', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /vendors, /priests, /employees, /volunteers', ui: 'Masters — Vendors, Priests, Employees', status: 'connected' },
   { endpoint: 'GET/POST/PATCH /inventory-items', ui: 'Masters — Inventory', status: 'connected' },
-  { endpoint: 'GET /accounting/cash-book, /day-book, /income-expenditure, /balance-sheet', ui: 'Accounting module (11 pages)', status: 'connected' },
+  { endpoint: 'GET /accounting/ledger, /day-book, /income-expenditure, /balance-sheet', ui: 'Accounts module', status: 'connected' },
   { endpoint: 'GET/POST /registers/lost-found, /visitor-counts', ui: 'Registers — Lost & Found, Visitor Count', status: 'connected' },
 ]
 

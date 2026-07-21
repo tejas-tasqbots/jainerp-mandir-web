@@ -35,7 +35,6 @@ import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
 import { FixedAssets } from './pages/Accounts/FixedAssets'
 import { Loans } from './pages/Accounts/Loans'
-import { CashBook } from './pages/Accounts/CashBook'
 import { DayBook } from './pages/Accounts/DayBook'
 import { Ledger } from './pages/Accounts/Ledger'
 import { TrialBalance } from './pages/Accounts/TrialBalance'
@@ -164,8 +163,6 @@ export default function App() {
             <Route path="/accounts/contra" element={<ContraEntries />} />
             <Route path="/accounts/fixed-assets" element={<FixedAssets />} />
             <Route path="/accounts/loans" element={<Loans />} />
-            <Route path="/accounts/cash-book" element={<CashBook />} />
-            <Route path="/accounts/bank-book" element={<CashBook bankMode />} />
             <Route path="/accounts/day-book" element={<DayBook />} />
             <Route path="/accounts/ledger" element={<Ledger />} />
             <Route path="/accounts/trial-balance" element={<TrialBalance />} />

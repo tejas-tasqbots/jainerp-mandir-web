@@ -62,8 +62,6 @@ const navItems: NavItem[] = [
       { labelKey: 'nav.contra', to: '/accounts/contra' },
       { labelKey: 'nav.fixedAssets', to: '/accounts/fixed-assets' },
       { labelKey: 'nav.loans', to: '/accounts/loans' },
-      { labelKey: 'nav.cashBook', to: '/accounts/cash-book' },
-      { labelKey: 'nav.bankBook', to: '/accounts/bank-book' },
       { labelKey: 'nav.dayBook', to: '/accounts/day-book' },
       { labelKey: 'nav.ledger', to: '/accounts/ledger' },
       { labelKey: 'nav.trialBalance', to: '/accounts/trial-balance' },
