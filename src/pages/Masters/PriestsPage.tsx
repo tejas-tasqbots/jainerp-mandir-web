@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -143,6 +144,12 @@ export function PriestsPage() {
     }
   }
 
+  const stats: SummaryStat[] = [
+    { label: t('priests.title'), value: String(priests.length) },
+    { label: t('priests.active'), value: String(priests.filter(p => p.is_active).length) },
+    { label: t('priests.monthlyStipend'), value: `₹${fmtPaise(priests.reduce((s2, p) => s2 + (p.monthly_stipend_paise ?? 0), 0))}` },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('priests.title')} />
@@ -151,6 +158,8 @@ export function PriestsPage() {
         <h1 className="text-xl font-bold text-navy-900">{t('priests.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('priests.addPriest')}</button>
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="priests-list"

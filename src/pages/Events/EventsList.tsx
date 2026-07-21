@@ -10,6 +10,7 @@ import {
   type ColumnDef, type ColumnFilterState,
 } from '../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Event } from '../../types'
@@ -143,7 +144,9 @@ export function EventsList() {
   }
 
   function resetPageAnd<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setPage(1) }
+  
+
+  return (v: T) => { setter(v); setPage(1) }
   }
 
   async function exportExcel() {
@@ -247,6 +250,15 @@ export function EventsList() {
     }
   }
 
+  // Event budget vs spend per plan §08 (collections vs expenses for that festival).
+  const budgetTotal = events.reduce((s2, e) => s2 + (e.estimated_budget_paise ?? 0), 0)
+  const spentTotal = events.reduce((s2, e) => s2 + ((e as { spent_paise?: number }).spent_paise ?? 0), 0)
+  const stats: SummaryStat[] = [
+    { label: t('events.summaryEvents'), value: String(events.length) },
+    { label: t('events.summaryBudget'), value: `₹${fmtPaise(budgetTotal)}` },
+    { label: t('events.summarySpent'), value: `₹${fmtPaise(spentTotal)}`, tone: 'expense', invert: true },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('events.title')} subtitle={rangeCaption(range, t('dateRange.all'))} />
@@ -312,6 +324,8 @@ export function EventsList() {
       <div className="no-print">
         <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="events" />
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="events-list"

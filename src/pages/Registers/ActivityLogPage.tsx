@@ -7,6 +7,7 @@ import {
   DataTable, filterStateToParams,
   type ColumnDef, type ColumnFilterState,
 } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 
@@ -88,6 +89,10 @@ export function ActivityLogPage() {
     }
   }
 
+  const stats: SummaryStat[] = [
+    { label: t('activityLog.title'), value: String(total) },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('activityLog.title')} subtitle={rangeCaption(range, t('dateRange.all'))} />
@@ -100,6 +105,8 @@ export function ActivityLogPage() {
       <div className="no-print">
         <DateRangePicker value={range} onChange={v => { setRange(v); setPage(1) }} storageKey="activity-log" />
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="activity-log-list"

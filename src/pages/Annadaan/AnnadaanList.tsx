@@ -5,6 +5,7 @@ import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { PhoneInput } from '../../components/PhoneInput'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { splitBy } from '../../lib/chartData'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
@@ -300,6 +301,7 @@ export function AnnadaanList() {
         rows={visible}
         rowKey={s => s.id}
         loading={loading}
+        graphData={splitBy(visible, 'meal_type', 'total_paise', m => mealLabel[m] ?? m)}
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder={t('bhojanshala.searchBuyer')}

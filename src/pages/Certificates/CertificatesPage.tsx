@@ -5,6 +5,7 @@ import { api, currentFY, fmtPaise } from '../../lib/api'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { FySelect } from '../../components/FySelect'
+import { useToast } from '../../components/kit/Toast'
 
 // ── Authenticated download helpers ───────────────────────────────────────────
 // The compliance endpoints require a Bearer token, so opening them in a new
@@ -30,6 +31,7 @@ function toCsv(headers: string[], rows: (string | number)[][]): string {
 }
 
 export function CertificatesPage() {
+  const toast = useToast()
   const { t } = useTranslation()
   const confirm = useConfirm()
   const [tab, setTab] = useState<'80g' | 'tds'>('80g')
@@ -57,11 +59,11 @@ export function CertificatesPage() {
     try {
       const { data } = await api.post('/compliance/80g-certificates/generate', { fy, donor_ids: 'all' })
       const d = data.data || {}
-      alert(t('certificates.eightyGResult', { created: d.created ?? 0, updated: d.updated ?? 0, eligible: d.eligible_donors ?? 0 }))
+      toast.success(t('certificates.eightyGResult', { created: d.created ?? 0, updated: d.updated ?? 0, eligible: d.eligible_donors ?? 0 }))
       fetchCerts()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || t('certificates.failedToGenerateCerts'))
+      toast.error(e.response?.data?.error?.message || t('certificates.failedToGenerateCerts'))
     } finally {
       setGenerating(false)
     }
@@ -72,11 +74,11 @@ export function CertificatesPage() {
     setGenerating(true)
     try {
       const { data } = await api.post('/compliance/form-10bd/generate', { fy })
-      alert(t('certificates.form10bdResult', { count: data.data?.new_entries ?? 0, fy }))
+      toast.success(t('certificates.form10bdResult', { count: data.data?.new_entries ?? 0, fy }))
       fetchForm10bd()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || t('certificates.failedToGenerate'))
+      toast.error(e.response?.data?.error?.message || t('certificates.failedToGenerate'))
     } finally {
       setGenerating(false)
     }
@@ -122,11 +124,11 @@ export function CertificatesPage() {
     try {
       const { data } = await api.get(`/compliance/form-10bd?fy=${fy}`)
       const rows = data.data?.rows || data.rows || []
-      if (!rows.length) { alert(t('certificates.noForm10bdEntries')); return }
+      if (!rows.length) { toast.info(t('certificates.noForm10bdEntries')); return }
       // Income-tax Form 10BD utility consumes a JSON/CSV upload; provide JSON.
       downloadBlob(`form-10bd-${fy}.json`, JSON.stringify({ fy, rows }, null, 2), 'application/json')
     } catch {
-      alert(t('certificates.couldNotDownload10bd'))
+      toast.error(t('certificates.couldNotDownload10bd'))
     } finally {
       setDownloading('')
     }
@@ -137,7 +139,7 @@ export function CertificatesPage() {
     try {
       const { data } = await api.get(`/compliance/80g-certificates?fy=${fy}`)
       const rows = data.data?.rows || data.rows || []
-      if (!rows.length) { alert(t('certificates.no80gDonors')); return }
+      if (!rows.length) { toast.success(t('certificates.no80gDonors')); return }
       const csv = toCsv(
         ['Donor', 'Mobile', 'PAN', 'Receipts', 'Eligible Amount (₹)'],
         rows.map((c: { donor: string; mobile?: string; pan_masked?: string; receipts: number; total_eligible_paise: number }) =>
@@ -145,7 +147,7 @@ export function CertificatesPage() {
       )
       downloadBlob(`80g-certificate-list-${fy}.csv`, csv, 'text/csv')
     } catch {
-      alert(t('certificates.couldNotDownload80g'))
+      toast.error(t('certificates.couldNotDownload80g'))
     } finally {
       setDownloading('')
     }
@@ -156,7 +158,7 @@ export function CertificatesPage() {
     try {
       const { data } = await api.get(`/compliance/80g-certificates?fy=${fy}`)
       const rows = data.data?.rows || data.rows || []
-      if (!rows.length) { alert(t('certificates.no80gDonors')); return }
+      if (!rows.length) { toast.success(t('certificates.no80gDonors')); return }
       const total = rows.reduce((s: number, c: { total_eligible_paise: number }) => s + Number(c.total_eligible_paise), 0)
       downloadRowsPdf(`80g-certificate-list-${fy}.pdf`, '80G Certificate Register',
         ['Certificate No.', 'Donor', 'Mobile', 'PAN', 'Receipts', 'Eligible Amount'],
@@ -164,7 +166,7 @@ export function CertificatesPage() {
           [c.certificate_no ?? '', c.donor, c.mobile ?? '', c.pan_masked ?? '', c.receipts, (c.total_eligible_paise / 100).toFixed(2)]),
         { subtitle: `FY ${fy}`, totals: ['Total', '', '', '', '', (total / 100).toFixed(2)] })
     } catch {
-      alert(t('certificates.couldNotDownload80g'))
+      toast.error(t('certificates.couldNotDownload80g'))
     } finally {
       setDownloading('')
     }
@@ -178,7 +180,7 @@ export function CertificatesPage() {
       const { data } = await api.get(`/compliance/tds-report?${params}`)
       const d = data.data || data
       const rows: TdsRow[] = d.rows || []
-      if (!rows.length) { alert(t('certificates.noTdsForPeriod')); return }
+      if (!rows.length) { toast.info(t('certificates.noTdsForPeriod')); return }
       downloadRowsPdf(`tds-report-${fy}${quarter ? `-q${quarter}` : ''}.pdf`, 'TDS Report',
         ['Date', 'Vendor', 'PAN', 'Section', 'Expense Amount', 'TDS Amount', 'Challan No'],
         rows.map(r => [
@@ -187,7 +189,7 @@ export function CertificatesPage() {
         ]),
         { subtitle: `FY ${fy}${quarter ? ` — Q${quarter}` : ''}`, totals: ['Total TDS', '', '', '', '', ((d.total_tds_paise ?? 0) / 100).toFixed(2), ''] })
     } catch {
-      alert(t('certificates.couldNotDownloadTds'))
+      toast.error(t('certificates.couldNotDownloadTds'))
     } finally {
       setDownloading('')
     }
@@ -201,7 +203,7 @@ export function CertificatesPage() {
       const { data } = await api.get(`/compliance/tds-report?${params}`)
       const d = data.data || data
       const rows = d.rows || []
-      if (!rows.length) { alert(t('certificates.noTdsForPeriod')); return }
+      if (!rows.length) { toast.info(t('certificates.noTdsForPeriod')); return }
       const csv = toCsv(
         ['Date', 'Vendor', 'PAN', 'Section', 'Expense Amount (₹)', 'TDS Amount (₹)', 'Challan No'],
         rows.map((r: TdsRow) =>
@@ -209,7 +211,7 @@ export function CertificatesPage() {
       )
       downloadBlob(`tds-report-${fy}${quarter ? `-q${quarter}` : ''}.csv`, csv, 'text/csv')
     } catch {
-      alert(t('certificates.couldNotDownloadTds'))
+      toast.error(t('certificates.couldNotDownloadTds'))
     } finally {
       setDownloading('')
     }

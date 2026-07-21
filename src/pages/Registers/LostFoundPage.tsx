@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Save } from 'lucide-react'
 import { api } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -140,6 +141,11 @@ export function LostFoundPage() {
     }
   }
 
+  const stats: SummaryStat[] = [
+    { label: t('lostFound.title'), value: String(items.length) },
+    { label: t('lostFound.statusUnclaimed'), value: String(items.filter(i => i.status === 'unclaimed').length), tone: 'expense' },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('registers.lostFoundTitle')} />
@@ -184,6 +190,8 @@ export function LostFoundPage() {
           </form>
         </div>
       )}
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="lost-found-list"

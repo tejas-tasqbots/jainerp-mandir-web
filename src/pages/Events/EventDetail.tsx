@@ -5,6 +5,7 @@ import { ArrowLeft, Send } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import type { Event, EventRegistration } from '../../types'
+import { useToast } from '../../components/kit/Toast'
 
 interface EventPnL {
   registrations_paise: number
@@ -26,6 +27,7 @@ const regStatusKeys: Record<string, string> = {
 }
 
 export function EventDetail() {
+  const toast = useToast()
   const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
@@ -62,9 +64,9 @@ export function EventDetail() {
       await api.post(`/events/${id}/announce`, { message: announcement, channels: ['push', 'sms'] })
       setAnnouncement('')
       setShowAnnounce(false)
-      alert('Announcement sent!')
+      toast.success('Announcement sent!')
     } catch {
-      alert('Failed to send announcement')
+      toast.error('Failed to send announcement')
     } finally {
       setAnnouncing(false)
     }

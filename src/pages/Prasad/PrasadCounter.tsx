@@ -6,10 +6,12 @@ import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { PrasadItem, DevoteeSelection } from '../../types'
+import { useToast } from '../../components/kit/Toast'
 
 interface CartItem { item: PrasadItem; qty: number }
 
 export function PrasadCounter() {
+  const toast = useToast()
   const { t } = useTranslation()
   const [items, setItems] = useState<PrasadItem[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
@@ -65,7 +67,7 @@ export function PrasadCounter() {
       setBuyer(null)
       setShowBuyerPicker(false)
     } catch {
-      alert('Sale failed')
+      toast.error('Sale failed')
     } finally {
       setSaving(false)
     }
@@ -77,7 +79,7 @@ export function PrasadCounter() {
     try {
       await printDonationReceipt(lastSale.id, '/prasad/sales')
     } catch {
-      alert('Could not load receipt')
+      toast.error('Could not load receipt')
     } finally {
       setReceiptLoading(false)
     }

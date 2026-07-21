@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
+import { useToast } from '../../../components/kit/Toast'
 
 type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: string) => string }
 
@@ -339,6 +340,7 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
 }
 
 export function ReceiptSettingsTab() {
+  const toast = useToast()
   const { t } = useTranslation()
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
@@ -402,7 +404,7 @@ export function ReceiptSettingsTab() {
 
   function handleLogoFile(file: File) {
     if (!file.type.startsWith('image/')) return
-    if (file.size > 2 * 1024 * 1024) { alert(t('settings.receipts.logoRequiredWarn')); return }
+    if (file.size > 2 * 1024 * 1024) { toast.success(t('settings.receipts.logoRequiredWarn')); return }
     setLogoUploading(true)
     const reader = new FileReader()
     reader.onload = e => {

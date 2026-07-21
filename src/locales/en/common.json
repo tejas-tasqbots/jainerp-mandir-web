@@ -799,7 +799,13 @@
     "checkoutSuccess": "Guest checked out",
     "checkoutFailed": "Check-out failed",
     "cancelSuccess": "Booking cancelled",
-    "cancelFailed": "Could not cancel the booking"
+    "cancelFailed": "Could not cancel the booking",
+    "summaryBookings": "Bookings",
+    "summaryOccupied": "Occupied",
+    "summaryDueOut": "Due out today",
+    "summaryAdvances": "Advances held",
+    "summaryBooked": "Booked value",
+    "summaryBalanceDue": "Balance due"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",
@@ -1014,7 +1020,10 @@
     "pnlCollected": "Collected",
     "pnlExpenses": "Expenses",
     "pnlNet": "Net",
-    "pnlScope": "Collections = paid boli pledges + paid registrations linked to this event. General donations and seva bookings aren't linked to a specific event in the system, so they aren't included here."
+    "pnlScope": "Collections = paid boli pledges + paid registrations linked to this event. General donations and seva bookings aren't linked to a specific event in the system, so they aren't included here.",
+    "summaryEvents": "Events",
+    "summaryBudget": "Budget",
+    "summarySpent": "Spent"
   },
   "maharaj": {
     "title": "Maharaj / Mataji",
@@ -1153,7 +1162,10 @@
     "removeTag": "Remove {{tag}}",
     "customTagPlaceholder": "Custom tag…",
     "tagUpdateFailed": "Could not update tags",
-    "searchTransactions": "Search invoice, detail, mode..."
+    "searchTransactions": "Search invoice, detail, mode...",
+    "summaryDonors": "Donors",
+    "summaryActive": "Active",
+    "summaryThisFy": "This FY giving"
   },
   "creditors": {
     "title": "Creditors (Udhaar)",
@@ -1814,5 +1826,8 @@
     "system": "System",
     "empty": "No activity in this period",
     "search": "Search actor, entity, record id..."
+  },
+  "lostFound": {
+    "statusUnclaimed": "Unclaimed"
   }
 }

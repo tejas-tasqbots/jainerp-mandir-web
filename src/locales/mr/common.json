@@ -799,7 +799,13 @@
     "checkoutSuccess": "पाहुणे चेक-आउट झाले",
     "checkoutFailed": "चेक-आउट अयशस्वी",
     "cancelSuccess": "बुकिंग रद्द झाले",
-    "cancelFailed": "बुकिंग रद्द करता आले नाही"
+    "cancelFailed": "बुकिंग रद्द करता आले नाही",
+    "summaryBookings": "बुकिंग",
+    "summaryOccupied": "व्यापलेले",
+    "summaryDueOut": "आज चेक-आउट",
+    "summaryAdvances": "आगाऊ रक्कम",
+    "summaryBooked": "बुक मूल्य",
+    "summaryBalanceDue": "शिल्लक देय"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -1014,7 +1020,10 @@
     "pnlCollected": "संकलन",
     "pnlExpenses": "खर्च",
     "pnlNet": "निव्वळ",
-    "pnlScope": "संकलन = या कार्यक्रमाशी जोडलेल्या भरलेल्या बोली आणि नोंदणी. सामान्य देणग्या आणि सेवा बुकिंग विशिष्ट कार्यक्रमाशी जोडलेले नसतात, त्यामुळे येथे समाविष्ट नाहीत."
+    "pnlScope": "संकलन = या कार्यक्रमाशी जोडलेल्या भरलेल्या बोली आणि नोंदणी. सामान्य देणग्या आणि सेवा बुकिंग विशिष्ट कार्यक्रमाशी जोडलेले नसतात, त्यामुळे येथे समाविष्ट नाहीत.",
+    "summaryEvents": "कार्यक्रम",
+    "summaryBudget": "अर्थसंकल्प",
+    "summarySpent": "खर्च"
   },
   "maharaj": {
     "title": "महाराज / माताजी",
@@ -1153,7 +1162,10 @@
     "removeTag": "{{tag}} काढा",
     "customTagPlaceholder": "कस्टम टॅग…",
     "tagUpdateFailed": "टॅग अपडेट होऊ शकले नाहीत",
-    "searchTransactions": "पावती, तपशील, पद्धत शोधा..."
+    "searchTransactions": "पावती, तपशील, पद्धत शोधा...",
+    "summaryDonors": "देणगीदार",
+    "summaryActive": "सक्रिय",
+    "summaryThisFy": "या आर्थिक वर्षातील देणगी"
   },
   "creditors": {
     "title": "कर्जदार (उधारी)",
@@ -1814,5 +1826,8 @@
     "system": "सिस्टीम",
     "empty": "या कालावधीत कोणतीही क्रिया नाही",
     "search": "कर्ता, घटक, रेकॉर्ड आयडी शोधा..."
+  },
+  "lostFound": {
+    "statusUnclaimed": "दावा न केलेले"
   }
 }

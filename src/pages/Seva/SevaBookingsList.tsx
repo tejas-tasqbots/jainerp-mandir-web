@@ -7,6 +7,7 @@ import { rsFmt } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { trendByDay } from '../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
@@ -278,6 +279,7 @@ export function SevaBookingsList() {
         rows={bookings}
         rowKey={b => b.id}
         loading={loading}
+        graphData={trendByDay(bookings, 'booking_date', 'amount_paise')}
         searchValue={search}
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('seva.searchPlaceholder')}

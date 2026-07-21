@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, CheckCircle2 } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -113,6 +114,12 @@ export function RecurringExpenses() {
 
   const pendingCount = rows.filter(r => !r.logged_this_month).length
 
+  const stats: SummaryStat[] = [
+    { label: t('expenses.recurringLink'), value: String(rows.length) },
+    { label: t('expenses.totalAmount'), value: `₹${fmtPaise(rows.reduce((s2, r) => s2 + (r.amount_paise ?? 0), 0))}` },
+    { label: t('expenses.loggedThisMonth'), value: String(rows.filter(r => r.logged_this_month).length), tone: 'income' },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('expenses.recurringTitle')} />
@@ -124,6 +131,8 @@ export function RecurringExpenses() {
         </div>
         {pendingCount > 0 && <span className="badge-yellow">{t('expenses.pendingCount', { count: pendingCount })}</span>}
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         columns={columns}

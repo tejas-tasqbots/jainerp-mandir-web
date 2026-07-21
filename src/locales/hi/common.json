@@ -799,7 +799,13 @@
     "checkoutSuccess": "अतिथि चेक-आउट हुए",
     "checkoutFailed": "चेक-आउट विफल",
     "cancelSuccess": "बुकिंग रद्द हुई",
-    "cancelFailed": "बुकिंग रद्द नहीं हो सकी"
+    "cancelFailed": "बुकिंग रद्द नहीं हो सकी",
+    "summaryBookings": "बुकिंग",
+    "summaryOccupied": "भरे हुए",
+    "summaryDueOut": "आज चेक-आउट",
+    "summaryAdvances": "अग्रिम राशि",
+    "summaryBooked": "बुक मूल्य",
+    "summaryBalanceDue": "शेष देय"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -1014,7 +1020,10 @@
     "pnlCollected": "संग्रह",
     "pnlExpenses": "व्यय",
     "pnlNet": "शुद्ध",
-    "pnlScope": "संग्रह = इस कार्यक्रम से जुड़ी भुगतान की गई बोली और पंजीकरण। सामान्य दान और सेवा बुकिंग किसी विशेष कार्यक्रम से जुड़े नहीं होते, इसलिए यहाँ शामिल नहीं हैं।"
+    "pnlScope": "संग्रह = इस कार्यक्रम से जुड़ी भुगतान की गई बोली और पंजीकरण। सामान्य दान और सेवा बुकिंग किसी विशेष कार्यक्रम से जुड़े नहीं होते, इसलिए यहाँ शामिल नहीं हैं।",
+    "summaryEvents": "कार्यक्रम",
+    "summaryBudget": "बजट",
+    "summarySpent": "व्यय"
   },
   "maharaj": {
     "title": "महाराज / माताजी",
@@ -1153,7 +1162,10 @@
     "removeTag": "{{tag}} हटाएं",
     "customTagPlaceholder": "कस्टम टैग…",
     "tagUpdateFailed": "टैग अपडेट नहीं हो सके",
-    "searchTransactions": "रसीद, विवरण, माध्यम खोजें..."
+    "searchTransactions": "रसीद, विवरण, माध्यम खोजें...",
+    "summaryDonors": "दाता",
+    "summaryActive": "सक्रिय",
+    "summaryThisFy": "इस वित्त वर्ष दान"
   },
   "creditors": {
     "title": "लेनदार (उधार)",
@@ -1814,5 +1826,8 @@
     "system": "सिस्टम",
     "empty": "इस अवधि में कोई गतिविधि नहीं",
     "search": "कर्ता, इकाई, रिकॉर्ड आईडी खोजें..."
+  },
+  "lostFound": {
+    "statusUnclaimed": "अदावाकृत"
   }
 }

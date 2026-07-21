@@ -144,7 +144,7 @@ export function DonorProfile() {
       await print80gCertificate(id)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      alert(err.response?.data?.error?.message || t('donors.no80gForYear'))
+      toast.error(err.response?.data?.error?.message || t('donors.no80gForYear'))
     } finally {
       setCert80g(false)
     }
@@ -158,7 +158,7 @@ export function DonorProfile() {
     try {
       await downloadReceiptPdf(row.id)
     } catch {
-      alert(t('donors.receiptFailed'))
+      toast.error(t('donors.receiptFailed'))
     } finally {
       setReceiptBusy(null)
     }

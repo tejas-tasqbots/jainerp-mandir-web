@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -151,6 +152,11 @@ export function VendorsPage() {
     }
   }
 
+  const stats: SummaryStat[] = [
+    { label: t('vendors.title'), value: String(vendors.length) },
+    { label: t('vendors.active'), value: String(vendors.filter(v => v.is_active).length) },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('vendors.title')} />
@@ -158,6 +164,8 @@ export function VendorsPage() {
         <h1 className="text-xl font-bold text-navy-900">{t('vendors.title')}</h1>
         <button onClick={openAdd} className="btn-primary btn-sm"><Plus size={14} /> {t('vendors.addVendor')}</button>
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="vendors-list"

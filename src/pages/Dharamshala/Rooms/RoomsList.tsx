@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
+import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
   type ColumnDef, type ColumnFilterState,
 } from '../../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
+import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import type { RoomBooking } from '../../../types'
@@ -35,6 +37,19 @@ export function RoomsList() {
   const [cancelModal, setCancelModal] = useState<{ id: string; guestName: string } | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
+
+
+  // Occupancy + money held, per plan §15 (Rooms: occupancy %, advances held, due-out today).
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const occupied = bookings.filter(b => b.status === 'checked_in').length
+  const dueOut = bookings.filter(b => b.status === 'checked_in' && (b.check_out_date || '').slice(0, 10) === todayIso).length
+  const advancesHeld = bookings.filter(b => b.status !== 'cancelled' && b.status !== 'checked_out').reduce((s2, b) => s2 + (b.advance_paise ?? 0), 0)
+  const stats: SummaryStat[] = [
+    { label: t('dharamshala.summaryBookings'), value: String(total) },
+    { label: t('dharamshala.summaryOccupied'), value: String(occupied) },
+    { label: t('dharamshala.summaryDueOut'), value: String(dueOut), tone: dueOut ? 'expense' : 'default' },
+    { label: t('dharamshala.summaryAdvances'), value: `₹${fmtPaise(advancesHeld)}`, tone: 'income' },
+  ]
 
   function statusBadge(s: string) {
     if (s === 'booked' || s === 'confirmed') return <span className="badge-blue">{t('dharamshala.statusBooked')}</span>
@@ -243,12 +258,15 @@ export function RoomsList() {
         <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="rooms" />
       </div>
 
+      <SummaryStrip stats={stats} />
+
       <DataTable
         viewKey="rooms-list"
         columns={columns}
         rows={bookings}
         rowKey={b => b.id}
         loading={loading}
+        graphData={trendByDay(bookings, 'check_in_date', 'advance_paise')}
         searchValue={search}
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('dharamshala.searchPlaceholder')}

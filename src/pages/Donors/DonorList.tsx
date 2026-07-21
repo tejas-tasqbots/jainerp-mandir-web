@@ -7,6 +7,7 @@ import { exportXlsx } from '../../lib/exportXlsx'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Donor } from '../../types'
@@ -167,6 +168,16 @@ export function DonorList() {
     }
   }
 
+
+  // Donor rollup per plan §06 (lifetime/FY giving visible on the list).
+  const fyGiving = donors.reduce((s2, d) => s2 + (d.cumulative_amount_current_fy_paise ?? 0), 0)
+  const activeDonors = donors.filter(d => d.is_active).length
+  const stats: SummaryStat[] = [
+    { label: t('donors.summaryDonors'), value: String(total || donors.length) },
+    { label: t('donors.summaryActive'), value: String(activeDonors) },
+    { label: t('donors.summaryThisFy'), value: `₹${fmtPaise(fyGiving)}`, tone: 'income' },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('donors.title')} />
@@ -177,6 +188,8 @@ export function DonorList() {
           <Plus size={14} /> {t('donors.addDonor')}
         </button>
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="donors-list"

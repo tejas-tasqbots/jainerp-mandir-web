@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
+import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
   type ColumnDef, type ColumnFilterState,
 } from '../../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
+import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import type { HallBooking } from '../../../types'
@@ -101,7 +103,9 @@ export function HallBookingsList() {
   }
 
   function resetPageAnd<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setPage(1) }
+  
+
+  return (v: T) => { setter(v); setPage(1) }
   }
 
   async function exportExcel() {
@@ -140,6 +144,17 @@ export function HallBookingsList() {
     }
   }
 
+  // Hall money view per plan §15 (balance-due column + status chips).
+  const live = bookings.filter(b => b.status !== 'cancelled')
+  const hallTotal = live.reduce((s2, b) => s2 + (b.total_paise ?? 0), 0)
+  const hallAdvance = live.reduce((s2, b) => s2 + (b.advance_paise ?? 0), 0)
+  const stats: SummaryStat[] = [
+    { label: t('dharamshala.summaryBookings'), value: String(live.length) },
+    { label: t('dharamshala.summaryBooked'), value: `₹${fmtPaise(hallTotal)}`, tone: 'income' },
+    { label: t('dharamshala.summaryAdvances'), value: `₹${fmtPaise(hallAdvance)}` },
+    { label: t('dharamshala.summaryBalanceDue'), value: `₹${fmtPaise(Math.max(hallTotal - hallAdvance, 0))}`, tone: 'expense' },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('dharamshala.hallTitle')} subtitle={rangeCaption(range, t('dateRange.all'))} />
@@ -155,12 +170,15 @@ export function HallBookingsList() {
         <DateRangePicker value={range} onChange={resetPageAnd(setRange)} storageKey="hall" />
       </div>
 
+      <SummaryStrip stats={stats} />
+
       <DataTable
         viewKey="hall-list"
         columns={columns}
         rows={bookings}
         rowKey={b => b.id}
         loading={loading}
+        graphData={trendByDay(bookings, 'booking_date', 'total_paise')}
         searchValue={search}
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('dharamshala.hallSearchPlaceholder')}

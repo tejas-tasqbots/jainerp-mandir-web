@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -116,6 +117,10 @@ export function RecycleBinPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, restoringKey])
 
+  const stats: SummaryStat[] = [
+    { label: t('recycleBin.title'), value: String(visible.length) },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('recycleBin.title')} />
@@ -124,6 +129,8 @@ export function RecycleBinPage() {
         <h1 className="text-xl font-bold text-navy-900 flex items-center gap-2"><Trash2 size={18} /> {t('recycleBin.title')}</h1>
         <p className="text-sm text-slate-500 mt-0.5">{t('recycleBin.subtitle')}</p>
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         columns={columns}

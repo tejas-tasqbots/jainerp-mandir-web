@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X, Users } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -156,6 +157,12 @@ export function EmployeesPage() {
     }
   }
 
+  const stats: SummaryStat[] = [
+    { label: tab === 'employees' ? t('employees.tabEmployees') : t('employees.tabVolunteers'), value: String(items.length) },
+    { label: t('employees.active'), value: String(items.filter(e => e.is_active).length) },
+    { label: t('employees.salary'), value: `₹${fmtPaise(items.reduce((s2, e) => s2 + (e.monthly_salary_paise ?? 0), 0))}` },
+  ]
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('employees.title')} />
@@ -173,6 +180,8 @@ export function EmployeesPage() {
           </button>
         ))}
       </div>
+
+      <SummaryStrip stats={stats} />
 
       <DataTable
         viewKey="employees-list"

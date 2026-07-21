@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Save, X, Package, Pencil } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import type { PrasadItem } from '../../types'
+import { useToast } from '../../components/kit/Toast'
 
 export function PrasadItems() {
+  const toast = useToast()
   const { t } = useTranslation()
   const [items, setItems] = useState<PrasadItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,7 +99,7 @@ export function PrasadItems() {
       load()
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: { message?: string } } } }
-      alert(e.response?.data?.error?.message || 'Stock adjustment failed')
+      toast.error(e.response?.data?.error?.message || 'Stock adjustment failed')
     } finally {
       setSaving(false)
     }

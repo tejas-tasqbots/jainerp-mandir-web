@@ -6,6 +6,7 @@ import { api, fmtPaise } from '../../lib/api'
 import { printBoliIntimation } from '../../lib/printBoliIntimation'
 import { downloadReport } from '../../lib/downloadReport'
 import { exportXlsx } from '../../lib/exportXlsx'
+import { trendByDay } from '../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
@@ -302,6 +303,7 @@ export function BoliList() {
         rows={bolis}
         rowKey={b => b.id}
         loading={loading}
+        graphData={trendByDay(bolis, 'boli_date', 'committed_amount_paise')}
         searchValue={search}
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('pledges.searchPlaceholder')}

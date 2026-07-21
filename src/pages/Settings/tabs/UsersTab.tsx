@@ -5,6 +5,7 @@ import { api } from '../../../lib/api'
 import { PhoneInput } from '../../../components/PhoneInput'
 import { useAuthStore } from '../../../store/authStore'
 import { useConfirm } from '../../../components/ConfirmDialog'
+import { useToast } from '../../../components/kit/Toast'
 
 interface StaffUser {
   id: string
@@ -36,6 +37,7 @@ function apiMessage(err: unknown, fallback: string): string {
 }
 
 export function UsersTab() {
+  const toast = useToast()
   const { t } = useTranslation()
   const me = useAuthStore(s => s.user)
   const confirm = useConfirm()
@@ -78,7 +80,7 @@ export function UsersTab() {
     try {
       await api.patch(`/users/${u.id}`, { is_active: !u.is_active })
     } catch (err) {
-      alert(apiMessage(err, t('settings.users.statusChangeFailed')))
+      toast.error(apiMessage(err, t('settings.users.statusChangeFailed')))
     }
     load()
   }
@@ -88,7 +90,7 @@ export function UsersTab() {
     try {
       await api.patch(`/users/${u.id}`, { roles: [role] })
     } catch (err) {
-      alert(apiMessage(err, t('settings.users.roleChangeFailed')))
+      toast.error(apiMessage(err, t('settings.users.roleChangeFailed')))
     }
     load()
   }
@@ -106,7 +108,7 @@ export function UsersTab() {
       setNotice(data.data?.note || t('settings.users.transferredDefault'))
       load()
     } catch (err) {
-      alert(apiMessage(err, t('settings.users.transferFailed')))
+      toast.error(apiMessage(err, t('settings.users.transferFailed')))
     }
   }
 
