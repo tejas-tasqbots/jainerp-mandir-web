@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Building2, Phone, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Building2, Phone, ShieldCheck, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 import { api } from '../../lib/api'
@@ -23,9 +23,19 @@ export function LoginPage() {
   const [tenants, setTenants] = useState<TenantChoice[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resendIn, setResendIn] = useState(0)
+  const [resending, setResending] = useState(false)
+  const [resentNote, setResentNote] = useState('')
 
   const { setTokens, setUser, setLanguage, deviceId } = useAuthStore()
   const { fetchProfile } = useProfileStore()
+
+  // Countdown that gates the "Resend OTP" action (avoids spamming the SMS/WA gateway).
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = setTimeout(() => setResendIn(s => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendIn])
 
   async function sendOtp() {
     if (!isValidPhone(mobile)) {
@@ -38,11 +48,32 @@ export function LoginPage() {
       const { data } = await api.post('/auth/send-otp', { mobile, purpose: 'login' })
       if (data.data?.dev_otp) setMockOtp(data.data.dev_otp)
       setStep('otp')
+      setResendIn(30)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
       setError(err.response?.data?.error?.message || 'Failed to send OTP')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function resendOtp() {
+    if (resendIn > 0 || resending) return
+    setResending(true)
+    setError('')
+    setResentNote('')
+    try {
+      const { data } = await api.post('/auth/send-otp', { mobile, purpose: 'login' })
+      if (data.data?.dev_otp) setMockOtp(data.data.dev_otp)
+      const channel = data.data?.channel ? ` via ${data.data.channel}` : ''
+      setResentNote(`A new OTP has been sent${channel}.`)
+      setOtp('')
+      setResendIn(30)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      setError(err.response?.data?.error?.message || 'Could not resend OTP')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -174,6 +205,11 @@ export function LoginPage() {
                 Dev mode — OTP: <span className="font-mono font-bold">{mockOtp}</span>
               </div>
             )}
+            {resentNote && (
+              <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 text-xs text-green-700">
+                {resentNote}
+              </div>
+            )}
             <div>
               <label className="form-label">Enter OTP</label>
               <input
@@ -197,6 +233,23 @@ export function LoginPage() {
               <ShieldCheck size={16} />
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>
+            {/* Resend OTP — gated by a short countdown so users can re-request if the code didn't arrive */}
+            <div className="text-center text-sm">
+              <span className="text-slate-400">Didn't receive the code? </span>
+              {resendIn > 0 ? (
+                <span className="text-slate-400">Resend in {resendIn}s</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={resendOtp}
+                  disabled={resending}
+                  className="inline-flex items-center gap-1 font-semibold text-brand-blue hover:underline disabled:opacity-50"
+                >
+                  <RotateCw size={13} className={resending ? 'animate-spin' : ''} />
+                  {resending ? 'Sending...' : 'Resend OTP'}
+                </button>
+              )}
+            </div>
             {/* OTP numpad */}
             <div className="grid grid-cols-3 gap-2 mt-2">
               {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
