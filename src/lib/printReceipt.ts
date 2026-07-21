@@ -1,4 +1,13 @@
 import { api } from './api'
+import { receiptLabels, type ReceiptLabels } from './receiptLabels'
+
+/**
+ * Labels for the receipt currently being built. Module-level rather than a
+ * parameter on all nine template builders: rendering is synchronous and
+ * single-threaded (buildReceiptHtml sets this, then immediately calls one
+ * builder), so there is no interleaving to worry about.
+ */
+let L: ReceiptLabels = receiptLabels('en')
 
 export interface ReceiptData {
   receipt_number: string
@@ -31,7 +40,18 @@ export interface ReceiptData {
     footer?: string | null
     template?: string
     primary_color?: string
+    // Print settings (tenant-migration 011).
+    receipt_copies?: 'single' | 'both'
+    receipt_paper?: 'a4' | 'thermal80'
+    receipt_language?: string
+    receipt_show_upi_qr?: boolean
   } | null
+  /**
+   * UPI pay QR as a data URI. Not part of the API payload — the caller
+   * generates it (see `buildUpiQr`) because QR encoding is async and the
+   * template builders are synchronous.
+   */
+  upi_qr_data_uri?: string | null
   donor: {
     name?: string | null
     mobile?: string | null
@@ -182,35 +202,35 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
       </div>
       <div class="receipt-badge">
-        <div class="label">Donation Receipt</div>
+        <div class="label">${L.donationReceipt}</div>
         <div class="rno">${r.receipt_number}</div>
         <div class="date">${dateStr}</div>
       </div>
     </div>
     <div class="body">
       ${voidedBanner(r.is_voided)}
-      <div class="section-label">Received From</div>
+      <div class="section-label">${L.receivedFrom}</div>
       <div class="donor-box">
-        <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
+        <div class="donor-name">${r.donor?.name || L.anonymous}</div>
         ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
-        ${donorPan(r) ? `<div class="donor-mobile">PAN: ${donorPan(r)}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-mobile">${L.pan}: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="amount-box">
         <div>
-          <div class="amount-label">Donation Amount</div>
+          <div class="amount-label">${L.donationAmount}</div>
           <div class="amount-words">${amountInWords(r.amount_paise)}</div>
         </div>
         <div class="amount-value">₹ ${fmtRs(r.amount_paise)}</div>
       </div>
       <table>
-        <tr><td>Category</td><td>${r.category || '—'}</td></tr>
-        <tr><td>Payment Mode</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
+        <tr><td>${L.paymentMode}</td><td>${modeName(r.payment_mode)}</td></tr>
         <tr><td>80G Eligible</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? 'Yes' : 'No'}</span></td></tr>
       </table>
       ${regBlock(mandir)}
       ${paymentBlock(mandir)}
       ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+      <div class="print-hint">${L.printHint}</div>
     </div>
   </div>`
 }
@@ -251,23 +271,23 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
       </div>
       <div class="rhs">
-        <div class="rtitle">Donation Receipt</div>
+        <div class="rtitle">${L.donationReceipt}</div>
         <div class="rno">${r.receipt_number}</div>
         <div class="rdate">${dateStr}</div>
       </div>
     </div>
     ${voidedBanner(r.is_voided)}
-    <div class="field"><span class="k">Received From</span><span class="v">${r.donor?.name || 'Anonymous'}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
-    ${donorPan(r) ? `<div class="field"><span class="k">Donor PAN</span><span class="v">${donorPan(r)}</span></div>` : ''}
-    <div class="field"><span class="k">Category</span><span class="v">${r.category || '—'}</span></div>
-    <div class="field"><span class="k">Payment Mode</span><span class="v">${modeName(r.payment_mode)}</span></div>
+    <div class="field"><span class="k">${L.receivedFrom}</span><span class="v">${r.donor?.name || L.anonymous}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
+    ${donorPan(r) ? `<div class="field"><span class="k">${L.donorPan}</span><span class="v">${donorPan(r)}</span></div>` : ''}
+    <div class="field"><span class="k">${L.category}</span><span class="v">${r.category || '—'}</span></div>
+    <div class="field"><span class="k">${L.paymentMode}</span><span class="v">${modeName(r.payment_mode)}</span></div>
     <div class="field"><span class="k">80G Eligible</span><span class="v">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</span></div>
-    <div class="field amount-row"><span class="k">Amount</span><span class="v">₹ ${fmtRs(r.amount_paise)}</span></div>
+    <div class="field amount-row"><span class="k">${L.amount}</span><span class="v">₹ ${fmtRs(r.amount_paise)}</span></div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     ${regBlock(mandir)}
     ${paymentBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -328,31 +348,31 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     <div class="body">
       <div class="grid2">
         <div class="info-card">
-          <div class="label">Received From</div>
-          <div class="value">${r.donor?.name || 'Anonymous'}</div>
+          <div class="label">${L.receivedFrom}</div>
+          <div class="value">${r.donor?.name || L.anonymous}</div>
           ${r.donor?.mobile ? `<div class="sub">${r.donor.mobile}</div>` : ''}
-          ${donorPan(r) ? `<div class="sub">PAN: ${donorPan(r)}</div>` : ''}
+          ${donorPan(r) ? `<div class="sub">${L.pan}: ${donorPan(r)}</div>` : ''}
         </div>
         <div class="info-card">
-          <div class="label">Category</div>
+          <div class="label">${L.category}</div>
           <div class="value">${r.category || '—'}</div>
         </div>
       </div>
       <div class="amount-hero">
         <div>
-          <div class="lbl">Donation Amount</div>
+          <div class="lbl">${L.donationAmount}</div>
           <div class="words">${amountInWords(r.amount_paise)}</div>
         </div>
         <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
       </div>
       <div class="details">
-        <div class="detail-item"><div class="k">Payment Mode</div><div class="v">${modeName(r.payment_mode)}</div></div>
+        <div class="detail-item"><div class="k">${L.paymentMode}</div><div class="v">${modeName(r.payment_mode)}</div></div>
         <div class="detail-item"><div class="k">80G Eligible</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? 'Yes ✓' : 'No'}</span></div></div>
       </div>
       ${regBlock(mandir)}
       ${paymentBlock(mandir)}
       ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+      <div class="print-hint">${L.printHint}</div>
     </div>
   </div>`
 }
@@ -402,21 +422,21 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <div class="receipt-title">Donation Receipt / दान रसीद</div>
     </div>
     <div class="meta">
-      <span>Receipt No: ${r.receipt_number}</span>
-      <span>Date: ${dateStr}</span>
+      <span>${L.receiptNo}: ${r.receipt_number}</span>
+      <span>${L.date}: ${dateStr}</span>
     </div>
     ${voidedBanner(r.is_voided)}
     <div class="body">
       <div class="received">Received with gratitude from:</div>
-      <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
+      <div class="donor-name">${r.donor?.name || L.anonymousDonor}</div>
       ${r.donor?.mobile ? `<div class="donor-mobile">${r.donor.mobile}</div>` : ''}
-      ${donorPan(r) ? `<div class="donor-mobile">PAN: ${donorPan(r)}</div>` : ''}
+      ${donorPan(r) ? `<div class="donor-mobile">${L.pan}: ${donorPan(r)}</div>` : ''}
       <hr class="divider">
       <table>
-        <tr><td>Category</td><td>${r.category || '—'}</td></tr>
-        <tr><td>Payment Mode</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
+        <tr><td>${L.paymentMode}</td><td>${modeName(r.payment_mode)}</td></tr>
         <tr><td>80G Eligible</td><td>${r.is_80g_eligible ? '✓ Yes' : 'No'}</td></tr>
-        <tr><td>Amount</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
+        <tr><td>${L.amount}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
         <tr class="words-row"><td></td><td>${amountInWords(r.amount_paise)}</td></tr>
       </table>
       ${regBlock(mandir)}
@@ -424,7 +444,7 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
     </div>
     <div class="bottom-border"></div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -475,7 +495,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
       </div>
       <div class="receipt-meta">
-        <div class="rt">Donation Receipt</div>
+        <div class="rt">${L.donationReceipt}</div>
         <div class="rn">${r.receipt_number}</div>
         <div class="rd">${dateStr}</div>
       </div>
@@ -483,13 +503,13 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     ${voidedBanner(r.is_voided)}
     <div class="body">
       <div class="sec">
-        <div class="sec-title">Received From</div>
-        <div class="donor-name">${r.donor?.name || 'Anonymous'}</div>
+        <div class="sec-title">${L.receivedFrom}</div>
+        <div class="donor-name">${r.donor?.name || L.anonymous}</div>
         ${r.donor?.mobile ? `<div class="donor-sub">${r.donor.mobile}</div>` : ''}
-        ${donorPan(r) ? `<div class="donor-sub">PAN: ${donorPan(r)}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-sub">${L.pan}: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="sec">
-        <div class="sec-title">Donation Amount</div>
+        <div class="sec-title">${L.donationAmount}</div>
         <div class="amount-line">
           <span class="amount-cur">₹</span>
           <span class="amount-num">${fmtRs(r.amount_paise)}</span>
@@ -499,8 +519,8 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div class="sec">
         <div class="sec-title">Details</div>
         <div class="dl">
-          <div><div class="dt">Category</div><div class="dd">${r.category || '—'}</div></div>
-          <div><div class="dt">Payment Mode</div><div class="dd">${modeName(r.payment_mode)}</div></div>
+          <div><div class="dt">${L.category}</div><div class="dd">${r.category || '—'}</div></div>
+          <div><div class="dt">${L.paymentMode}</div><div class="dd">${modeName(r.payment_mode)}</div></div>
           <div><div class="dt">80G Eligible</div><div class="dd ${r.is_80g_eligible ? 'elig-yes' : 'elig-no'}">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</div></div>
         </div>
       </div>
@@ -509,7 +529,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
     </div>
     <div class="bottom"></div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -568,30 +588,30 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
       ${mandir.pan ? `<span>PAN: <b>${mandir.pan}</b></span>` : ''}
     </div>` : ''}
     <div class="receipt-meta">
-      <span><span class="label">Receipt No: </span><span class="val">${r.receipt_number}</span></span>
+      <span><span class="label">${L.receiptNo}: </span><span class="val">${r.receipt_number}</span></span>
       <span><span class="label">Created: </span><span class="val">${dateStr}</span></span>
     </div>
     ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="two-col">
       <div class="col-left">
-        <div class="sec-hdr">Donors Detail:</div>
-        <div class="field"><div class="k">Received with Thanks</div><div class="v">From ${r.donor?.name || 'Anonymous Donor'}</div></div>
+        <div class="sec-hdr">${L.donorsDetail}:</div>
+        <div class="field"><div class="k">Received with Thanks</div><div class="v">From ${r.donor?.name || L.anonymousDonor}</div></div>
         ${r.donor?.mobile ? `<div class="field"><div class="k">Contact No.</div><div class="v">${r.donor.mobile}</div></div>` : ''}
-        ${donorPan(r) ? `<div class="field"><div class="k">Donor PAN</div><div class="v">${donorPan(r)}</div></div>` : ''}
-        <div class="field" style="margin-top:12px"><div class="k">Amount (INR)</div><div class="v amount">INR ${fmtRs(r.amount_paise)}</div></div>
-        <div class="field"><div class="k">As donation for the cause</div><div class="v">${r.category || 'General Donation'}</div></div>
+        ${donorPan(r) ? `<div class="field"><div class="k">${L.donorPan}</div><div class="v">${donorPan(r)}</div></div>` : ''}
+        <div class="field" style="margin-top:12px"><div class="k">${L.amountInr}</div><div class="v amount">INR ${fmtRs(r.amount_paise)}</div></div>
+        <div class="field"><div class="k">As donation for the cause</div><div class="v">${r.category || L.generalDonation}</div></div>
         ${hasBank ? `<div style="margin-top:12px"><div class="k" style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px">Bank / Payment Details</div><div class="bank-box">${mandir.upi_id ? 'UPI: <b>'+mandir.upi_id+'</b><br>' : ''}${mandir.bank_account_no ? 'A/C: <b>'+mandir.bank_account_no+'</b> &nbsp; IFSC: <b>'+mandir.bank_ifsc+'</b><br>'+mandir.bank_name : ''}</div></div>` : ''}
       </div>
       <div class="col-right">
         <div class="sec-hdr">Transaction Detail:</div>
-        <div class="field"><div class="k">Donor Name</div><div class="v">${r.donor?.name || '—'}</div></div>
-        <div style="margin:10px 0 6px"><div class="sec-hdr" style="margin:-4px -20px 10px">Purpose of Donation:</div>
-          <div class="v">${r.category || 'General Donation'}</div>
+        <div class="field"><div class="k">${L.donorName}</div><div class="v">${r.donor?.name || '—'}</div></div>
+        <div style="margin:10px 0 6px"><div class="sec-hdr" style="margin:-4px -20px 10px">${L.purposeOfDonation}:</div>
+          <div class="v">${r.category || L.generalDonation}</div>
         </div>
         <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">Payment details:</div>
           <div class="v">${modeName(r.payment_mode)}</div>
         </div>
-        <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">Mode of Payment:</div>
+        <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">${L.modeOfPayment}:</div>
           <div class="v">${modeName(r.payment_mode)}</div>
         </div>
         ${r.is_80g_eligible && mandir.show_80g ? `<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:3px;font-size:10px;color:#92400e"><b>80G Eligible</b> — Tax exemption certificate available</div>` : ''}
@@ -599,13 +619,13 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     </div>
     ${mandir.footer ? `<div class="notes-section"><div style="font-size:10px;font-weight:700;margin-bottom:6px">Please Note:</div><ul><li>${mandir.footer}</li></ul></div>` : ''}
     <div class="footer-row">
-      <div style="font-size:11px;color:#374151;max-width:300px;font-style:italic">${r.is_80g_eligible && mandir.show_80g ? 'This receipt is valid for 80G tax exemption purposes.' : 'Thank you for your generous donation.'}</div>
+      <div style="font-size:11px;color:#374151;max-width:300px;font-style:italic">${r.is_80g_eligible && mandir.show_80g ? L.valid80g : L.thankYou}</div>
       <div class="sig-block">
         <div class="for">For ${mandir.name}</div>
-        <div class="auth">Authorised Signatory</div>
+        <div class="auth">${L.authorisedSignatory}</div>
       </div>
     </div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -656,17 +676,17 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="meta-row">
       <div class="meta-cell"><div class="k">Cont. No.</div><div class="v">${modeName(r.payment_mode).toUpperCase()}</div></div>
       <div class="meta-cell"><div class="k">Receipt Number</div><div class="v">${r.receipt_number}</div></div>
-      <div class="meta-cell"><div class="k">Date</div><div class="v">${dateStr}</div></div>
+      <div class="meta-cell"><div class="k">${L.date}</div><div class="v">${dateStr}</div></div>
     </div>
-    <div class="rcvd-row">Received From: &nbsp;<b>${r.donor?.name || 'Anonymous Donor'}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; Mobile: <b>'+r.donor.mobile+'</b>' : ''}${donorPan(r) ? ' &nbsp;&nbsp; PAN: <b>'+donorPan(r)+'</b>' : ''}</div>
+    <div class="rcvd-row">${L.receivedFrom}: &nbsp;<b>${r.donor?.name || L.anonymousDonor}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; '+L.mobile+': <b>'+r.donor.mobile+'</b>' : ''}${donorPan(r) ? ' &nbsp;&nbsp; PAN: <b>'+donorPan(r)+'</b>' : ''}</div>
     <div class="addr-row">
-      <div>Category: <b>${r.category || 'General Donation'}</b></div>
-      <div>Mode: <b>${modeName(r.payment_mode)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? 'Yes' : 'No'}</b></div>
+      <div>${L.category}: <b>${r.category || L.generalDonation}</b></div>
+      <div>${L.mode}: <b>${modeName(r.payment_mode)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? L.yes : L.no}</b></div>
     </div>
     <table class="main">
-      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <thead><tr><th>${L.description}</th><th>${L.amount}</th></tr></thead>
       <tbody>
-        <tr><td>${r.category || 'General Donation'}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
+        <tr><td>${r.category || L.generalDonation}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
         <tr><td style="font-size:10px;color:#6b7280;font-style:italic">${amountInWords(r.amount_paise)}</td><td></td></tr>
       </tbody>
       <tfoot><tr class="total-row"><td><b>Total</b></td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr></tfoot>
@@ -677,11 +697,11 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div style="font-size:11px;color:#555">This is a computer-generated receipt.</div>
       <div class="sig-block">
         <div class="sig-line"></div>
-        <div class="sig-label">Authorised Signatory</div>
+        <div class="sig-label">${L.authorisedSignatory}</div>
         <div style="font-size:10px;font-weight:700;color:#111;margin-top:2px">${mandir.name}</div>
       </div>
     </div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -738,12 +758,12 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
     <div class="ack-title">Acknowledgement Receipt</div>
     <div class="body">
       <div class="recvd-para">
-        Received with thanks from <b>${r.donor?.name || 'Anonymous Donor'}</b>, an amount of
+        ${L.receivedWithThanks} <b>${r.donor?.name || L.anonymousDonor}</b>, an amount of
         <span class="amount-highlight">INR ${fmtRs(r.amount_paise)} / ${amountInWords(r.amount_paise)}</span>
         towards corpus donation on <b>${dateStr}</b>.
       </div>
       <table class="details">
-        <thead><tr><th>Mode of Payment</th><th>Instrument No.</th><th>Instrument Date</th><th>Realized Amount</th></tr></thead>
+        <thead><tr><th>${L.modeOfPayment}</th><th>${L.instrumentNo}</th><th>${L.instrumentDate}</th><th>${L.realizedAmount}</th></tr></thead>
         <tbody><tr>
           <td>${modeName(r.payment_mode)}</td>
           <td>${r.receipt_number}</td>
@@ -756,9 +776,9 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
       ${mandir.footer ? `<div style="font-size:11px;color:#374151;font-style:italic;margin-top:8px">${mandir.footer}</div>` : ''}
       <div class="address-block">
         <div class="to">TO</div>
-        <div class="donor-name">${r.donor?.name || 'Anonymous Donor'}</div>
+        <div class="donor-name">${r.donor?.name || L.anonymousDonor}</div>
         ${r.donor?.mobile ? `<div class="donor-addr">${r.donor.mobile}</div>` : ''}
-        ${donorPan(r) ? `<div class="donor-addr">PAN: ${donorPan(r)}</div>` : ''}
+        ${donorPan(r) ? `<div class="donor-addr">${L.pan}: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="sig-section">
         <div class="sig-left">This is an electronically generated document<br>and does not require any signature.</div>
@@ -769,7 +789,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
       </div>
     </div>
     <div class="footer-note">PLEASE SEE OVERLEAF FOR PARTICULARS OF THE TRUST</div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -819,21 +839,21 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
       <div class="reg-bar">
         ${mandir.show_80g && mandir.reg_80g_number ? `Reg. No: <b>${mandir.reg_80g_number}</b><br>` : ''}
         ${mandir.pan ? `PAN No: <b>${mandir.pan}</b>` : ''}
-        <br>Date: <b>${dateStr}</b>
+        <br>${L.date}: <b>${dateStr}</b>
       </div>
     </div>
     <div class="title-bar">TRUST RECEIPT</div>
     <div class="meta-row">
-      <span>Receipt No: <b>${r.receipt_number}</b></span>
-      <span>Date: <b>${dateStr}</b></span>
+      <span>${L.receiptNo}: <b>${r.receipt_number}</b></span>
+      <span>${L.date}: <b>${dateStr}</b></span>
     </div>
     ${r.is_voided ? '<div class="voided">⚠ VOID</div>' : ''}
     <div class="body">
-      <div class="field-row"><span class="lbl">Donor Name Shri / Smt.</span><span class="val">${r.donor?.name || 'Anonymous Donor'}</span></div>
+      <div class="field-row"><span class="lbl">${L.donorNamePrefix}</span><span class="val">${r.donor?.name || L.anonymousDonor}</span></div>
       ${r.donor?.mobile ? `<div class="field-row"><span class="lbl">Mobile Number</span><span class="val">${r.donor.mobile}</span></div>` : ''}
-      ${donorPan(r) ? `<div class="field-row"><span class="lbl">Donor PAN</span><span class="val">${donorPan(r)}</span></div>` : ''}
-      <div class="field-row"><span class="lbl">Amount in Words</span><span class="val">INR ${amountInWords(r.amount_paise)}</span></div>
-      <div class="field-row"><span class="lbl">For Purpose of</span><span class="val">${r.category || 'General Donation'}</span></div>
+      ${donorPan(r) ? `<div class="field-row"><span class="lbl">${L.donorPan}</span><span class="val">${donorPan(r)}</span></div>` : ''}
+      <div class="field-row"><span class="lbl">${L.amountInWords}</span><span class="val">INR ${amountInWords(r.amount_paise)}</span></div>
+      <div class="field-row"><span class="lbl">For Purpose of</span><span class="val">${r.category || L.generalDonation}</span></div>
       ${hasBank ? `
       <table class="bank-table">
         <tr>
@@ -846,12 +866,12 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
           </td>
           <td class="amount-cell">
             ${fmtRs(r.amount_paise)}<br>
-            <span style="font-size:11px;font-weight:400;color:#6b7280">Mode: ${modeName(r.payment_mode)}</span>
+            <span style="font-size:11px;font-weight:400;color:#6b7280">${L.mode}: ${modeName(r.payment_mode)}</span>
           </td>
         </tr>
       </table>` : `
-      <div class="field-row"><span class="lbl">Amount</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>
-      <div class="field-row"><span class="lbl">Mode of Payment</span><span class="val">${modeName(r.payment_mode)}</span></div>`}
+      <div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>
+      <div class="field-row"><span class="lbl">${L.modeOfPayment}</span><span class="val">${modeName(r.payment_mode)}</span></div>`}
       <div class="sig-row">
         <div class="sig-box">
           <div class="sig-line"></div>
@@ -861,7 +881,7 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     </div>
     ${mandir.show_80g && mandir.reg_80g_number ? `<div class="reg-footer">80G Exemption: <b>${mandir.reg_80g_number}</b>${mandir.pan ? ' &nbsp;|&nbsp; PAN: <b>'+mandir.pan+'</b>' : ''} — This donation is eligible for income tax deduction u/s 80G of Income Tax Act, 1961.</div>` : ''}
     ${mandir.footer ? `<div class="reg-footer" style="border-top:1px solid #ccc">${mandir.footer}</div>` : ''}
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
+    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -952,7 +972,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
       ${mandir.reg_80g_number ? `<div class="cell"><div class="k">80G Registration</div><div class="v">${mandir.reg_80g_number}</div></div>` : ''}
       ${mandir.reg_80g_urn && mandir.reg_80g_urn !== mandir.reg_80g_number ? `<div class="cell"><div class="k">80G URN</div><div class="v">${mandir.reg_80g_urn}</div></div>` : ''}
       ${validUpto ? `<div class="cell"><div class="k">Valid Upto</div><div class="v">${validUpto}</div></div>` : ''}
-      ${mandir.pan ? `<div class="cell"><div class="k">PAN of Trust</div><div class="v">${mandir.pan}</div></div>` : ''}
+      ${mandir.pan ? `<div class="cell"><div class="k">${L.panOfTrust}</div><div class="v">${mandir.pan}</div></div>` : ''}
     </div>
     ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="title">
@@ -963,22 +983,22 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
       <div class="grid">
         <div class="card">
           <div class="lbl">Received With Thanks From</div>
-          <div class="nm">${r.donor?.name || 'Anonymous Donor'}</div>
+          <div class="nm">${r.donor?.name || L.anonymousDonor}</div>
           ${r.donor?.mobile ? `<div class="li">Mobile: <b>${r.donor.mobile}</b></div>` : ''}
           ${donorAddress ? `<div class="li">${donorAddress}</div>` : ''}
-          <div class="li">PAN: <b>${donorPan(r) || 'Not provided'}</b></div>
+          <div class="li">${L.pan}: <b>${donorPan(r) || L.notProvided}</b></div>
         </div>
         <div class="card">
           <div class="lbl">Donation Details</div>
-          <div class="li">Category: <b>${r.category || 'General Donation'}</b></div>
-          <div class="li">Payment Mode: <b>${modeName(r.payment_mode)}</b></div>
+          <div class="li">${L.category}: <b>${r.category || L.generalDonation}</b></div>
+          <div class="li">${L.paymentMode}: <b>${modeName(r.payment_mode)}</b></div>
           <div class="li">Nature: <b>Voluntary donation (not corpus/anonymous)</b></div>
           <div class="li">80G Eligible: <span class="badge badge-green">Yes</span></div>
         </div>
       </div>
       <div class="amount-band">
         <div>
-          <div class="lbl">Donation Amount</div>
+          <div class="lbl">${L.donationAmount}</div>
           <div class="words">${amountInWords(r.amount_paise)}</div>
         </div>
         <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
@@ -991,39 +1011,157 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
         <div class="sign-note">This is a computer-generated receipt. Please verify the trust's 80G status and eligibility of your donation before claiming a deduction.</div>
         <div class="sign-box">
           <div class="for">For ${mandir.name}</div>
-          <div class="line">Authorised Signatory</div>
+          <div class="line">${L.authorisedSignatory}</div>
         </div>
       </div>
       ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">Ctrl+P to print or save as PDF</div>
+      <div class="print-hint">${L.printHint}</div>
     </div>
+  </div>`
+}
+
+/**
+ * UPI deep-link QR for the temple's UPI ID, pre-filled with the receipt amount
+ * (plan §16). Generated in the browser — nothing is fetched, so it works on the
+ * offline desktop counter. Returns null when there is no UPI ID configured or
+ * the trust has the QR turned off.
+ */
+export async function buildUpiQr(r: ReceiptData): Promise<string | null> {
+  const m = r.mandir
+  if (!m?.receipt_show_upi_qr || !m.upi_id) return null
+  const params = new URLSearchParams({
+    pa: m.upi_id,
+    pn: m.name,
+    am: (r.amount_paise / 100).toFixed(2),
+    cu: 'INR',
+    tn: `Donation ${r.receipt_number}`,
+  })
+  try {
+    const QR = await import('qrcode')
+    return await QR.toDataURL(`upi://pay?${params.toString()}`, { margin: 1, width: 220 })
+  } catch {
+    // A missing QR must never block the receipt itself.
+    return null
+  }
+}
+
+/** The QR block appended below the receipt body when one was generated. */
+function upiQrBlock(r: ReceiptData): string {
+  if (!r.upi_qr_data_uri) return ''
+  return `<div class="upi-qr">
+    <img src="${r.upi_qr_data_uri}" alt="UPI QR" />
+    <div class="upi-cap">${L.scanToPay}${r.mandir?.upi_id ? `<br><span class="upi-id">${r.mandir.upi_id}</span>` : ''}</div>
+  </div>`
+}
+
+/** Per-copy caption ("Donor Copy" / "Office Copy") — only when printing both. */
+function copyBanner(label: string): string {
+  return `<div class="copy-banner">${label}</div>`
+}
+
+function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, template: string, color: string): string {
+  if (template === 'minimal') return buildMinimal(r, dateStr, mandir, color)
+  if (template === 'modern') return buildModern(r, dateStr, mandir, color)
+  if (template === 'traditional') return buildTraditional(r, dateStr, mandir)
+  if (template === 'elegant') return buildElegant(r, dateStr, mandir, color)
+  if (template === 'temple') return buildTemple(r, dateStr, mandir, color)
+  if (template === 'tabular') return buildTabular(r, dateStr, mandir, color)
+  if (template === 'acknowledgement') return buildAcknowledgement(r, dateStr, mandir, color)
+  if (template === 'jain_tirth') return buildJainTirth(r, dateStr, mandir, color)
+  if (template === '80g') return build80G(r, dateStr, mandir, color)
+  return buildClassic(r, dateStr, mandir, color)
+}
+
+/**
+ * 80 mm thermal roll layout (plan §16). Deliberately its own minimal renderer
+ * rather than a squeezed A4 template: at 72 mm of printable width the boxed,
+ * two-column A4 designs are unreadable, and thermal printers render only
+ * monochrome text well.
+ */
+function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
+  const row = (k: string, v: string) => `<div class="tr"><span>${k}</span><span>${v}</span></div>`
+  return `
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    body { background:#fff; font-family:'Arial',sans-serif; }
+    .roll { width:72mm; margin:0 auto; padding:6mm 2mm; color:#000; font-size:11px; line-height:1.5; }
+    .roll .name { text-align:center; font-size:14px; font-weight:800; }
+    .roll .addr { text-align:center; font-size:10px; margin-bottom:6px; }
+    .roll .title { text-align:center; font-weight:700; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
+    .tr { display:flex; justify-content:space-between; gap:8px; }
+    .tr span:first-child { color:#333; }
+    .tr span:last-child { font-weight:600; text-align:right; }
+    .amt { text-align:center; font-size:16px; font-weight:800; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; margin:6px 0; }
+    .words { font-size:10px; font-style:italic; text-align:center; margin-bottom:6px; }
+    .note { font-size:9.5px; text-align:center; margin-top:6px; }
+    .voided-t { text-align:center; font-weight:800; border:1px solid #000; padding:3px; margin-bottom:6px; }
+    .upi-qr { text-align:center; margin-top:8px; }
+    .upi-qr img { width:32mm; height:32mm; }
+    .upi-cap { font-size:9.5px; }
+    .upi-id { font-family:monospace; }
+    .copy-banner { text-align:center; font-size:10px; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+    @media print { .print-hint { display:none; } }
+  </style>
+  <div class="roll">
+    <div class="name">${mandir.name}</div>
+    <div class="addr">${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</div>
+    <div class="title">${L.donationReceipt}</div>
+    ${r.is_voided ? `<div class="voided-t">VOID</div>` : ''}
+    ${row(L.receiptNo, r.receipt_number)}
+    ${row(L.date, dateStr)}
+    ${row(L.receivedFrom, r.donor?.name || L.anonymous)}
+    ${r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
+    ${donorPan(r) ? row(L.pan, donorPan(r)!) : ''}
+    ${row(L.category, r.category || L.generalDonation)}
+    ${row(L.paymentMode, modeName(r.payment_mode))}
+    <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
+    <div class="words">${amountInWords(r.amount_paise)}</div>
+    ${r.is_80g_eligible && mandir.show_80g ? `<div class="note">${L.valid80g}</div>` : ''}
+    ${upiQrBlock(r)}
+    <div class="note">${mandir.footer || L.thankYou}</div>
   </div>`
 }
 
 export function buildReceiptHtml(r: ReceiptData): string {
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
+  L = receiptLabels(mandir.receipt_language)
   // The 80G template makes a statutory tax-exemption claim, so it must never be
   // used for a donation that isn't 80G-eligible — fall back to Classic instead.
   let template = mandir.template || 'classic'
   if (template === '80g' && !r.is_80g_eligible) template = 'classic'
   const color = mandir.primary_color || '#0D1B2E'
+  const thermal = mandir.receipt_paper === 'thermal80'
 
-  let body = ''
-  if (template === 'minimal') body = buildMinimal(r, dateStr, mandir, color)
-  else if (template === 'modern') body = buildModern(r, dateStr, mandir, color)
-  else if (template === 'traditional') body = buildTraditional(r, dateStr, mandir)
-  else if (template === 'elegant') body = buildElegant(r, dateStr, mandir, color)
-  else if (template === 'temple') body = buildTemple(r, dateStr, mandir, color)
-  else if (template === 'tabular') body = buildTabular(r, dateStr, mandir, color)
-  else if (template === 'acknowledgement') body = buildAcknowledgement(r, dateStr, mandir, color)
-  else if (template === 'jain_tirth') body = buildJainTirth(r, dateStr, mandir, color)
-  else if (template === '80g') body = build80G(r, dateStr, mandir, color)
-  else body = buildClassic(r, dateStr, mandir, color)
+  const one = (copyLabel?: string) => {
+    const body = thermal ? buildThermal(r, dateStr, mandir) : renderBody(r, dateStr, mandir, template, color)
+    const banner = copyLabel ? copyBanner(copyLabel) : ''
+    // The QR is appended after the body for A4 (thermal already embeds it).
+    const qr = thermal ? '' : upiQrBlock(r)
+    return `<div class="receipt-copy">${banner}${body}${qr}</div>`
+  }
+
+  // "Both" prints the donor's copy and the office's file copy on one job, so
+  // the counter doesn't have to run the print twice and risk a mismatch.
+  const copies = mandir.receipt_copies === 'both'
+    ? one(L.donorCopy) + `<div class="copy-sep"></div>` + one(L.officeCopy)
+    : one()
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>
-<style>*{box-sizing:border-box;margin:0;padding:0;}</style>
-</head><body>${body}<script>window.onload=()=>{window.print()}</script></body></html>`
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  .copy-banner{text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;padding:8px 0 0;}
+  .copy-sep{border-top:1px dashed #9ca3af;margin:16px 0;}
+  .upi-qr{text-align:center;padding:12px 0 18px;}
+  .upi-qr img{width:120px;height:120px;}
+  .upi-cap{font-size:10.5px;color:#6b7280;margin-top:4px;}
+  .upi-id{font-family:monospace;color:#374151;}
+  @media print{
+    .copy-sep{border-top:1px dashed #999;page-break-inside:avoid;}
+    .receipt-copy{page-break-inside:avoid;}
+  }
+</style>
+</head><body>${copies}<script>window.onload=()=>{window.print()}</script></body></html>`
 }
 
 /**
@@ -1075,6 +1213,7 @@ export function printReceiptHtml(html: string): void {
 export async function printDonationReceipt(id: string, basePath = '/donations'): Promise<void> {
   const { data } = await api.get(`${basePath}/${id}/receipt`)
   const receipt: ReceiptData = data.data
+  receipt.upi_qr_data_uri = await buildUpiQr(receipt)
   const html = buildReceiptHtml(receipt)
   printReceiptHtml(html)
 }
@@ -1110,7 +1249,7 @@ async function renderHtmlToCanvas(html: string): Promise<HTMLCanvasElement> {
     const doc = iframe.contentWindow?.document
     if (!doc) throw new Error('Could not create render frame')
     // Drop the auto-print script — we only want layout, not a print dialog.
-    // The "Ctrl+P to print or save as PDF" hint is only meant for someone
+    // The "${L.printHint}" hint is only meant for someone
     // looking at the receipt on screen before printing; @media print already
     // hides it for real printing, but html2canvas rasterizes the live DOM and
     // ignores print-media rules, so without stripping it here it would end up
@@ -1190,6 +1329,7 @@ function safeFileName(receipt: ReceiptData): string {
 export async function downloadReceiptPdf(id: string, basePath = '/donations'): Promise<void> {
   const { data } = await api.get(`${basePath}/${id}/receipt`)
   const receipt: ReceiptData = data.data
+  receipt.upi_qr_data_uri = await buildUpiQr(receipt)
   const pdf = await htmlToPdf(buildReceiptHtml(receipt))
   pdf.save(safeFileName(receipt))
 }
@@ -1202,6 +1342,7 @@ export async function downloadReceiptPdf(id: string, basePath = '/donations'): P
 export async function shareReceiptPdf(id: string, basePath = '/donations'): Promise<void> {
   const { data } = await api.get(`${basePath}/${id}/receipt`)
   const receipt: ReceiptData = data.data
+  receipt.upi_qr_data_uri = await buildUpiQr(receipt)
   const pdf = await htmlToPdf(buildReceiptHtml(receipt))
   const fileName = safeFileName(receipt)
   const blob = pdf.output('blob') as Blob

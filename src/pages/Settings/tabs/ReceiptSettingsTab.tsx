@@ -287,6 +287,8 @@ const BLANK = {
   show_gstin_on_header: true, show_80g_on_receipt: true,
   upi_id: '', bank_account_name: '', bank_account_no: '',
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
+  // Print settings (tenant-migration 011)
+  receipt_copies: 'single', receipt_paper: 'a4', receipt_language: 'en', receipt_show_upi_qr: false,
   // profile fields for preview (read-only here; edited in Temple Profile)
   name: '', address: '', mobile: '', email: '',
   gstin: '', pan: '', tan: '',
@@ -335,6 +337,10 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
       footer: form.custom_receipt_footer || 'Jai Jinendra! Thank you for your generous donation.',
       template: form.receipt_template,
       primary_color: form.primary_color,
+      receipt_copies: form.receipt_copies as 'single' | 'both',
+      receipt_paper: form.receipt_paper as 'a4' | 'thermal80',
+      receipt_language: form.receipt_language,
+      receipt_show_upi_qr: form.receipt_show_upi_qr,
     },
   }
 }
@@ -367,6 +373,10 @@ export function ReceiptSettingsTab() {
         bank_ifsc: (p.bank_ifsc as string) || '',
         bank_name: (p.bank_name as string) || '',
         custom_receipt_footer: (p.custom_receipt_footer as string) || '',
+        receipt_copies: (p.receipt_copies as string) || 'single',
+        receipt_paper: (p.receipt_paper as string) || 'a4',
+        receipt_language: (p.receipt_language as string) || 'en',
+        receipt_show_upi_qr: Boolean(p.receipt_show_upi_qr),
         name: (p.name as string) || '',
         address: [p.address_line1, p.city, p.state, p.pincode].filter(Boolean).join(', '),
         mobile: (p.mobile as string) || '',
@@ -433,6 +443,10 @@ export function ReceiptSettingsTab() {
         bank_ifsc: form.bank_ifsc,
         bank_name: form.bank_name,
         custom_receipt_footer: form.custom_receipt_footer,
+        receipt_copies: form.receipt_copies,
+        receipt_paper: form.receipt_paper,
+        receipt_language: form.receipt_language,
+        receipt_show_upi_qr: form.receipt_show_upi_qr,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -551,6 +565,55 @@ export function ReceiptSettingsTab() {
                 onChange={e => set('show_logo_on_receipts', e.target.checked)} />
               {t('settings.receipts.showLogo')}
             </label>
+          </div>
+        </div>
+
+        {/* Printing — copies, paper, receipt language, UPI QR */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-sm">{t('settings.receipts.printHeading')}</h3>
+          </div>
+          <div className="card-body space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="form-label">{t('settings.receipts.copies')}</label>
+                <select className="form-select" value={form.receipt_copies}
+                  onChange={e => set('receipt_copies', e.target.value)}>
+                  <option value="single">{t('settings.receipts.copiesSingle')}</option>
+                  <option value="both">{t('settings.receipts.copiesBoth')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">{t('settings.receipts.paper')}</label>
+                <select className="form-select" value={form.receipt_paper}
+                  onChange={e => set('receipt_paper', e.target.value)}>
+                  <option value="a4">{t('settings.receipts.paperA4')}</option>
+                  <option value="thermal80">{t('settings.receipts.paperThermal')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">{t('settings.receipts.language')}</label>
+                <select className="form-select" value={form.receipt_language}
+                  onChange={e => set('receipt_language', e.target.value)}>
+                  <option value="en">English</option>
+                  <option value="hi">हिंदी</option>
+                  <option value="mr">मराठी</option>
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.receipt_show_upi_qr}
+                onChange={e => set('receipt_show_upi_qr', e.target.checked)} />
+              {t('settings.receipts.showUpiQr')}
+            </label>
+            {form.receipt_show_upi_qr && !form.upi_id && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                {t('settings.receipts.upiQrNeedsId')}
+              </p>
+            )}
+            {form.receipt_paper === 'thermal80' && (
+              <p className="text-xs text-slate-500">{t('settings.receipts.thermalNote')}</p>
+            )}
           </div>
         </div>
 

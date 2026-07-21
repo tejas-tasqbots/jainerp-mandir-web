@@ -238,7 +238,18 @@
       "print": "Print",
       "previewUpdates": "Updates as you change settings",
       "sampleDataNote": "Sample data shown. Real donor name, amount and receipt number are filled in when a receipt is issued.",
-      "logoRequiredWarn": "Logo file must be under 2 MB"
+      "logoRequiredWarn": "Logo file must be under 2 MB",
+      "printHeading": "Printing",
+      "copies": "Copies",
+      "copiesSingle": "One receipt",
+      "copiesBoth": "Donor copy + Office copy",
+      "paper": "Paper",
+      "paperA4": "A4 sheet",
+      "paperThermal": "80 mm thermal roll",
+      "language": "Receipt language",
+      "showUpiQr": "Print a UPI payment QR on receipts",
+      "upiQrNeedsId": "Add a UPI ID above for the QR to appear on receipts.",
+      "thermalNote": "The thermal layout is a compact text-only receipt; the design templates below apply to A4 only."
     },
     "accounting": {
       "saved": "Accounting rules saved!",
