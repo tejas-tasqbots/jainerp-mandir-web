@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Search, XCircle, Filter, ArrowUp, ArrowDown, BarChart2,
   FileSpreadsheet, FileDown, Printer, Inbox, Columns3, BookmarkPlus, Bookmark, X, Trash2,
+  MoreVertical,
 } from 'lucide-react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -360,6 +361,91 @@ function SavedViewsMenu(props: {
   )
 }
 
+/* ── Row overflow (⋮) menu ────────────────────────────────────────────────────
+   Plan §02: keep the single most-used action visible in the row, collapse the
+   rest behind ⋮ so the table stays readable. */
+
+export interface RowAction {
+  label: string
+  icon?: React.ReactNode
+  onClick: () => void
+  danger?: boolean
+  disabled?: boolean
+}
+
+function RowMenu({ actions }: { actions: RowAction[] }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  if (!actions.length) return null
+  return (
+    <div className="relative inline-block" ref={ref} onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="p-1 text-slate-400 hover:text-navy-900 rounded"
+        title={t('kit.moreActions')} aria-label={t('kit.moreActions')}
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[168px]">
+          {actions.map((a, i) => (
+            <button
+              key={i}
+              type="button"
+              disabled={a.disabled}
+              onClick={() => { setOpen(false); a.onClick() }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors disabled:opacity-40 ${
+                a.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {a.icon}{a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Detail drawer ────────────────────────────────────────────────────────────
+   Plan §02/§04: clicking a row opens a right-hand drawer (receipt preview,
+   payment history, audit info) instead of doing nothing. */
+
+function DetailDrawer({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useTranslation()
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end no-print">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <aside className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-[slideIn_.15s_ease-out]">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
+          <h3 className="font-semibold text-navy-900 text-sm truncate">{title}</h3>
+          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 rounded" aria-label={t('common.close')}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
+      </aside>
+    </div>
+  )
+}
+
 /* ── DataTable ─────────────────────────────────────────────────────────────── */
 
 export interface DataTableProps<T> {
@@ -399,6 +485,20 @@ export interface DataTableProps<T> {
 
   /** Row click (e.g. open a detail page). Cells keep their own buttons working. */
   onRowClick?: (row: T) => void
+
+  /**
+   * Actions collapsed behind a trailing ⋮ menu (plan §02). The most-used action
+   * should stay visible in its own column; everything else goes here.
+   */
+  rowActions?: (row: T, index: number) => RowAction[]
+
+  /**
+   * Renders the row detail drawer opened on row click (plan §04 — receipt
+   * preview, payment history, audit trail). Takes precedence over onRowClick.
+   */
+  renderDetail?: (row: T) => React.ReactNode
+  /** Drawer heading for a row. */
+  detailTitle?: (row: T) => string
 
   /**
    * Opts this screen into the column chooser + saved views toolbar buttons,
@@ -468,9 +568,17 @@ export function DataTable<T>(props: DataTableProps<T>) {
     else props.onSortChange(undefined)
   }
 
-  const colCount = visibleColumns.length
+  const [detailRow, setDetailRow] = useState<T | null>(null)
+  const hasRowMenu = !!props.rowActions
+  const colCount = visibleColumns.length + (hasRowMenu ? 1 : 0)
   const showingFrom = (props.page - 1) * props.limit + 1
   const showingTo = Math.min(props.page * props.limit, props.total)
+
+  function handleRowClick(row: T) {
+    if (props.renderDetail) setDetailRow(row)
+    else props.onRowClick?.(row)
+  }
+  const rowClickable = !!props.renderDetail || !!props.onRowClick
 
   return (
     <div className="space-y-3">
@@ -605,6 +713,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     </span>
                   </th>
                 ))}
+                {hasRowMenu && <th className="!text-right w-10" aria-label="actions" />}
               </tr>
             </thead>
             <tbody>
@@ -616,6 +725,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                         <div className="h-3.5 bg-slate-100 rounded animate-pulse" style={{ width: `${55 + ((i * 17 + col.key.length * 7) % 40)}%` }} />
                       </td>
                     ))}
+                    {hasRowMenu && <td />}
                   </tr>
                 ))
               ) : props.rows.length === 0 ? (
@@ -640,14 +750,19 @@ export function DataTable<T>(props: DataTableProps<T>) {
                 props.rows.map((row, i) => (
                   <tr
                     key={props.rowKey(row, i)}
-                    className={props.onRowClick ? 'cursor-pointer' : undefined}
-                    onClick={props.onRowClick ? () => props.onRowClick!(row) : undefined}
+                    className={rowClickable ? 'cursor-pointer' : undefined}
+                    onClick={rowClickable ? () => handleRowClick(row) : undefined}
                   >
                     {visibleColumns.map(col => (
                       <td key={col.key} className={col.align === 'right' ? 'text-right tabular-nums' : ''}>
                         {col.render ? col.render(row, i) : String((row as Record<string, unknown>)[col.key] ?? '—')}
                       </td>
                     ))}
+                    {hasRowMenu && (
+                      <td className="text-right">
+                        <RowMenu actions={props.rowActions!(row, i)} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -677,6 +792,15 @@ export function DataTable<T>(props: DataTableProps<T>) {
             </button>
           </div>
         </div>
+      )}
+
+      {detailRow && props.renderDetail && (
+        <DetailDrawer
+          title={props.detailTitle?.(detailRow) ?? t('kit.details')}
+          onClose={() => setDetailRow(null)}
+        >
+          {props.renderDetail(detailRow)}
+        </DetailDrawer>
       )}
     </div>
   )

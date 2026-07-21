@@ -567,7 +567,12 @@
     "pdfGenerateFailed": "Could not generate the PDF. Please try again.",
     "no80gThisYear": "No 80G-eligible donations for this donor this year",
     "voidSuccess": "Receipt {{invoiceNo}} voided",
-    "voidFailed": "Could not void the donation"
+    "voidFailed": "Could not void the donation",
+    "actionFailed": "Action failed",
+    "receiptResent": "Receipt re-sent on WhatsApp",
+    "resendWhatsApp": "Re-send on WhatsApp",
+    "history": "History",
+    "noHistory": "No recorded activity for this receipt"
   },
   "donationRequests": {
     "title": "Donation Requests",
@@ -1731,7 +1736,9 @@
     "noSavedViews": "No saved views yet",
     "deleteView": "Delete view",
     "viewNamePlaceholder": "View name…",
-    "saveCurrentView": "Save current filters as a view"
+    "saveCurrentView": "Save current filters as a view",
+    "moreActions": "More actions",
+    "details": "Details"
   },
   "palette": {
     "placeholder": "Search donors, receipts, bolis, vendors, or jump to a screen…",

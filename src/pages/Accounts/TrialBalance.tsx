@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api, fmtPaise, currentFY } from '../../lib/api'
 import { rsFmt } from '../../lib/downloadReport'
@@ -10,11 +11,12 @@ import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStri
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
-interface TBRow { account_name: string; debit_paise: number; credit_paise: number }
+interface TBRow { account_id?: string; account_name: string; debit_paise: number; credit_paise: number }
 
 export function TrialBalance() {
   const { t } = useTranslation()
   const toast = useToast()
+  const navigate = useNavigate()
   const [rows, setRows] = useState<TBRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fy, setFy] = useState(currentFY())
@@ -42,7 +44,7 @@ export function TrialBalance() {
   const visible = q ? rows.filter(r => r.account_name.toLowerCase().includes(q)) : rows
 
   const columns: ColumnDef<TBRow>[] = [
-    { key: 'account', label: t('accounts.account'), render: r => <span className="font-medium">{r.account_name}</span> },
+    { key: 'account', label: t('accounts.account'), render: r => <span className="font-medium text-brand-blue">{r.account_name}</span> },
     { key: 'debit', label: t('accounts.debit'), align: 'right', render: r => r.debit_paise > 0 ? `₹${fmtPaise(r.debit_paise)}` : '—' },
     { key: 'credit', label: t('accounts.credit'), align: 'right', render: r => r.credit_paise > 0 ? `₹${fmtPaise(r.credit_paise)}` : '—' },
   ]
@@ -115,6 +117,8 @@ export function TrialBalance() {
         total={visible.length}
         onPageChange={() => {}}
         emptyMessage={t('accounts.noDataForFy')}
+        // Plan §07: every summary row links down one level (TB → that account's Ledger).
+        onRowClick={r => r.account_id && navigate(`/accounts/ledger?account_id=${r.account_id}`)}
       />
     </div>
   )

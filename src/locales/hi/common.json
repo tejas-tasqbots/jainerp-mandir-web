@@ -567,7 +567,12 @@
     "pdfGenerateFailed": "PDF नहीं बन सका। पुनः प्रयास करें।",
     "no80gThisYear": "इस वर्ष इस दानदाता का कोई 80G-योग्य दान नहीं",
     "voidSuccess": "रसीद {{invoiceNo}} रद्द की गई",
-    "voidFailed": "दान रद्द नहीं हो सका"
+    "voidFailed": "दान रद्द नहीं हो सका",
+    "actionFailed": "कार्रवाई विफल",
+    "receiptResent": "रसीद व्हाट्सएप पर पुनः भेजी गई",
+    "resendWhatsApp": "व्हाट्सएप पर पुनः भेजें",
+    "history": "इतिहास",
+    "noHistory": "इस रसीद के लिए कोई गतिविधि नहीं"
   },
   "donationRequests": {
     "title": "दान अनुरोध",
@@ -1731,7 +1736,9 @@
     "noSavedViews": "अभी तक कोई सहेजा गया दृश्य नहीं",
     "deleteView": "दृश्य हटाएं",
     "viewNamePlaceholder": "दृश्य का नाम…",
-    "saveCurrentView": "वर्तमान फ़िल्टर को दृश्य के रूप में सहेजें"
+    "saveCurrentView": "वर्तमान फ़िल्टर को दृश्य के रूप में सहेजें",
+    "moreActions": "अधिक विकल्प",
+    "details": "विवरण"
   },
   "palette": {
     "placeholder": "दानदाता, रसीद, बोली, विक्रेता खोजें या किसी स्क्रीन पर जाएँ…",

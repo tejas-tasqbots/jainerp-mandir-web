@@ -10,8 +10,9 @@ import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
-  type ColumnDef, type ColumnFilterState, type SortState,
+  type ColumnDef, type ColumnFilterState, type SortState, type RowAction,
 } from '../../components/kit/DataTable'
+import { DonationDetail } from './DonationDetail'
 import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
@@ -123,9 +124,11 @@ export function DonationsList() {
         : <span className="badge-green">{t('common.active')}</span>,
     },
     {
+      // Plan §02: the single most-used action stays visible; the rest collapse
+      // into the kit's ⋮ menu (see rowActions below).
       key: 'actions', label: t('common.actions'),
       render: d => (
-        <div className="flex gap-1">
+        <span onClick={e => e.stopPropagation()}>
           <button
             type="button" onClick={() => openReceipt(d.id)}
             title={t('donations.printReceipt')} aria-label={t('donations.printReceipt')}
@@ -134,47 +137,28 @@ export function DonationsList() {
           >
             <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
           </button>
-          <button
-            type="button" onClick={() => savePdf(d.id)}
-            title={t('donations.downloadPdf')} aria-label={t('donations.downloadPdf')}
-            disabled={pdfLoading === d.id}
-            className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-          >
-            <FileDown size={14} className={pdfLoading === d.id ? 'animate-pulse' : ''} />
-          </button>
-          {d.is_80g_eligible && d.donor_id && !d.is_anonymous && (
-            <button
-              type="button" onClick={() => download80g(d.donor_id!)}
-              title={t('donations.download80gCertificate')} aria-label={t('donations.download80gCertificate')}
-              disabled={certLoading === d.donor_id}
-              className="p-1 text-slate-400 hover:text-green-600 rounded disabled:opacity-40"
-            >
-              <Award size={14} className={certLoading === d.donor_id ? 'animate-pulse' : ''} />
-            </button>
-          )}
-          {!d.is_voided && (
-            <>
-              <button
-                type="button" onClick={() => navigate(`/donations/${d.id}/edit`)}
-                title={t('donations.editVoidReissue')} aria-label={t('donations.editVoidReissue')}
-                className="p-1 text-slate-400 hover:text-amber-600 rounded"
-              >
-                <Pencil size={14} />
-              </button>
-              <button
-                type="button" onClick={() => setVoidModal({ id: d.id, invoiceNo: d.invoice_no })}
-                title={t('donations.voidDonation')} aria-label={t('donations.voidDonation')}
-                className="p-1 text-slate-400 hover:text-brand-red rounded"
-              >
-                <Ban size={14} />
-              </button>
-            </>
-          )}
-        </div>
+        </span>
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, categories, receiptLoading, pdfLoading, certLoading])
+  ], [t, categories, receiptLoading])
+
+  function rowActions(d: Donation): RowAction[] {
+    const actions: RowAction[] = [
+      { label: t('donations.downloadPdf'), icon: <FileDown size={13} />, onClick: () => savePdf(d.id), disabled: pdfLoading === d.id },
+    ]
+    if (d.is_80g_eligible && d.donor_id && !d.is_anonymous) {
+      actions.push({
+        label: t('donations.download80gCertificate'), icon: <Award size={13} />,
+        onClick: () => download80g(d.donor_id!), disabled: certLoading === d.donor_id,
+      })
+    }
+    if (!d.is_voided) {
+      actions.push({ label: t('donations.editVoidReissue'), icon: <Pencil size={13} />, onClick: () => navigate(`/donations/${d.id}/edit`) })
+      actions.push({ label: t('donations.voidDonation'), icon: <Ban size={13} />, danger: true, onClick: () => setVoidModal({ id: d.id, invoiceNo: d.invoice_no }) })
+    }
+    return actions
+  }
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -362,6 +346,9 @@ export function DonationsList() {
         emptyMessage={t('donations.noDonationsFound')}
         emptyAction={{ label: t('donations.newDonation'), onClick: () => navigate('/donations/add') }}
         onClearFilters={() => { setFilterState({}); setPage(1) }}
+        rowActions={rowActions}
+        detailTitle={d => `${t('donations.title')} · ${d.invoice_no}`}
+        renderDetail={d => <DonationDetail donation={d} onChanged={load} />}
       />
 
       {/* Void confirmation modal */}

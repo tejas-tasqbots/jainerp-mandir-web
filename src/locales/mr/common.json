@@ -567,7 +567,12 @@
     "pdfGenerateFailed": "PDF तयार होऊ शकला नाही. पुन्हा प्रयत्न करा.",
     "no80gThisYear": "या वर्षी या दात्याचे 80G-पात्र दान नाही",
     "voidSuccess": "पावती {{invoiceNo}} रद्द केली",
-    "voidFailed": "दान रद्द होऊ शकले नाही"
+    "voidFailed": "दान रद्द होऊ शकले नाही",
+    "actionFailed": "क्रिया अयशस्वी",
+    "receiptResent": "पावती व्हॉट्सअॅपवर पुन्हा पाठवली",
+    "resendWhatsApp": "व्हॉट्सअॅपवर पुन्हा पाठवा",
+    "history": "इतिहास",
+    "noHistory": "या पावतीसाठी कोणतीही क्रिया नाही"
   },
   "donationRequests": {
     "title": "देणगी विनंत्या",
@@ -1731,7 +1736,9 @@
     "noSavedViews": "अद्याप कोणतेही दृश्य जतन केलेले नाही",
     "deleteView": "दृश्य हटवा",
     "viewNamePlaceholder": "दृश्याचे नाव…",
-    "saveCurrentView": "सध्याचे फिल्टर दृश्य म्हणून जतन करा"
+    "saveCurrentView": "सध्याचे फिल्टर दृश्य म्हणून जतन करा",
+    "moreActions": "अधिक पर्याय",
+    "details": "तपशील"
   },
   "palette": {
     "placeholder": "दाते, पावत्या, बोली, विक्रेते शोधा किंवा स्क्रीनवर जा…",
