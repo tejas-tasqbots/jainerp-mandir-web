@@ -104,7 +104,8 @@
       "users": "Users",
       "backup": "Backup",
       "privacy": "Privacy & Sync",
-      "subscription": "Subscription & Usage"
+      "subscription": "Subscription & Usage",
+      "numbering": "Numbering"
     },
     "profile": {
       "heading": "Temple / Mandir Profile",
@@ -467,6 +468,26 @@
       "paymentVerifyFailed": "Payment could not be verified. Please contact support.",
       "paymentCancelled": "Payment cancelled.",
       "couldNotStartPayment": "Could not start payment."
+    },
+    "numbering": {
+      "heading": "Numbering",
+      "subheading": "Receipt and invoice numbers for FY {{fy}}. Each series restarts at 1 next financial year.",
+      "series": "Series",
+      "prefix": "Prefix",
+      "nextNo": "Next number",
+      "nextReceipt": "Next receipt will read",
+      "issuedCount": "{{count}} issued this year",
+      "saved": "Numbering updated",
+      "note": "The next number can only move forward — receipts already issued cannot be re-numbered.",
+      "type": {
+        "DONATION": "Donation receipt",
+        "SEVA": "Seva booking",
+        "PRASAD": "Prasad sale",
+        "BHOJANSHALA": "Bhojanshala token",
+        "ROOM": "Room booking",
+        "HALL": "Hall booking",
+        "GENERAL": "General invoice"
+      }
     }
   },
   "languages": {
@@ -513,7 +534,9 @@
     "noneYet": "None yet.",
     "notSet": "Not set",
     "saved": "Saved",
-    "category": "Category"
+    "category": "Category",
+    "reset": "Reset",
+    "saveFailed": "Could not save"
   },
   "donations": {
     "title": "Donations",

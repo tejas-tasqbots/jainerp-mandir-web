@@ -10,6 +10,7 @@ import { MasterEditor } from './MasterEditor'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
+import { NumberingTab } from './tabs/NumberingTab'
 import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
@@ -30,7 +31,7 @@ interface Requirement {
 export function SettingsPage() {
   const { t } = useTranslation()
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'my-account' | 'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'my-account' | 'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'numbering' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
@@ -234,6 +235,7 @@ export function SettingsPage() {
           { id: 'accounts', labelKey: 'settings.tabs.accounts' },
           { id: 'donor-payments', labelKey: 'settings.tabs.donorPayments' },
           { id: 'receipts', labelKey: 'settings.tabs.receipts' },
+          { id: 'numbering', labelKey: 'settings.tabs.numbering' },
           { id: 'accounting', labelKey: 'settings.tabs.accounting' },
           { id: 'masters', labelKey: 'settings.tabs.masters' },
           { id: 'gallery', labelKey: 'settings.tabs.gallery' },
@@ -323,6 +325,8 @@ export function SettingsPage() {
       {tab === 'accounts' && <BankAccountsTab />}
       {tab === 'donor-payments' && <DonorPaymentsTab />}
       {tab === 'receipts' && <ReceiptSettingsTab />}
+
+      {tab === 'numbering' && <NumberingTab />}
       {tab === 'accounting' && <AccountingRulesTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'backup' && <BackupTab />}
