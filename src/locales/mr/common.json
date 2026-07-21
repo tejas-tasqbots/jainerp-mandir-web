@@ -589,7 +589,8 @@
     "saved": "जतन केले",
     "category": "श्रेणी",
     "reset": "रीसेट",
-    "saveFailed": "जतन करता आले नाही"
+    "saveFailed": "जतन करता आले नाही",
+    "notes": "टिपा"
   },
   "donations": {
     "title": "देणगी",
@@ -1735,7 +1736,41 @@
     "interestBasis": "{{days}} दिवसांसाठी {{rate}}%",
     "loansTakenOutstanding": "घेतलेली कर्जे",
     "loansGivenOutstanding": "दिलेली कर्जे",
-    "loanInterestNote": "व्याज हे प्रारंभ तारखेपासून आजपर्यंत (बंद कर्जासाठी समाप्ती तारखेपर्यंत) बाकी मुद्दलावरील साधे व्याज आहे."
+    "loanInterestNote": "व्याज हे प्रारंभ तारखेपासून आजपर्यंत (बंद कर्जासाठी समाप्ती तारखेपर्यंत) बाकी मुद्दलावरील साधे व्याज आहे.",
+    "serviceRegister": "सेवा नोंदवह्या",
+    "searchRegister": "नाव, मोबाइल किंवा पावती शोधा",
+    "receiptNo": "पावती क्रमांक",
+    "seva": "सेवा",
+    "devotee": "भक्त",
+    "slot": "वेळ",
+    "room": "खोली",
+    "guest": "पाहुणा",
+    "stay": "मुक्काम",
+    "nights": "रात्री × व्यक्ती",
+    "hall": "हॉल",
+    "booker": "बुक करणारा",
+    "session": "सत्र",
+    "buyer": "खरेदीदार",
+    "items": "वस्तू",
+    "meal": "जेवण",
+    "plates": "ताटे",
+    "tokensRedeemed": "टोकन वापरले",
+    "mealsServed": "जेवण दिले",
+    "costPerMeal": "प्रति जेवण खर्च",
+    "totalCost": "एकूण खर्च",
+    "sponsored": "प्रायोजित",
+    "unsponsored": "मंदिराने उचलले",
+    "advance": "आगाऊ",
+    "balance": "शिल्लक",
+    "anonymous": "निनावी",
+    "register": {
+      "seva": "सेवा नोंदवही",
+      "room": "खोली नोंदवही",
+      "hall": "हॉल नोंदवही",
+      "prasad": "प्रसाद नोंदवही",
+      "bhojanshala": "भोजनशाळा नोंदवही",
+      "annadaan": "अन्नदान नोंदवही"
+    }
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्रे व टीडीएस",

@@ -589,7 +589,8 @@
     "saved": "सहेजा गया",
     "category": "श्रेणी",
     "reset": "रीसेट",
-    "saveFailed": "सहेजा नहीं जा सका"
+    "saveFailed": "सहेजा नहीं जा सका",
+    "notes": "टिप्पणी"
   },
   "donations": {
     "title": "दान",
@@ -1735,7 +1736,41 @@
     "interestBasis": "{{days}} दिनों के लिए {{rate}}%",
     "loansTakenOutstanding": "लिए गए ऋण",
     "loansGivenOutstanding": "दिए गए ऋण",
-    "loanInterestNote": "ब्याज प्रारंभ तिथि से आज तक (बंद ऋण के लिए समाप्ति तिथि तक) बकाया मूलधन पर साधारण ब्याज है।"
+    "loanInterestNote": "ब्याज प्रारंभ तिथि से आज तक (बंद ऋण के लिए समाप्ति तिथि तक) बकाया मूलधन पर साधारण ब्याज है।",
+    "serviceRegister": "सेवा रजिस्टर",
+    "searchRegister": "नाम, मोबाइल या रसीद खोजें",
+    "receiptNo": "रसीद क्रमांक",
+    "seva": "सेवा",
+    "devotee": "भक्त",
+    "slot": "समय",
+    "room": "कक्ष",
+    "guest": "अतिथि",
+    "stay": "ठहराव",
+    "nights": "रातें × व्यक्ति",
+    "hall": "हॉल",
+    "booker": "बुक करने वाला",
+    "session": "सत्र",
+    "buyer": "क्रेता",
+    "items": "वस्तुएँ",
+    "meal": "भोजन",
+    "plates": "थालियाँ",
+    "tokensRedeemed": "टोकन उपयोग",
+    "mealsServed": "भोजन परोसे",
+    "costPerMeal": "प्रति भोजन लागत",
+    "totalCost": "कुल लागत",
+    "sponsored": "प्रायोजित",
+    "unsponsored": "मंदिर द्वारा वहन",
+    "advance": "अग्रिम",
+    "balance": "शेष",
+    "anonymous": "गुप्त",
+    "register": {
+      "seva": "सेवा रजिस्टर",
+      "room": "कक्ष रजिस्टर",
+      "hall": "हॉल रजिस्टर",
+      "prasad": "प्रसाद रजिस्टर",
+      "bhojanshala": "भोजनशाला रजिस्टर",
+      "annadaan": "अन्नदान रजिस्टर"
+    }
   },
   "certificates": {
     "title": "अनुपालन — प्रमाणपत्र एवं टीडीएस",

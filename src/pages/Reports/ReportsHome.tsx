@@ -20,12 +20,13 @@ import { TopDonorsReport } from './reports/TopDonorsReport'
 import { GstSummaryReport } from './reports/GstSummaryReport'
 import { DepreciationScheduleReport } from './reports/DepreciationScheduleReport'
 import { LoanScheduleReport } from './reports/LoanScheduleReport'
+import { ServiceRegisterReport } from './reports/ServiceRegisterReport'
 
 type ReportKey =
   | 'daily-collection' | 'collection-summary' | 'all-transactions' | 'donation-register' | 'donation-by-category'
   | 'expense-register' | 'expense-by-category' | 'pledge-register' | 'creditor-aging'
   | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'cash-flow' | 'event-collection' | 'gst-summary'
-  | 'depreciation-schedule' | 'loan-schedule'
+  | 'depreciation-schedule' | 'loan-schedule' | 'service-register'
 
 interface RailItem { key: ReportKey; labelKey: string }
 interface RailGroup { groupKey: string; items: RailItem[] }
@@ -41,6 +42,7 @@ const RAIL: RailGroup[] = [
       { key: 'expense-register', labelKey: 'reports.expenseRegister' },
       { key: 'pledge-register', labelKey: 'reports.pledgeRegister' },
       { key: 'creditor-aging', labelKey: 'reports.creditorAging' },
+      { key: 'service-register', labelKey: 'reports.serviceRegister' },
     ],
   },
   {
@@ -88,6 +90,7 @@ const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
   'gst-summary': GstSummaryReport,
   'depreciation-schedule': DepreciationScheduleReport,
   'loan-schedule': LoanScheduleReport,
+  'service-register': ServiceRegisterReport,
 }
 
 export function ReportsHome() {

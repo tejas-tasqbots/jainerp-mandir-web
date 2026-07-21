@@ -589,7 +589,8 @@
     "saved": "Saved",
     "category": "Category",
     "reset": "Reset",
-    "saveFailed": "Could not save"
+    "saveFailed": "Could not save",
+    "notes": "Notes"
   },
   "donations": {
     "title": "Donations",
@@ -1735,7 +1736,41 @@
     "interestBasis": "{{rate}}% for {{days}} days",
     "loansTakenOutstanding": "Loans taken",
     "loansGivenOutstanding": "Loans given",
-    "loanInterestNote": "Interest is simple interest on the outstanding principal from the start date to today (or to the close date for closed loans)."
+    "loanInterestNote": "Interest is simple interest on the outstanding principal from the start date to today (or to the close date for closed loans).",
+    "serviceRegister": "Service registers",
+    "searchRegister": "Search name, mobile or receipt",
+    "receiptNo": "Receipt no",
+    "seva": "Seva",
+    "devotee": "Devotee",
+    "slot": "Slot",
+    "room": "Room",
+    "guest": "Guest",
+    "stay": "Stay",
+    "nights": "Nights × persons",
+    "hall": "Hall",
+    "booker": "Booked by",
+    "session": "Session",
+    "buyer": "Buyer",
+    "items": "Items",
+    "meal": "Meal",
+    "plates": "Plates",
+    "tokensRedeemed": "Tokens used",
+    "mealsServed": "Meals served",
+    "costPerMeal": "Cost per meal",
+    "totalCost": "Total cost",
+    "sponsored": "Sponsored",
+    "unsponsored": "Borne by temple",
+    "advance": "Advance",
+    "balance": "Balance",
+    "anonymous": "Anonymous",
+    "register": {
+      "seva": "Seva register",
+      "room": "Room register",
+      "hall": "Hall register",
+      "prasad": "Prasad register",
+      "bhojanshala": "Bhojanshala register",
+      "annadaan": "Annadaan register"
+    }
   },
   "certificates": {
     "title": "Compliance — Certificates & TDS",
