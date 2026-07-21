@@ -105,7 +105,8 @@
       "backup": "बॅकअप",
       "privacy": "गोपनीयता आणि सिंक",
       "subscription": "सदस्यता आणि वापर",
-      "numbering": "क्रमांकन"
+      "numbering": "क्रमांकन",
+      "messages": "संदेश"
     },
     "profile": {
       "heading": "मंदिर प्रोफाइल",
@@ -487,6 +488,58 @@
         "ROOM": "खोली बुकिंग",
         "HALL": "हॉल बुकिंग",
         "GENERAL": "सर्वसाधारण बिल"
+      }
+    },
+    "messages": {
+      "heading": "संदेश",
+      "subheading": "कोणत्या WhatsApp व SMS सूचना जाव्यात ते निवडा, आणि काय पाठवले ते पहा.",
+      "whatWeSend": "आम्ही काय पाठवतो",
+      "log": "संदेश नोंद",
+      "sentCount": "गेल्या 30 दिवसांत {{count}} पाठवले",
+      "failedCount": "{{count}} अयशस्वी",
+      "on": "चालू",
+      "off": "बंद",
+      "otpNote": "लॉगिन OTP संदेश बंद करता येत नाहीत — साइन इन करणारी व्यक्ती त्यांची वाट पाहत असते.",
+      "recipient": "प्राप्तकर्ता",
+      "message": "संदेश",
+      "channel": "माध्यम",
+      "searchPlaceholder": "मोबाइल किंवा ईमेलने शोधा",
+      "noMessages": "अद्याप संदेश नाहीत",
+      "tpl": {
+        "donation_receipt_v3": "देणगी पावती",
+        "donation_voided": "देणगी रद्द",
+        "donation_request_rejected": "देणगी विनंती नाकारली",
+        "donation_bulk_import_complete": "बल्क आयात पूर्ण",
+        "boli_pledge": "बोली नोंदवली",
+        "donor_registered": "देणगीदार नोंदणी",
+        "donor_profile_updated": "देणगीदार तपशील अद्ययावत",
+        "seva_booking_confirmed": "सेवा बुकिंग निश्चित",
+        "room_booking_confirmed": "खोली बुकिंग निश्चित",
+        "room_booking_cancelled": "खोली बुकिंग रद्द",
+        "room_checkout_settled": "खोली चेकआउट निकाल",
+        "hall_booking_confirmed": "हॉल बुकिंग निश्चित",
+        "hall_booking_cancelled": "हॉल बुकिंग रद्द",
+        "event_registration_confirmed": "कार्यक्रम नोंदणी निश्चित",
+        "temple_invite_v2": "मंदिर आमंत्रण",
+        "devotee_verified": "भक्त पडताळला",
+        "temple_link_approved": "मंदिर दुवा मंजूर",
+        "temple_link_rejected": "मंदिर दुवा नाकारला",
+        "temple_link_removed": "मंदिर दुवा काढला",
+        "prasad_low_stock_v2": "प्रसाद साठा कमी"
+      },
+      "group": {
+        "donations": "देणग्या",
+        "donors": "देणगीदार",
+        "bookings": "बुकिंग",
+        "devotees": "भक्त",
+        "operations": "कामकाज"
+      },
+      "status": {
+        "queued": "रांगेत",
+        "sent": "पाठवले",
+        "delivered": "मिळाले",
+        "failed": "अयशस्वी",
+        "skipped": "पाठवले नाही"
       }
     }
   },

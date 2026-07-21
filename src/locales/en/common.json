@@ -105,7 +105,8 @@
       "backup": "Backup",
       "privacy": "Privacy & Sync",
       "subscription": "Subscription & Usage",
-      "numbering": "Numbering"
+      "numbering": "Numbering",
+      "messages": "Messages"
     },
     "profile": {
       "heading": "Temple / Mandir Profile",
@@ -487,6 +488,58 @@
         "ROOM": "Room booking",
         "HALL": "Hall booking",
         "GENERAL": "General invoice"
+      }
+    },
+    "messages": {
+      "heading": "Messages",
+      "subheading": "Choose which WhatsApp and SMS notifications go out, and see what was sent.",
+      "whatWeSend": "What we send",
+      "log": "Message log",
+      "sentCount": "{{count}} sent in the last 30 days",
+      "failedCount": "{{count}} failed",
+      "on": "On",
+      "off": "Off",
+      "otpNote": "Login OTP messages cannot be turned off — a person signing in is waiting on them.",
+      "recipient": "Recipient",
+      "message": "Message",
+      "channel": "Channel",
+      "searchPlaceholder": "Search by mobile or email",
+      "noMessages": "No messages yet",
+      "tpl": {
+        "donation_receipt_v3": "Donation receipt",
+        "donation_voided": "Donation cancelled",
+        "donation_request_rejected": "Donation request declined",
+        "donation_bulk_import_complete": "Bulk import finished",
+        "boli_pledge": "Boli pledge recorded",
+        "donor_registered": "Donor registered",
+        "donor_profile_updated": "Donor details updated",
+        "seva_booking_confirmed": "Seva booking confirmed",
+        "room_booking_confirmed": "Room booking confirmed",
+        "room_booking_cancelled": "Room booking cancelled",
+        "room_checkout_settled": "Room checkout settled",
+        "hall_booking_confirmed": "Hall booking confirmed",
+        "hall_booking_cancelled": "Hall booking cancelled",
+        "event_registration_confirmed": "Event registration confirmed",
+        "temple_invite_v2": "Temple invitation",
+        "devotee_verified": "Devotee verified",
+        "temple_link_approved": "Temple link approved",
+        "temple_link_rejected": "Temple link declined",
+        "temple_link_removed": "Temple link removed",
+        "prasad_low_stock_v2": "Prasad running low"
+      },
+      "group": {
+        "donations": "Donations",
+        "donors": "Donors",
+        "bookings": "Bookings",
+        "devotees": "Devotees",
+        "operations": "Operations"
+      },
+      "status": {
+        "queued": "Queued",
+        "sent": "Sent",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "skipped": "Not sent"
       }
     }
   },

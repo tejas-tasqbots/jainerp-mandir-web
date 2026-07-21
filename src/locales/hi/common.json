@@ -105,7 +105,8 @@
       "backup": "बैकअप",
       "privacy": "गोपनीयता और सिंक",
       "subscription": "सदस्यता और उपयोग",
-      "numbering": "क्रमांकन"
+      "numbering": "क्रमांकन",
+      "messages": "संदेश"
     },
     "profile": {
       "heading": "मंदिर प्रोफ़ाइल",
@@ -487,6 +488,58 @@
         "ROOM": "कक्ष बुकिंग",
         "HALL": "हॉल बुकिंग",
         "GENERAL": "सामान्य बिल"
+      }
+    },
+    "messages": {
+      "heading": "संदेश",
+      "subheading": "चुनें कि कौन-से WhatsApp और SMS सूचनाएँ भेजी जाएँ, और क्या भेजा गया देखें।",
+      "whatWeSend": "हम क्या भेजते हैं",
+      "log": "संदेश लॉग",
+      "sentCount": "पिछले 30 दिनों में {{count}} भेजे गए",
+      "failedCount": "{{count}} विफल",
+      "on": "चालू",
+      "off": "बंद",
+      "otpNote": "लॉगिन OTP संदेश बंद नहीं किए जा सकते — साइन इन करने वाला व्यक्ति उनका इंतज़ार कर रहा होता है।",
+      "recipient": "प्राप्तकर्ता",
+      "message": "संदेश",
+      "channel": "माध्यम",
+      "searchPlaceholder": "मोबाइल या ईमेल से खोजें",
+      "noMessages": "अभी कोई संदेश नहीं",
+      "tpl": {
+        "donation_receipt_v3": "दान रसीद",
+        "donation_voided": "दान रद्द",
+        "donation_request_rejected": "दान अनुरोध अस्वीकृत",
+        "donation_bulk_import_complete": "बल्क आयात पूर्ण",
+        "boli_pledge": "बोली दर्ज",
+        "donor_registered": "दाता पंजीकृत",
+        "donor_profile_updated": "दाता विवरण अद्यतन",
+        "seva_booking_confirmed": "सेवा बुकिंग पुष्ट",
+        "room_booking_confirmed": "कक्ष बुकिंग पुष्ट",
+        "room_booking_cancelled": "कक्ष बुकिंग रद्द",
+        "room_checkout_settled": "कक्ष चेकआउट निपटान",
+        "hall_booking_confirmed": "हॉल बुकिंग पुष्ट",
+        "hall_booking_cancelled": "हॉल बुकिंग रद्द",
+        "event_registration_confirmed": "कार्यक्रम पंजीकरण पुष्ट",
+        "temple_invite_v2": "मंदिर आमंत्रण",
+        "devotee_verified": "भक्त सत्यापित",
+        "temple_link_approved": "मंदिर लिंक स्वीकृत",
+        "temple_link_rejected": "मंदिर लिंक अस्वीकृत",
+        "temple_link_removed": "मंदिर लिंक हटाया",
+        "prasad_low_stock_v2": "प्रसाद स्टॉक कम"
+      },
+      "group": {
+        "donations": "दान",
+        "donors": "दाता",
+        "bookings": "बुकिंग",
+        "devotees": "भक्त",
+        "operations": "संचालन"
+      },
+      "status": {
+        "queued": "कतार में",
+        "sent": "भेजा गया",
+        "delivered": "प्राप्त",
+        "failed": "विफल",
+        "skipped": "नहीं भेजा"
       }
     }
   },
