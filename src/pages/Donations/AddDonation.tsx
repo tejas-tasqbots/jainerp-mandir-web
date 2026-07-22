@@ -35,6 +35,9 @@ export function AddDonation() {
     utr_number: '',
     cheque_number: '',
     is_80g_eligible: true,
+    // Opt-in, never pre-ticked. A donation is not agreement to be added to a
+    // temple's mailing list — the counter has to ask, and the default is no.
+    wants_event_updates: false,
     note: '',
   })
 
@@ -122,6 +125,11 @@ export function AddDonation() {
       if (form.utr_number) payload.utr_number = form.utr_number
       if (form.cheque_number) payload.cheque_number = form.cheque_number
       if (form.note) payload.notes = form.note
+      // Only sent when the donor actually said yes, and never for an anonymous
+      // donation — there is no one to link.
+      if (form.wants_event_updates && !devotee?.is_anonymous) {
+        payload.wants_event_updates = true
+      }
 
       let donationId: string | undefined
       if (isEdit) {
@@ -230,6 +238,23 @@ export function AddDonation() {
               <label className="form-label">{t('donations.chequeNumber')}</label>
               <input className="form-input" placeholder="Cheque number" value={form.cheque_number}
                 onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
+            </div>
+          )}
+
+          {/* Event-updates consent. Deliberately unticked by default and hidden
+              for anonymous donations: donating is not consent to be contacted,
+              and the donor has to be asked out loud at the counter. */}
+          {!devotee?.is_anonymous && (
+            <div className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <input type="checkbox" id="wants_updates" checked={form.wants_event_updates}
+                onChange={e => setForm(f => ({ ...f, wants_event_updates: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-green-600" />
+              <label htmlFor="wants_updates" className="text-sm text-slate-700">
+                Donor wants updates about this mandir&rsquo;s events
+                <span className="block text-xs text-slate-500">
+                  Ask the donor before ticking. Leave unticked if they did not say yes.
+                </span>
+              </label>
             </div>
           )}
 
