@@ -118,6 +118,17 @@ export function RoomsList() {
       key: 'balance', label: t('dharamshala.balance'), align: 'right',
       render: b => {
         const due = b.due_paise ?? b.balance_paise
+        // A guest who leaves early is billed for fewer nights, so what they
+        // already paid can EXCEED the final total. Show that as a refund due
+        // rather than a silent 0 — the counter has to hand money back.
+        const over = (b.paid_paise ?? 0) - (b.total_paise ?? 0)
+        if (due <= 0 && over > 0) {
+          return (
+            <span className="text-brand-blue font-semibold" title={t('dharamshala.refundDueHint')}>
+              −₹{fmtPaise(over)}
+            </span>
+          )
+        }
         return (
           <span className={due > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
             ₹{fmtPaise(due)}

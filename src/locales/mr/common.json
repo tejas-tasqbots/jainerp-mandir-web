@@ -41,7 +41,8 @@
     "cashBank": "रोख आणि बँक",
     "reconciliation": "बँक जुळणी",
     "recycleBin": "रीसायकल बिन",
-    "activityLog": "अ‍ॅक्टिव्हिटी लॉग"
+    "activityLog": "अ‍ॅक्टिव्हिटी लॉग",
+    "roomAvailability": "खोली उपलब्धता"
   },
   "donationsHub": {
     "donations": "देणगी",
@@ -928,7 +929,26 @@
     "deleteBookingTitle": "बुकिंग हटवा",
     "deleteBookingMessage": "{{guest}} ची बुकिंग हटवायची? हे परत होणार नाही.",
     "deleteSuccess": "बुकिंग हटवली",
-    "deleteFailed": "बुकिंग हटवता आली नाही"
+    "deleteFailed": "बुकिंग हटवता आली नाही",
+    "availabilityTitle": "खोली उपलब्धता",
+    "availabilitySubtitle": "सध्या रिकाम्या आणि भरलेल्या खोल्या — बुक करण्यासाठी रिकाम्या खोलीवर क्लिक करा",
+    "totalRooms": "एकूण खोल्या",
+    "availableNow": "उपलब्ध",
+    "occupiedNow": "भरलेल्या",
+    "searchRoom": "खोली क्रमांक किंवा प्रकार शोधा…",
+    "filterStatus": "उपलब्धता",
+    "allRooms": "सर्व खोल्या",
+    "availableOnly": "फक्त उपलब्ध",
+    "occupiedOnly": "फक्त भरलेल्या",
+    "filterFloor": "मजला",
+    "allFloors": "सर्व मजले",
+    "floorN": "मजला {{n}}",
+    "noRoomsMatch": "या फिल्टरशी जुळणारी खोली नाही",
+    "clickToBook": "बुक करण्यासाठी क्लिक करा",
+    "roomOccupied": "ही खोली सध्या भरलेली आहे",
+    "available": "उपलब्ध",
+    "occupied": "भरलेली",
+    "refundDueHint": "अंतिम बिलापेक्षा जास्त भरणा — पाहुण्याला परतावा देय"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -1945,7 +1965,8 @@
     "viewNamePlaceholder": "दृश्याचे नाव…",
     "saveCurrentView": "सध्याचे फिल्टर दृश्य म्हणून जतन करा",
     "moreActions": "अधिक पर्याय",
-    "details": "तपशील"
+    "details": "तपशील",
+    "noMatches": "जुळणारे नाही"
   },
   "palette": {
     "placeholder": "दाते, पावत्या, बोली, विक्रेते शोधा किंवा स्क्रीनवर जा…",

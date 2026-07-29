@@ -41,7 +41,8 @@
     "cashBank": "Cash & Bank",
     "reconciliation": "Bank Reconciliation",
     "recycleBin": "Recycle Bin",
-    "activityLog": "Activity Log"
+    "activityLog": "Activity Log",
+    "roomAvailability": "Room Availability"
   },
   "donationsHub": {
     "donations": "Donations",
@@ -928,7 +929,26 @@
     "deleteBookingTitle": "Delete booking",
     "deleteBookingMessage": "Delete the booking for {{guest}}? This cannot be undone.",
     "deleteSuccess": "Booking deleted",
-    "deleteFailed": "Could not delete the booking"
+    "deleteFailed": "Could not delete the booking",
+    "availabilityTitle": "Room Availability",
+    "availabilitySubtitle": "Free and occupied rooms right now — click a free room to book it",
+    "totalRooms": "Total rooms",
+    "availableNow": "Available",
+    "occupiedNow": "Occupied",
+    "searchRoom": "Search room number or type…",
+    "filterStatus": "Availability",
+    "allRooms": "All rooms",
+    "availableOnly": "Available only",
+    "occupiedOnly": "Occupied only",
+    "filterFloor": "Floor",
+    "allFloors": "All floors",
+    "floorN": "Floor {{n}}",
+    "noRoomsMatch": "No rooms match these filters",
+    "clickToBook": "Click to book this room",
+    "roomOccupied": "This room is currently occupied",
+    "available": "Available",
+    "occupied": "Occupied",
+    "refundDueHint": "Paid more than the final bill — refund due to the guest"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",
@@ -1945,7 +1965,8 @@
     "viewNamePlaceholder": "View name…",
     "saveCurrentView": "Save current filters as a view",
     "moreActions": "More actions",
-    "details": "Details"
+    "details": "Details",
+    "noMatches": "No matches"
   },
   "palette": {
     "placeholder": "Search donors, receipts, bolis, vendors, or jump to a screen…",

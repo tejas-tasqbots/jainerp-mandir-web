@@ -71,18 +71,27 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
     onChange(rows.length === 1 ? [emptyPaymentRow()] : rows.filter((_, idx) => idx !== i))
   }
 
+  /** Cash tenders land in a cash account; every other mode in a bank account. */
+  function accountsFor(mode: string) {
+    const want = mode === 'cash' ? 'cash' : 'bank'
+    const matching = accounts.filter(a => a.type === want)
+    // If the trust hasn't set up that account type, fall back to all of them
+    // rather than showing an empty dropdown the cashier cannot get past.
+    return matching.length ? matching : accounts
+  }
+
   const modeNeedsRef = (code: string) =>
     paymentModes.find(m => m.code === code)?.requires_reference ?? code !== 'cash'
 
   return (
     <div className="space-y-2">
       {rows.map((r, i) => (
-        <div key={i} className="flex gap-2 items-start">
+        <div key={i} className="flex flex-wrap sm:flex-nowrap gap-2 items-start">
           <select
-            className="form-input w-32 flex-shrink-0"
+            className="form-input w-full sm:w-32 flex-shrink-0"
             value={r.payment_mode}
             disabled={disabled}
-            onChange={e => update(i, { payment_mode: e.target.value })}
+            onChange={e => update(i, { payment_mode: e.target.value, payment_account_id: '' })}
             aria-label={`Payment mode ${i + 1}`}
           >
             {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
@@ -90,7 +99,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
 
           <input
             type="number" min="0" step="0.01" inputMode="decimal"
-            className="form-input w-28 flex-shrink-0 text-right"
+            className="form-input w-28 flex-1 sm:flex-none text-right"
             placeholder="0.00"
             value={r.amount}
             disabled={disabled}
@@ -110,16 +119,19 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
             />
           )}
 
-          {accounts.length > 0 && (
+          {/* Only accounts that can actually receive this tender: cash modes
+              credit a cash account, everything else a bank account. Offering
+              a bank account for a cash payment was simply wrong. */}
+          {accountsFor(r.payment_mode).length > 0 && (
             <select
-              className="form-input w-36 flex-shrink-0"
+              className="form-input w-full sm:w-36 flex-shrink-0"
               value={r.payment_account_id ?? ''}
               disabled={disabled}
               onChange={e => update(i, { payment_account_id: e.target.value })}
               aria-label={`Account ${i + 1}`}
             >
               <option value="">Default account</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              {accountsFor(r.payment_mode).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
 

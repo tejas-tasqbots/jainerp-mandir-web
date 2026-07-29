@@ -41,7 +41,8 @@
     "cashBank": "नकद और बैंक",
     "reconciliation": "बैंक मिलान",
     "recycleBin": "रीसायकल बिन",
-    "activityLog": "गतिविधि लॉग"
+    "activityLog": "गतिविधि लॉग",
+    "roomAvailability": "कमरा उपलब्धता"
   },
   "donationsHub": {
     "donations": "दान",
@@ -928,7 +929,26 @@
     "deleteBookingTitle": "बुकिंग हटाएँ",
     "deleteBookingMessage": "{{guest}} की बुकिंग हटाएँ? यह वापस नहीं होगा।",
     "deleteSuccess": "बुकिंग हटाई गई",
-    "deleteFailed": "बुकिंग नहीं हटाई जा सकी"
+    "deleteFailed": "बुकिंग नहीं हटाई जा सकी",
+    "availabilityTitle": "कमरा उपलब्धता",
+    "availabilitySubtitle": "अभी खाली और भरे हुए कमरे — बुक करने के लिए खाली कमरे पर क्लिक करें",
+    "totalRooms": "कुल कमरे",
+    "availableNow": "उपलब्ध",
+    "occupiedNow": "भरे हुए",
+    "searchRoom": "कमरा नंबर या प्रकार खोजें…",
+    "filterStatus": "उपलब्धता",
+    "allRooms": "सभी कमरे",
+    "availableOnly": "केवल उपलब्ध",
+    "occupiedOnly": "केवल भरे हुए",
+    "filterFloor": "मंज़िल",
+    "allFloors": "सभी मंज़िलें",
+    "floorN": "मंज़िल {{n}}",
+    "noRoomsMatch": "इन फ़िल्टर से कोई कमरा नहीं मिला",
+    "clickToBook": "बुक करने के लिए क्लिक करें",
+    "roomOccupied": "यह कमरा अभी भरा है",
+    "available": "उपलब्ध",
+    "occupied": "भरा",
+    "refundDueHint": "अंतिम बिल से अधिक भुगतान — अतिथि को वापसी देय"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -1945,7 +1965,8 @@
     "viewNamePlaceholder": "दृश्य का नाम…",
     "saveCurrentView": "वर्तमान फ़िल्टर को दृश्य के रूप में सहेजें",
     "moreActions": "अधिक विकल्प",
-    "details": "विवरण"
+    "details": "विवरण",
+    "noMatches": "कोई परिणाम नहीं"
   },
   "palette": {
     "placeholder": "दानदाता, रसीद, बोली, विक्रेता खोजें या किसी स्क्रीन पर जाएँ…",

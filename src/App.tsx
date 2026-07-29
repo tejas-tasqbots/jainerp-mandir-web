@@ -11,6 +11,7 @@ import { ExpensesList } from './pages/Expenses/ExpensesList'
 import { AddExpense } from './pages/Expenses/AddExpense'
 import { RecurringExpenses } from './pages/Expenses/RecurringExpenses'
 import { RoomsList } from './pages/Dharamshala/Rooms/RoomsList'
+import { RoomAvailability } from './pages/Dharamshala/Rooms/RoomAvailability'
 import { AddRoomCheckin } from './pages/Dharamshala/Rooms/AddRoomCheckin'
 import { HallBookingsList } from './pages/Dharamshala/Hall/HallBookingsList'
 import { AddHallBooking } from './pages/Dharamshala/Hall/AddHallBooking'
@@ -119,6 +120,7 @@ export default function App() {
 
             {/* Dharamshala */}
             <Route path="/rooms" element={<RoomsList />} />
+            <Route path="/rooms/availability" element={<RoomAvailability />} />
             <Route path="/rooms/checkin" element={<AddRoomCheckin />} />
             <Route path="/hall" element={<HallBookingsList />} />
             <Route path="/hall/add" element={<AddHallBooking />} />

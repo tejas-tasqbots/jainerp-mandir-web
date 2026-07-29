@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
   {
     labelKey: 'nav.dharamshala', icon: <Hotel size={18} />,
     children: [
+      { labelKey: 'nav.roomAvailability', to: '/rooms/availability' },
       { labelKey: 'nav.rooms', to: '/rooms' },
       { labelKey: 'nav.hall', to: '/hall' },
     ],

@@ -74,6 +74,8 @@ function FilterDropdown({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<ColumnFilterState>(state ?? {})
+  // Narrows a long option list (cities, states) inside the filter popover.
+  const [optQuery, setOptQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
   const active = isFilterActive(state)
 
@@ -107,12 +109,25 @@ function FilterDropdown({
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg p-2.5 min-w-[190px] text-left font-normal normal-case tracking-normal"
+          className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2.5 min-w-[210px] max-w-[260px] text-left font-normal normal-case tracking-normal"
           onClick={e => e.stopPropagation()}
         >
           {filter.kind === 'enum' && (
+            <>
+              {filter.options.length > 8 && (
+                <input
+                  autoFocus
+                  className="form-input !py-1.5 !text-xs mb-1.5"
+                  placeholder={t('kit.search')}
+                  value={optQuery}
+                  onChange={e => setOptQuery(e.target.value)}
+                  aria-label={t('kit.search')}
+                />
+              )}
             <div className="max-h-52 overflow-y-auto space-y-0.5">
-              {filter.options.map(opt => {
+              {filter.options
+                .filter(o => !optQuery.trim() || o.label.toLowerCase().includes(optQuery.trim().toLowerCase()))
+                .map(opt => {
                 const checked = draft.values?.includes(opt.value) ?? false
                 return (
                   <label key={opt.value} className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer text-xs text-slate-700">
@@ -131,7 +146,11 @@ function FilterDropdown({
                   </label>
                 )
               })}
+              {filter.options.filter(o => !optQuery.trim() || o.label.toLowerCase().includes(optQuery.trim().toLowerCase())).length === 0 && (
+                <p className="text-xs text-slate-400 px-1.5 py-2">{t('kit.noMatches')}</p>
+              )}
             </div>
+            </>
           )}
           {filter.kind === 'text' && (
             <input

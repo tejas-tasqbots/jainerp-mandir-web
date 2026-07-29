@@ -25,6 +25,10 @@ export function DonorList() {
   const navigate = useNavigate()
   const toast = useToast()
   const [donors, setDonors] = useState<Donor[]>([])
+  // Distinct cities/states across ALL donors (not just this page), so the
+  // column filters offer tickable values instead of free text.
+  const [cityOpts, setCityOpts] = useState<string[]>([])
+  const [stateOpts, setStateOpts] = useState<string[]>([])
   const [showImport, setShowImport] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -49,12 +53,12 @@ export function DonorList() {
     { key: 'mobile', label: t('donors.mobile'), render: d => <>{d.mobile}</> },
     {
       key: 'city', label: t('donors.city'),
-      filter: { kind: 'text', param: 'city' },
+      filter: { kind: 'enum', param: 'city', options: cityOpts.map(c => ({ value: c, label: c })) },
       render: d => <span className="text-slate-600">{d.city || '—'}</span>,
     },
     {
       key: 'state', label: t('donors.state'),
-      filter: { kind: 'text', param: 'state' },
+      filter: { kind: 'enum', param: 'state', options: stateOpts.map(c => ({ value: c, label: c })) },
       render: d => <span className="text-slate-600">{d.state || '—'}</span>,
     },
     {
@@ -85,7 +89,7 @@ export function DonorList() {
         : <span className="badge-gray">{t('donors.inactive')}</span>,
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t])
+  ], [t, cityOpts, stateOpts])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -95,6 +99,17 @@ export function DonorList() {
   }
 
   useEffect(() => { load() }, [page, search, filterState])
+
+  // Filter values come from the whole donor set, not the current page.
+  useEffect(() => {
+    api.get('/donors/filter-options')
+      .then(r => {
+        const d = r.data?.data ?? r.data ?? {}
+        setCityOpts(d.cities ?? [])
+        setStateOpts(d.states ?? [])
+      })
+      .catch(() => { /* filters simply stay empty */ })
+  }, [])
 
   async function load() {
     setLoading(true)

@@ -25,7 +25,16 @@ export function AddRoomCheckin() {
   })
 
   useEffect(() => {
-    api.get('/rooms?is_available=true').then(r => setRooms(r.data.data || []))
+    api.get('/rooms?is_available=true').then(r => {
+      const list = r.data.data || []
+      setRooms(list)
+      // Arriving from the availability board: ?room_id=… pre-selects it, so
+      // the cashier doesn't have to find the number again in the dropdown.
+      const wanted = new URLSearchParams(window.location.search).get('room_id')
+      if (wanted && list.some((rm: Room) => rm.id === wanted)) {
+        setForm(f => ({ ...f, room_id: wanted }))
+      }
+    })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
