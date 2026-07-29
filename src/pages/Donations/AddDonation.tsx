@@ -6,6 +6,8 @@ import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import { emptyPaymentRow, toPayload, sumPaise, type PaymentRow } from '../../components/PaymentSplitInput'
+import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { useProfileStore } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
 
@@ -18,6 +20,9 @@ export function AddDonation() {
   const isEdit = !!editId
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
+  // Opt-in multi-tender entry (part cash / part UPI / part cheque).
+  const [splitMode, setSplitMode] = useState(false)
+  const [payRows, setPayRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [categories, setCategories] = useState<DonationCategory[]>([])
   const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
   const [saving, setSaving] = useState(false)
@@ -58,6 +63,7 @@ export function AddDonation() {
         utr_number: d.utr_number ?? '',
         cheque_number: d.cheque_number ?? '',
         is_80g_eligible: d.is_80g_eligible ?? true,
+        wants_event_updates: d.wants_event_updates ?? false,
         note: d.notes ?? '',
       })
       if (d.is_anonymous) {
@@ -100,6 +106,14 @@ export function AddDonation() {
     e.preventDefault()
     if (!form.category_id) { setError('Select a donation category'); return }
     if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+    // Catch a mismatched split here rather than round-tripping to the API.
+    if (splitMode && sumPaise(payRows) !== parsePaise(form.amount)) {
+      setError(t('donations.splitMismatch', {
+        split: (sumPaise(payRows) / 100).toLocaleString('en-IN'),
+        total: parseFloat(form.amount).toLocaleString('en-IN'),
+      }))
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -121,9 +135,15 @@ export function AddDonation() {
         payload.donor = { name: devotee.name, mobile: devotee.mobile, ...pan }
       }
 
+      if (splitMode) {
+        // The API validates that the tenders sum to amount_paise; payment_mode
+        // above stays as the primary/first mode for legacy reports.
+        payload.payments = toPayload(payRows)
+        payload.payment_mode = payRows[0]?.payment_mode ?? form.payment_mode
+      }
       if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
-      if (form.utr_number) payload.utr_number = form.utr_number
-      if (form.cheque_number) payload.cheque_number = form.cheque_number
+      if (!splitMode && form.utr_number) payload.utr_number = form.utr_number
+      if (!splitMode && form.cheque_number) payload.cheque_number = form.cheque_number
       if (form.note) payload.notes = form.note
       // Only sent when the donor actually said yes, and never for an anonymous
       // donation — there is no one to link.
@@ -225,15 +245,24 @@ export function AddDonation() {
             )
           })()}
 
-          {/* UTR / Cheque */}
-          {(form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (
+          <SplitPaymentToggle
+            enabled={splitMode} onEnabledChange={setSplitMode}
+            rows={payRows} onRowsChange={setPayRows}
+            totalPaise={Math.round(Number(form.amount || 0) * 100)}
+            seedMode={form.payment_mode} seedAmount={form.amount}
+            seedRef={form.utr_number || form.cheque_number}
+            seedAccountId={form.payment_account_id}
+          />
+
+          {/* UTR / Cheque — single-mode only; split rows carry their own reference. */}
+          {!splitMode && (form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (
             <div>
               <label className="form-label">{t('donations.utrNumber')}</label>
               <input className="form-input" placeholder="Transaction reference" value={form.utr_number}
                 onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
             </div>
           )}
-          {form.payment_mode === 'cheque' && (
+          {!splitMode && form.payment_mode === 'cheque' && (
             <div>
               <label className="form-label">{t('donations.chequeNumber')}</label>
               <input className="form-input" placeholder="Cheque number" value={form.cheque_number}

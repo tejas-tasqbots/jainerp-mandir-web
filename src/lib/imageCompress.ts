@@ -1,4 +1,12 @@
 /**
+ * VENDORED COPY — kept in sync by hand across three repos:
+ *   - maharaj-web/src/lib/imageCompress.ts
+ *   - devotee-web/src/lib/imageCompress.ts
+ * There is no shared frontend package (each app is its own GitHub repo).
+ * If you change this file, port the change to the siblings above or they drift.
+ * See doc-v2/Images_And_Photos.md §6.8.
+ */
+/**
  * Compress a picked image to a JPEG data URI small enough to store inline.
  *
  * Bills are photographed on phones (4–12 MP), which would be megabytes of

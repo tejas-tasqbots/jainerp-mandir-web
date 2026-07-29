@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
+import { emptyPaymentRow, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
+import { SplitPaymentToggle } from '../../../components/SplitPaymentToggle'
 import type { Hall, DevoteeSelection } from '../../../types'
 
 export function AddHallBooking() {
@@ -12,6 +14,9 @@ export function AddHallBooking() {
   const [halls, setHalls] = useState<Hall[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Opt-in multi-tender entry for the advance taken at booking.
+  const [splitMode, setSplitMode] = useState(false)
+  const [payRows, setPayRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [booker, setBooker] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
@@ -49,6 +54,11 @@ export function AddHallBooking() {
         payload.booker = { name: booker.name, mobile: booker.mobile }
       }
 
+      if (splitMode) {
+        // Tenders for the advance; the API sums them into advance_paise.
+        payload.payments = toPayload(payRows)
+        payload.payment_mode = payRows[0]?.payment_mode ?? form.payment_mode
+      }
       await api.post('/hall-bookings', payload)
       navigate('/hall')
     } catch (e: unknown) {
@@ -126,6 +136,14 @@ export function AddHallBooking() {
               </select>
             </div>
           </div>
+
+          <SplitPaymentToggle
+            enabled={splitMode} onEnabledChange={setSplitMode}
+            rows={payRows} onRowsChange={setPayRows}
+            totalPaise={Math.round(Number(form.advance || 0) * 100)}
+            seedMode={form.payment_mode} seedAmount={form.advance}
+            hintKey="common.splitPaymentHintGeneric"
+          />
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </div>

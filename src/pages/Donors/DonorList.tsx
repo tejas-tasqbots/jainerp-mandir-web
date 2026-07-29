@@ -49,7 +49,13 @@ export function DonorList() {
     { key: 'mobile', label: t('donors.mobile'), render: d => <>{d.mobile}</> },
     {
       key: 'city', label: t('donors.city'),
-      render: d => <span className="text-slate-600">{d.city || '—'}{d.state ? `, ${d.state}` : ''}</span>,
+      filter: { kind: 'text', param: 'city' },
+      render: d => <span className="text-slate-600">{d.city || '—'}</span>,
+    },
+    {
+      key: 'state', label: t('donors.state'),
+      filter: { kind: 'text', param: 'state' },
+      render: d => <span className="text-slate-600">{d.state || '—'}</span>,
     },
     {
       key: 'pan', label: t('donors.pan'),

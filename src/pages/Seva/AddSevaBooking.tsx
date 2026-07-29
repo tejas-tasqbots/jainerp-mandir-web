@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
+import { emptyPaymentRow, toPayload, sumPaise, type PaymentRow } from '../../components/PaymentSplitInput'
+import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { Seva, DevoteeSelection } from '../../types'
 
@@ -15,6 +17,9 @@ export function AddSevaBooking() {
   const [error, setError] = useState('')
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
+  // Opt-in multi-tender entry (part cash / part UPI / part cheque).
+  const [splitMode, setSplitMode] = useState(false)
+  const [payRows, setPayRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
 
   const [form, setForm] = useState({
@@ -49,6 +54,11 @@ export function AddSevaBooking() {
     setSaving(true)
     setError('')
     try {
+      // Catch a mismatched split before round-tripping to the API.
+      if (splitMode && sumPaise(payRows) !== parsePaise(form.amount)) {
+        setError(t('donations.splitMismatch', { split: (sumPaise(payRows) / 100).toLocaleString('en-IN'), total: parseFloat(form.amount).toLocaleString('en-IN') }))
+        setSaving(false); return
+      }
       const payload: Record<string, unknown> = {
         seva_id: form.seva_id,
         gotra: form.gotra || undefined,
@@ -68,6 +78,10 @@ export function AddSevaBooking() {
         payload.devotee = { name: devotee.name, mobile: devotee.mobile }
       }
 
+      if (splitMode) {
+        payload.payments = toPayload(payRows)
+        payload.payment_mode = payRows[0]?.payment_mode ?? form.payment_mode
+      }
       await api.post('/seva-bookings', payload)
       navigate('/seva')
     } catch (e: unknown) {
@@ -167,6 +181,15 @@ export function AddSevaBooking() {
               </div>
             )
           })()}
+
+          <SplitPaymentToggle
+            enabled={splitMode} onEnabledChange={setSplitMode}
+            rows={payRows} onRowsChange={setPayRows}
+            totalPaise={Math.round(Number(form.amount || 0) * 100)}
+            seedMode={form.payment_mode} seedAmount={form.amount}
+            seedAccountId={form.payment_account_id}
+            hintKey="common.splitPaymentHintGeneric"
+          />
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
         </div>

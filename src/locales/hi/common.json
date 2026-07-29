@@ -588,7 +588,9 @@
     "category": "श्रेणी",
     "reset": "रीसेट",
     "saveFailed": "सहेजा नहीं जा सका",
-    "notes": "टिप्पणी"
+    "notes": "टिप्पणी",
+    "print": "प्रिंट",
+    "splitPaymentHintGeneric": "बाँटी गई राशि का योग ली गई राशि के बराबर होना चाहिए।"
   },
   "donations": {
     "title": "दान",
@@ -659,7 +661,10 @@
     "receiptResent": "रसीद व्हाट्सएप पर पुनः भेजी गई",
     "resendWhatsApp": "व्हाट्सएप पर पुनः भेजें",
     "history": "इतिहास",
-    "noHistory": "इस रसीद के लिए कोई गतिविधि नहीं"
+    "noHistory": "इस रसीद के लिए कोई गतिविधि नहीं",
+    "splitPayment": "एक से अधिक भुगतान माध्यम में बाँटें",
+    "splitPaymentHint": "बाँटी गई राशि का योग दान राशि के बराबर होना चाहिए।",
+    "splitMismatch": "बाँटे गए भुगतान का योग ₹{{split}} है पर दान ₹{{total}} का है। दोनों बराबर होने चाहिए।"
   },
   "donationRequests": {
     "title": "दान अनुरोध",
@@ -908,7 +913,22 @@
     "summaryDueOut": "आज चेक-आउट",
     "summaryAdvances": "अग्रिम राशि",
     "summaryBooked": "बुक मूल्य",
-    "summaryBalanceDue": "शेष देय"
+    "summaryBalanceDue": "शेष देय",
+    "paid": "भुगतान",
+    "viewBill": "बिल देखें",
+    "checkoutTitle": "चेक-आउट और निपटान",
+    "alreadyPaid": "पहले भुगतान",
+    "dueNow": "अभी देय",
+    "collectPayment": "भुगतान लें",
+    "partialPaymentHint": "देय राशि से कम दर्ज करें तो आंशिक भुगतान होगा — शेष बिल पर रहेगा।",
+    "checkoutWithoutPayment": "बिना भुगतान चेक-आउट",
+    "subtotal": "उप-योग",
+    "paymentsReceived": "प्राप्त भुगतान",
+    "noPaymentsRecorded": "कोई भुगतान दर्ज नहीं",
+    "deleteBookingTitle": "बुकिंग हटाएँ",
+    "deleteBookingMessage": "{{guest}} की बुकिंग हटाएँ? यह वापस नहीं होगा।",
+    "deleteSuccess": "बुकिंग हटाई गई",
+    "deleteFailed": "बुकिंग नहीं हटाई जा सकी"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",

@@ -588,7 +588,9 @@
     "category": "श्रेणी",
     "reset": "रीसेट",
     "saveFailed": "जतन करता आले नाही",
-    "notes": "टिपा"
+    "notes": "टिपा",
+    "print": "प्रिंट",
+    "splitPaymentHintGeneric": "विभागलेल्या रकमेची बेरीज घेतलेल्या रकमेइतकी असावी."
   },
   "donations": {
     "title": "देणगी",
@@ -659,7 +661,10 @@
     "receiptResent": "पावती व्हॉट्सअॅपवर पुन्हा पाठवली",
     "resendWhatsApp": "व्हॉट्सअॅपवर पुन्हा पाठवा",
     "history": "इतिहास",
-    "noHistory": "या पावतीसाठी कोणतीही क्रिया नाही"
+    "noHistory": "या पावतीसाठी कोणतीही क्रिया नाही",
+    "splitPayment": "एकापेक्षा जास्त भरणा प्रकारांत विभागा",
+    "splitPaymentHint": "विभागलेल्या रकमेची बेरीज देणगी रकमेइतकी असावी.",
+    "splitMismatch": "विभागलेल्या भरण्याची बेरीज ₹{{split}} आहे पण देणगी ₹{{total}} ची आहे. दोन्ही समान हवीत."
   },
   "donationRequests": {
     "title": "देणगी विनंत्या",
@@ -908,7 +913,22 @@
     "summaryDueOut": "आज चेक-आउट",
     "summaryAdvances": "आगाऊ रक्कम",
     "summaryBooked": "बुक मूल्य",
-    "summaryBalanceDue": "शिल्लक देय"
+    "summaryBalanceDue": "शिल्लक देय",
+    "paid": "भरणा",
+    "viewBill": "बिल पहा",
+    "checkoutTitle": "चेक-आउट व भरणा",
+    "alreadyPaid": "आधी भरलेले",
+    "dueNow": "आता देय",
+    "collectPayment": "भरणा घ्या",
+    "partialPaymentHint": "देय रकमेपेक्षा कमी नोंदवल्यास आंशिक भरणा होईल — शिल्लक बिलावर राहील.",
+    "checkoutWithoutPayment": "भरण्याशिवाय चेक-आउट",
+    "subtotal": "उप-बेरीज",
+    "paymentsReceived": "मिळालेले भरणे",
+    "noPaymentsRecorded": "कोणताही भरणा नोंदलेला नाही",
+    "deleteBookingTitle": "बुकिंग हटवा",
+    "deleteBookingMessage": "{{guest}} ची बुकिंग हटवायची? हे परत होणार नाही.",
+    "deleteSuccess": "बुकिंग हटवली",
+    "deleteFailed": "बुकिंग हटवता आली नाही"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",

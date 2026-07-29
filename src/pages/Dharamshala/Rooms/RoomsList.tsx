@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, X } from 'lucide-react'
+import { FileText, Plus, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { trendByDay } from '../../../lib/chartData'
@@ -16,9 +16,22 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import type { RoomBooking } from '../../../types'
 import { useConfirm } from '../../../components/ConfirmDialog'
+import {
+  PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
+} from '../../../components/PaymentSplitInput'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'checked_in', 'checked_out', 'cancelled'] as const
+
+/** One label/amount line in the bill breakdown. */
+function Row({ label, value }: { label: string; value?: number | null }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-slate-600">{label}</span>
+      <span>₹{fmtPaise(value ?? 0)}</span>
+    </div>
+  )
+}
 
 export function RoomsList() {
   const { t } = useTranslation()
@@ -34,6 +47,10 @@ export function RoomsList() {
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('rooms'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
+  const [checkoutModal, setCheckoutModal] = useState<{ booking: RoomBooking; duePaise: number } | null>(null)
+  const [checkoutRows, setCheckoutRows] = useState<PaymentRow[]>([emptyPaymentRow()])
+  const [checkingOut, setCheckingOut] = useState(false)
+  const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
   const [cancelModal, setCancelModal] = useState<{ id: string; guestName: string } | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
@@ -92,16 +109,21 @@ export function RoomsList() {
       render: b => <span className="block text-center">{b.persons_count}</span>,
     },
     {
-      key: 'advance', label: t('dharamshala.advance'), align: 'right',
-      render: b => <>₹{fmtPaise(b.advance_paise)}</>,
+      // Everything actually collected (advance + every tender at checkout),
+      // summed from the payments ledger — not the stale advance_paise column.
+      key: 'paid', label: t('dharamshala.paid'), align: 'right',
+      render: b => <>₹{fmtPaise(b.paid_paise ?? b.advance_paise)}</>,
     },
     {
       key: 'balance', label: t('dharamshala.balance'), align: 'right',
-      render: b => (
-        <span className={b.balance_paise > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
-          ₹{fmtPaise(b.balance_paise)}
-        </span>
-      ),
+      render: b => {
+        const due = b.due_paise ?? b.balance_paise
+        return (
+          <span className={due > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
+            ₹{fmtPaise(due)}
+          </span>
+        )
+      },
     },
     {
       key: 'status', label: t('common.status'),
@@ -116,7 +138,19 @@ export function RoomsList() {
             <button onClick={() => checkin(b.id)} className="btn-success btn-sm">{t('dharamshala.checkInAction')}</button>
           )}
           {b.status === 'checked_in' && (
-            <button onClick={() => checkout(b.id)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
+            <button onClick={() => openCheckout(b)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
+          )}
+          {/* A checked-out row used to render an EMPTY actions cell — the bill
+              it just generated was unreachable. The bill is the whole point of
+              checking out, so it is always available afterwards. */}
+          {b.status === 'checked_out' && (
+            <button
+              onClick={() => viewBill(b.id)}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('dharamshala.viewBill')} aria-label={t('dharamshala.viewBill')}
+            >
+              <FileText size={14} />
+            </button>
           )}
           {(b.status === 'confirmed' || b.status === 'booked') && (
             <button
@@ -125,6 +159,17 @@ export function RoomsList() {
               title={t('dharamshala.cancelBooking')} aria-label={t('dharamshala.cancelBooking')}
             >
               <X size={14} />
+            </button>
+          )}
+          {/* Delete is offered only where it can succeed: the API refuses to
+              delete a booking that has an issued bill or collected money. */}
+          {b.status !== 'checked_out' && !(b.paid_paise ?? 0) && (
+            <button
+              onClick={() => removeBooking(b)}
+              className="p-1 text-slate-400 hover:text-brand-red rounded"
+              title={t('common.delete')} aria-label={t('common.delete')}
+            >
+              <Trash2 size={14} />
             </button>
           )}
         </div>
@@ -214,15 +259,64 @@ export function RoomsList() {
     }
   }
 
-  async function checkout(id: string) {
-    if (!(await confirm({ title: t('dharamshala.confirmCheckoutTitle'), message: t('dharamshala.confirmCheckoutMessage'), confirmLabel: t('dharamshala.checkOutButton') }))) return
+  /**
+   * Opens the settlement dialog. Checkout used to POST an empty body, so no
+   * money was ever recorded and the bill showed 0 taken — the cashier now
+   * enters the tender(s) here before the bill is issued.
+   */
+  function openCheckout(b: RoomBooking) {
+    const due = Math.max(0, (b.total_paise ?? 0) - (b.paid_paise ?? 0))
+    setCheckoutModal({ booking: b, duePaise: due })
+    setCheckoutRows([{ ...emptyPaymentRow(), amount: due ? String(due / 100) : '' }])
+  }
+
+  async function confirmCheckout() {
+    if (!checkoutModal) return
+    setCheckingOut(true)
     try {
-      await api.patch(`/room-bookings/${id}/checkout`, {})
-      toast.success(t('dharamshala.checkoutSuccess'))
+      const { data } = await api.patch(`/room-bookings/${checkoutModal.booking.id}/checkout`, {
+        payments: toPayload(checkoutRows),
+      })
+      const res = data?.data ?? data
+      setCheckoutModal(null)
+      toast.success(
+        res?.invoice_no
+          ? `${t('dharamshala.checkoutSuccess')} — ${res.invoice_no}`
+          : t('dharamshala.checkoutSuccess'),
+      )
       load()
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
       toast.error(err.response?.data?.error?.message || t('dharamshala.checkoutFailed'))
+    } finally {
+      setCheckingOut(false)
+    }
+  }
+
+  async function viewBill(id: string) {
+    try {
+      const { data } = await api.get(`/room-bookings/${id}/bill`)
+      setBillModal(data?.data ?? data)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(err.response?.data?.error?.message || 'Could not load the bill')
+    }
+  }
+
+  async function removeBooking(b: RoomBooking) {
+    if (!(await confirm({
+      title: t('dharamshala.deleteBookingTitle'),
+      message: t('dharamshala.deleteBookingMessage', { guest: b.guest_name }),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    }))) return
+    try {
+      await api.delete(`/room-bookings/${b.id}`)
+      toast.success(t('dharamshala.deleteSuccess'))
+      load()
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(err.response?.data?.error?.message || t('dharamshala.deleteFailed'))
     }
   }
 
@@ -290,6 +384,114 @@ export function RoomsList() {
         emptyAction={{ label: t('dharamshala.newBooking'), onClick: () => navigate('/rooms/checkin') }}
         onClearFilters={() => { setFilterState({}); setPage(1) }}
       />
+
+      {/* Checkout settlement — collect the tender(s), then issue the bill. */}
+      {checkoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl mx-4">
+            <h3 className="font-bold text-navy-900 mb-1">{t('dharamshala.checkoutTitle')}</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              {checkoutModal.booking.guest_name} · {t('dharamshala.room')} {checkoutModal.booking.room_number}
+            </p>
+
+            <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-slate-500 text-xs">{t('dharamshala.total')}</p>
+                <p className="font-semibold">₹{fmtPaise(checkoutModal.booking.total_paise ?? 0)}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-slate-500 text-xs">{t('dharamshala.alreadyPaid')}</p>
+                <p className="font-semibold">₹{fmtPaise(checkoutModal.booking.paid_paise ?? checkoutModal.booking.advance_paise ?? 0)}</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-3">
+                <p className="text-amber-700 text-xs">{t('dharamshala.dueNow')}</p>
+                <p className="font-semibold text-amber-800">₹{fmtPaise(checkoutModal.duePaise)}</p>
+              </div>
+            </div>
+
+            <label className="form-label">{t('dharamshala.collectPayment')}</label>
+            <PaymentSplitInput
+              rows={checkoutRows}
+              onChange={setCheckoutRows}
+              totalPaise={checkoutModal.duePaise}
+              disabled={checkingOut}
+            />
+            <p className="text-xs text-slate-400 mt-2">{t('dharamshala.partialPaymentHint')}</p>
+
+            <div className="flex gap-3 justify-end mt-5">
+              <button onClick={() => setCheckoutModal(null)} className="btn-secondary" disabled={checkingOut}>
+                {t('common.cancel')}
+              </button>
+              <button onClick={confirmCheckout} disabled={checkingOut} className="btn-primary">
+                {checkingOut
+                  ? t('common.saving')
+                  : sumPaise(checkoutRows) === 0
+                    ? t('dharamshala.checkoutWithoutPayment')
+                    : t('dharamshala.checkOutButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bill — the invoice plus every tender recorded against it. */}
+      {billModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-navy-900">{billModal.invoice_no || t('dharamshala.viewBill')}</h3>
+                <p className="text-sm text-slate-500">
+                  {billModal.guest_name} · {t('dharamshala.room')} {billModal.room_number}
+                </p>
+              </div>
+              <button onClick={() => setBillModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-1 text-sm border-t border-slate-100 pt-3">
+              <Row label={t('dharamshala.subtotal')} value={billModal.subtotal_paise} />
+              <Row label="CGST" value={billModal.cgst_paise} />
+              <Row label="SGST" value={billModal.sgst_paise} />
+              <div className="flex justify-between font-semibold border-t border-slate-100 pt-1 mt-1">
+                <span>{t('dharamshala.total')}</span>
+                <span>₹{fmtPaise(billModal.total_paise ?? 0)}</span>
+              </div>
+            </div>
+
+            <p className="form-label mt-4">{t('dharamshala.paymentsReceived')}</p>
+            {billModal.payments?.length ? (
+              <div className="space-y-1 text-sm">
+                {billModal.payments.map((p: any) => (
+                  <div key={p.id} className="flex justify-between">
+                    <span className="text-slate-600">
+                      {p.payment_mode}
+                      {p.reference_no ? ` · ${p.reference_no}` : ''}
+                      <span className="text-slate-400 text-xs ml-1">{String(p.paid_on).slice(0, 10)}</span>
+                    </span>
+                    <span>₹{fmtPaise(p.amount_paise)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">{t('dharamshala.noPaymentsRecorded')}</p>
+            )}
+
+            <div className="flex justify-between font-semibold border-t border-slate-100 pt-2 mt-2 text-sm">
+              <span>{t('dharamshala.balance')}</span>
+              <span className={(billModal.due_paise ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}>
+                ₹{fmtPaise(billModal.due_paise ?? 0)}
+              </span>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-5">
+              <button onClick={() => window.print()} className="btn-secondary">{t('common.print')}</button>
+              <button onClick={() => setBillModal(null)} className="btn-primary">{t('common.close')}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cancel confirmation modal */}
       {cancelModal && (

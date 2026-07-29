@@ -281,14 +281,13 @@ export function DevoteePicker({
               <span className="text-sm font-medium text-green-800">{value.name}</span>
               {value.mobile && <span className="text-xs text-green-600">{value.mobile}</span>}
               {value.pan_masked && <span className="text-xs text-green-600 font-mono">PAN {value.pan_masked}</span>}
-              {value.verified ? (
-                <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600 font-medium">
-                  <ShieldCheck size={11} /> Verified
-                </span>
-              ) : value.is_offline ? (
+              {/* Verified/Unverified badges deliberately not shown at donor
+                  selection — the counter doesn't act on them and they read as
+                  a judgement on the donor. Verification itself still happens
+                  (OTP is still required for 80G); only the label is hidden.
+                  "Offline" is kept: it's a sync state the cashier must act on. */}
+              {value.is_offline && (
                 <span className="text-xs text-amber-600 font-medium">Offline — links on sync</span>
-              ) : (
-                <span className="text-xs text-slate-400 font-medium">Unverified</span>
               )}
               {value.linked_to_this_temple && (
                 <span className="inline-flex items-center gap-0.5 text-xs text-blue-600 font-medium">
@@ -455,9 +454,7 @@ export function DevoteePicker({
                     <span className="text-slate-400 text-xs">{d.mobile}</span>
                     {d.city && <span className="text-slate-400 text-xs">• {d.city}</span>}
                     {d.pan_masked && <span className="text-slate-400 text-xs font-mono">• PAN {d.pan_masked}</span>}
-                    {d.verified && (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600"><ShieldCheck size={10} /> Verified</span>
-                    )}
+                    {/* No Verified badge here either — see the selection chip above. */}
                     {d.linked_to_this_temple && (
                       <span className="inline-flex items-center gap-0.5 text-xs text-blue-600"><Link2 size={10} /> Donates here</span>
                     )}

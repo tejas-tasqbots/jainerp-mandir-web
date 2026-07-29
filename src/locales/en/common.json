@@ -588,7 +588,9 @@
     "category": "Category",
     "reset": "Reset",
     "saveFailed": "Could not save",
-    "notes": "Notes"
+    "notes": "Notes",
+    "print": "Print",
+    "splitPaymentHintGeneric": "The split must add up to the amount collected."
   },
   "donations": {
     "title": "Donations",
@@ -659,7 +661,10 @@
     "receiptResent": "Receipt re-sent on WhatsApp",
     "resendWhatsApp": "Re-send on WhatsApp",
     "history": "History",
-    "noHistory": "No recorded activity for this receipt"
+    "noHistory": "No recorded activity for this receipt",
+    "splitPayment": "Split across multiple payment modes",
+    "splitPaymentHint": "The split must add up to the donation amount.",
+    "splitMismatch": "Split payments total ₹{{split}} but the donation is ₹{{total}}. They must match."
   },
   "donationRequests": {
     "title": "Donation Requests",
@@ -908,7 +913,22 @@
     "summaryDueOut": "Due out today",
     "summaryAdvances": "Advances held",
     "summaryBooked": "Booked value",
-    "summaryBalanceDue": "Balance due"
+    "summaryBalanceDue": "Balance due",
+    "paid": "Paid",
+    "viewBill": "View bill",
+    "checkoutTitle": "Check out & settle",
+    "alreadyPaid": "Already paid",
+    "dueNow": "Due now",
+    "collectPayment": "Collect payment",
+    "partialPaymentHint": "Leave less than the due amount to record a partial payment — the balance stays on the bill.",
+    "checkoutWithoutPayment": "Check out without payment",
+    "subtotal": "Subtotal",
+    "paymentsReceived": "Payments received",
+    "noPaymentsRecorded": "No payments recorded",
+    "deleteBookingTitle": "Delete booking",
+    "deleteBookingMessage": "Delete the booking for {{guest}}? This cannot be undone.",
+    "deleteSuccess": "Booking deleted",
+    "deleteFailed": "Could not delete the booking"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",

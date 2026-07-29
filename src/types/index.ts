@@ -180,6 +180,12 @@ export interface RoomBooking {
   tariff_per_night_paise: number
   total_paise: number
   balance_paise: number
+  /** Sum of live tenders in {s}.payments — the real "amount taken". */
+  paid_paise?: number
+  /** total_paise - paid_paise, derived server-side. */
+  due_paise?: number
+  invoice_no?: string | null
+  invoice_date?: string | null
   status: BookingStatus
   created_at: string
 }
