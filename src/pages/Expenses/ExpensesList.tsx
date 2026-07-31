@@ -10,8 +10,9 @@ import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import { useResourceNames } from '../../lib/useDropdownOptions'
 import {
   DataTable, filterStateToParams,
-  type ColumnDef, type ColumnFilterState, type SortState,
+  type ColumnDef, type ColumnFilterState, type SortState, type RowAction,
 } from '../../components/kit/DataTable'
+import { useChequeLifecycle } from '../../components/ChequeLifecycle'
 import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
@@ -52,6 +53,7 @@ export function ExpensesList() {
   const [editForm, setEditForm] = useState({ description: '', amount_paise: '', bill_number: '' })
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const { chequeActions, bounceModal } = useChequeLifecycle('expenses', () => { void load() })
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [payModal, setPayModal] = useState<{ creditorId: string; vendorName: string; outstanding: number } | null>(null)
@@ -177,38 +179,25 @@ export function ExpensesList() {
         )
       },
     },
-    {
-      key: 'actions', label: t('common.actions'),
-      render: e => (
-        <div className="flex gap-1">
-          {e.is_on_credit && e.creditor_id && creditOutstanding(e) > 0 && (
-            <button
-              type="button" onClick={() => openPay(e)}
-              className="p-1 text-slate-400 hover:text-green-600 rounded"
-              title={t('creditors.recordPayment')} aria-label={t('creditors.recordPayment')}
-            >
-              <Landmark size={14} />
-            </button>
-          )}
-          <button
-            type="button" onClick={() => openEdit(e)}
-            className="p-1 text-slate-400 hover:text-brand-blue rounded"
-            title={t('expenses.edit')} aria-label={t('expenses.edit')}
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            type="button" onClick={() => deleteExpense(e.id)} disabled={deleteId === e.id}
-            className="p-1 text-slate-400 hover:text-brand-red rounded"
-            title={t('expenses.delete')} aria-label={t('expenses.delete')}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ),
-    },
+    // Actions come from `rowActions` below so this list behaves like every
+    // other one: edit stays visible, the rest (including the cheque lifecycle)
+    // collapses behind ⋮.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, categoryNames, deleteId])
+  ], [t, categoryNames])
+
+  function rowActions(e: Expense): RowAction[] {
+    const actions: RowAction[] = []
+    if (e.is_on_credit && e.creditor_id && creditOutstanding(e) > 0) {
+      actions.push({ label: t('creditors.recordPayment'), icon: <Landmark size={14} />, primary: true, onClick: () => openPay(e) })
+    }
+    actions.push({ label: t('expenses.edit'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(e) })
+    actions.push(...chequeActions(e))
+    actions.push({
+      label: t('expenses.delete'), icon: <Trash2 size={13} />, danger: true,
+      onClick: () => deleteExpense(e.id), disabled: deleteId === e.id,
+    })
+    return actions
+  }
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -423,6 +412,7 @@ export function ExpensesList() {
         onClearFilters={() => { setFilterState({}); setPage(1) }}
         detailTitle={e => e.description}
         renderDetail={e => <ExpenseDetail expense={e} />}
+        rowActions={rowActions}
       />
 
       {/* Edit modal */}
@@ -501,6 +491,7 @@ export function ExpensesList() {
           </div>
         </div>
       )}
+      {bounceModal}
     </div>
   )
 }

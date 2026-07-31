@@ -17,6 +17,7 @@ import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/S
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { useChequeLifecycle } from '../../components/ChequeLifecycle'
 import type { Donation, DonationCategory } from '../../types'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
@@ -52,6 +53,7 @@ export function DonationsList() {
   const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
   const [pdfLoading, setPdfLoading] = useState<string | null>(null)
   const [certLoading, setCertLoading] = useState<string | null>(null)
+  const { chequeActions, bounceModal } = useChequeLifecycle('donations', () => { void load() })
 
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } })
@@ -123,28 +125,17 @@ export function DonationsList() {
         ? <span className="badge-red">{t('donations.voided')}</span>
         : <span className="badge-green">{t('common.active')}</span>,
     },
-    {
-      // Plan §02: the single most-used action stays visible; the rest collapse
-      // into the kit's ⋮ menu (see rowActions below).
-      key: 'actions', label: t('common.actions'),
-      render: d => (
-        <span onClick={e => e.stopPropagation()}>
-          <button
-            type="button" onClick={() => openReceipt(d.id)}
-            title={t('donations.printReceipt')} aria-label={t('donations.printReceipt')}
-            disabled={receiptLoading === d.id}
-            className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-          >
-            <Receipt size={14} className={receiptLoading === d.id ? 'animate-pulse' : ''} />
-          </button>
-        </span>
-      ),
-    },
+    // The actions column is rendered by the kit from `rowActions` below — the
+    // print button stays visible, everything else collapses behind ⋮.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, categories, receiptLoading])
+  ], [t, categories])
 
   function rowActions(d: Donation): RowAction[] {
     const actions: RowAction[] = [
+      {
+        label: t('donations.printReceipt'), icon: <Receipt size={14} />, primary: true,
+        onClick: () => openReceipt(d.id), disabled: receiptLoading === d.id,
+      },
       { label: t('donations.downloadPdf'), icon: <FileDown size={13} />, onClick: () => savePdf(d.id), disabled: pdfLoading === d.id },
     ]
     if (d.is_80g_eligible && d.donor_id && !d.is_anonymous) {
@@ -154,6 +145,9 @@ export function DonationsList() {
       })
     }
     if (!d.is_voided) {
+      // Cheque deposit/clear/bounce, previously only reachable from
+      // Accounts ▸ Cheques even though the row here shows the cheque status.
+      actions.push(...chequeActions(d))
       actions.push({ label: t('donations.editVoidReissue'), icon: <Pencil size={13} />, onClick: () => navigate(`/donations/${d.id}/edit`) })
       actions.push({ label: t('donations.voidDonation'), icon: <Ban size={13} />, danger: true, onClick: () => setVoidModal({ id: d.id, invoiceNo: d.invoice_no }) })
     }
@@ -382,6 +376,7 @@ export function DonationsList() {
           </div>
         </div>
       )}
+      {bounceModal}
     </div>
   )
 }

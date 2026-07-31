@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Search, XCircle, Filter, ArrowUp, ArrowDown, BarChart2,
@@ -390,50 +391,136 @@ export interface RowAction {
   onClick: () => void
   danger?: boolean
   disabled?: boolean
+  /** Pulled out of the ⋮ menu and shown as its own icon button in the row. */
+  primary?: boolean
 }
 
+const MENU_WIDTH = 190
+
+/* The menu is rendered through a PORTAL, deliberately.
+
+   It used to be `position:absolute` inside the cell, which put it inside the
+   table's `card overflow-hidden` > `overflow-x-auto` wrappers — so the popup was
+   clipped at the card edge and the lower half of it simply vanished. It also
+   always opened downward, so on the last rows of a page it fell below the fold.
+   Portalling to <body> with fixed coordinates escapes both clips; we flip it
+   above the button when there isn't room underneath. */
 function RowMenu({ actions }: { actions: RowAction[] }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const place = useCallback(() => {
+    const b = btnRef.current?.getBoundingClientRect()
+    if (!b) return
+    const h = menuRef.current?.offsetHeight ?? 0
+    // Flip above when the menu would overflow the viewport bottom.
+    const below = b.bottom + 4
+    const top = h && below + h > window.innerHeight - 8 ? Math.max(8, b.top - h - 4) : below
+    // Right-align to the button, but never off the left edge.
+    const left = Math.max(8, Math.min(b.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8))
+    setPos({ top, left })
+  }, [])
+
+  useLayoutEffect(() => { if (open) place() }, [open, place])
 
   useEffect(() => {
+    if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (btnRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
     }
-    if (open) document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    // Any scroll/resize would leave the fixed menu stranded away from its row.
+    function onReflow() { setOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onReflow, true)
+    window.addEventListener('resize', onReflow)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onReflow, true)
+      window.removeEventListener('resize', onReflow)
+    }
   }, [open])
 
   if (!actions.length) return null
   return (
-    <div className="relative inline-block" ref={ref} onClick={e => e.stopPropagation()}>
+    <span onClick={e => e.stopPropagation()}>
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="p-1 text-slate-400 hover:text-navy-900 rounded"
+        className="p-1 text-slate-400 hover:text-navy-900 hover:bg-slate-100 rounded"
         title={t('kit.moreActions')} aria-label={t('kit.moreActions')}
+        aria-haspopup="menu" aria-expanded={open}
       >
         <MoreVertical size={16} />
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[168px]">
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{
+            position: 'fixed',
+            top: pos?.top ?? -9999,
+            left: pos?.left ?? -9999,
+            width: MENU_WIDTH,
+            visibility: pos ? 'visible' : 'hidden',
+          }}
+          className="z-[60] bg-white border border-slate-200 rounded-lg shadow-lg py-1"
+          onClick={e => e.stopPropagation()}
+        >
           {actions.map((a, i) => (
             <button
               key={i}
               type="button"
+              role="menuitem"
               disabled={a.disabled}
               onClick={() => { setOpen(false); a.onClick() }}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors disabled:opacity-40 ${
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 a.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'
               }`}
             >
               {a.icon}{a.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </span>
+  )
+}
+
+/* Actions cell: `primary` actions stay visible as icon buttons (one tap, no
+   hunting), everything else collapses behind ⋮. Pages that mark nothing primary
+   simply get the ⋮ on its own. */
+function RowActionCell({ actions }: { actions: RowAction[] }) {
+  const primary = actions.filter(a => a.primary && a.icon)
+  const rest = actions.filter(a => !(a.primary && a.icon))
+  return (
+    <span className="inline-flex items-center gap-0.5 justify-end">
+      {primary.map((a, i) => (
+        <button
+          key={i}
+          type="button"
+          disabled={a.disabled}
+          onClick={e => { e.stopPropagation(); a.onClick() }}
+          title={a.label} aria-label={a.label}
+          className={`p-1 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            a.danger ? 'text-slate-400 hover:text-brand-red hover:bg-red-50'
+                     : 'text-slate-400 hover:text-brand-blue hover:bg-slate-100'
+          }`}
+        >
+          {a.icon}
+        </button>
+      ))}
+      <RowMenu actions={rest} />
+    </span>
   )
 }
 
@@ -732,7 +819,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     </span>
                   </th>
                 ))}
-                {hasRowMenu && <th className="!text-right w-10" aria-label="actions" />}
+                {hasRowMenu && <th className="!text-right w-px whitespace-nowrap">{t('common.actions')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -778,8 +865,8 @@ export function DataTable<T>(props: DataTableProps<T>) {
                       </td>
                     ))}
                     {hasRowMenu && (
-                      <td className="text-right">
-                        <RowMenu actions={props.rowActions!(row, i)} />
+                      <td className="text-right whitespace-nowrap">
+                        <RowActionCell actions={props.rowActions!(row, i)} />
                       </td>
                     )}
                   </tr>
