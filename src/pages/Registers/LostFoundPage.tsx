@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Save } from 'lucide-react'
+import { Plus, Save, PackageCheck } from 'lucide-react'
 import { api } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
-import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { LostFoundItem } from '../../types'
@@ -56,14 +56,6 @@ export function LostFoundPage() {
       render: i => statusBadge(i.status),
     },
     { key: 'claimant', label: t('registers.claimant'), render: i => <>{i.claimant_name || '—'}</> },
-    {
-      key: 'actions', label: t('registers.actions'),
-      render: i => i.status === 'unclaimed' ? (
-        <button onClick={() => { setClaimForm({ name: '', mobile: '' }); setClaimModal({ id: i.id }) }} className="btn-success btn-sm">
-          {t('registers.markClaimed')}
-        </button>
-      ) : null,
-    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
 
@@ -146,6 +138,15 @@ export function LostFoundPage() {
     { label: t('lostFound.statusUnclaimed'), value: String(items.filter(i => i.status === 'unclaimed').length), tone: 'expense' },
   ]
 
+  function rowActions(i: LostFoundItem): RowAction[] {
+    // Nothing to do once an item has been handed back.
+    if (i.status !== 'unclaimed') return []
+    return [{
+      label: t('registers.markClaimed'), icon: <PackageCheck size={13} />,
+      onClick: () => { setClaimForm({ name: '', mobile: '' }); setClaimModal({ id: i.id }) },
+    }]
+  }
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('registers.lostFoundTitle')} />
@@ -198,6 +199,7 @@ export function LostFoundPage() {
         columns={columns}
         rows={items}
         rowKey={i => i.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}

@@ -7,7 +7,7 @@ import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
-  type ColumnDef, type ColumnFilterState,
+  type ColumnDef, type ColumnFilterState, type RowAction,
 } from '../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -97,24 +97,6 @@ export function EventsList() {
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
       render: ev => statusBadge(ev.status),
     },
-    {
-      key: 'actions', label: t('common.actions'),
-      render: ev => (
-        <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-          <button onClick={() => openEdit(ev)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('events.edit')} aria-label={t('events.edit')}>
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={() => deleteEvent(ev.id, ev.name)}
-            disabled={deletingId === ev.id}
-            className="p-1 text-slate-400 hover:text-brand-red rounded"
-            title={t('events.delete')} aria-label={t('events.delete')}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ),
-    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, deletingId])
 
@@ -144,9 +126,17 @@ export function EventsList() {
   }
 
   function resetPageAnd<T>(setter: (v: T) => void) {
-  
+    return (v: T) => { setter(v); setPage(1) }
+  }
 
-  return (v: T) => { setter(v); setPage(1) }
+  function rowActions(ev: EventRow): RowAction[] {
+    return [
+      { label: t('events.edit'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(ev) },
+      {
+        label: t('events.delete'), icon: <Trash2 size={13} />, danger: true,
+        onClick: () => deleteEvent(ev.id, ev.name), disabled: deletingId === ev.id,
+      },
+    ]
   }
 
   async function exportExcel() {
@@ -332,6 +322,7 @@ export function EventsList() {
         columns={columns}
         rows={events}
         rowKey={ev => ev.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={resetPageAnd(setSearch)}

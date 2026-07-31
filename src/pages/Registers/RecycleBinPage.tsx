@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
-import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
+import { DataTable, type ColumnDef, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -103,23 +103,19 @@ export function RecycleBinPage() {
       key: 'deleted_at', label: t('recycleBin.deletedAt'),
       render: item => <span className="text-xs text-slate-400">{new Date(item.deleted_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>,
     },
-    {
-      key: 'actions', label: t('common.actions'),
-      render: item => (
-        <button
-          type="button" onClick={() => restore(item)} disabled={restoringKey === keyOf(item)}
-          className="btn-secondary btn-sm !text-xs"
-        >
-          <RotateCcw size={12} /> {t('recycleBin.restore')}
-        </button>
-      ),
-    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, restoringKey])
 
   const stats: SummaryStat[] = [
     { label: t('recycleBin.title'), value: String(visible.length) },
   ]
+
+  function rowActions(item: BinItem): RowAction[] {
+    return [{
+      label: t('recycleBin.restore'), icon: <RotateCcw size={13} />, primary: true,
+      onClick: () => restore(item), disabled: restoringKey === keyOf(item),
+    }]
+  }
 
   return (
     <div className="space-y-4">
@@ -136,6 +132,7 @@ export function RecycleBinPage() {
         columns={columns}
         rows={visible}
         rowKey={item => keyOf(item)}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}

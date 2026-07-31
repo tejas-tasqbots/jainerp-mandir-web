@@ -5,7 +5,7 @@ import { Plus, Pencil, X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
-import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -57,16 +57,6 @@ export function VendorsPage() {
       render: v => v.is_active
         ? <span className="badge-green">{t('vendors.active')}</span>
         : <span className="badge-gray">{t('vendors.inactive')}</span>,
-    },
-    {
-      key: 'actions', label: t('vendors.actions'),
-      render: v => (
-        <span onClick={e => e.stopPropagation()}>
-          <button type="button" onClick={() => openEdit(v)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('vendors.edit')} aria-label="Edit vendor">
-            <Pencil size={14} />
-          </button>
-        </span>
-      ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
@@ -157,6 +147,10 @@ export function VendorsPage() {
     { label: t('vendors.active'), value: String(vendors.filter(v => v.is_active).length) },
   ]
 
+  function rowActions(v: Vendor): RowAction[] {
+    return [{ label: t('vendors.edit'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(v) }]
+  }
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('vendors.title')} />
@@ -172,6 +166,7 @@ export function VendorsPage() {
         columns={columns}
         rows={vendors}
         rowKey={v => v.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}

@@ -4,7 +4,7 @@ import { Plus, Pencil, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
-import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -55,14 +55,6 @@ export function PriestsPage() {
       render: p => p.is_active
         ? <span className="badge-green">{t('priests.active')}</span>
         : <span className="badge-gray">{t('priests.inactive')}</span>,
-    },
-    {
-      key: 'actions', label: t('priests.actions'),
-      render: p => (
-        <button onClick={() => openEdit(p)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('priests.editPriest')} aria-label={t('priests.editPriest')}>
-          <Pencil size={14} />
-        </button>
-      ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
@@ -150,6 +142,10 @@ export function PriestsPage() {
     { label: t('priests.monthlyStipend'), value: `₹${fmtPaise(priests.reduce((s2, p) => s2 + (p.monthly_stipend_paise ?? 0), 0))}` },
   ]
 
+  function rowActions(p: Priest): RowAction[] {
+    return [{ label: t('priests.editPriest'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(p) }]
+  }
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('priests.title')} />
@@ -166,6 +162,7 @@ export function PriestsPage() {
         columns={columns}
         rows={priests}
         rowKey={p => p.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}

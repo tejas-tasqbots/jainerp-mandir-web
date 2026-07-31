@@ -500,25 +500,42 @@ function RowMenu({ actions }: { actions: RowAction[] }) {
    hunting), everything else collapses behind ⋮. Pages that mark nothing primary
    simply get the ⋮ on its own. */
 function RowActionCell({ actions }: { actions: RowAction[] }) {
-  const primary = actions.filter(a => a.primary && a.icon)
-  const rest = actions.filter(a => !(a.primary && a.icon))
+  const primary = actions.filter(a => a.primary)
+  const rest = actions.filter(a => !a.primary)
   return (
-    <span className="inline-flex items-center gap-0.5 justify-end">
-      {primary.map((a, i) => (
-        <button
-          key={i}
-          type="button"
-          disabled={a.disabled}
-          onClick={e => { e.stopPropagation(); a.onClick() }}
-          title={a.label} aria-label={a.label}
-          className={`p-1 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-            a.danger ? 'text-slate-400 hover:text-brand-red hover:bg-red-50'
-                     : 'text-slate-400 hover:text-brand-blue hover:bg-slate-100'
-          }`}
-        >
-          {a.icon}
-        </button>
-      ))}
+    <span className="inline-flex items-center gap-1 justify-end">
+      {primary.map((a, i) =>
+        // An icon alone is enough for a familiar action (edit, print). A
+        // workflow step like "Pay" or "Check in" has no obvious glyph, so a
+        // primary action without an icon keeps its words — collapsing it to a
+        // mystery icon, or into the ⋮ menu, would hide the main thing the row
+        // is for.
+        a.icon ? (
+          <button
+            key={i}
+            type="button"
+            disabled={a.disabled}
+            onClick={e => { e.stopPropagation(); a.onClick() }}
+            title={a.label} aria-label={a.label}
+            className={`p-1 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              a.danger ? 'text-slate-400 hover:text-brand-red hover:bg-red-50'
+                       : 'text-slate-400 hover:text-brand-blue hover:bg-slate-100'
+            }`}
+          >
+            {a.icon}
+          </button>
+        ) : (
+          <button
+            key={i}
+            type="button"
+            disabled={a.disabled}
+            onClick={e => { e.stopPropagation(); a.onClick() }}
+            className={`btn-sm whitespace-nowrap ${a.danger ? 'btn-danger' : 'btn-success'}`}
+          >
+            {a.label}
+          </button>
+        ),
+      )}
       <RowMenu actions={rest} />
     </span>
   )

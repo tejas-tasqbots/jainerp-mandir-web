@@ -5,7 +5,7 @@ import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import {
   DataTable, filterStateToParams,
-  type ColumnDef, type ColumnFilterState, type SortState,
+  type ColumnDef, type ColumnFilterState, type SortState, type RowAction,
 } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
@@ -124,14 +124,6 @@ export function CreditorList() {
         : c.status === 'partially_paid'
         ? <span className="badge-yellow">{t('creditors.statusPartial')}</span>
         : <span className="badge-red">{t('creditors.statusPending')}</span>,
-    },
-    {
-      key: 'actions', label: t('creditors.actions'),
-      render: c => c.status !== 'paid' ? (
-        <button onClick={() => openPayModal(c)} className="btn-success btn-sm">
-          {t('creditors.pay')}
-        </button>
-      ) : null,
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])
@@ -272,6 +264,12 @@ export function CreditorList() {
     }
   }
 
+  function rowActions(c: Creditor): RowAction[] {
+    // A settled creditor has nothing left to act on.
+    if (c.status === 'paid') return []
+    return [{ label: t('creditors.pay'), primary: true, onClick: () => openPayModal(c) }]
+  }
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('creditors.title')} />
@@ -290,6 +288,7 @@ export function CreditorList() {
         columns={columns}
         rows={creditors}
         rowKey={c => c.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}

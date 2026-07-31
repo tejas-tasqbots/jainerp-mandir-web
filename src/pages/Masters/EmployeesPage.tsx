@@ -4,7 +4,7 @@ import { Plus, Pencil, X, Users } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
-import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
+import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 
@@ -58,14 +58,6 @@ export function EmployeesPage() {
       render: emp => emp.is_active
         ? <span className="badge-green">{t('employees.active')}</span>
         : <span className="badge-gray">{t('employees.inactive')}</span>,
-    },
-    {
-      key: 'actions', label: t('employees.actions'),
-      render: emp => (
-        <button onClick={() => openEdit(emp)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('common.save')} aria-label="Edit">
-          <Pencil size={14} />
-        </button>
-      ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, tab])
@@ -163,6 +155,10 @@ export function EmployeesPage() {
     { label: t('employees.salary'), value: `₹${fmtPaise(items.reduce((s2, e) => s2 + (e.monthly_salary_paise ?? 0), 0))}` },
   ]
 
+  function rowActions(emp: Employee): RowAction[] {
+    return [{ label: t('employees.actions'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(emp) }]
+  }
+
   return (
     <div className="space-y-4">
       <PrintLetterhead title={t('employees.title')} />
@@ -188,6 +184,7 @@ export function EmployeesPage() {
         columns={columns}
         rows={items}
         rowKey={emp => emp.id}
+        rowActions={rowActions}
         loading={loading}
         searchValue={search}
         onSearchChange={setSearch}
