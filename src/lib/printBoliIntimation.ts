@@ -47,7 +47,8 @@ function buildIntimationHtml(d: IntimationData): string {
     .out .amt{font-size:24px;font-weight:800;color:#b91c1c;font-family:monospace;}
     .note{font-size:11px;color:#6b7280;margin-top:16px;font-style:italic;line-height:1.7;}
     .print-hint{font-size:10px;color:#cbd5e1;text-align:center;padding:8px;}
-    @media print{body{background:#fff;}.page{border:none;margin:0;}.print-hint{display:none;}}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{background:#fff;}.page{border:none;margin:0;}.print-hint{display:none;}}
   </style></head><body>
   <div class="page">
     <div class="header">

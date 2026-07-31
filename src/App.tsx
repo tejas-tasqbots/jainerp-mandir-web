@@ -82,7 +82,16 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       if (isLoggedIn && accessToken) {
-        try { await fetchProfile() } catch { /* ignore */ }
+        // The profile is a nicety at boot (mandir name in the header) — the app
+        // is perfectly usable without it and each screen loads its own data. So
+        // cap the wait rather than letting a slow or unreachable API hold the
+        // whole shell behind the splash screen; it resolves in the background.
+        try {
+          await Promise.race([
+            fetchProfile(),
+            new Promise(resolve => setTimeout(resolve, 6000)),
+          ])
+        } catch { /* ignore — screens fetch what they need */ }
       }
       setInitialising(false)
     }

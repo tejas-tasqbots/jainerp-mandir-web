@@ -126,7 +126,8 @@ function buildCert80gHtml(d: Cert80gData): string {
     .sign .line{border-top:1px solid #333;width:200px;padding-top:4px;margin-top:40px;}
     .footer-note{font-size:10.5px;color:#888;text-align:center;font-style:italic;margin-top:18px;padding-top:10px;border-top:1px solid #e2e8f0;}
     .print-hint{font-size:10px;color:#bbb;text-align:center;padding:8px;}
-    @media print{body{background:#fff;}.page{border-color:#999;margin:0;}.print-hint{display:none;}}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{background:#fff;}.page{border-color:#999;margin:0;}.print-hint{display:none;}}
   </style></head><body>
   <div class="page">
     <div class="header">

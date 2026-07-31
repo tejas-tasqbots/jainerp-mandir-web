@@ -1156,7 +1156,14 @@ export function buildReceiptHtml(r: ReceiptData): string {
   .upi-qr img{width:120px;height:120px;}
   .upi-cap{font-size:10.5px;color:#6b7280;margin-top:4px;}
   .upi-id{font-family:monospace;color:#374151;}
+  /* Browsers drop background colours when printing unless asked not to, so the
+     coloured header band, the amount box and the badges came out plain white on
+     paper and in the downloaded PDF — same layout as the Settings preview, but
+     the wrong colours. Declared on * because each template paints its own
+     elements and any one of them would otherwise be stripped. */
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   @media print{
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .copy-sep{border-top:1px dashed #999;page-break-inside:avoid;}
     .receipt-copy{page-break-inside:avoid;}
   }

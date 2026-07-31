@@ -78,12 +78,15 @@ export function useChequeLifecycle(kind: ChequeKind, reload: () => void) {
     } catch (err) { apiError(err, t('cheques.bounceFailed')) } finally { setSaving(false) }
   }
 
-  /** Row actions for a cheque row — empty for cash/UPI rows and settled cheques. */
+  /** Row actions for a cheque row — empty for cash/UPI rows and dead cheques. */
   function chequeActions(row: ChequeRow): RowAction[] {
     if (row.payment_mode !== 'cheque') return []
     const status = row.cheque_status
-    // Terminal states: nothing left to do.
-    if (!status || status === 'cleared' || status === 'bounced') return []
+    // Only 'bounced' is terminal. A *cleared* cheque can still be returned by
+    // the bank days later, or was marked cleared prematurely at the counter —
+    // the API allows bouncing it, so the action has to stay reachable or the
+    // cashier is stuck with a receipt for money that never arrived.
+    if (!status || status === 'bounced') return []
 
     const out: RowAction[] = []
     // Donations arrive 'received' and must be deposited first; expenses are

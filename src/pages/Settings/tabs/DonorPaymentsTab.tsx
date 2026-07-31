@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, Landmark, QrCode, Award } from 'lucide-react'
 import { api } from '../../../lib/api'
+import { useSensitiveFields, LockedField, VerifiedBanner } from '../../../components/SensitiveFields'
 
 /**
  * Settings → Donor Payments — the bank/UPI details shown to devotees on the
@@ -20,6 +21,7 @@ export function DonorPaymentsTab() {
     bank_name: '',
   })
   const [reg80g, setReg80g] = useState<string | null>(null)
+  const sens = useSensitiveFields()
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -44,7 +46,7 @@ export function DonorPaymentsTab() {
     e.preventDefault()
     setSaving(true); setError('')
     try {
-      await api.patch('/tenants/me', {
+      const payload: Record<string, unknown> = {
         ...form,
         upi_id: form.upi_id.trim() || null,
         upi_qr_cdn_url: form.upi_qr_cdn_url.trim() || null,
@@ -52,7 +54,15 @@ export function DonorPaymentsTab() {
         bank_account_no: form.bank_account_no.trim() || null,
         bank_ifsc: form.bank_ifsc.trim().toUpperCase() || null,
         bank_name: form.bank_name.trim() || null,
-      })
+      }
+      // A verified mandir's locked fields are rejected outright by the API, and
+      // it rejects the whole payload — so sending an unchanged locked value
+      // alongside an edited free one (accept_donor_requests) would block the
+      // save entirely. Drop them; they only move via a change request.
+      for (const key of Object.keys(payload)) {
+        if (sens.isLocked(key)) delete payload[key]
+      }
+      await api.patch('/tenants/me', payload)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (e: unknown) {
@@ -96,20 +106,32 @@ export function DonorPaymentsTab() {
         </div>
       </div>
 
+      {sens.locked && <VerifiedBanner verifiedAt={sens.state?.verified_at ?? null} />}
+
       <div className="card">
         <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><QrCode size={15} /> {t('settings.donorPayments.upiHeading')}</h3></div>
         <div className="card-body space-y-4">
           <div>
-            <label className="form-label">{t('settings.donorPayments.upiId')}</label>
+            
+            {sens.isLocked('upi_id') ? (
+              <LockedField label={t('settings.donorPayments.upiId') as string} value={form.upi_id}
+                field="upi_id" pending={sens.pendingFor('upi_id')} onRequest={sens.openRequest} />
+            ) : (<><label className="form-label">{t('settings.donorPayments.upiId')}</label>
             <input type="text" className="form-input font-mono" placeholder="templename@sbi"
               value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} />
-            <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiIdHelp')}</p>
+            <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiIdHelp')}</p></>)}
+          
           </div>
           <div>
-            <label className="form-label">{t('settings.donorPayments.upiQrUrl')}</label>
-            <input type="url" className="form-input" placeholder="https://…/upi-qr.png"
-              value={form.upi_qr_cdn_url} onChange={e => setForm(f => ({ ...f, upi_qr_cdn_url: e.target.value }))} />
-            <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiQrUrlHelp')}</p>
+            {sens.isLocked('upi_qr_cdn_url') ? (
+              <LockedField label={t('settings.donorPayments.upiQrUrl') as string} value={form.upi_qr_cdn_url}
+                field="upi_qr_cdn_url" pending={sens.pendingFor('upi_qr_cdn_url')} onRequest={sens.openRequest} />
+            ) : (<>
+              <label className="form-label">{t('settings.donorPayments.upiQrUrl')}</label>
+              <input type="url" className="form-input" placeholder="https://…/upi-qr.png"
+                value={form.upi_qr_cdn_url} onChange={e => setForm(f => ({ ...f, upi_qr_cdn_url: e.target.value }))} />
+              <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiQrUrlHelp')}</p>
+            </>)}
             {form.upi_qr_cdn_url.trim() && (
               <img src={form.upi_qr_cdn_url.trim()} alt="UPI QR preview" className="mt-2 w-32 h-32 object-contain rounded-md border border-slate-200 bg-white" />
             )}
@@ -121,24 +143,44 @@ export function DonorPaymentsTab() {
         <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.donorPayments.bankHeading')}</h3></div>
         <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">{t('settings.donorPayments.accountHolderName')}</label>
+            
+            {sens.isLocked('bank_account_name') ? (
+              <LockedField label={t('settings.donorPayments.accountHolderName') as string} value={form.bank_account_name}
+                field="bank_account_name" pending={sens.pendingFor('bank_account_name')} onRequest={sens.openRequest} />
+            ) : (<><label className="form-label">{t('settings.donorPayments.accountHolderName')}</label>
             <input type="text" className="form-input" placeholder={t('settings.donorPayments.accountHolderPlaceholder') as string}
-              value={form.bank_account_name} onChange={e => setForm(f => ({ ...f, bank_account_name: e.target.value }))} />
+              value={form.bank_account_name} onChange={e => setForm(f => ({ ...f, bank_account_name: e.target.value }))} /></>)}
+          
           </div>
           <div>
-            <label className="form-label">{t('settings.donorPayments.accountNumber')}</label>
+            
+            {sens.isLocked('bank_account_no') ? (
+              <LockedField label={t('settings.donorPayments.accountNumber') as string} value={form.bank_account_no}
+                field="bank_account_no" pending={sens.pendingFor('bank_account_no')} onRequest={sens.openRequest} />
+            ) : (<><label className="form-label">{t('settings.donorPayments.accountNumber')}</label>
             <input type="text" className="form-input font-mono" maxLength={20}
-              value={form.bank_account_no} onChange={e => setForm(f => ({ ...f, bank_account_no: e.target.value.replace(/\D/g, '') }))} />
+              value={form.bank_account_no} onChange={e => setForm(f => ({ ...f, bank_account_no: e.target.value.replace(/\D/g, '') }))} /></>)}
+          
           </div>
           <div>
-            <label className="form-label">{t('settings.donorPayments.ifsc')}</label>
+            
+            {sens.isLocked('bank_ifsc') ? (
+              <LockedField label={t('settings.donorPayments.ifsc') as string} value={form.bank_ifsc}
+                field="bank_ifsc" pending={sens.pendingFor('bank_ifsc')} onRequest={sens.openRequest} />
+            ) : (<><label className="form-label">{t('settings.donorPayments.ifsc')}</label>
             <input type="text" className="form-input font-mono uppercase" maxLength={11} placeholder="SBIN0001234"
-              value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} />
+              value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} /></>)}
+          
           </div>
           <div>
-            <label className="form-label">{t('settings.donorPayments.bankName')}</label>
+            
+            {sens.isLocked('bank_name') ? (
+              <LockedField label={t('settings.donorPayments.bankName') as string} value={form.bank_name}
+                field="bank_name" pending={sens.pendingFor('bank_name')} onRequest={sens.openRequest} />
+            ) : (<><label className="form-label">{t('settings.donorPayments.bankName')}</label>
             <input type="text" className="form-input" placeholder="State Bank of India"
-              value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} />
+              value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></>)}
+          
           </div>
         </div>
       </div>
@@ -146,6 +188,7 @@ export function DonorPaymentsTab() {
       <button type="submit" disabled={saving} className="btn-primary">
         <Save size={15} /> {saving ? t('settings.saving') : t('settings.donorPayments.saveButton')}
       </button>
+      {sens.modal}
     </form>
   )
 }

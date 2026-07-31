@@ -11,6 +11,11 @@ const BASE_URL = (typeof window !== 'undefined' && (window as unknown as Record<
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  // Without this, axios waits forever. On the desktop edition the API host comes
+  // from the user's own server config, so an unreachable or mistyped host left
+  // every request hanging with no error — the app sat on its splash screen
+  // permanently with no way out. Fail instead, so callers can show something.
+  timeout: 30000,
 })
 
 api.interceptors.request.use(config => {

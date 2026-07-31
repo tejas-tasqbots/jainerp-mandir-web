@@ -2081,5 +2081,19 @@
     "cost": "Cost",
     "disposed": "Disposed",
     "searchPlaceholder": "Search asset or category"
+  },
+  "sensitive": {
+    "bannerVerified": "These details have been verified by the platform, so they can no longer be edited here. Raise a change request and we will review it.",
+    "requestChange": "Request change",
+    "pending": "Awaiting review",
+    "pendingDetail": "Requested: {{value}} — awaiting platform review",
+    "requestTitle": "Request a change",
+    "requestSubtitle": "The platform will check this against your documents before it takes effect. Nothing changes until it is approved.",
+    "newValue": "New value",
+    "reason": "Why is this changing?",
+    "reasonPlaceholder": "e.g. Trust moved to a new bank branch",
+    "sendRequest": "Send request",
+    "requestSent": "Request sent for review",
+    "requestFailed": "Could not send the request"
   }
 }

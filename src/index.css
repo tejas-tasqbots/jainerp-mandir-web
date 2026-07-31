@@ -145,6 +145,11 @@
   .no-print { display: none !important; }
   .print-only { display: block !important; }
 
+  /* Keep backgrounds on paper. Without this browsers strip every background
+     colour when printing, so status badges and header bands print as blank
+     white boxes and a printed report stops matching what is on screen. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
   /* Release the fixed-height / overflow shell so the full report flows onto pages. */
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
   .app-shell {
