@@ -143,7 +143,8 @@ async function run() {
     token: DEV,
     body: {
       tenant_slug: TENANT, amount_paise: 50000, category: 'general', payment_mode: 'upi',
-      donor_name: 'E2E Devotee', proof_image_base64: fakeProof(700),
+      // MAX_PROOF_CHARS in devotee-api is 1_500_000 — pad comfortably past it.
+      donor_name: 'E2E Devotee', proof_image_base64: fakeProof(1600),
     },
   });
   record('DR-05', 'P2', 'oversized proof screenshot rejected',

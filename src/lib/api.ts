@@ -47,6 +47,19 @@ api.interceptors.response.use(
         useAuthStore.getState().logout()
       }
     }
+    // The mandir was suspended / deactivated / deleted while this session was
+    // live. Every request now 403s, so end the session and carry the platform's
+    // message (which names who to contact) to the login screen.
+    if (err.response?.status === 403 && err.response?.data?.error?.code === 'TENANT_INACTIVE') {
+      try {
+        sessionStorage.setItem(
+          'jainerp_blocked_message',
+          err.response.data.error.message ??
+            'This mandir is not available. Please contact your temple admin or email contact@jainerp.org.',
+        )
+      } catch { /* private mode — the login screen still shows its default */ }
+      useAuthStore.getState().logout()
+    }
     return Promise.reject(err)
   }
 )

@@ -44,6 +44,7 @@ export function SettingsPage() {
     lat: null as number | null, lng: null as number | null,
   })
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
+  const [history, setHistory] = useState<BillingHistoryData | null>(null)
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
   const [payMsg, setPayMsg] = useState('')
@@ -60,8 +61,36 @@ export function SettingsPage() {
     invoices?: { id: string; invoice_number?: string; period_start?: string; period_end?: string; total_paise?: number; status?: string; paid_at?: string }[]
   }
   interface UsageData {
-    limits?: { max_users?: number; max_receipts_per_month?: number; max_sms_per_month?: number }
+    limits?: {
+      max_users?: number; max_receipts_per_month?: number; max_sms_per_month?: number
+      is_custom?: boolean; plan_display?: string
+    }
     current?: { users?: number; receipts_this_month?: number }
+  }
+  /** GET /tenants/me/billing-history — the mandir's full record with JainERP. */
+  interface BillingHistoryData {
+    plan_changes?: {
+      change_type: string; from_value: string; to_value: string
+      effective: string; effective_at?: string | null
+      proration_credit_paise?: number; invoice_number?: string | null
+      note?: string | null; created_at: string
+    }[]
+    invoices?: {
+      id: string; invoice_number?: string; period_start?: string; period_end?: string
+      total_paise?: number; status?: string; paid_at?: string
+      payment_method?: string | null; payment_ref?: string | null
+      plan_name?: string | null; billing_cycle?: string | null
+      download_count?: number; last_downloaded_at?: string | null
+    }[]
+    receipt_downloads?: {
+      id: string; invoice_number?: string; total_paise?: number
+      actor_type: string; actor_name?: string | null; channel: string; created_at: string
+    }[]
+    totals?: {
+      paid_paise: number; outstanding_paise: number
+      paid_count: number; unpaid_count: number
+      first_invoice_at?: string | null; last_paid_at?: string | null
+    }
   }
   interface PlanRow {
     id: string; name: string; display_name: string
@@ -109,14 +138,16 @@ export function SettingsPage() {
 
   async function loadSubscription() {
     try {
-      const [subResp, usageResp, plansResp] = await Promise.allSettled([
+      const [subResp, usageResp, plansResp, histResp] = await Promise.allSettled([
         api.get('/tenants/me/subscription'),
         api.get('/tenants/me/usage'),
         api.get('/tenants/me/plans'),
+        api.get('/tenants/me/billing-history'),
       ])
       if (subResp.status === 'fulfilled') setSubscription(subResp.value.data.data || subResp.value.data)
       if (usageResp.status === 'fulfilled') setUsage(usageResp.value.data.data || usageResp.value.data)
       if (plansResp.status === 'fulfilled') setPlans(plansResp.value.data.data || plansResp.value.data || [])
+      if (histResp.status === 'fulfilled') setHistory(histResp.value.data.data || histResp.value.data)
     } catch { /* ignore */ }
   }
 
@@ -136,13 +167,20 @@ export function SettingsPage() {
     }
   }
 
+  /** Payment-method + download counters live on the richer history payload. */
+  function invoiceDetail(invoiceId: string) {
+    return history?.invoices?.find(i => i.id === invoiceId)
+  }
+
   function openReceipt(invoiceId: string) {
     // Receipt is server-rendered HTML; open in a new tab so the user can
     // print / save as PDF. Pass the bearer token via a short-lived fetch→blob.
-    api.get(`/tenants/me/invoices/${invoiceId}/receipt`, { responseType: 'text' })
+    api.get(`/tenants/me/invoices/${invoiceId}/receipt?channel=download`, { responseType: 'text' })
       .then(({ data }) => {
         const w = window.open('', '_blank')
         if (w) { w.document.write(data); w.document.close() }
+        // The API logs the pull — refresh so the download counters are current.
+        loadSubscription()
       })
       .catch(() => setPayMsg(t('settings.subscription.couldNotLoadReceipt')))
   }
@@ -620,7 +658,7 @@ export function SettingsPage() {
               <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.subscription.billingHistoryHeading')}</h3></div>
               <div className="overflow-x-auto">
                 <table className="data-table">
-                  <thead><tr><th>{t('settings.subscription.invoiceCol')}</th><th>{t('settings.subscription.periodCol')}</th><th>{t('settings.subscription.amountCol')}</th><th>{t('settings.subscription.statusCol')}</th><th></th></tr></thead>
+                  <thead><tr><th>{t('settings.subscription.invoiceCol')}</th><th>{t('settings.subscription.periodCol')}</th><th>{t('settings.subscription.amountCol')}</th><th>{t('settings.subscription.statusCol')}</th><th>{t('settings.subscription.paidViaCol')}</th><th>{t('settings.subscription.downloadsCol')}</th><th></th></tr></thead>
                   <tbody>
                     {subscription.invoices.map(inv => (
                       <tr key={inv.id}>
@@ -628,6 +666,12 @@ export function SettingsPage() {
                         <td className="text-xs text-slate-500">{inv.period_start ? new Date(inv.period_start).toLocaleDateString('en-IN') : '—'} – {inv.period_end ? new Date(inv.period_end).toLocaleDateString('en-IN') : '—'}</td>
                         <td className="font-semibold">{inv.total_paise ? `₹${fmtPaise(inv.total_paise)}` : '—'}</td>
                         <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{inv.status}</span></td>
+                        <td className="text-xs text-slate-500">{invoiceDetail(inv.id)?.payment_method?.replace(/_/g, ' ') || '—'}</td>
+                        <td className="text-xs text-slate-500">
+                          {(invoiceDetail(inv.id)?.download_count ?? 0) > 0
+                            ? `${invoiceDetail(inv.id)!.download_count}×`
+                            : t('settings.subscription.neverDownloaded')}
+                        </td>
                         <td className="text-right">
                           {inv.status === 'paid' ? (
                             <button onClick={() => openReceipt(inv.id)} className="btn-secondary btn-sm">
@@ -651,6 +695,68 @@ export function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* ---- Plan upgrade / downgrade history ---- */}
+          <div className="card overflow-hidden" data-testid="upgrade-history">
+            <div className="card-header">
+              <h3 className="font-semibold text-sm">{t('settings.subscription.upgradeHistoryHeading')}</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead><tr>
+                  <th>{t('settings.subscription.whenCol')}</th>
+                  <th>{t('settings.subscription.changeCol')}</th>
+                  <th>{t('settings.subscription.fromToCol')}</th>
+                  <th>{t('settings.subscription.invoiceCol')}</th>
+                </tr></thead>
+                <tbody>
+                  {(history?.plan_changes ?? []).map((c, i) => (
+                    <tr key={i}>
+                      <td className="text-xs text-slate-500">{new Date(c.created_at).toLocaleDateString('en-IN')}</td>
+                      <td className="text-xs">{c.change_type.replace(/_/g, ' ')}</td>
+                      <td className="font-mono text-xs">{c.from_value} → {c.to_value}</td>
+                      <td className="font-mono text-xs">{c.invoice_number || '—'}</td>
+                    </tr>
+                  ))}
+                  {(history?.plan_changes ?? []).length === 0 && (
+                    <tr><td colSpan={4} className="text-xs text-slate-400">{t('settings.subscription.noUpgrades')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ---- Downloaded receipts history ---- */}
+          <div className="card overflow-hidden" data-testid="download-history">
+            <div className="card-header">
+              <h3 className="font-semibold text-sm">{t('settings.subscription.downloadHistoryHeading')}</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead><tr>
+                  <th>{t('settings.subscription.whenCol')}</th>
+                  <th>{t('settings.subscription.invoiceCol')}</th>
+                  <th>{t('settings.subscription.amountCol')}</th>
+                  <th>{t('settings.subscription.byCol')}</th>
+                  <th>{t('settings.subscription.howCol')}</th>
+                </tr></thead>
+                <tbody>
+                  {(history?.receipt_downloads ?? []).map(d => (
+                    <tr key={d.id}>
+                      <td className="text-xs text-slate-500">{new Date(d.created_at).toLocaleString('en-IN')}</td>
+                      <td className="font-mono text-xs">{d.invoice_number || '—'}</td>
+                      <td className="text-xs">{d.total_paise ? `₹${fmtPaise(d.total_paise)}` : '—'}</td>
+                      <td className="text-xs">{d.actor_type === 'super_admin' ? 'JainERP' : (d.actor_name || '—')}</td>
+                      <td className="text-xs">{d.channel}</td>
+                    </tr>
+                  ))}
+                  {(history?.receipt_downloads ?? []).length === 0 && (
+                    <tr><td colSpan={5} className="text-xs text-slate-400">{t('settings.subscription.noDownloads')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {/* Change Plan modal */}
           {showPlanModal && (
