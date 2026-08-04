@@ -26,6 +26,7 @@ function isTypingTarget(el: EventTarget | null): boolean {
 export function KeyboardShortcuts() {
   const navigate = useNavigate()
   const roles = useAuthStore(s => s.user?.roles)
+  const modules = useAuthStore(s => s.modules)
   const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
@@ -49,14 +50,14 @@ export function KeyboardShortcuts() {
         return
       }
       const route = ROUTE_KEYS[e.key]
-      if (route && canSee(route, roles)) {
+      if (route && canSee(route, roles, modules)) {
         e.preventDefault()
         navigate(route)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [navigate, roles, sheetOpen])
+  }, [navigate, roles, modules, sheetOpen])
 
   if (!sheetOpen) return null
   return <ShortcutsSheet onClose={() => setSheetOpen(false)} />

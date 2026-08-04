@@ -83,13 +83,18 @@ async function main() {
   // pick a room whose tariff is above the ₹1,000/night threshold so GST applies
   const room = (rooms.data || []).find((r) => Number(r.tariff_paise) > 100000);
   if (room) {
-    // Unique far-future dates so the room isn't already booked (avoids 409).
-    const base = new Date(Date.now() + (200 + Math.floor(Math.random() * 500)) * 86400000);
-    const ci = base.toISOString().slice(0, 10);
-    const co = new Date(base.getTime() + 86400000).toISOString().slice(0, 10);
     await withRate(token, 'Room (Taxable)', 7, 7, async () => {
       const tariff = Number(room.tariff_paise);
-      const bk = await http('POST', '/room-bookings', { token, body: { room_ids: [room.id], guest: { name: 'GST Room', mobile: '+919000000123' }, check_in_date: ci, check_out_date: co, payment_mode: 'cash' } });
+      // Far-future dates, retried on 409: earlier runs of this suite have booked
+      // this room on random days, so a single random pick collides eventually.
+      let bk = null;
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const base = new Date(Date.now() + (200 + Math.floor(Math.random() * 2000)) * 86400000);
+        const ci = base.toISOString().slice(0, 10);
+        const co = new Date(base.getTime() + 86400000).toISOString().slice(0, 10);
+        bk = await http('POST', '/room-bookings', { token, body: { room_ids: [room.id], guest: { name: 'GST Room', mobile: '+919000000123' }, check_in_date: ci, check_out_date: co, payment_mode: 'cash' } });
+        if (bk.status !== 409) break;
+      }
       // 1-night booking: total = tariff + GST. The response exposes total_paise.
       const total = Number(bk.data?.total_paise);
       const pct = total && tariff ? Math.round(((total - tariff) / tariff) * 100) : -1;

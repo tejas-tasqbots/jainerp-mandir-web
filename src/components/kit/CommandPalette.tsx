@@ -25,7 +25,7 @@ const SCREENS: ScreenTarget[] = [
   { route: '/seva', labelKey: 'nav.seva' },
   { route: '/annadaan', labelKey: 'nav.bhojanshala' },
   { route: '/events', labelKey: 'nav.events' },
-  { route: '/maharaj', labelKey: 'nav.maharaj' },
+  { route: '/sant', labelKey: 'nav.sant' },
   { route: '/devotees', labelKey: 'nav.connectedDevotees' },
   { route: '/donors', labelKey: 'nav.donors' },
   { route: '/creditors', labelKey: 'nav.creditors' },
@@ -71,6 +71,7 @@ export function CommandPalette() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const roles = useAuthStore(s => s.user?.roles)
+  const modules = useAuthStore(s => s.modules)
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -127,7 +128,7 @@ export function CommandPalette() {
   const screenRows: Row[] = useMemo(() => {
     const q = query.trim().toLowerCase()
     return SCREENS
-      .filter(s => canSee(s.route, roles))
+      .filter(s => canSee(s.route, roles, modules))
       .map(s => ({ ...s, label: t(s.labelKey) }))
       .filter(s => !q || s.label.toLowerCase().includes(q))
       .slice(0, q ? 6 : 8)
@@ -137,7 +138,7 @@ export function CommandPalette() {
         icon: <ArrowRight size={15} className="text-slate-400" />,
         title: s.label,
       }))
-  }, [query, roles, t])
+  }, [query, roles, modules, t])
 
   // Flatten screens + entity groups into one keyboard-navigable list.
   const sections = useMemo(() => {

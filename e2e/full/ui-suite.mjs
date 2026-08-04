@@ -36,7 +36,11 @@ page.on('requestfailed', (r) => failedRequests.push(`${r.method()} ${r.url()}`))
 page.on('response', (r) => { if (r.url().includes('/api/v1/') && r.status() >= 500) failedRequests.push(`${r.status()} ${r.url()}`); });
 
 /** Visit a route, fail if an error boundary / blank screen / 5xx shows. */
-async function visit(id, route, expectText) {
+/**
+ * @param expectPath where navigation must end up. Defaults to `route`; pass it
+ *   explicitly for routes that redirect on purpose (e.g. /boli -> /donations).
+ */
+async function visit(id, route, expectText, expectPath = route) {
   consoleErrors = []; failedRequests = [];
   try {
     await page.goto(`${WEB}${route}`, { waitUntil: 'networkidle' });
@@ -44,11 +48,17 @@ async function visit(id, route, expectText) {
     const body = await page.textContent('body');
     const crashed = /Something went wrong|Error boundary|Cannot read|Unexpected Application Error|TypeError/i.test(body ?? '');
     const has = expectText ? new RegExp(expectText, 'i').test(body ?? '') : true;
-    const ok = !crashed && has && failedRequests.filter((f) => f.startsWith('5')).length === 0;
+    // App.tsx has a `path="*" -> /dashboard` catch-all, so a route that does not
+    // exist still renders fine. Without this check a typo'd/dead route passes.
+    const landed = new URL(page.url()).pathname === expectPath;
+    const ok = !crashed && has && landed && failedRequests.filter((f) => f.startsWith('5')).length === 0;
     const slug = id.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     await page.screenshot({ path: `${SHOTS}${slug}.png` });
     record(id, `page ${route} renders`, ok,
-      crashed ? 'error boundary' : !has ? `missing "${expectText}"` : failedRequests.length ? `5xx: ${failedRequests[0]}` : 'ok');
+      crashed ? 'error boundary'
+        : !landed ? `dead route — redirected to ${new URL(page.url()).pathname}`
+        : !has ? `missing "${expectText}"`
+        : failedRequests.length ? `5xx: ${failedRequests[0]}` : 'ok');
   } catch (e) {
     record(id, `page ${route} renders`, false, String(e).slice(0, 80));
   }
@@ -82,7 +92,8 @@ try {
   await visit('TC-DON-list', '/donations', 'Donation');
   await visit('TC-DON-add', '/donations/add', 'Donation');
   await visit('TC-DNR-list', '/donors', 'Donor');
-  await visit('TC-BOLI-list', '/boli', 'Boli');
+  // /boli is a deliberate redirect — the boli list is now a tab on /donations.
+  await visit('TC-BOLI-list', '/boli', 'Boli', '/donations');
   await visit('TC-BOLI-add', '/boli/add', 'Boli');
   await visit('TC-EXP-list', '/expenses', 'Expense');
   await visit('TC-EXP-add', '/expenses/add', 'Expense');
@@ -98,7 +109,7 @@ try {
   await visit('TC-DEVT-connected', '/devotees', 'Devotee');
   // Accounting suite
   await visit('TC-ACCT-daybook', '/accounts/day-book', '');
-  await visit('TC-ACCT-cashbook', '/accounts/cash-book', '');
+  await visit('TC-ACCT-cashbook', '/accounts/cash-bank', '');
   await visit('TC-ACCT-ledger', '/accounts/ledger', '');
   await visit('TC-ACCT-tb', '/accounts/trial-balance', '');
   await visit('TC-ACCT-ie', '/accounts/income-expenditure', '');

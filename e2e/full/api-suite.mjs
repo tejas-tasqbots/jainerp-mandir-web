@@ -1,6 +1,6 @@
 /**
  * Functional API E2E suite for the Mandir Admin portal.
- * Drives the live mandiradmin-api (:3106) against the smoke-portal tenant using
+ * Drives the live mandir-api (:3106) against the smoke-portal tenant using
  * the OTP_MOCK login bypass. Covers the API-type test cases in Test_Cases.md.
  *
  *   node e2e/full/api-suite.mjs

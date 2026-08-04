@@ -8,7 +8,7 @@ import { StateSelect, CitySelect } from '../../components/GeoSelect'
 interface Maharaj { id: string; name: string; type: string; samuday?: string; city?: string; state?: string; current_city?: string; photo_url?: string; note?: string; maharaj_id?: string }
 interface Proposal { id: string; maharaj_name: string; place: string; city?: string; status: string; created_at: string; decision_note?: string }
 
-export function MaharajPage() {
+export function SantPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'linked' | 'directory' | 'proposals'>('linked')
   const [linked, setLinked] = useState<Maharaj[]>([])
@@ -21,17 +21,17 @@ export function MaharajPage() {
   useEffect(() => { loadLinked(); loadProposals() }, [])
   useEffect(() => { if (tab === 'directory') searchDirectory() }, [tab])
 
-  async function loadLinked() { try { const { data } = await api.get('/maharaj/linked'); setLinked(data.data ?? data ?? []) } catch { /* */ } }
-  async function loadProposals() { try { const { data } = await api.get('/maharaj/proposals'); setProposals(data.data ?? data ?? []) } catch { /* */ } }
+  async function loadLinked() { try { const { data } = await api.get('/sant/linked'); setLinked(data.data ?? data ?? []) } catch { /* */ } }
+  async function loadProposals() { try { const { data } = await api.get('/sant/proposals'); setProposals(data.data ?? data ?? []) } catch { /* */ } }
   async function searchDirectory() {
-    try { const { data } = await api.get('/maharaj/directory', { params: { q } }); setDirectory((data.data?.rows ?? data.data ?? data.rows ?? [])) } catch { /* */ }
+    try { const { data } = await api.get('/sant/directory', { params: { q } }); setDirectory((data.data?.rows ?? data.data ?? data.rows ?? [])) } catch { /* */ }
   }
 
   async function link(m: Maharaj, note?: string) {
-    try { await api.post('/maharaj/link', { maharaj_id: m.id, note }); setMsg(t('maharaj.linkedMsg', { name: m.name })); await loadLinked() } catch { setMsg(t('maharaj.linkFailedMsg')) }
+    try { await api.post('/sant/link', { maharaj_id: m.id, note }); setMsg(t('maharaj.linkedMsg', { name: m.name })); await loadLinked() } catch { setMsg(t('maharaj.linkFailedMsg')) }
   }
   async function unlink(linkId: string) {
-    try { await api.delete(`/maharaj/linked/${linkId}`); await loadLinked() } catch { /* */ }
+    try { await api.delete(`/sant/linked/${linkId}`); await loadLinked() } catch { /* */ }
   }
 
   return (
@@ -148,7 +148,7 @@ function ProposeModal({ maharaj, onClose, onDone }: {
     if (!f.place.trim()) { setErr(t('maharaj.placeRequired')); return }
     setSaving(true); setErr('')
     try {
-      await api.post(`/maharaj/${maharaj.id}/propose-location`, f)
+      await api.post(`/sant/${maharaj.id}/propose-location`, f)
       onDone()
     } catch (e: any) { setErr(e?.response?.data?.error?.message || 'Failed to propose') }
     finally { setSaving(false) }

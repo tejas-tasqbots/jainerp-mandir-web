@@ -66,8 +66,20 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   async function load() {
     setLoading(true)
     try {
-      const { data } = await api.get(`/${resource}`, { params: listParams })
-      setRows(data.data || data || [])
+      // These lists have no pagination UI, so every page has to be pulled in.
+      // The resource API defaults to 50 rows and caps `limit` at 200 — without
+      // this loop a master with more entries silently loses the tail, and a
+      // newly added row past the cut-off is invisible (and so un-editable).
+      const PAGE = 200
+      const all: Row[] = []
+      for (let page = 1; ; page++) {
+        const { data } = await api.get(`/${resource}`, { params: { ...listParams, page, limit: PAGE } })
+        const batch: Row[] = data.data || data || []
+        all.push(...batch)
+        const total = Number(data.meta?.total ?? all.length)
+        if (batch.length < PAGE || all.length >= total) break
+      }
+      setRows(all)
     } catch {
       setError(t('settings.masters.loadFailed'))
     } finally {

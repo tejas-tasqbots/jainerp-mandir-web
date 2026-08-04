@@ -3,7 +3,7 @@ import {
   LayoutDashboard, IndianRupee, Receipt, Hotel, ShoppingBag,
   Heart, Utensils, Calendar, BarChart2, Award, BookMarked, Settings,
   ChevronDown, ChevronRight, Bell, HelpCircle, Users, Landmark,
-  UserCheck, Sparkles, Inbox
+  UserCheck, Sparkles, Inbox, Beef
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,8 +35,9 @@ const navItems: NavItem[] = [
   { labelKey: 'nav.prasad', icon: <ShoppingBag size={18} />, to: '/prasad' },
   { labelKey: 'nav.seva', icon: <Heart size={18} />, to: '/seva' },
   { labelKey: 'nav.bhojanshala', icon: <Utensils size={18} />, to: '/annadaan' },
+  { labelKey: 'nav.gaushala', icon: <Beef size={18} />, to: '/gaushala' },
   { labelKey: 'nav.events', icon: <Calendar size={18} />, to: '/events' },
-  { labelKey: 'nav.maharaj', icon: <Sparkles size={18} />, to: '/maharaj' },
+  { labelKey: 'nav.sant', icon: <Sparkles size={18} />, to: '/sant' },
   {
     labelKey: 'nav.people', icon: <Users size={18} />,
     children: [
@@ -156,6 +157,7 @@ export function Sidebar() {
   const { t } = useTranslation()
   const { profile } = useProfileStore()
   const roles = useAuthStore(s => s.user?.roles)
+  const modules = useAuthStore(s => s.modules)
   const pendingRequests = usePendingRequestCount()
 
   // Hide modules the logged-in role can't work in (doc M1). The server
@@ -163,10 +165,10 @@ export function Sidebar() {
   const visibleItems = navItems
     .map(item => {
       if (item.children) {
-        const children = item.children.filter(c => canSee(c.to, roles))
+        const children = item.children.filter(c => canSee(c.to, roles, modules))
         return children.length ? { ...item, children } : null
       }
-      return canSee(item.to!, roles) ? item : null
+      return canSee(item.to!, roles, modules) ? item : null
     })
     .filter((i): i is NavItem => i !== null)
 

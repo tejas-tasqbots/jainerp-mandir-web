@@ -1,10 +1,15 @@
 /**
- * Role → visible-module map for the sidebar (doc M1: "UI hides modules the
- * role can't access; server still enforces"). temple_admin always sees
- * everything. Keys are route prefixes; the longest matching prefix wins.
+ * What a user can see in the nav, from two independent questions:
+ *
+ *   ROLES   — may this person do it?      (MODULE_ROLES, below)
+ *   MODULES — did this trust buy it?      (PATH_MODULE, below)
+ *
+ * temple_admin passes every role gate but NOT the module gate: a module is an
+ * entitlement, not a privilege, and a temple_admin at a Gaushala-only trust has
+ * no rooms screen to be an admin of.
  *
  * This is a UI-decluttering layer only — every API endpoint keeps its own
- * @Roles() guard server-side.
+ * @Roles() / @RequiresModule() guard server-side (migration 031).
  */
 
 export type Role =
@@ -29,8 +34,9 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/prasad': ['cashier'],
   '/seva': ['cashier', 'priest'],
   '/annadaan': ['cashier', 'bhojanshala_cashier'],
+  '/gaushala': ['cashier', 'volunteer', 'viewer'],
   '/events': ['cashier', 'accountant', 'priest', 'volunteer', 'viewer'],
-  '/maharaj': ['cashier', 'viewer'],
+  '/sant': ['cashier', 'viewer'],
   '/devotees': ['cashier', 'accountant'],
   '/donors': ['cashier', 'accountant'],
   '/creditors': ['accountant', 'cashier'],
@@ -55,6 +61,36 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/help': ALL_STAFF,
 }
 
+/**
+ * Route prefix → the optional module that owns it (migration 031). Longest
+ * matching prefix wins, exactly like MODULE_ROLES.
+ *
+ * Anything absent belongs to a core module — dashboard, donations, donors,
+ * expenses, accounting, reports, registers, masters, settings, users — which
+ * every trust has and which therefore must never be hidden.
+ */
+const PATH_MODULE: Record<string, string> = {
+  '/rooms': 'dharamshala',
+  '/hall': 'dharamshala',
+  '/prasad': 'prasad',
+  '/seva': 'seva',
+  '/annadaan': 'bhojanshala', // this route IS the Bhojanshala counter (AnnadaanList)
+  '/events': 'events',
+  '/sant': 'sant',
+  '/creditors': 'creditors',
+  '/certificates': 'certificates',
+  '/gaushala': 'gaushala',
+  '/masters/priests': 'seva',
+}
+
+/** The module owning `path`, or null when it is core (always visible). */
+export function moduleForPath(path: string): string | null {
+  const key = Object.keys(PATH_MODULE)
+    .filter(k => path === k || path.startsWith(k + '/') || path.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0]
+  return key ? PATH_MODULE[key] : null
+}
+
 /** Per-tab roles inside the merged Donations hub (donations / requests / pledges). */
 export const DONATIONS_TAB_ROLES: Record<'donations' | 'requests' | 'pledges', Role[]> = {
   donations: ['cashier', 'accountant', 'viewer'],
@@ -62,8 +98,24 @@ export const DONATIONS_TAB_ROLES: Record<'donations' | 'requests' | 'pledges', R
   pledges: ['cashier', 'accountant'],
 }
 
-/** Can a user with these roles see the module at `path`? */
-export function canSee(path: string, roles: string[] | undefined | null): boolean {
+/**
+ * Can this user, at this trust, see `path`?
+ *
+ * `modules` is the trust's entitlement list; pass `null`/`undefined` when it is
+ * not known yet (first paint, or a desktop launch before the profile loads) and
+ * everything stays visible. Blanking the nav on a guess is far worse than
+ * briefly showing a link the server would refuse.
+ */
+export function canSee(
+  path: string,
+  roles: string[] | undefined | null,
+  modules?: string[] | null,
+): boolean {
+  // The module gate runs FIRST and applies to temple_admin too — an entitlement
+  // is not a permission, so there is nobody it can be waived for.
+  const needed = moduleForPath(path)
+  if (needed && modules && !modules.includes(needed)) return false
+
   const r = roles ?? []
   if (r.includes('temple_admin')) return true
   // Sessions from before roles were stored have an empty list — don't blank

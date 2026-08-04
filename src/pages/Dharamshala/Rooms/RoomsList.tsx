@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Plus, Trash2, X } from 'lucide-react'
+import { FileText, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
+import { printDonationReceipt } from '../../../lib/printReceipt'
 import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
@@ -161,6 +162,19 @@ export function RoomsList() {
               title={t('dharamshala.viewBill')} aria-label={t('dharamshala.viewBill')}
             >
               <FileText size={14} />
+            </button>
+          )}
+          {/* The guest-facing document, as opposed to the bill above: it carries
+              the gapless ROOM/FY number and the GST split, and renders through
+              the same client-side templates every other receipt uses. */}
+          {b.status === 'checked_out' && b.invoice_no && (
+            <button
+              onClick={() => printDonationReceipt(b.id, '/room-bookings').catch(() => {})}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('common.printReceipt', { defaultValue: 'Print receipt' })}
+              aria-label={t('common.printReceipt', { defaultValue: 'Print receipt' })}
+            >
+              <Receipt size={14} />
             </button>
           )}
           {(b.status === 'confirmed' || b.status === 'booked') && (

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
+import { Plus, Receipt } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
+import { printDonationReceipt } from '../../../lib/printReceipt'
 import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
@@ -73,6 +74,21 @@ export function HallBookingsList() {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
       render: b => statusBadge(b.status),
+    },
+    {
+      key: 'receipt', label: '', align: 'right',
+      // Only once a number has been issued — before that there is nothing to
+      // print, and offering the button would produce a blank document.
+      render: b => b.invoice_no ? (
+        <button
+          onClick={e => { e.stopPropagation(); printDonationReceipt(b.id, '/hall-bookings').catch(() => {}) }}
+          className="p-1 text-slate-400 hover:text-navy-700 rounded"
+          title={t('common.printReceipt', { defaultValue: 'Print receipt' })}
+          aria-label={t('common.printReceipt', { defaultValue: 'Print receipt' })}
+        >
+          <Receipt size={14} />
+        </button>
+      ) : null,
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t])

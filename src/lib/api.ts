@@ -100,3 +100,22 @@ export function fyOptions({ back = 6, forward = 1, ensure }: { back?: number; fo
   }
   return years
 }
+
+/**
+ * `ac_double` → `AC double`.
+ *
+ * `rooms.room_type` is free text holding whatever staff typed, so it reaches
+ * the screen raw — a bare `capitalize` renders "Ac_double", underscore and all.
+ * Only the ac/non-ac fragments are special-cased; the rest stays in the
+ * temple's own words. Mirrors the same helper in devotee-web and
+ * devotee-mobile — change one, port to the others.
+ */
+export function roomTypeLabel(raw: string | null | undefined): string {
+  if (!raw) return ''
+  return raw
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map(w => (w.toLowerCase() === 'ac' ? 'AC' : /^non-?ac$/i.test(w) ? 'non-AC' : w.toLowerCase()))
+    .join(' ')
+}

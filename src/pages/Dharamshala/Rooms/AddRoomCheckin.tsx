@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
-import { api, parsePaise } from '../../../lib/api'
+import { api, fmtPaise, parsePaise, roomTypeLabel } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import type { Room, DevoteeSelection } from '../../../types'
 
@@ -88,7 +88,7 @@ export function AddRoomCheckin() {
               <option value="">{t('dharamshala.selectAvailableRoom')}</option>
               {rooms.map(r => (
                 <option key={r.id} value={r.id}>
-                  {r.room_number} — {r.room_type} ({r.capacity} persons) — ₹{(r.tariff_per_night_paise/100).toLocaleString('en-IN')}/night
+                  {r.room_number} — {roomTypeLabel(r.room_type)} (sleeps {r.capacity_persons}) — ₹{fmtPaise(r.tariff_paise)}/night
                 </option>
               ))}
             </select>
@@ -115,7 +115,10 @@ export function AddRoomCheckin() {
             </div>
             <div>
               <label className="form-label">{t('dharamshala.personsLabel')}</label>
-              <input type="number" min="1" max={selectedRoom?.capacity || 10} className="form-input"
+              {/* The room's real capacity. The old fallback of 10 applied to
+                  every room because `capacity` was never sent, so a clerk could
+                  book ten guests into a two-person room. */}
+              <input type="number" min="1" max={selectedRoom?.capacity_persons ?? 20} className="form-input"
                 value={form.persons_count} onChange={e => setForm(f => ({ ...f, persons_count: e.target.value }))} />
             </div>
           </div>
@@ -142,8 +145,10 @@ export function AddRoomCheckin() {
               <p className="text-blue-600 mt-1">
                 {t('dharamshala.nightsSummary', {
                   nights: Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)),
-                  tariff: (selectedRoom.tariff_per_night_paise/100).toLocaleString('en-IN'),
-                  total: ((Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)) * selectedRoom.tariff_per_night_paise) / 100).toLocaleString('en-IN'),
+                  tariff: fmtPaise(selectedRoom.tariff_paise),
+                  total: fmtPaise(
+                    Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)) * selectedRoom.tariff_paise,
+                  ),
                 })}
               </p>
             </div>

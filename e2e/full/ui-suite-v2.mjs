@@ -108,9 +108,13 @@ try {
     const btn = page.locator('button[title="Print Receipt"]').first();
     if (await btn.count()) { await btn.click(); await page.waitForTimeout(1500); for (const f of page.frames()) { try { const t = await f.content(); if (/Received|Receipt No|RECEIVED FROM/i.test(t)) { receiptHtml = t; break; } } catch { /* */ } } }
   }
-  const maskedInReceipt = /[A-Z]{2}X{3,}[0-9A-Z]{2,}/.exec(receiptHtml ?? '');
   rec('UIV2-RCPT-1', 'receipt rendered in DOM', !!receiptHtml, receiptHtml ? `${receiptHtml.length} chars` : 'not found');
-  rec('UIV2-RCPT-2', 'masked donor PAN appears on printed receipt', !!maskedInReceipt && !(receiptHtml ?? '').includes(donorPan), maskedInReceipt?.[0] ?? 'no mask');
+  // An 80G receipt prints the donor's FULL PAN on purpose — income-tax rules
+  // require it there (it reconciles to Form 10BD/10BE). Masking is the rule
+  // everywhere else, which UIV2-PICK-4 and UIV2-DNR-1 cover.
+  rec('UIV2-RCPT-2', '80G receipt prints the donor FULL PAN (not masked)',
+    (receiptHtml ?? '').includes(donorPan),
+    (receiptHtml ?? '').includes(donorPan) ? donorPan : 'full PAN absent from 80G receipt');
   await shot('03-after-receipt');
 
   // ── 6. Anonymous / Gupt Daan quick-path selects and blocks 80G ───────────────
@@ -120,7 +124,10 @@ try {
   rec('UIV2-ANON-1', 'anonymous / Gupt Daan option present', (await anonBtn.count()) > 0);
   if (await anonBtn.count()) {
     await anonBtn.click(); await page.waitForTimeout(400);
-    const anonChip = await page.locator('.bg-slate-100').first().textContent().catch(() => '');
+    // Scope to the picker's own chip — `.bg-slate-100` alone also matches the
+    // command-palette "Ctrl K" hint in the header.
+    const anonChip = await page.locator('div.bg-slate-100', { hasText: 'Anonymous / Gupt Daan' })
+      .first().textContent().catch(() => '');
     rec('UIV2-ANON-2', 'anonymous chip shows "not 80G eligible"', /not 80G/i.test(anonChip ?? ''), anonChip?.slice(0, 50));
   }
 

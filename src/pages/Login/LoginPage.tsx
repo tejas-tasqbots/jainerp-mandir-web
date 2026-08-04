@@ -35,7 +35,7 @@ export function LoginPage() {
   const [resending, setResending] = useState(false)
   const [resentNote, setResentNote] = useState('')
 
-  const { setTokens, setUser, setLanguage, deviceId } = useAuthStore()
+  const { setTokens, setUser, setLanguage, setModules, deviceId } = useAuthStore()
   const { fetchProfile } = useProfileStore()
 
   // A session killed mid-flight because the mandir was suspended/deactivated
@@ -149,6 +149,10 @@ export function LoginPage() {
       { id: result.tenant?.id ?? '', slug: result.tenant?.slug ?? slug, name: result.tenant?.name ?? slug },
     )
     if (result.language) setLanguage(result.language)
+    // select-tenant already carries the entitlements, so the first paint after
+    // login has the right sidebar rather than briefly showing modules this
+    // trust does not have and then removing them.
+    if (Array.isArray(result.effective_modules)) setModules(result.effective_modules)
     await hydrateSession()
   }
 

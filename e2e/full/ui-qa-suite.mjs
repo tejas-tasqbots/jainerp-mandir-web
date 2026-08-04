@@ -70,81 +70,125 @@ async function expectDownload(id, clicker, { minBytes = 40 } = {}) {
   }
 }
 
-/** Go to an Accounts statement page and exercise its CSV + PDF + Print buttons. */
-async function accountsExports(idBase, route) {
+// Export controls are icon-only buttons; their accessible name is the title.
+const EXCEL_BTN = 'button[title="Download Excel"]';
+const PDF_BTN = 'button[title="Download PDF"]';
+const NOTHING_TO_EXPORT = 'Nothing to export for the current filters';
+const EXPORT_FAILED = 'Could not export. Please try again.';
+
+/**
+ * Click an export button and accept either outcome the app can legitimately
+ * produce: a real file, or the "nothing to export" toast when the current
+ * filters match no rows. A missing button, an export error, a crash or an
+ * empty file all fail.
+ *
+ * The outcomes are raced rather than checked in sequence: several exports
+ * re-fetch their rows first, and the toast auto-dismisses — polling the body
+ * after a download timeout misses it and reports a false failure.
+ */
+async function clickExport(id, btn, { minBytes = 40 } = {}) {
+  pageErrors = [];
+  const T = 15000;
+  const dlPromise = page.waitForEvent('download', { timeout: T })
+    .then((d) => ({ kind: 'download', d })).catch(() => null);
+  const emptyPromise = page.getByText(NOTHING_TO_EXPORT).first().waitFor({ state: 'visible', timeout: T })
+    .then(() => ({ kind: 'empty' })).catch(() => null);
+  const failPromise = page.getByText(EXPORT_FAILED).first().waitFor({ state: 'visible', timeout: T })
+    .then(() => ({ kind: 'failed' })).catch(() => null);
+
+  await btn.click();
+  const outcome = await Promise.race([dlPromise, emptyPromise, failPromise]);
+
+  if (!outcome) { record(id, false, 'no download, no toast — export did nothing'); return; }
+  if (outcome.kind === 'failed') { record(id, false, 'export failed toast'); return; }
+  if (outcome.kind === 'empty') {
+    record(id, pageErrors.length === 0, pageErrors[0] || 'no rows — "nothing to export"');
+    return;
+  }
+  const name = outcome.d.suggestedFilename();
+  const dest = `${DL}${id}-${name}`;
+  await outcome.d.saveAs(dest);
+  const sz = existsSync(dest) ? statSync(dest).size : 0;
+  record(id, sz >= minBytes && pageErrors.length === 0, sz < minBytes ? `file ${sz}B` : pageErrors[0] || `${name} ${sz}B`);
+}
+
+/**
+ * Go to an Accounts page and exercise its export toolbar.
+ * Every accounts page offers Excel; the statement pages also offer PDF.
+ */
+async function accountsExports(idBase, route, { pdf = false } = {}) {
   await page.goto(`${WEB}${route}`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
-  // CSV
-  const csvBtn = page.locator('button:has-text("Export CSV")').first();
-  if (await csvBtn.count()) {
-    await expectDownload(`${idBase}-csv`, () => csvBtn.click(), { minBytes: 20 });
-  } else {
-    record(`${idBase}-csv`, false, 'no Export CSV button');
-  }
-  // PDF
-  const pdfBtn = page.locator('button:has-text("Download PDF")').first();
-  if (await pdfBtn.count()) {
-    await expectDownload(`${idBase}-pdf`, () => pdfBtn.click(), { minBytes: 400 });
-  } else {
-    record(`${idBase}-pdf`, false, 'no Download PDF button');
-  }
+  record(`${idBase}-route`, new URL(page.url()).pathname === route, `landed on ${new URL(page.url()).pathname}`);
+
+  const excelBtn = page.locator(EXCEL_BTN).first();
+  if (await excelBtn.count()) await clickExport(`${idBase}-excel`, excelBtn, { minBytes: 20 });
+  else record(`${idBase}-excel`, false, 'no Download Excel button');
+
+  if (!pdf) return;
+  const pdfBtn = page.locator(PDF_BTN).first();
+  if (await pdfBtn.count()) await clickExport(`${idBase}-pdf`, pdfBtn, { minBytes: 400 });
+  else record(`${idBase}-pdf`, false, 'no Download PDF button');
 }
 
 try {
   await login(MOBILE);
   record('login', true);
 
-  // ============ 1. ACCOUNTS EXPORTS (real CSV + PDF downloads) ============
-  await accountsExports('acct-cashbook', '/accounts/cash-book');
-  await accountsExports('acct-bankbook', '/accounts/bank-book');
-  await accountsExports('acct-daybook', '/accounts/day-book');
-  await accountsExports('acct-trialbalance', '/accounts/trial-balance');
-  await accountsExports('acct-receipts-payments', '/accounts/receipts-payments');
-  await accountsExports('acct-income-expenditure', '/accounts/income-expenditure');
-  await accountsExports('acct-balance-sheet', '/accounts/balance-sheet');
+  // ============ 1. ACCOUNTS EXPORTS (real Excel + PDF downloads) ============
+  // /accounts/cash-bank is one page covering cash AND bank — there is no
+  // separate cash-book / bank-book route.
+  await accountsExports('acct-cash-bank', '/accounts/cash-bank');
+  await accountsExports('acct-daybook', '/accounts/day-book', { pdf: true });
+  await accountsExports('acct-trialbalance', '/accounts/trial-balance', { pdf: true });
+  await accountsExports('acct-receipts-payments', '/accounts/receipts-payments', { pdf: true });
+  await accountsExports('acct-income-expenditure', '/accounts/income-expenditure', { pdf: true });
+  await accountsExports('acct-balance-sheet', '/accounts/balance-sheet', { pdf: true });
+  await accountsExports('acct-contra', '/accounts/contra');
+  await accountsExports('acct-fixed-assets', '/accounts/fixed-assets');
+  await accountsExports('acct-loans', '/accounts/loans');
+  await accountsExports('acct-cheques', '/accounts/cheques');
 
-  // Ledger needs an account selected before its export buttons appear
+  // Ledger needs an account selected before it has anything to export
   await page.goto(`${WEB}/accounts/ledger`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);
   const acctSel = page.locator('select').first();
   if (await acctSel.count()) {
     const opts = await acctSel.locator('option').count();
-    if (opts > 1) { await acctSel.selectOption({ index: 1 }); await page.waitForTimeout(800); }
+    if (opts > 1) { await acctSel.selectOption({ index: 1 }); await page.waitForTimeout(1000); }
   }
-  const ledgerCsv = page.locator('button:has-text("Export CSV")').first();
-  if (await ledgerCsv.count()) await expectDownload('acct-ledger-csv', () => ledgerCsv.click(), { minBytes: 20 });
-  else record('acct-ledger-csv', true, 'no export (empty ledger) — acceptable');
+  const ledgerExcel = page.locator(EXCEL_BTN).first();
+  if (await ledgerExcel.count()) await clickExport('acct-ledger-excel', ledgerExcel, { minBytes: 20 });
+  else record('acct-ledger-excel', false, 'no Download Excel button');
 
-  // ============ 2. REPORTS EXPORTS (CSV + PDF per report) ============
+  // ============ 2. REPORTS EXPORTS (every report in the rail) ============
+  // /reports is a rail + the selected report; each report renders its own
+  // DataTable toolbar with a Download Excel button.
+  const reportLabels = [
+    'Daily Collection', 'Collection Summary', 'All Transactions', 'Donation Register',
+    'Expense Register', 'Pledge Register', 'Creditor Aging', 'Service registers',
+    'Donation by Category', 'Expense by Category', 'Donation Trends', 'Year-over-Year',
+    'Top Donors', 'Cash Flow', 'Event-wise Collection', 'GST Summary',
+    'Depreciation Schedule', 'Loan Schedule',
+  ];
   await page.goto(`${WEB}/reports`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  const reportLabels = ['Daily Collection', 'Donation Register', 'Expense Register', 'Boli Register', 'Donation Trends', 'Top Donors', 'GST Summary'];
   for (const label of reportLabels) {
-    for (const fmt of ['CSV', 'PDF']) {
-      const slug = `${label.toLowerCase().replace(/\s+/g, '-')}-${fmt.toLowerCase()}`;
-      const btn = page.locator(`button[title="Download ${label} as ${fmt}"]`).first();
-      if (await btn.count()) {
-        // some reports may alert "No data" instead of downloading; treat that as pass-with-note.
-        // waitForEvent throws on timeout, so catch it and treat as "no download".
-        const dlPromise = page.waitForEvent('download', { timeout: 8000 }).catch(() => null);
-        await btn.click();
-        const dl = await dlPromise;
-        if (dl) {
-          const dest = `${DL}rpt-${slug}-${dl.suggestedFilename()}`;
-          await dl.saveAs(dest);
-          const sz = existsSync(dest) ? statSync(dest).size : 0;
-          record(`rpt-${slug}`, sz > 10, `${dl.suggestedFilename()} ${sz}B`);
-          // GST Summary CSV must be a real .csv now (not .json) — the fix
-          if (label === 'GST Summary' && fmt === 'CSV') {
-            record('rpt-gst-csv-is-csv', dl.suggestedFilename().endsWith('.csv'), dl.suggestedFilename());
-          }
-        } else {
-          record(`rpt-${slug}`, true, 'no download (likely empty dataset) — acceptable');
-        }
-      } else {
-        record(`rpt-${slug}`, false, 'button missing');
-      }
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    pageErrors = [];
+    const railBtn = page.locator(`nav button:has-text("${label}")`).first();
+    if (!(await railBtn.count())) { record(`rpt-${slug}`, false, 'not in the reports rail'); continue; }
+    await railBtn.click();
+    await page.waitForTimeout(1200);
+    const body = await page.textContent('body');
+    if (/Something went wrong|TypeError/i.test(body) || pageErrors.length) {
+      record(`rpt-${slug}`, false, pageErrors[0] || 'report crashed');
+      continue;
     }
+    record(`rpt-${slug}`, true, 'renders');
+    const btn = page.locator(EXCEL_BTN).first();
+    if (await btn.count()) await clickExport(`rpt-${slug}-excel`, btn, { minBytes: 20 });
+    else record(`rpt-${slug}-excel`, false, 'no Download Excel button');
   }
 
   // ============ 3. PEOPLE tabs render + Creditors pay modal has account selector ============
@@ -202,11 +246,25 @@ try {
     const delBtn = row.locator('button[title="Delete"]');
     record('settings-cat-delete-button-exists', (await delBtn.count()) > 0, 'Trash button in row');
     if (await delBtn.count()) {
-      await delBtn.click(); // confirm dialog auto-accepted
-      await page.waitForTimeout(1200);
-      const gone = !(await editorCard.textContent()).includes(`QA UI Cat ${RUN}`);
-      record('settings-cat-delete-works', gone || true, gone ? 'row removed' : 'soft-deleted (may still show as inactive)');
+      await delBtn.click();
+      // Deletion confirms through the in-app ConfirmDialog, not window.confirm,
+      // so the page-level dialog auto-accept never sees it — click it for real.
+      const dialog = page.locator('.fixed.inset-0', { hasText: 'Delete entry' }).last();
+      await dialog.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      record('settings-cat-delete-confirm', (await dialog.count()) > 0, 'in-app confirm dialog shown');
+      await dialog.locator('button:has-text("Delete")').last().click().catch(() => {});
+      await page.waitForTimeout(1500);
+      // donation_categories has no deleted_at but does have is_active, and
+      // donations FK to it — so delete deactivates rather than removes. The row
+      // must survive, flipped to Inactive, so old receipts still resolve.
+      const afterRow = editorCard.locator('tr', { hasText: `QA UI Cat ${RUN}` }).first();
+      const stillListed = (await afterRow.count()) > 0;
+      const nowInactive = stillListed && /Inactive/.test(await afterRow.textContent());
+      record('settings-cat-delete-works', stillListed && nowInactive,
+        !stillListed ? 'row vanished — a referenced category must be kept'
+          : nowInactive ? 'soft-deleted → Inactive' : 'still Active after delete');
     } else {
+      record('settings-cat-delete-confirm', false, 'no Delete button');
       record('settings-cat-delete-works', false, 'no Delete button');
     }
   } else {
@@ -214,6 +272,25 @@ try {
     record('settings-cat-delete-button-exists', false, 'n/a');
     record('settings-cat-delete-works', false, 'n/a');
   }
+
+  // Subscription & Usage: plan limits store -1 for "no cap" (Enterprise). The
+  // usage meter and the plan-comparison cards must render ∞, never a raw -1 —
+  // the Enterprise card is always listed, whatever plan this mandir is on.
+  // Runs last in this section: it navigates into the Change Plan view.
+  await page.goto(`${WEB}/settings`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  await page.locator('button:has-text("Subscription")').first().click().catch(() => {});
+  await page.waitForTimeout(2200);
+  const usageBody = (await page.textContent('body')) ?? '';
+  record('settings-usage-meter', /Usage This Month/i.test(usageBody), 'usage card renders');
+  record('settings-usage-not-raw', !/\/\s*-1/.test(usageBody),
+    /\/\s*-1/.test(usageBody) ? 'usage meter shows "/ -1"' : 'ok');
+  await page.locator('button:has-text("Change Plan")').first().click().catch(() => {});
+  await page.waitForTimeout(2200);
+  const planCards = (await page.textContent('body')) ?? '';
+  record('settings-plan-cards', /Enterprise/i.test(planCards), 'plan comparison lists Enterprise');
+  record('settings-unlimited-not-raw', !/-1\s*(users|receipts|SMS)/i.test(planCards),
+    /-1\s*(users|receipts|SMS)/i.test(planCards) ? 'raw -1 limit on screen' : 'shows ∞ for uncapped limits');
 
   // ============ 5. MASTERS CRUD (employees w/ salary, volunteers, inventory, vendors, priests) ============
   // Employees: create one WITH a monthly salary

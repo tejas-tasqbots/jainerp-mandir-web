@@ -30,12 +30,20 @@ export interface DashboardOverview {
   period: string
   donations: { total_paise: number; count: number }
   expenses: { total_paise: number; count: number }
-  visitors: number
   donors: number
-  employees: number
-  rooms_available: number
-  bolis: { open: number; outstanding_paise: number }
-  events: { upcoming: Event[]; past: Event[] }
+  /**
+   * Which tiles this trust's modules justify (migration 031). The server sends
+   * the list so adding a module never needs a matching front-end release; the
+   * fields below are present only when their key appears here.
+   */
+  tiles?: string[]
+  /** Quick-action buttons the trust can actually reach — never a link to a 403. */
+  quick_actions?: string[]
+  visitors?: number
+  employees?: number
+  rooms_available?: number
+  bolis?: { open: number; outstanding_paise: number }
+  events?: { upcoming: Event[]; past: Event[] }
 }
 
 // ─── Donations ───────────────────────────────────────────────────────────────
@@ -156,14 +164,33 @@ export interface Expense {
 // ─── Rooms ───────────────────────────────────────────────────────────────────
 export type BookingStatus = 'booked' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled'
 
+/**
+ * A room as `GET /rooms` and `GET /rooms/availability` actually return it.
+ *
+ * The names matter: this type previously declared `capacity` and
+ * `tariff_per_night_paise`, which the API has never sent. The check-in screen
+ * read both, so every room in its picker showed **"( persons) — ₹NaN/night"**,
+ * the booking summary quoted **₹NaN**, and the guest-count cap silently fell
+ * back to 10 — letting a clerk put ten people in a two-person room
+ * (DEF-ROOM-01). TypeScript could not catch it because the wrong names were
+ * declared here as fact.
+ *
+ * `tariff_per_night_paise` DOES exist — but on a *booking*, not a room, where
+ * it records the rate at the time of booking. Two different things with similar
+ * names is exactly how this happened.
+ */
 export interface Room {
   id: string
   room_number: string
+  name?: string | null
   room_type: string
-  capacity: number
-  tariff_per_night_paise: number
-  floor?: string
-  is_available: boolean
+  capacity_persons: number
+  tariff_paise: number
+  gst_rate?: string | number
+  floor?: string | number
+  is_available?: boolean
+  /** Only on the availability endpoint, for a specific date window. */
+  available?: boolean
 }
 
 export interface RoomBooking {
@@ -194,12 +221,25 @@ export interface RoomBooking {
 export type SessionType = 'hourly' | 'morning' | 'evening' | 'full_day'
 export type HallBookingStatus = 'confirmed' | 'completed' | 'cancelled'
 
+/**
+ * A hall as `GET /halls` actually returns it.
+ *
+ * Same trap as `Room`: this declared `capacity`, `hourly_rate_paise` and
+ * `full_day_rate_paise`, none of which the API sends. The New Hall Booking
+ * dropdown read `h.capacity` and rendered every hall as
+ * **"QA Hall 014916-0 (capacity: )"** — blank, on the screen a clerk uses to
+ * decide whether a hall fits the function (DEF-HALL-01). TypeScript agreed the
+ * fields existed because this file said so.
+ */
 export interface Hall {
   id: string
   name: string
-  capacity: number
-  hourly_rate_paise?: number
-  full_day_rate_paise?: number
+  capacity_persons: number
+  hourly_tariff_paise?: number
+  session_tariff_paise?: number
+  fullday_tariff_paise?: number
+  gst_rate?: string | number
+  is_available?: boolean
 }
 
 export interface HallBooking {
@@ -216,6 +256,8 @@ export interface HallBooking {
   advance_paise: number
   status: HallBookingStatus
   created_at: string
+  /** 'HALL/2026-27/000001' — issued on completion; null until then. */
+  invoice_no?: string | null
 }
 
 // ─── Prasad ──────────────────────────────────────────────────────────────────

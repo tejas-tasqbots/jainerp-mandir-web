@@ -16,9 +16,18 @@ import { MessagesTab } from './tabs/MessagesTab'
 import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
+import { PublicProfileTab } from './tabs/PublicProfileTab'
 import { GalleryTab } from './tabs/GalleryTab'
 import { TrusteesTab } from './tabs/TrusteesTab'
 import { MyAccountTab } from './tabs/MyAccountTab'
+
+/**
+ * Plan limit columns store -1 to mean "no cap" (that is how the Enterprise plan
+ * is seeded). Never show the sentinel raw — it reads as a negative allowance.
+ */
+function planLimit(n: number | null | undefined): string {
+  return n == null || n < 0 ? '∞' : String(n)
+}
 
 interface Requirement {
   id: string
@@ -33,12 +42,12 @@ interface Requirement {
 export function SettingsPage() {
   const { t } = useTranslation()
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'my-account' | 'profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'numbering' | 'messages' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  const [tab, setTab] = useState<'my-account' | 'profile' | 'public-profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'numbering' | 'messages' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
   const sens = useSensitiveFields()
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
-    name: '', address_line1: '', city: '', state: '', pincode: '', mobile: '', email: '', website: '',
+    name: '', address_line1: '', city: '', state: '', pincode: '', area: '', mobile: '', email: '', website: '',
     gstin: '', pan: '', reg_80g_number: '', reg_12ab_number: '', upi_id: '', custom_receipt_footer: '',
     show_80g_on_receipt: false, global_sync_enabled: false,
     lat: null as number | null, lng: null as number | null,
@@ -107,6 +116,7 @@ export function SettingsPage() {
         city: profile.city || '',
         state: profile.state || '',
         pincode: (p.pincode as string) || '',
+        area: (p.area as string) || '',
         mobile: profile.phone || (p.mobile as string) || '',
         email: profile.email || '',
         website: profile.website || '',
@@ -231,7 +241,7 @@ export function SettingsPage() {
     try {
       const payload: Record<string, unknown> = {
         name: form.name, address_line1: form.address_line1, city: form.city, state: form.state,
-        pincode: form.pincode, mobile: form.mobile, email: form.email, website: form.website,
+        pincode: form.pincode, area: form.area, mobile: form.mobile, email: form.email, website: form.website,
         gstin: form.gstin, pan: form.pan, reg_80g_number: form.reg_80g_number,
         reg_12ab_number: form.reg_12ab_number, upi_id: form.upi_id,
         custom_receipt_footer: form.custom_receipt_footer,
@@ -279,6 +289,7 @@ export function SettingsPage() {
         {[
           { id: 'my-account', labelKey: 'settings.tabs.myAccount' },
           { id: 'profile', labelKey: 'settings.tabs.profile' },
+          { id: 'public-profile', labelKey: 'settings.tabs.publicProfile' },
           { id: 'trustees', labelKey: 'settings.tabs.trustees' },
           { id: 'accounts', labelKey: 'settings.tabs.accounts' },
           { id: 'donor-payments', labelKey: 'settings.tabs.donorPayments' },
@@ -340,6 +351,23 @@ export function SettingsPage() {
                 <CitySelect state={form.state} value={form.city} onChange={c => setForm(f => ({ ...f, city: c }))} />
               </div>
               <div><label className="form-label">{t('settings.profile.pincode')}</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
+            </div>
+            {/* Locality in the words people use. Devotees searching for a
+                dharamshala type "Ghatkopar West" or "near Palitana taluka" —
+                which no pincode captures — so this is what makes the trust
+                findable in the devotee app's stay search. Mirrored to
+                public.tenants.area on save (migration 033). */}
+            <div>
+              <label className="form-label">{t('settings.profile.area', 'Area / locality')}</label>
+              <input
+                className="form-input"
+                placeholder="e.g. Ghatkopar West, near Palitana taluka"
+                value={form.area}
+                onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                How devotees searching for a dharamshala describe where you are.
+              </p>
             </div>
             <LocationPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} />
             <div className="grid grid-cols-2 gap-4">
@@ -411,6 +439,7 @@ export function SettingsPage() {
       {tab === 'users' && <UsersTab />}
       {tab === 'backup' && <BackupTab />}
 
+      {tab === 'public-profile' && <PublicProfileTab />}
       {tab === 'gallery' && <GalleryTab />}
 
       {tab === 'masters' && (
@@ -635,17 +664,24 @@ export function SettingsPage() {
                     { label: t('settings.subscription.users'), current: usage.current?.users, max: usage.limits?.max_users },
                     { label: t('settings.subscription.receipts'), current: usage.current?.receipts_this_month, max: usage.limits?.max_receipts_per_month },
                     { label: t('settings.subscription.smsPerMonth'), current: 0, max: usage.limits?.max_sms_per_month },
-                  ].map(({ label, current, max }) => (
-                    <div key={label}>
-                      <p className="text-xs text-slate-400 mb-1">{label}</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-slate-100 rounded-full h-2">
-                          <div className="bg-brand-red h-2 rounded-full transition-all" style={{ width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%` }} />
+                  ].map(({ label, current, max }) => {
+                    // Limit columns store -1 for "no cap" (the Enterprise plan).
+                    // Treating only null as unlimited printed "3 / -1" and gave
+                    // the bar a negative width.
+                    const unlimited = max == null || max < 0
+                    const pct = unlimited ? 0 : Math.min(100, ((current || 0) / (max || 1)) * 100)
+                    return (
+                      <div key={label}>
+                        <p className="text-xs text-slate-400 mb-1">{label}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-slate-100 rounded-full h-2">
+                            <div className="bg-brand-red h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs font-medium">{current ?? 0} / {planLimit(max)}</span>
                         </div>
-                        <span className="text-xs font-medium">{current ?? 0} / {max ?? '∞'}</span>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -778,7 +814,7 @@ export function SettingsPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold text-navy-900">{p.display_name} {isCurrent && <span className="badge-green ml-1">{t('settings.subscription.current')}</span>}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{t('settings.subscription.usersReceiptsSms', { users: p.max_users, receipts: p.max_receipts_per_month, sms: p.max_sms_per_month })}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{t('settings.subscription.usersReceiptsSms', { users: planLimit(p.max_users), receipts: planLimit(p.max_receipts_per_month), sms: planLimit(p.max_sms_per_month) })}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-navy-900">{price > 0 ? `₹${fmtPaise(price)}` : t('settings.subscription.free')}</p>

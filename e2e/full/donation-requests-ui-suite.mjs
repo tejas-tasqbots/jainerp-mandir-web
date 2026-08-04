@@ -5,7 +5,7 @@
  *   devotee-web (:5174)  — Donate → pick temple → "UPI / Bank Transfer" →
  *                          bank card + QR + donor block → submit request →
  *                          Donations → Requests tab shows it pending
- *   mandiradmin-web (:5173) — Donation Requests inbox (badge/tabs) → Review
+ *   mandir-web (:5173) — Donation Requests inbox (badge/tabs) → Review
  *                          modal (proof + donor details) → Approve → receipt
  *                          prompt; Settings → Donor Payments tab renders
  *

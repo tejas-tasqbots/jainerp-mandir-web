@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
-  Users, ShoppingBag, Bell
+  Users, ShoppingBag, Bell, Lock
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -19,6 +19,12 @@ type Period = 'day' | 'week' | 'month' | 'year'
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // RouteGuard redirects here when a page is out of reach, and says why. Landing
+  // on the dashboard with no explanation reads as a bug, so the reason is shown.
+  const location = useLocation()
+  const denied = location.state as
+    | { deniedPath?: string; deniedReason?: 'role' | 'module'; deniedModule?: string; roleLabel?: string }
+    | null
   const [period, setPeriod] = useState<Period>('month')
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +42,12 @@ export function Dashboard() {
       setLoading(false)
     }
   }
+
+  // Tiles come from the server's `tiles` list (migration 031) so a trust that
+  // never bought Dharamshala is not shown "0 rooms available" forever — a zero
+  // is a statement, and it is the wrong one when the counter does not exist.
+  const showsTile = (key: string) =>
+    !overview?.tiles || overview.tiles.includes(key)
 
   const statCards = overview ? [
     {
@@ -59,13 +71,21 @@ export function Dashboard() {
       icon: <TrendingUp size={20} />,
       color: 'blue',
     },
-    {
-      label: t('dashboard.roomsAvailable'),
-      value: String(overview.rooms_available),
-      sub: t('dashboard.donorsTotal', { count: overview.donors }),
-      icon: <Hotel size={20} />,
-      color: 'purple',
-    },
+    ...(showsTile('rooms_available')
+      ? [{
+          label: t('dashboard.roomsAvailable'),
+          value: String(overview.rooms_available ?? 0),
+          sub: t('dashboard.donorsTotal', { count: overview.donors }),
+          icon: <Hotel size={20} />,
+          color: 'purple',
+        }]
+      : [{
+          label: t('dashboard.donors', { defaultValue: 'Donors' }),
+          value: String(overview.donors ?? 0),
+          sub: t('dashboard.donorsTotal', { count: overview.donors }),
+          icon: <Users size={20} />,
+          color: 'purple',
+        }]),
   ] : []
 
   const colorMap: Record<string, string> = {
@@ -77,6 +97,31 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {denied?.deniedPath && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <Lock size={16} className="mt-0.5 shrink-0" />
+          <div>
+            {denied.deniedReason === 'module' ? (
+              <>
+                <strong>{t('rbac.moduleTitle', { defaultValue: 'Not part of your plan' })}</strong>{' '}
+                {t('rbac.moduleBody', {
+                  defaultValue:
+                    'This trust does not use that feature. Ask your JainERP administrator to enable it.',
+                })}
+              </>
+            ) : (
+              <>
+                <strong>{t('rbac.roleTitle', { defaultValue: 'No access' })}</strong>{' '}
+                {t('rbac.roleBody', {
+                  defaultValue: 'That page is not available to {{role}}.',
+                  role: denied.roleLabel ?? 'your role',
+                })}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">{t('dashboard.title')}</h1>
@@ -100,9 +145,11 @@ export function Dashboard() {
           <button onClick={() => navigate('/expenses/add')} className="btn-secondary btn-sm">
             <Plus size={14} /> {t('dashboard.expense')}
           </button>
-          <button onClick={() => navigate('/prasad')} className="btn-secondary btn-sm">
-            <ShoppingBag size={14} /> {t('dashboard.prasadBill')}
-          </button>
+          {(overview?.quick_actions ?? []).includes('prasad_sale') && (
+            <button onClick={() => navigate('/prasad')} className="btn-secondary btn-sm">
+              <ShoppingBag size={14} /> {t('dashboard.prasadBill')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -128,10 +175,11 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Pledges (Boli) / Upcoming events alerts */}
-      {overview && (
+      {/* Pledges (Boli) / Upcoming events alerts — each only when the trust runs it */}
+      {overview && (showsTile('bolis') || showsTile('events')) && (
         <div className="grid grid-cols-3 gap-4">
           {/* Outstanding Pledges */}
+          {overview.bolis && showsTile('bolis') && (
           <div className="card">
             <div className="card-header">
               <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
@@ -147,9 +195,11 @@ export function Dashboard() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Upcoming Events */}
-          <div className="card col-span-2">
+          {overview.events && showsTile('events') && (
+          <div className={overview.bolis && showsTile('bolis') ? 'card col-span-2' : 'card col-span-3'}>
             <div className="card-header">
               <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
                 <AlertTriangle size={15} className="text-blue-400" /> {t('dashboard.upcomingEvents')}
@@ -171,6 +221,7 @@ export function Dashboard() {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 

@@ -4,7 +4,7 @@
  * Drives BOTH live APIs against the smoke-portal tenant (OTP_MOCK bypass):
  *   devotee-api  (:3107) — temple payment details, submit/list/cancel requests,
  *                          notifications, receipt + 80G certificate HTML
- *   mandiradmin-api (:3106) — Donor Payments settings, approval inbox,
+ *   mandir-api (:3106) — Donor Payments settings, approval inbox,
  *                          approve → real receipted donation, reject, RBAC,
  *                          temple-80G gate on POST /donations
  *

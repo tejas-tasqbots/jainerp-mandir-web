@@ -20,6 +20,7 @@ import { PrasadItems } from './pages/Prasad/PrasadItems'
 import { SevaBookingsList } from './pages/Seva/SevaBookingsList'
 import { AddSevaBooking } from './pages/Seva/AddSevaBooking'
 import { AnnadaanList } from './pages/Annadaan/AnnadaanList'
+import { CattleList } from './pages/Gaushala/CattleList'
 import { BoliList } from './pages/Boli/BoliList'
 import { AddBoli } from './pages/Boli/AddBoli'
 import { EventsList } from './pages/Events/EventsList'
@@ -52,7 +53,7 @@ import { RecycleBinPage } from './pages/Registers/RecycleBinPage'
 import { ActivityLogPage } from './pages/Registers/ActivityLogPage'
 import { VisitorCountPage } from './pages/Registers/VisitorCountPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
-import { MaharajPage } from './pages/Maharaj/MaharajPage'
+import { SantPage } from './pages/Sant/SantPage'
 import { HelpPage } from './pages/Help/HelpPage'
 import { useAuthStore } from './store/authStore'
 import { useProfileStore } from './store/profileStore'
@@ -144,6 +145,7 @@ export default function App() {
 
             {/* Bhojanshala */}
             <Route path="/annadaan" element={<AnnadaanList />} />
+            <Route path="/gaushala" element={<CattleList />} />
 
             {/* Boli (Pledges) — list now lives inside the Donations hub as a tab */}
             <Route path="/boli" element={<Navigate to="/donations?tab=pledges" replace />} />
@@ -194,7 +196,7 @@ export default function App() {
             <Route path="/registers/activity-log" element={<ActivityLogPage />} />
 
             {/* Settings & Help */}
-            <Route path="/maharaj" element={<MaharajPage />} />
+            <Route path="/sant" element={<SantPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<HelpPage />} />
 

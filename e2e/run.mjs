@@ -1,7 +1,7 @@
 /**
  * End-to-end browser test of the Mandir Admin portal against the live API.
  *
- * Prereqs: mandiradmin-api on :3106 (OTP_MOCK=true), web dev server on :5173,
+ * Prereqs: mandir-api on :3106 (OTP_MOCK=true), web dev server on :5173,
  * system Google Chrome, a temple_admin whose mobile is E2E_MOBILE (default the
  * smoke-portal admin).
  *

@@ -6,7 +6,7 @@
  *
  *   node e2e/full/qa-accounting-suite.mjs
  *
- * Drives the live mandiradmin-api (:3106) against smoke-portal via mock OTP.
+ * Drives the live mandir-api (:3106) against smoke-portal via mock OTP.
  * Idempotent-ish: uses unique names per run so re-runs just add more data.
  */
 const BASE = process.env.E2E_API ?? 'http://localhost:3106/api/v1';

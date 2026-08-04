@@ -84,7 +84,7 @@ export function AddHallBooking() {
               onChange={e => setForm(f => ({ ...f, hall_id: e.target.value }))}>
               <option value="">{t('dharamshala.selectHall')}</option>
               {halls.map(h => (
-                <option key={h.id} value={h.id}>{h.name} {t('dharamshala.hallCapacity', { capacity: h.capacity })}</option>
+                <option key={h.id} value={h.id}>{h.name} {t('dharamshala.hallCapacity', { capacity: h.capacity_persons })}</option>
               ))}
             </select>
           </div>
