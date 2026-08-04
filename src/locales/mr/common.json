@@ -574,14 +574,19 @@
         "temple_link_approved": "मंदिर दुवा मंजूर",
         "temple_link_rejected": "मंदिर दुवा नाकारला",
         "temple_link_removed": "मंदिर दुवा काढला",
-        "prasad_low_stock_v2": "प्रसाद साठा कमी"
+        "prasad_low_stock_v2": "प्रसाद साठा कमी",
+        "room_bill": "खोली बिल",
+        "hall_bill": "हॉल बिल",
+        "prasad_receipt": "प्रसाद पावती",
+        "bhojanshala_receipt": "भोजनशाळा पावती"
       },
       "group": {
         "donations": "देणग्या",
         "donors": "देणगीदार",
         "bookings": "बुकिंग",
         "devotees": "भक्त",
-        "operations": "कामकाज"
+        "operations": "कामकाज",
+        "counter": "काउंटर विक्री"
       },
       "status": {
         "queued": "रांगेत",

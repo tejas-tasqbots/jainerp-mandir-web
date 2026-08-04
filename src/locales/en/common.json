@@ -574,14 +574,19 @@
         "temple_link_approved": "Temple link approved",
         "temple_link_rejected": "Temple link declined",
         "temple_link_removed": "Temple link removed",
-        "prasad_low_stock_v2": "Prasad running low"
+        "prasad_low_stock_v2": "Prasad running low",
+        "room_bill": "Room bill",
+        "hall_bill": "Hall bill",
+        "prasad_receipt": "Prasad receipt",
+        "bhojanshala_receipt": "Bhojanshala receipt"
       },
       "group": {
         "donations": "Donations",
         "donors": "Donors",
         "bookings": "Bookings",
         "devotees": "Devotees",
-        "operations": "Operations"
+        "operations": "Operations",
+        "counter": "Counter sales"
       },
       "status": {
         "queued": "Queued",
