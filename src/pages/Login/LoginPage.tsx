@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Building2, Phone, ShieldCheck, ChevronLeft, ChevronRight, RotateCw, Lock } from 'lucide-react'
+import { LanguageSwitcher } from '../../components/Layout/LanguageSwitcher'
 import { useAuthStore } from '../../store/authStore'
 import { useProfileStore } from '../../store/profileStore'
 import { api } from '../../lib/api'
@@ -21,6 +23,7 @@ interface TenantChoice {
 const SUPPORT_EMAIL = 'contact@jainerp.org'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const [step, setStep] = useState<Step>('mobile')
   const [mobile, setMobile] = useState('')
   const [otp, setOtp] = useState('')
@@ -35,7 +38,7 @@ export function LoginPage() {
   const [resending, setResending] = useState(false)
   const [resentNote, setResentNote] = useState('')
 
-  const { setTokens, setUser, setLanguage, setModules, deviceId } = useAuthStore()
+  const { setTokens, setUser, setLanguage, setModules, deviceId, clearLanguagePin } = useAuthStore()
   const { fetchProfile } = useProfileStore()
 
   // A session killed mid-flight because the mandir was suspended/deactivated
@@ -57,7 +60,7 @@ export function LoginPage() {
 
   async function sendOtp() {
     if (!isValidPhone(mobile)) {
-      setError('Enter a valid mobile number')
+      setError(t('login.invalidMobile'))
       return
     }
     setLoading(true)
@@ -69,7 +72,7 @@ export function LoginPage() {
       setResendIn(30)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      setError(err.response?.data?.error?.message || 'Failed to send OTP')
+      setError(err.response?.data?.error?.message || t('login.sendOtpFailed'))
     } finally {
       setLoading(false)
     }
@@ -83,20 +86,21 @@ export function LoginPage() {
     try {
       const { data } = await api.post('/auth/send-otp', { mobile, purpose: 'login' })
       if (data.data?.dev_otp) setMockOtp(data.data.dev_otp)
-      const channel = data.data?.channel ? ` via ${data.data.channel}` : ''
-      setResentNote(`A new OTP has been sent${channel}.`)
+      setResentNote(data.data?.channel
+        ? t('login.otpResentVia', { channel: data.data.channel })
+        : t('login.otpResent'))
       setOtp('')
       setResendIn(30)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      setError(err.response?.data?.error?.message || 'Could not resend OTP')
+      setError(err.response?.data?.error?.message || t('login.resendFailed'))
     } finally {
       setResending(false)
     }
   }
 
   async function verifyOtp() {
-    if (otp.length !== 6) { setError('Enter 6-digit OTP'); return }
+    if (otp.length !== 6) { setError(t('login.invalidOtp')); return }
     setLoading(true)
     setError('')
     try {
@@ -125,10 +129,10 @@ export function LoginPage() {
       // Every mandir this person belongs to is blocked — show the platform's
       // message (who to contact) instead of a bare "forbidden".
       if (apiErr?.code === 'TENANT_INACTIVE') {
-        setBlockedMsg(apiErr.message || `This mandir is not available. Please contact your temple admin or email ${SUPPORT_EMAIL}.`)
+        setBlockedMsg(apiErr.message || t('login.templeUnavailable', { email: SUPPORT_EMAIL }))
         setError('')
       } else {
-        setError(apiErr?.message || 'Invalid OTP')
+        setError(apiErr?.message || t('login.verifyFailed'))
       }
     } finally {
       setLoading(false)
@@ -148,7 +152,7 @@ export function LoginPage() {
       { id: '', mobile, name: null, roles: result.roles ?? [] },
       { id: result.tenant?.id ?? '', slug: result.tenant?.slug ?? slug, name: result.tenant?.name ?? slug },
     )
-    if (result.language) setLanguage(result.language)
+    if (result.language && !useAuthStore.getState().languagePinned) setLanguage(result.language)
     // select-tenant already carries the entitlements, so the first paint after
     // login has the right sidebar rather than briefly showing modules this
     // trust does not have and then removing them.
@@ -173,8 +177,16 @@ export function LoginPage() {
           { id: me.tenant?.id ?? '', slug: me.tenant?.slug ?? '', name: me.tenant?.name ?? '' },
         )
       }
-      if (me?.language) setLanguage(me.language)
+      if (me?.language && !useAuthStore.getState().languagePinned) setLanguage(me.language)
     } catch { /* header falls back to seeded values */ }
+    // A language picked on the login screen had no session to save against.
+    // Now there is one — persist it server-side, then stop overriding.
+    if (useAuthStore.getState().languagePinned) {
+      try {
+        await api.patch('/users/me/language', { language: useAuthStore.getState().language })
+      } catch { /* keep the local choice even if the save fails */ }
+      clearLanguagePin()
+    }
     await fetchProfile()
   }
 
@@ -188,9 +200,9 @@ export function LoginPage() {
       const err = e as { response?: { data?: { error?: { code?: string; message?: string } } } }
       const apiErr = err.response?.data?.error
       if (apiErr?.code === 'TENANT_INACTIVE') {
-        setBlockedMsg(apiErr.message || `This mandir is not available. Please contact your temple admin or email ${SUPPORT_EMAIL}.`)
+        setBlockedMsg(apiErr.message || t('login.templeUnavailable', { email: SUPPORT_EMAIL }))
       } else {
-        setError(apiErr?.message || 'Failed to select temple')
+        setError(apiErr?.message || t('login.selectTempleFailed'))
       }
     } finally {
       setLoading(false)
@@ -216,8 +228,11 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-96">
+    <div className="flex items-center justify-center min-h-screen bg-slate-100 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative">
+        {/* Language is switchable before sign-in — a Hindi-only cashier used to
+            meet an English-only login with no way out. */}
+        <div className="absolute right-4 top-4"><LanguageSwitcher /></div>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-brand-red flex items-center justify-center mx-auto mb-4">
@@ -226,14 +241,14 @@ export function LoginPage() {
           <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Mandir Login</p>
+          <p className="text-slate-500 text-sm mt-1">{t('login.heading')}</p>
         </div>
 
         {/* Step 1: Mobile number */}
         {step === 'mobile' && (
           <div className="space-y-4">
             <div>
-              <label className="form-label">Mobile Number</label>
+              <label className="form-label">{t('login.mobileLabel')}</label>
               <div onKeyDown={e => e.key === 'Enter' && sendOtp()}>
                 <PhoneInput value={mobile} onChange={v => { setMobile(v); setError('') }} autoFocus />
               </div>
@@ -246,7 +261,7 @@ export function LoginPage() {
               className="btn-primary w-full justify-center py-3"
             >
               <Phone size={16} />
-              {loading ? 'Sending OTP...' : 'Send OTP'}
+              {loading ? t('login.sendingOtp') : t('login.sendOtp')}
             </button>
           </div>
         )}
@@ -255,14 +270,14 @@ export function LoginPage() {
         {step === 'otp' && (
           <div className="space-y-4">
             <button onClick={() => { setStep('mobile'); setOtp(''); setError('') }} className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600">
-              <ChevronLeft size={15} /> Back
+              <ChevronLeft size={15} /> {t('login.back')}
             </button>
             <p className="text-sm text-slate-600">
-              OTP sent to <span className="font-semibold">{mobile}</span>
+              {t('login.otpSentTo')} <span className="font-semibold">{mobile}</span>
             </p>
             {mockOtp && (
               <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-700">
-                Dev mode — OTP: <span className="font-mono font-bold">{mockOtp}</span>
+                {t('login.devModeOtp')} <span className="font-mono font-bold">{mockOtp}</span>
               </div>
             )}
             {resentNote && (
@@ -271,12 +286,12 @@ export function LoginPage() {
               </div>
             )}
             <div>
-              <label className="form-label">Enter OTP</label>
+              <label className="form-label">{t('login.otpLabel')}</label>
               <input
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="6-digit OTP"
+                placeholder={t('login.otpPlaceholder')}
                 className="form-input text-center text-2xl font-mono tracking-[0.5em]"
                 value={otp}
                 onChange={e => { setOtp(e.target.value.replace(/\D/g, '')); setError('') }}
@@ -292,13 +307,13 @@ export function LoginPage() {
               className="btn-primary w-full justify-center py-3"
             >
               <ShieldCheck size={16} />
-              {loading ? 'Verifying...' : 'Verify OTP'}
+              {loading ? t('login.verifying') : t('login.verifyOtp')}
             </button>
             {/* Resend OTP — gated by a short countdown so users can re-request if the code didn't arrive */}
             <div className="text-center text-sm">
-              <span className="text-slate-400">Didn't receive the code? </span>
+              <span className="text-slate-400">{t('login.noCode')} </span>
               {resendIn > 0 ? (
-                <span className="text-slate-400">Resend in {resendIn}s</span>
+                <span className="text-slate-400">{t('login.resendIn', { seconds: resendIn })}</span>
               ) : (
                 <button
                   type="button"
@@ -307,7 +322,7 @@ export function LoginPage() {
                   className="inline-flex items-center gap-1 font-semibold text-brand-blue hover:underline disabled:opacity-50"
                 >
                   <RotateCw size={13} className={resending ? 'animate-spin' : ''} />
-                  {resending ? 'Sending...' : 'Resend OTP'}
+                  {resending ? t('login.resending') : t('login.resend')}
                 </button>
               )}
             </div>
@@ -337,36 +352,36 @@ export function LoginPage() {
         {/* Step 3: Temple selection (multi-tenant) */}
         {step === 'tenant' && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600 font-medium">Select your temple</p>
+            <p className="text-sm text-slate-600 font-medium">{t('login.selectTemple')}</p>
             {error && <p className="text-red-600 text-sm">{error}</p>}
             {blockedMsg && <BlockedNotice message={blockedMsg} />}
             <div className="space-y-2">
-              {tenants.map(t => (
+              {tenants.map(choice => (
                 <button
-                  key={t.slug}
-                  data-testid={`tenant-choice-${t.slug}`}
-                  onClick={() => (t.blocked
-                    ? setBlockedMsg(t.block_message || `This mandir is not available. Please contact your temple admin or email ${SUPPORT_EMAIL}.`)
-                    : selectTenant(t.slug))}
+                  key={choice.slug}
+                  data-testid={`tenant-choice-${choice.slug}`}
+                  onClick={() => (choice.blocked
+                    ? setBlockedMsg(choice.block_message || t('login.templeUnavailable', { email: SUPPORT_EMAIL }))
+                    : selectTenant(choice.slug))}
                   disabled={loading}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors text-left group disabled:opacity-50 ${
-                    t.blocked
+                    choice.blocked
                       ? 'border-slate-200 bg-slate-50 cursor-not-allowed'
                       : 'border-slate-200 hover:border-brand-red hover:bg-red-50'
                   }`}
                 >
                   <div>
-                    <p className={`font-semibold text-sm ${t.blocked ? 'text-slate-400' : 'text-slate-800'}`}>
-                      {t.name}
-                      {t.blocked && (
+                    <p className={`font-semibold text-sm ${choice.blocked ? 'text-slate-400' : 'text-slate-800'}`}>
+                      {choice.name}
+                      {choice.blocked && (
                         <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                          unavailable
+                          {t('login.unavailable')}
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.roles.join(', ')}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{choice.roles.join(', ')}</p>
                   </div>
-                  {t.blocked
+                  {choice.blocked
                     ? <Lock size={16} className="text-amber-500" />
                     : <ChevronRight size={16} className="text-slate-400 group-hover:text-brand-red" />}
                 </button>

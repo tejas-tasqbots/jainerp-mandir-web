@@ -34,11 +34,20 @@ interface AuthState {
    */
   modules: string[] | null
   language: Language
+  /**
+   * Set when the user picks a language on the LOGIN screen, where there is no
+   * session to save it against. Sign-in must then keep that fresh choice rather
+   * than letting the server's stored preference overwrite it; the login flow
+   * pushes it up and clears the pin.
+   */
+  languagePinned: boolean
   isLoggedIn: boolean
   setTokens: (access: string, refresh: string) => void
   setUser: (user: AuthedUser, tenant: TenantInfo) => void
   setModules: (modules: string[] | null) => void
   setLanguage: (language: Language) => void
+  pinLanguage: () => void
+  clearLanguagePin: () => void
   logout: () => void
 }
 
@@ -59,12 +68,15 @@ export const useAuthStore = create<AuthState>()(
       tenant: null,
       modules: null,
       language: 'en',
+      languagePinned: false,
       isLoggedIn: false,
       setTokens: (access, refresh) =>
         set({ accessToken: access, refreshToken: refresh, isLoggedIn: true }),
       setUser: (user, tenant) => set({ user, tenant }),
       setModules: modules => set({ modules }),
       setLanguage: language => set({ language }),
+      pinLanguage: () => set({ languagePinned: true }),
+      clearLanguagePin: () => set({ languagePinned: false }),
       logout: () =>
         set({ accessToken: null, refreshToken: null, user: null, tenant: null, modules: null, isLoggedIn: false }),
     }),
@@ -78,6 +90,7 @@ export const useAuthStore = create<AuthState>()(
         tenant: state.tenant,
         modules: state.modules,
         language: state.language,
+        languagePinned: state.languagePinned,
         isLoggedIn: state.isLoggedIn,
       }),
     }
