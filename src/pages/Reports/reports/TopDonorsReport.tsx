@@ -49,7 +49,7 @@ export function TopDonorsReport() {
     { key: 'city', label: t('donors.city'), render: r => <span className="text-slate-500">{r.city || '—'}</span> },
     { key: 'receipts', label: t('kit.receipts'), align: 'right', render: r => <>{r.receipts}</> },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   const totalAmount = rows.reduce((s, r) => s + Number(r.amount_paise), 0)

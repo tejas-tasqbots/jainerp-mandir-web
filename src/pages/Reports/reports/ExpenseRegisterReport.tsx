@@ -52,7 +52,7 @@ export function ExpenseRegisterReport() {
       key: 'type', label: t('expenses.type'),
       render: r => r.is_on_credit ? <span className="badge-red">{t('expenses.credit')}</span> : <span className="badge-green">{t('expenses.paid')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   function buildParams(): URLSearchParams {

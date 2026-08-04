@@ -58,7 +58,7 @@ export function VendorsPage() {
         ? <span className="badge-green">{t('vendors.active')}</span>
         : <span className="badge-gray">{t('vendors.inactive')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   async function exportExcel() {

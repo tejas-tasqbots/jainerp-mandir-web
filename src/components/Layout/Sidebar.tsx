@@ -2,8 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, IndianRupee, Receipt, Hotel, ShoppingBag,
   Heart, Utensils, Calendar, BarChart2, Award, BookMarked, Settings,
-  ChevronDown, ChevronRight, Bell, HelpCircle, Users, Landmark,
-  UserCheck, Sparkles, Inbox, Beef
+  ChevronDown, ChevronRight, HelpCircle, Users, Landmark,
+  UserCheck, Sparkles, Beef
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'

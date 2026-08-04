@@ -100,7 +100,7 @@ export function InventoryPage() {
         ? <span className="badge-green">{t('inventory.active')}</span>
         : <span className="badge-gray">{t('inventory.inactive')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, categoryOptions])
 
   useEffect(() => { load() }, [search, filterState])

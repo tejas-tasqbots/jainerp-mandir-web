@@ -60,7 +60,7 @@ function genDeviceId(): string {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       accessToken: null,
       refreshToken: null,
       deviceId: genDeviceId(),

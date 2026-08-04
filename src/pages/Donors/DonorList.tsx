@@ -88,7 +88,7 @@ export function DonorList() {
         ? <span className="badge-green">{t('donors.active')}</span>
         : <span className="badge-gray">{t('donors.inactive')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, cityOpts, stateOpts])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {

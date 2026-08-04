@@ -127,7 +127,7 @@ export function DonationsList() {
     },
     // The actions column is rendered by the kit from `rowActions` below — the
     // print button stays visible, everything else collapses behind ⋮.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, categories])
 
   function rowActions(d: Donation): RowAction[] {

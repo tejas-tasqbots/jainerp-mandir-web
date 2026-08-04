@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Search, X, UserPlus, ShieldCheck, Link2, EyeOff, KeyRound, Check } from 'lucide-react'
+import { Search, X, UserPlus, Link2, EyeOff, KeyRound, Check } from 'lucide-react'
 import { api } from '../../lib/api'
 import { CitySelect, CountrySelect, StateSelect } from '../GeoSelect'
 import { isValidPhone, PhoneInput } from '../PhoneInput'
@@ -425,7 +425,6 @@ export function DevoteePicker({
 
   // ── SEARCH (default) ────────────────────────────────────────────────────────
   const showDropdown = dropdownOpen && query.length >= 3
-  const mobileLike = /^\d+$/.test(query.replace(/\D/g, '')) && query.replace(/\D/g, '').length >= 5
 
   return (
     <div>

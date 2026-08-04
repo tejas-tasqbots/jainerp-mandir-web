@@ -56,7 +56,7 @@ export function PriestsPage() {
         ? <span className="badge-green">{t('priests.active')}</span>
         : <span className="badge-gray">{t('priests.inactive')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   useEffect(() => { load() }, [search, filterState])

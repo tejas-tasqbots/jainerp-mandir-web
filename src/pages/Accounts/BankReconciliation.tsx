@@ -36,7 +36,7 @@ export function BankReconciliation() {
   const [accountId, setAccountId] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('bank-recon', 'thisMonth'))
   const [bookEntries, setBookEntries] = useState<BookEntry[]>([])
-  const [loadingBook, setLoadingBook] = useState(false)
+  const [, setLoadingBook] = useState(false)
 
   const [csvText, setCsvText] = useState('')
   const [statementRows, setStatementRows] = useState<StatementRow[]>([])
@@ -90,7 +90,8 @@ export function BankReconciliation() {
       if (!rawDate) continue
       const date = normalizeDate(rawDate)
       if (!date) continue
-      let amount = 0
+      // Assigned in both branches below; no initialiser needed.
+      let amount: number
       if (amountIdx !== -1) {
         amount = Math.round(parseFloat(cells[amountIdx] || '0') * 100)
       } else {

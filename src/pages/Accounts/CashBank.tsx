@@ -102,7 +102,7 @@ export function CashBank() {
     { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => <>{e.debit_paise ? `₹${fmtPaise(e.debit_paise)}` : '—'}</> },
     { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => <span className="text-green-700">{e.credit_paise ? `₹${fmtPaise(e.credit_paise)}` : '—'}</span> },
     { key: 'balance', label: t('accounts.balance'), align: 'right', render: e => <span className={`font-semibold ${e.balance_paise < 0 ? 'text-red-600' : ''}`}>₹{fmtPaise(e.balance_paise)}</span> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   // Totals stay on the full set (running balance is cumulative); search only

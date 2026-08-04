@@ -59,7 +59,7 @@ export function EmployeesPage() {
         ? <span className="badge-green">{t('employees.active')}</span>
         : <span className="badge-gray">{t('employees.inactive')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, tab])
 
   useEffect(() => { load() }, [search, tab, filterState])

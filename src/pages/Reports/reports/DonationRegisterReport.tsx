@@ -54,7 +54,7 @@ export function DonationRegisterReport() {
       key: 'eightyG', label: t('donations.eightyG'),
       render: r => r.is_80g_eligible ? <span className="badge-green">{t('common.yes')}</span> : <span className="badge-gray">{t('common.no')}</span>,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   function buildParams(): URLSearchParams {

@@ -28,7 +28,7 @@ export function VisitorCountPage() {
     { key: 'evening', label: t('registers.evening'), align: 'right', render: c => <>{c.evening_count || '—'}</> },
     { key: 'total', label: t('registers.totalCol'), align: 'right', render: c => <span className="font-bold">{c.total_count}</span> },
     { key: 'notes', label: t('registers.notes'), render: c => <span className="text-slate-400 text-xs">{c.notes || '—'}</span> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t])
 
   useEffect(() => { load() }, [])

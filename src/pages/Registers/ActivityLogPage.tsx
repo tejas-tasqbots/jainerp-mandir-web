@@ -61,7 +61,7 @@ export function ActivityLogPage() {
       render: r => <span className={ACTION_BADGE[r.action] ?? 'badge-gray'}>{r.action}</span>,
     },
     { key: 'entity_id', label: t('activityLog.recordId'), render: r => <span className="font-mono text-[10px] text-slate-400">{r.entity_id.slice(0, 8)}</span> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, entityTypes])
 
   function buildParams(): URLSearchParams {

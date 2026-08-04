@@ -182,7 +182,7 @@ export function ExpensesList() {
     // Actions come from `rowActions` below so this list behaves like every
     // other one: edit stays visible, the rest (including the cheque lifecycle)
     // collapses behind ⋮.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [t, categoryNames])
 
   function rowActions(e: Expense): RowAction[] {
