@@ -22,6 +22,30 @@ interface TenantChoice {
 
 const SUPPORT_EMAIL = 'contact@jainerp.org'
 
+/**
+ * Shown whenever a mandir is suspended / deactivated / deleted.
+ *
+ * Declared at module scope, not inside LoginPage: a component defined during
+ * render is a brand-new type on every render, so React unmounts and remounts it
+ * each time instead of updating it.
+ */
+function BlockedNotice({ message }: { message: string }) {
+  return (
+    <div data-testid="tenant-blocked" className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2">
+      <div className="flex items-start gap-2">
+        <Lock size={16} className="text-amber-600 mt-0.5 shrink-0" />
+        <p className="text-sm text-amber-900 font-medium">{message}</p>
+      </div>
+      <a
+        href={`mailto:${SUPPORT_EMAIL}`}
+        className="inline-block text-xs font-semibold text-amber-800 underline"
+      >
+        {SUPPORT_EMAIL}
+      </a>
+    </div>
+  )
+}
+
 export function LoginPage() {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>('mobile')
@@ -207,24 +231,6 @@ export function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  /** Shown whenever a mandir is suspended / deactivated / deleted. */
-  function BlockedNotice({ message }: { message: string }) {
-    return (
-      <div data-testid="tenant-blocked" className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2">
-        <div className="flex items-start gap-2">
-          <Lock size={16} className="text-amber-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-900 font-medium">{message}</p>
-        </div>
-        <a
-          href={`mailto:${SUPPORT_EMAIL}`}
-          className="inline-block text-xs font-semibold text-amber-800 underline"
-        >
-          {SUPPORT_EMAIL}
-        </a>
-      </div>
-    )
   }
 
   return (

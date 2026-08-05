@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useRef, useState, useMemo } from 'react'
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
 
 type ToastKind = 'success' | 'error' | 'info'
@@ -50,18 +50,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => dismiss(id), kind === 'error' ? 7000 : 4000)
   }, [dismiss])
 
-  const api = useRef<ToastApi>({
-    success: m => push('success', m),
-    error: m => push('error', m),
-    info: m => push('info', m),
-  })
-  // Keep the stable ref pointing at the latest push.
-  api.current.success = m => push('success', m)
-  api.current.error = m => push('error', m)
-  api.current.info = m => push('info', m)
+  // A ref mutated during render used to hold this. That reads a ref while
+  // rendering, which is impure and unsafe under concurrent rendering — React
+  // may render twice and discard one pass. `push` is already stable (its only
+  // dependency, `dismiss`, has an empty dep array), so a memo gives the same
+  // stable identity honestly.
+  const api = useMemo<ToastApi>(
+    () => ({
+      success: m => push('success', m),
+      error: m => push('error', m),
+      info: m => push('info', m),
+    }),
+    [push],
+  )
 
   return (
-    <ToastContext.Provider value={api.current}>
+    <ToastContext.Provider value={api}>
       {children}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 no-print" aria-live="polite">
         {toasts.map(toast => (

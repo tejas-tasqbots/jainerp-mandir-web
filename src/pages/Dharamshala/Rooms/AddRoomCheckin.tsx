@@ -14,7 +14,9 @@ export function AddRoomCheckin() {
   const [error, setError] = useState('')
   const [guest, setGuest] = useState<DevoteeSelection | null>(null)
 
-  const [form, setForm] = useState({
+  // Lazy initializer: this object was rebuilt on every render even though only
+  // the first one is ever used, and it calls Date.now() to do it.
+  const [form, setForm] = useState(() => ({
     room_id: '',
     guest_id_type: 'aadhaar',
     check_in_date: new Date().toISOString().slice(0, 10),
@@ -22,7 +24,7 @@ export function AddRoomCheckin() {
     persons_count: '1',
     advance: '',
     payment_mode: 'cash',
-  })
+  }))
 
   useEffect(() => {
     api.get('/rooms?is_available=true').then(r => {

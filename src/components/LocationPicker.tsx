@@ -30,7 +30,12 @@ export function LocationPicker({
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+  // Assigned in an effect, not during render: writing a ref while rendering is
+  // impure, and under concurrent rendering React may render twice and throw one
+  // pass away, so the ref could end up pointing at a discarded closure.
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
   const [locating, setLocating] = useState(false)
   const [geoErr, setGeoErr] = useState('')
 
