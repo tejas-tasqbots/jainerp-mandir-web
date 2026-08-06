@@ -209,7 +209,7 @@ export function DonationRequestsPage() {
           <button onClick={exportExcel} className="btn-icon !text-green-700 hover:!bg-green-50" title={t('kit.exportExcel')} aria-label={t('kit.exportExcel')}>
             <FileSpreadsheet size={16} />
           </button>
-          <button onClick={fetchRows} className="btn-secondary btn-sm" title="Refresh">
+          <button onClick={fetchRows} className="btn-secondary btn-sm" title={t('ui.refresh')}>
             <RefreshCw size={14} />
           </button>
         </div>
@@ -274,7 +274,7 @@ export function DonationRequestsPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-slate-800">{r.donor_name || '—'}</span>
                       {r.devotee_verified && (
-                        <span title="OTP verified"><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
+                        <span title={t('ui.otpVerified')}><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
                       )}
                       {r.is_80g && <span className="badge badge-green text-[10px]">80G</span>}
                     </div>
@@ -395,7 +395,7 @@ export function DonationRequestsPage() {
                 {detail.request.proof_image_base64 ? (
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t('donationRequests.paymentScreenshot')}</p>
-                    <img src={detail.request.proof_image_base64} alt="Payment proof" className="w-full rounded-lg border border-slate-200" />
+                    <img src={detail.request.proof_image_base64} alt={t('ui.paymentProof')} className="w-full rounded-lg border border-slate-200" />
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400">{t('donationRequests.noScreenshot')}</p>

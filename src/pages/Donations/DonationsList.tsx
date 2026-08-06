@@ -465,9 +465,7 @@ function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) 
           <button onClick={() => onClose(!!result && result.imported > 0)} className="text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
         </div>
         <div className="p-6 space-y-4">
-          <p className="text-sm text-slate-500">
-            Upload or paste a CSV with the columns
-            <code className="mx-1 text-xs bg-slate-100 px-1 py-0.5 rounded">date, donor_name, mobile, category, amount_rupees, payment_mode, is_80g, pan, remarks</code>
+          <p className="text-sm text-slate-500">{t('ui.uploadCsv')}<code className="mx-1 text-xs bg-slate-100 px-1 py-0.5 rounded">date, donor_name, mobile, category, amount_rupees, payment_mode, is_80g, pan, remarks</code>
             (header row required — save your Excel register as CSV). Each row becomes a receipted donation. Max 2000 rows per import.
           </p>
           <input type="file" accept=".csv,text/csv" onChange={e => onFile(e.target.files?.[0])} className="text-sm" />

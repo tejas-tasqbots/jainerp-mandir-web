@@ -140,7 +140,7 @@ export function HelpPage() {
   const { t } = useTranslation()
   return (
     <div className="space-y-6 max-w-5xl">
-      <h1 className="text-xl font-bold text-navy-900">User Guide & Help</h1>
+      <h1 className="text-xl font-bold text-navy-900">{t('ui.userGuideHelp')}</h1>
 
       {/* Keyboard shortcuts */}
       <div className="card">
@@ -165,8 +165,7 @@ export function HelpPage() {
       <div className="card">
         <div className="card-header">
           <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-            <HelpCircle size={15} /> Step-by-Step Guides
-          </h3>
+            <HelpCircle size={15} />{t('ui.stepByStep')}</h3>
         </div>
         <div className="card-body">
           <div className="grid grid-cols-2 gap-5">
@@ -193,19 +192,18 @@ export function HelpPage() {
       <div className="card">
         <div className="card-header">
           <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-            <CheckCircle size={15} /> API Connection Status
-          </h3>
+            <CheckCircle size={15} />{t('ui.apiConnStatus')}</h3>
           <span className="badge-green">{apiCoverage.filter(a => a.status === 'connected').length} / {apiCoverage.length} endpoints connected</span>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
-            <thead><tr><th>API Endpoint</th><th>Connected UI</th><th>Status</th></tr></thead>
+            <thead><tr><th>{t('ui.apiEndpoint')}</th><th>{t('ui.connectedUi')}</th><th>{t('ui.status')}</th></tr></thead>
             <tbody>
               {apiCoverage.map((a, i) => (
                 <tr key={i}>
                   <td className="font-mono text-xs text-slate-600">{a.endpoint}</td>
                   <td className="text-sm">{a.ui}</td>
-                  <td><span className="badge-green flex items-center gap-1"><CheckCircle size={10} /> Connected</span></td>
+                  <td><span className="badge-green flex items-center gap-1"><CheckCircle size={10} />{t('ui.connected')}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -215,27 +213,27 @@ export function HelpPage() {
 
       {/* Support */}
       <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm">Support & Feedback</h3></div>
+        <div className="card-header"><h3 className="font-semibold text-sm">{t('ui.supportFeedback')}</h3></div>
         <div className="card-body">
           <div className="grid grid-cols-3 gap-4">
             <a href="tel:+911234567890" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
               <div className="p-2 bg-green-100 rounded-lg"><Phone size={16} className="text-green-600" /></div>
               <div>
-                <p className="font-medium text-sm">Call Support</p>
-                <p className="text-xs text-slate-400">Mon–Sat 9AM–6PM</p>
+                <p className="font-medium text-sm">{t('ui.callSupport')}</p>
+                <p className="text-xs text-slate-400">{t('ui.supportHours')}</p>
               </div>
             </a>
             <a href="mailto:support@tasqbots.com" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
               <div className="p-2 bg-blue-100 rounded-lg"><Mail size={16} className="text-blue-600" /></div>
               <div>
-                <p className="font-medium text-sm">Email Support</p>
+                <p className="font-medium text-sm">{t('ui.emailSupport')}</p>
                 <p className="text-xs text-slate-400">support@tasqbots.com</p>
               </div>
             </a>
             <a href="/settings" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors">
               <div className="p-2 bg-orange-100 rounded-lg"><ExternalLink size={16} className="text-orange-600" /></div>
               <div>
-                <p className="font-medium text-sm">Raise Requirement</p>
+                <p className="font-medium text-sm">{t('ui.raiseRequirement')}</p>
                 <p className="text-xs text-slate-400">Settings → Privacy &amp; Sync</p>
               </div>
             </a>

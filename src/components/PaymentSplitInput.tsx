@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { usePaymentModes, useAccounts } from '../lib/useDropdownOptions'
 
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 0, disabled }: Props) {
+  const { t } = useTranslation()
   const paymentModes = usePaymentModes()
   const accounts = useAccounts()
 
@@ -111,7 +113,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
             <input
               type="text"
               className="form-input flex-1 min-w-0"
-              placeholder="UTR / cheque no."
+              placeholder={t('ui.utrChequeNo')}
               value={r.reference_no ?? ''}
               disabled={disabled}
               onChange={e => update(i, { reference_no: e.target.value })}
@@ -130,7 +132,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
               onChange={e => update(i, { payment_account_id: e.target.value })}
               aria-label={`Account ${i + 1}`}
             >
-              <option value="">Default account</option>
+              <option value="">{t('ui.defaultAccount')}</option>
               {accountsFor(r.payment_mode).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -138,7 +140,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
           <button
             type="button" onClick={() => removeRow(i)} disabled={disabled}
             className="p-2 text-slate-400 hover:text-red-500 rounded flex-shrink-0"
-            title="Remove this payment" aria-label={`Remove payment ${i + 1}`}
+            title={t('ui.removeThisPayment')} aria-label={`Remove payment ${i + 1}`}
           >
             <Trash2 size={14} />
           </button>
@@ -150,8 +152,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
           type="button" onClick={addRow} disabled={disabled}
           className="inline-flex items-center gap-1 text-sm text-navy-700 hover:text-navy-900 font-medium"
         >
-          <Plus size={14} /> Add payment mode
-        </button>
+          <Plus size={14} />{t('ui.addPaymentMode')}</button>
 
         {totalPaise > 0 && (
           <span className={`text-sm font-medium ${

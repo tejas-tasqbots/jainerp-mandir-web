@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
 import { loadDialCodes } from './PhoneInput'
 
@@ -11,12 +12,13 @@ import { loadDialCodes } from './PhoneInput'
 export function StateSelect({ value, onChange, className = 'form-select' }: {
   value: string; onChange: (state: string) => void; className?: string
 }) {
+  const { t } = useTranslation()
   const [states, setStates] = useState<string[]>([])
   useEffect(() => { api.get('/geo/states').then(r => setStates(r.data.data ?? r.data ?? [])).catch(() => {}) }, [])
   const opts = value && !states.includes(value) ? [value, ...states] : states
   return (
     <select className={className} value={value} autoComplete="off" onChange={e => onChange(e.target.value)}>
-      <option value="">Select state…</option>
+      <option value="">{t('ui.selectState')}</option>
       {opts.map(s => <option key={s} value={s}>{s}</option>)}
     </select>
   )

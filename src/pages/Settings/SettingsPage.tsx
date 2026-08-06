@@ -365,9 +365,7 @@ export function SettingsPage() {
                 value={form.area}
                 onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
               />
-              <p className="mt-1 text-xs text-slate-400">
-                How devotees searching for a dharamshala describe where you are.
-              </p>
+              <p className="mt-1 text-xs text-slate-400">{t('ui.dharamshalaDesc')}</p>
             </div>
             <LocationPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} />
             <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // Augment the window type to include Electron desktop globals.
 declare global {
@@ -29,6 +30,7 @@ declare global {
  * - Shows a small "Desktop Mode" badge in the header area.
  */
 export function OfflineBanner() {
+  const { t } = useTranslation()
   const isDesktop = typeof window !== 'undefined' && (window.__JAINERP_DESKTOP__ || window.electronAPI?.isElectron)
   const [online, setOnline] = useState<boolean | null>(null)
 
@@ -69,9 +71,7 @@ export function OfflineBanner() {
             fontWeight: 500,
             letterSpacing: '0.01em',
           }}
-        >
-          Offline — API server is unreachable. Changes may not be saved until reconnected.
-        </div>
+        >{t('ui.offlineApi')}</div>
       )}
     </>
   )
@@ -82,6 +82,7 @@ export function OfflineBanner() {
  * Import and place this inside your TopBar/header component.
  */
 export function DesktopBadge() {
+  const { t } = useTranslation()
   const isDesktop = typeof window !== 'undefined' && (window.__JAINERP_DESKTOP__ || window.electronAPI?.isElectron)
 
   if (!isDesktop) return null
@@ -100,8 +101,6 @@ export function DesktopBadge() {
         color: '#94a3b8',
         letterSpacing: '0.02em',
       }}
-    >
-      Desktop Mode
-    </span>
+    >{t('ui.desktopMode')}</span>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { MapPin, Crosshair, Loader2 } from 'lucide-react'
@@ -26,6 +27,7 @@ export function LocationPicker({
   onChange: (lat: number, lng: number) => void
   height?: number
 }) {
+  const { t } = useTranslation()
   const elRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
@@ -103,7 +105,7 @@ export function LocationPicker({
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="form-label flex items-center gap-1 mb-0"><MapPin size={13} /> Location on map</label>
+        <label className="form-label flex items-center gap-1 mb-0"><MapPin size={13} />{t('ui.locationOnMap')}</label>
         <button type="button" onClick={useMyLocation} disabled={locating} className="text-xs text-brand-red inline-flex items-center gap-1 hover:underline disabled:opacity-50">
           {locating ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />} Use my current location
         </button>

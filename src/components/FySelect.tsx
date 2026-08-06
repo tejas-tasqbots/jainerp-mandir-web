@@ -1,4 +1,5 @@
 import { CalendarRange, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { fyOptions } from '../lib/api'
 
 interface FySelectProps {
@@ -23,6 +24,7 @@ interface FySelectProps {
  * of rendering as a bulky bare <select>. `className` sets the wrapper width.
  */
 export function FySelect({ value, onChange, className = 'w-36', back, forward }: FySelectProps) {
+  const { t } = useTranslation()
   const options = fyOptions({ back, forward, ensure: value })
   return (
     <div className={`relative inline-flex items-center ${className}`}>
@@ -30,7 +32,7 @@ export function FySelect({ value, onChange, className = 'w-36', back, forward }:
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        aria-label="Financial year"
+        aria-label={t('ui.financialYear')}
         className="w-full appearance-none pl-7 pr-7 py-1.5 text-xs font-semibold text-navy-900 bg-white border border-slate-300 rounded-md cursor-pointer transition-colors hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-blue-light)] focus:border-accent-500"
       >
         {options.map(fy => (

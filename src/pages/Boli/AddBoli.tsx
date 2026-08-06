@@ -79,11 +79,11 @@ export function AddBoli() {
               <label className="form-label">{t('pledges.boliType')}</label>
               <select className="form-select" value={form.boli_type}
                 onChange={e => setForm(f => ({ ...f, boli_type: e.target.value }))}>
-                <option value="aarti">Aarti</option>
-                <option value="pratistha">Pratistha</option>
+                <option value="aarti">{t('ui.aarti')}</option>
+                <option value="pratistha">{t('ui.pratistha')}</option>
                 <option value="seva">Seva</option>
-                <option value="chadhava">Chadhava</option>
-                <option value="other">Other</option>
+                <option value="chadhava">{t('ui.chadhava')}</option>
+                <option value="other">{t('ui.other')}</option>
               </select>
             </div>
             <div>

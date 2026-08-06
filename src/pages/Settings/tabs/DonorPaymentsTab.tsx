@@ -133,7 +133,7 @@ export function DonorPaymentsTab() {
               <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiQrUrlHelp')}</p>
             </>)}
             {form.upi_qr_cdn_url.trim() && (
-              <img src={form.upi_qr_cdn_url.trim()} alt="UPI QR preview" className="mt-2 w-32 h-32 object-contain rounded-md border border-slate-200 bg-white" />
+              <img src={form.upi_qr_cdn_url.trim()} alt={t('ui.upiQrPreview')} className="mt-2 w-32 h-32 object-contain rounded-md border border-slate-200 bg-white" />
             )}
           </div>
         </div>

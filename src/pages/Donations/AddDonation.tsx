@@ -258,14 +258,14 @@ export function AddDonation() {
           {!splitMode && (form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (
             <div>
               <label className="form-label">{t('donations.utrNumber')}</label>
-              <input className="form-input" placeholder="Transaction reference" value={form.utr_number}
+              <input className="form-input" placeholder={t('ui.transactionReference')} value={form.utr_number}
                 onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
             </div>
           )}
           {!splitMode && form.payment_mode === 'cheque' && (
             <div>
               <label className="form-label">{t('donations.chequeNumber')}</label>
-              <input className="form-input" placeholder="Cheque number" value={form.cheque_number}
+              <input className="form-input" placeholder={t('ui.chequeNumber')} value={form.cheque_number}
                 onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
             </div>
           )}
@@ -278,11 +278,7 @@ export function AddDonation() {
               <input type="checkbox" id="wants_updates" checked={form.wants_event_updates}
                 onChange={e => setForm(f => ({ ...f, wants_event_updates: e.target.checked }))}
                 className="mt-0.5 w-4 h-4 accent-green-600" />
-              <label htmlFor="wants_updates" className="text-sm text-slate-700">
-                Donor wants updates about this mandir&rsquo;s events
-                <span className="block text-xs text-slate-500">
-                  Ask the donor before ticking. Leave unticked if they did not say yes.
-                </span>
+              <label htmlFor="wants_updates" className="text-sm text-slate-700">{t('ui.wantsUpdates')}<span className="block text-xs text-slate-500">{t('ui.askBeforeTicking')}</span>
               </label>
             </div>
           )}

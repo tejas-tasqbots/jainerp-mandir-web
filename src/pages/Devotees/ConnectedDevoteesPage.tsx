@@ -132,7 +132,7 @@ export function ConnectedDevoteesPage() {
           <p className="text-sm text-slate-500 mt-0.5">{t('devoteesPage.subtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchLinks} className="btn-secondary btn-sm" title="Refresh">
+          <button onClick={fetchLinks} className="btn-secondary btn-sm" title={t('ui.refresh')}>
             <RefreshCw size={14} />
           </button>
           <button onClick={exportExcel} className="btn-icon !text-green-700 hover:!bg-green-50" title={t('kit.exportExcel')} aria-label={t('kit.exportExcel')}>
@@ -203,7 +203,7 @@ export function ConnectedDevoteesPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-slate-800">{link.name}</span>
                       {link.verified && (
-                        <span title="OTP verified"><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
+                        <span title={t('ui.otpVerified')}><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
                       )}
                     </div>
                   </td>

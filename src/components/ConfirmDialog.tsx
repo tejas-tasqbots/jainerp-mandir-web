@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle, X } from 'lucide-react'
 
 /**
@@ -24,6 +25,7 @@ type ConfirmFn = (opts: ConfirmOptions | string) => Promise<boolean>
 const ConfirmContext = createContext<ConfirmFn | null>(null)
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const [opts, setOpts] = useState<ConfirmOptions | null>(null)
   const resolverRef = useRef<((v: boolean) => void) | null>(null)
 
@@ -64,7 +66,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 )}
                 <h3 className="font-bold text-navy-900 text-base pt-1">{opts.title ?? 'Please confirm'}</h3>
               </div>
-              <button type="button" onClick={() => close(false)} title="Close" aria-label="Close">
+              <button type="button" onClick={() => close(false)} title={t('ui.close')} aria-label={t('ui.close')}>
                 <X size={18} className="text-slate-400" />
               </button>
             </div>

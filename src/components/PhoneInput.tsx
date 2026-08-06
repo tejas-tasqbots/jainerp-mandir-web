@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
 
 /**
@@ -79,6 +80,7 @@ export function PhoneInput({
   selectClassName = 'form-input rounded-r-none border-r-0 w-20 inline-flex items-center justify-center text-slate-600 select-none',
   inputClassName = 'form-input rounded-l-none flex-1',
 }: PhoneInputProps) {
+  const { t } = useTranslation()
   const [dials, setDials] = useState<DialOption[]>(DIALS)
   useEffect(() => { loadDialCodes().then(l => setDials([...l])) }, [])
 
@@ -113,7 +115,7 @@ export function PhoneInput({
           <span className="ml-1 text-xs opacity-60">▾</span>
         </span>
         <select
-          aria-label="Country code"
+          aria-label={t('ui.countryCode')}
           className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
           value={parsed.dial}
           disabled={disabled}

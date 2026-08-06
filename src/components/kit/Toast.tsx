@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
 
 type ToastKind = 'success' | 'error' | 'info'
@@ -36,6 +37,7 @@ const BORDERS: Record<ToastKind, string> = {
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const nextId = useRef(1)
 
@@ -80,7 +82,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => dismiss(toast.id)}
               className="text-slate-300 hover:text-slate-500 flex-shrink-0"
-              aria-label="Dismiss"
+              aria-label={t('ui.dismiss')}
             >
               <X size={14} />
             </button>

@@ -1,4 +1,5 @@
 import { MapPin, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Lightweight lat/lng picker + preview with no external map SDK (CSP-safe,
@@ -14,6 +15,7 @@ export function MapPicker({
   onChange: (lat: number | null, lng: number | null) => void
   label?: string
 }) {
+  const { t } = useTranslation()
   const hasCoords = lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))
   const num = (v: string) => (v.trim() === '' ? null : Number(v))
 
@@ -22,11 +24,11 @@ export function MapPicker({
       <label className="form-label flex items-center gap-1"><MapPin size={13} /> {label}</label>
       <div className="grid grid-cols-2 gap-2">
         <input
-          className="form-input" placeholder="Latitude e.g. 21.1959" inputMode="decimal"
+          className="form-input" placeholder={t('ui.latitudePh')} inputMode="decimal"
           value={lat ?? ''} onChange={e => onChange(num(e.target.value), lng ?? null)}
         />
         <input
-          className="form-input" placeholder="Longitude e.g. 72.8302" inputMode="decimal"
+          className="form-input" placeholder={t('ui.longitudePh')} inputMode="decimal"
           value={lng ?? ''} onChange={e => onChange(lat ?? null, num(e.target.value))}
         />
       </div>
@@ -35,10 +37,9 @@ export function MapPicker({
           href="https://www.google.com/maps" target="_blank" rel="noreferrer"
           className="text-xs text-brand-red inline-flex items-center gap-1 hover:underline"
         >
-          <ExternalLink size={11} /> Find coordinates on Google Maps
-        </a>
+          <ExternalLink size={11} />{t('ui.findOnGoogleMaps')}</a>
         {hasCoords && (
-          <button type="button" onClick={() => onChange(null, null)} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+          <button type="button" onClick={() => onChange(null, null)} className="text-xs text-slate-400 hover:text-slate-600">{t('ui.clear')}</button>
         )}
       </div>
       {hasCoords && (

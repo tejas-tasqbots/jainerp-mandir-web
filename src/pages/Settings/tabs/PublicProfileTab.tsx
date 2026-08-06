@@ -237,12 +237,12 @@ export function PublicProfileTab() {
                 {l.label || l.url}
               </a>
               <button onClick={() => removeLink(l.id)} className="p-1 text-slate-400 hover:text-red-600"
-                aria-label="Remove link">
+                aria-label={t('ui.removeLink')}>
                 <Trash2 size={15} />
               </button>
             </div>
           ))}
-          {links.length === 0 && <p className="text-sm text-slate-400">No links yet.</p>}
+          {links.length === 0 && <p className="text-sm text-slate-400">{t('ui.noLinks')}</p>}
         </div>
 
         <div className="mt-3 grid grid-cols-12 gap-2">
@@ -250,7 +250,7 @@ export function PublicProfileTab() {
             onChange={e => setNewLink(l => ({ ...l, kind: e.target.value }))}>
             {LINK_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input className="form-input col-span-3" placeholder="Label (optional)" value={newLink.label}
+          <input className="form-input col-span-3" placeholder={t('ui.labelOpt')} value={newLink.label}
             onChange={e => setNewLink(l => ({ ...l, label: e.target.value }))} />
           <input className="form-input col-span-4" placeholder="youtube.com/@yourtemple" value={newLink.url}
             onChange={e => setNewLink(l => ({ ...l, url: e.target.value }))}
@@ -266,9 +266,7 @@ export function PublicProfileTab() {
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <BookOpen size={16} /> {t('settings.publicProfile.publications', 'Books & publications')}
         </h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Books, commentaries, articles and pravachan series published by this trust.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">{t('ui.worksHelp')}</p>
 
         <div className="mt-3 space-y-2">
           {pubs.map(p => (
@@ -286,34 +284,34 @@ export function PublicProfileTab() {
                 {p.description && <p className="mt-1 text-xs text-slate-500">{p.description}</p>}
               </div>
               <button onClick={() => removePub(p.id)} className="p-1 text-slate-400 hover:text-red-600"
-                aria-label="Remove publication">
+                aria-label={t('ui.removePublication')}>
                 <Trash2 size={15} />
               </button>
             </div>
           ))}
-          {pubs.length === 0 && <p className="text-sm text-slate-400">Nothing published yet.</p>}
+          {pubs.length === 0 && <p className="text-sm text-slate-400">{t('ui.nothingPublished')}</p>}
         </div>
 
         <div className="mt-3 space-y-2">
           <div className="grid grid-cols-12 gap-2">
-            <input className="form-input col-span-6" placeholder="Title *" value={newPub.title}
+            <input className="form-input col-span-6" placeholder={t('ui.titleReq')} value={newPub.title}
               onChange={e => setNewPub(p => ({ ...p, title: e.target.value }))} />
             <select className="form-input col-span-3" value={newPub.kind}
               onChange={e => setNewPub(p => ({ ...p, kind: e.target.value }))}>
               {PUB_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
-            <input className="form-input col-span-3" type="number" placeholder="Year" value={newPub.year}
+            <input className="form-input col-span-3" type="number" placeholder={t('ui.year')} value={newPub.year}
               onChange={e => setNewPub(p => ({ ...p, year: e.target.value }))} />
           </div>
           <div className="grid grid-cols-12 gap-2">
-            <input className="form-input col-span-3" placeholder="Language" value={newPub.language}
+            <input className="form-input col-span-3" placeholder={t('ui.language')} value={newPub.language}
               onChange={e => setNewPub(p => ({ ...p, language: e.target.value }))} />
-            <input className="form-input col-span-4" placeholder="Publisher" value={newPub.publisher}
+            <input className="form-input col-span-4" placeholder={t('ui.publisher')} value={newPub.publisher}
               onChange={e => setNewPub(p => ({ ...p, publisher: e.target.value }))} />
-            <input className="form-input col-span-5" placeholder="Link (optional)" value={newPub.url}
+            <input className="form-input col-span-5" placeholder={t('ui.linkOpt')} value={newPub.url}
               onChange={e => setNewPub(p => ({ ...p, url: e.target.value }))} />
           </div>
-          <textarea className="form-input" rows={2} placeholder="Short description" value={newPub.description}
+          <textarea className="form-input" rows={2} placeholder={t('ui.shortDescription')} value={newPub.description}
             onChange={e => setNewPub(p => ({ ...p, description: e.target.value }))} />
 
           <div className="flex items-center gap-3">
@@ -321,21 +319,19 @@ export function PublicProfileTab() {
               <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <img src={cover.dataUri} alt="" className="h-10 w-8 rounded object-cover" />
                 <span className="max-w-[12rem] truncate text-xs text-slate-600">{cover.name}</span>
-                <button onClick={() => setCover(null)} aria-label="Remove cover"
+                <button onClick={() => setCover(null)} aria-label={t('ui.removeCover')}
                   className="p-0.5 text-slate-400 hover:text-red-600">
                   <X size={14} />
                 </button>
               </div>
             ) : (
               <label className="btn-secondary cursor-pointer">
-                <ImagePlus size={15} /> Cover image
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                <ImagePlus size={15} />{t('ui.coverImage')}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void pickCover(f); e.target.value = '' }} />
               </label>
             )}
             <button onClick={addPub} disabled={saving} className="btn-secondary">
-              <Plus size={15} /> Add publication
-            </button>
+              <Plus size={15} />{t('ui.addPublication')}</button>
           </div>
         </div>
       </section>

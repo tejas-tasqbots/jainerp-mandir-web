@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/kit/Toast'
@@ -64,11 +65,12 @@ const isDesktop =
     window.location.protocol === 'file:')
 
 function LoadingScreen() {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center justify-center h-screen bg-slate-50">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-cta border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-600 text-sm">Loading JainERP™...</p>
+        <p className="text-slate-600 text-sm">{t('ui.loadingApp')}</p>
       </div>
     </div>
   )

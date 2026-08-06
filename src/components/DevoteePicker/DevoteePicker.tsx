@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, X, UserPlus, Link2, EyeOff, KeyRound, Check } from 'lucide-react'
 import { api } from '../../lib/api'
 import { CitySelect, CountrySelect, StateSelect } from '../GeoSelect'
@@ -83,6 +84,7 @@ export function DevoteePicker({
   required = false,
   label,
 }: DevoteePickerProps) {
+  const { t } = useTranslation()
   const isOnline = useIsOnline()
 
   const [mode, setMode] = useState<Mode>('search')
@@ -287,16 +289,15 @@ export function DevoteePicker({
                   (OTP is still required for 80G); only the label is hidden.
                   "Offline" is kept: it's a sync state the cashier must act on. */}
               {value.is_offline && (
-                <span className="text-xs text-amber-600 font-medium">Offline — links on sync</span>
+                <span className="text-xs text-amber-600 font-medium">{t('ui.offlineLinksOnSync')}</span>
               )}
               {value.linked_to_this_temple && (
                 <span className="inline-flex items-center gap-0.5 text-xs text-blue-600 font-medium">
-                  <Link2 size={11} /> Donates here
-                </span>
+                  <Link2 size={11} />{t('ui.donatesHere')}</span>
               )}
             </div>
           </div>
-          <button type="button" onClick={clear} aria-label="Clear selection" className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
+          <button type="button" onClick={clear} aria-label={t('ui.clearSelection')} className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -314,7 +315,7 @@ export function DevoteePicker({
           <EyeOff size={14} className="text-slate-400 flex-shrink-0" />
           <span className="text-sm font-medium text-slate-600">{label2}</span>
           <span className="text-xs text-slate-400">— not 80G eligible</span>
-          <button type="button" onClick={clear} aria-label="Clear selection" className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
+          <button type="button" onClick={clear} aria-label={t('ui.clearSelection')} className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -329,16 +330,16 @@ export function DevoteePicker({
       <div>
         <label className="form-label">{fieldLabel}{required && ' *'}</label>
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
-          <p className="text-xs text-blue-700 font-medium">New donor</p>
+          <p className="text-xs text-blue-700 font-medium">{t('ui.newDonor')}</p>
 
-          <input className="form-input" placeholder="Full name *" value={f.name}
+          <input className="form-input" placeholder={t('ui.fullNameReq')} value={f.name}
             onChange={e => { setField('name', e.target.value); setError('') }} autoFocus />
           <PhoneInput value={f.mobile} onChange={v => { setField('mobile', v); setError('') }} />
 
           <div className="grid grid-cols-2 gap-2">
-            <input type="email" className="form-input" placeholder="Email (optional)" value={f.email}
+            <input type="email" className="form-input" placeholder={t('ui.emailOpt')} value={f.email}
               onChange={e => setField('email', e.target.value)} />
-            <input className="form-input" placeholder="Gotra (optional)" value={f.gotra}
+            <input className="form-input" placeholder={t('ui.gotraOpt')} value={f.gotra}
               onChange={e => setField('gotra', e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -346,7 +347,7 @@ export function DevoteePicker({
             {isIndia ? (
               <StateSelect value={f.state} onChange={s => { setField('state', s); setField('city', '') }} />
             ) : (
-              <input className="form-input" placeholder="State / Province" value={f.state}
+              <input className="form-input" placeholder={t('ui.stateProvince')} value={f.state}
                 onChange={e => setField('state', e.target.value)} />
             )}
           </div>
@@ -354,25 +355,23 @@ export function DevoteePicker({
             {isIndia ? (
               <CitySelect state={f.state} value={f.city} onChange={c => setField('city', c)} />
             ) : (
-              <input className="form-input" placeholder="City" value={f.city}
+              <input className="form-input" placeholder={t('ui.city')} value={f.city}
                 onChange={e => setField('city', e.target.value)} />
             )}
             <input className="form-input" placeholder={isIndia ? 'Pincode' : 'Postal code'} value={f.pincode}
               maxLength={isIndia ? 6 : 12}
               onChange={e => setField('pincode', isIndia ? e.target.value.replace(/\D/g, '') : e.target.value)} />
           </div>
-          <input className="form-input" placeholder="Address (optional)" value={f.address}
+          <input className="form-input" placeholder={t('ui.addressOpt')} value={f.address}
             onChange={e => setField('address', e.target.value)} />
 
           {/* PAN — only needed for 80G */}
           {!f.noPan && (
-            <input className="form-input uppercase" placeholder="PAN (needed only for 80G)" value={f.pan}
+            <input className="form-input uppercase" placeholder={t('ui.panFor80g')} value={f.pan}
               onChange={e => setField('pan', e.target.value.toUpperCase())} maxLength={10} />
           )}
           <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" checked={f.noPan} onChange={e => { setField('noPan', e.target.checked); setField('pan', '') }} />
-            Donor doesn&apos;t want to share PAN
-          </label>
+            <input type="checkbox" checked={f.noPan} onChange={e => { setField('noPan', e.target.checked); setField('pan', '') }} />{t('ui.noPanShare')}</label>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 
@@ -381,9 +380,7 @@ export function DevoteePicker({
             <button type="button" onClick={saveDonor} disabled={saving} className="btn-primary btn-sm text-xs">
               {saving ? 'Saving…' : 'Save donor'}
             </button>
-            <button type="button" onClick={() => { resetAddForm(); setMode('search'); setError('') }} className="btn-secondary btn-sm text-xs">
-              Cancel
-            </button>
+            <button type="button" onClick={() => { resetAddForm(); setMode('search'); setError('') }} className="btn-secondary btn-sm text-xs">{t('ui.cancel')}</button>
             {isValidPhone(f.mobile) && !otpOpen && (
               <button type="button" onClick={sendOtp} disabled={otpSending}
                 className="ml-auto text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 underline underline-offset-2">
@@ -395,8 +392,7 @@ export function DevoteePicker({
           {/* Inline OTP row — no separate screen */}
           {otpOpen && (
             <div className="border-t border-blue-200 pt-2 mt-1 space-y-2">
-              <p className="text-xs text-blue-700">
-                OTP sent to <strong>{f.mobile}</strong> — ask the donor to read it out.
+              <p className="text-xs text-blue-700">{t('ui.otpSentTo')}<strong>{f.mobile}</strong> — ask the donor to read it out.
                 {devOtp && <span className="ml-1 font-bold text-orange-600">[Dev: {devOtp}]</span>}
               </p>
               <div className="flex items-center gap-2">
@@ -434,7 +430,7 @@ export function DevoteePicker({
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             className="form-input pl-9"
-            placeholder="Search by name or mobile — or add a new donor"
+            placeholder={t('ui.searchOrAdd')}
             value={query}
             onChange={e => { setQuery(e.target.value); setDropdownOpen(true) }}
             onFocus={() => { if (query.length >= 3) setDropdownOpen(true) }}
@@ -455,7 +451,7 @@ export function DevoteePicker({
                     {d.pan_masked && <span className="text-slate-400 text-xs font-mono">• PAN {d.pan_masked}</span>}
                     {/* No Verified badge here either — see the selection chip above. */}
                     {d.linked_to_this_temple && (
-                      <span className="inline-flex items-center gap-0.5 text-xs text-blue-600"><Link2 size={10} /> Donates here</span>
+                      <span className="inline-flex items-center gap-0.5 text-xs text-blue-600"><Link2 size={10} />{t('ui.donatesHere')}</span>
                     )}
                   </div>
                 </button>
@@ -468,8 +464,7 @@ export function DevoteePicker({
               {searchDone && (
                 <button type="button" onClick={openAddForm}
                   className="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-sm text-blue-700 border-t border-slate-100 flex items-center gap-2">
-                  <UserPlus size={14} /> Add new donor
-                </button>
+                  <UserPlus size={14} />{t('ui.addNewDonor')}</button>
               )}
             </div>
           )}
@@ -479,19 +474,16 @@ export function DevoteePicker({
         <div className="flex gap-3 flex-wrap items-center pt-0.5">
           <button type="button" onClick={openAddForm}
             className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
-            <UserPlus size={12} /> Add new donor
-          </button>
+            <UserPlus size={12} />{t('ui.addNewDonor')}</button>
           {showAnonymous && (
             <button type="button" onClick={() => selectAnonymous('gupt_dan')}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-              <EyeOff size={11} /> Anonymous / Gupt Daan
-            </button>
+              <EyeOff size={11} />{t('ui.anonymousGupt')}</button>
           )}
           {showDanPeti && (
             <button type="button" onClick={() => selectAnonymous('dan_peti')}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
-              <EyeOff size={11} /> Daan Peti (Box)
-            </button>
+              <EyeOff size={11} />{t('ui.daanPeti')}</button>
           )}
         </div>
 

@@ -196,7 +196,7 @@ export function VendorsPage() {
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-navy-900">{editId ? t('vendors.editVendor') : t('vendors.addVendor')}</h3>
-              <button type="button" onClick={() => setShowForm(false)} title="Close" aria-label="Close"><X size={18} className="text-slate-400" /></button>
+              <button type="button" onClick={() => setShowForm(false)} title={t('ui.close')} aria-label={t('ui.close')}><X size={18} className="text-slate-400" /></button>
             </div>
             <form onSubmit={submit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -223,7 +223,7 @@ export function VendorsPage() {
                   </select>
                 </div>
                 <div><label className="form-label">{t('vendors.bankAc')}</label><input className="form-input" placeholder={t('vendors.accountNoPlaceholder')} value={form.bank_account} onChange={e => setForm(f => ({ ...f, bank_account: e.target.value }))} /></div>
-                <div><label className="form-label">{t('vendors.ifsc')}</label><input className="form-input uppercase" placeholder="IFSC" value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} /></div>
+                <div><label className="form-label">{t('vendors.ifsc')}</label><input className="form-input uppercase" placeholder={t('ui.ifsc')} value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} /></div>
               </div>
               <div><label className="form-label">{t('vendors.notes')}</label><input className="form-input" placeholder={t('vendors.notesPlaceholder')} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
               <div className="flex gap-3 justify-end pt-2">
