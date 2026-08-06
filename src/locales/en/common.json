@@ -1003,7 +1003,19 @@
     "roomOccupied": "This room is currently occupied",
     "available": "Available",
     "occupied": "Occupied",
-    "refundDueHint": "Paid more than the final bill — refund due to the guest"
+    "refundDueHint": "Paid more than the final bill — refund due to the guest",
+    "billTitle": "Room Bill",
+    "billLoadFailed": "Could not load the bill",
+    "enterAmount": "Enter an amount",
+    "overpayment": "Amount exceeds the balance due",
+    "billIssued": "Payment recorded and bill issued",
+    "paymentRecorded": "Payment recorded",
+    "paymentFailed": "Could not record the payment",
+    "hallBillTitle": "Hall Bill",
+    "issueBillLabel": "Mark completed and issue the bill",
+    "issueBillHint": "Issues the HALL invoice number and sends the bill on WhatsApp. Cannot be undone.",
+    "cancelReason": "Reason",
+    "cancelReasonHint": "Recorded on the booking and in the audit trail"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",
@@ -1064,7 +1076,8 @@
     "notePlaceholder": "e.g. New batch received",
     "adjusting": "Adjusting...",
     "saleFailed": "Sale failed",
-    "outOfStock": "Out of stock"
+    "outOfStock": "Out of stock",
+    "referenceHint": "UPI / txn reference (optional)"
   },
   "seva": {
     "title": "Seva Bookings",
@@ -1154,7 +1167,9 @@
     "printTokenSlip": "Print token slip",
     "saleRecorded": "Sale recorded",
     "redeemFailed": "Could not redeem tokens",
-    "searchBuyer": "Search buyer name / mobile..."
+    "searchBuyer": "Search buyer name / mobile...",
+    "reference": "Reference",
+    "referenceHint": "UPI / txn reference (optional)"
   },
   "events": {
     "title": "Events",

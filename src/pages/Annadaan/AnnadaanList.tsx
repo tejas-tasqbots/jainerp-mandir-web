@@ -36,6 +36,7 @@ export function AnnadaanList() {
     tokens: '',
     rate: '20',
     payment_mode: 'cash',
+    reference_no: '',
     devotee_mobile: '',
     buyer_name: '',
   })
@@ -180,11 +181,12 @@ export function AnnadaanList() {
         tokens: parseInt(form.tokens),
         rate_paise: parsePaise(form.rate),
         payment_mode: form.payment_mode,
+        reference_no: form.reference_no.trim() || undefined,
         devotee_mobile: form.devotee_mobile || undefined,
         buyer_name: form.buyer_name || undefined,
         sale_date: dateFilter,
       })
-      setForm({ meal_type: 'lunch', tokens: '', rate: '20', payment_mode: 'cash', devotee_mobile: '', buyer_name: '' })
+      setForm({ meal_type: 'lunch', tokens: '', rate: '20', payment_mode: 'cash', reference_no: '', devotee_mobile: '', buyer_name: '' })
       setShowForm(false)
       toast.success(t('bhojanshala.saleRecorded'))
       load()
@@ -275,6 +277,23 @@ export function AnnadaanList() {
                   <option value="free">{t('bhojanshala.free')}</option>
                 </select>
               </div>
+              {/* A non-cash sale had nowhere to record its UTR/txn id, so an
+                  online collection could not be reconciled against the bank
+                  later. Sent as reference_no, which PaymentsService.normalize
+                  puts on the tender itself rather than a parallel scalar. */}
+              {form.payment_mode !== 'cash' && form.payment_mode !== 'free' && (
+                <div>
+                  <label className="form-label" htmlFor="annadaan-ref">
+                    {t('bhojanshala.reference', { defaultValue: 'Reference' })}
+                  </label>
+                  <input
+                    id="annadaan-ref" className="form-input"
+                    value={form.reference_no}
+                    onChange={e => setForm(f => ({ ...f, reference_no: e.target.value }))}
+                    placeholder={t('bhojanshala.referenceHint', { defaultValue: 'UPI / txn reference (optional)' })}
+                  />
+                </div>
+              )}
               <div>
                 <label className="form-label">{t('bhojanshala.mobileOptional')}</label>
                 <PhoneInput value={form.devotee_mobile} onChange={v => setForm(f => ({ ...f, devotee_mobile: v }))} />

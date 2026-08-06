@@ -1003,7 +1003,19 @@
     "roomOccupied": "यह कमरा अभी भरा है",
     "available": "उपलब्ध",
     "occupied": "भरा",
-    "refundDueHint": "अंतिम बिल से अधिक भुगतान — अतिथि को वापसी देय"
+    "refundDueHint": "अंतिम बिल से अधिक भुगतान — अतिथि को वापसी देय",
+    "billTitle": "कमरा बिल",
+    "billLoadFailed": "बिल लोड नहीं हो सका",
+    "enterAmount": "राशि दर्ज करें",
+    "overpayment": "राशि शेष देय से अधिक है",
+    "billIssued": "भुगतान दर्ज हुआ और बिल जारी किया गया",
+    "paymentRecorded": "भुगतान दर्ज किया गया",
+    "paymentFailed": "भुगतान दर्ज नहीं हो सका",
+    "hallBillTitle": "हॉल बिल",
+    "issueBillLabel": "पूर्ण चिह्नित करें और बिल जारी करें",
+    "issueBillHint": "HALL चालान संख्या जारी करता है और व्हाट्सएप पर बिल भेजता है। इसे पूर्ववत नहीं किया जा सकता।",
+    "cancelReason": "कारण",
+    "cancelReasonHint": "बुकिंग और ऑडिट ट्रेल में दर्ज किया जाता है"
   },
   "prasad": {
     "counterTitle": "प्रसाद काउंटर",
@@ -1064,7 +1076,8 @@
     "notePlaceholder": "उदा. नया बैच प्राप्त हुआ",
     "adjusting": "समायोजित किया जा रहा है...",
     "saleFailed": "बिक्री विफल",
-    "outOfStock": "स्टॉक समाप्त"
+    "outOfStock": "स्टॉक समाप्त",
+    "referenceHint": "UPI / लेनदेन संदर्भ (वैकल्पिक)"
   },
   "seva": {
     "title": "सेवा बुकिंग",
@@ -1154,7 +1167,9 @@
     "printTokenSlip": "टोकन पर्ची प्रिंट करें",
     "saleRecorded": "बिक्री दर्ज हुई",
     "redeemFailed": "टोकन रिडीम नहीं हो सके",
-    "searchBuyer": "खरीदार नाम / मोबाइल खोजें..."
+    "searchBuyer": "खरीदार नाम / मोबाइल खोजें...",
+    "reference": "संदर्भ",
+    "referenceHint": "UPI / लेनदेन संदर्भ (वैकल्पिक)"
   },
   "events": {
     "title": "कार्यक्रम",

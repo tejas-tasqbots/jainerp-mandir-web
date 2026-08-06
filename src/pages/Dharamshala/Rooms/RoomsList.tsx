@@ -5,6 +5,8 @@ import { FileText, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
+import { printBillDoc } from '../../../lib/printBill'
+import { useProfileStore } from '../../../store/profileStore'
 import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
@@ -52,6 +54,7 @@ export function RoomsList() {
   const [checkoutRows, setCheckoutRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [checkingOut, setCheckingOut] = useState(false)
   const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
+  const { profile } = useProfileStore()
   const [cancelModal, setCancelModal] = useState<{ id: string; guestName: string } | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
@@ -328,6 +331,37 @@ export function RoomsList() {
     }
   }
 
+  /** Print the bill as its own document (see lib/printBill.ts for why). */
+  function printBill(bill: Record<string, any>) {
+    const rs = (p: unknown) => `₹${fmtPaise(Number(p ?? 0))}`
+    const due = Number(bill.due_paise ?? 0)
+    printBillDoc({
+      templeName: profile?.name || 'Temple',
+      templeAddress: [profile?.address, profile?.city, profile?.state].filter(Boolean).join(', '),
+      title: t('dharamshala.billTitle'),
+      invoiceNo: bill.invoice_no,
+      meta: [
+        { label: t('dharamshala.guest'), value: String(bill.guest_name ?? '') },
+        { label: t('dharamshala.room'), value: String(bill.room_number ?? '') },
+      ],
+      charges: [
+        { label: t('dharamshala.subtotal'), value: rs(bill.subtotal_paise) },
+        { label: 'CGST', value: rs(bill.cgst_paise) },
+        { label: 'SGST', value: rs(bill.sgst_paise) },
+        { label: t('dharamshala.total'), value: rs(bill.total_paise), bold: true },
+      ],
+      paymentsLabel: t('dharamshala.paymentsReceived'),
+      payments: ((bill.payments ?? []) as Record<string, any>[]).map(p => ({
+        label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${String(p.paid_on).slice(0, 10)})`,
+        value: rs(p.amount_paise),
+      })),
+      noPaymentsLabel: t('dharamshala.noPaymentsRecorded'),
+      balanceLabel: t('dharamshala.balance'),
+      balanceValue: rs(due),
+      balanceOutstanding: due > 0,
+    })
+  }
+
   async function removeBooking(b: RoomBooking) {
     if (!(await confirm({
       title: t('dharamshala.deleteBookingTitle'),
@@ -511,7 +545,7 @@ export function RoomsList() {
             </div>
 
             <div className="flex gap-3 justify-end mt-5">
-              <button onClick={() => window.print()} className="btn-secondary">{t('common.print')}</button>
+              <button onClick={() => printBill(billModal)} className="btn-secondary">{t('common.print')}</button>
               <button onClick={() => setBillModal(null)} className="btn-primary">{t('common.close')}</button>
             </div>
           </div>

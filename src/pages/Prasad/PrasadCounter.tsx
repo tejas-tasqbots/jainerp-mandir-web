@@ -17,6 +17,7 @@ export function PrasadCounter() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [paymentMode, setPaymentMode] = useState('cash')
+  const [reference, setReference] = useState('')
   const [buyer, setBuyer] = useState<DevoteeSelection | null>(null)
   const [showBuyerPicker, setShowBuyerPicker] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -52,6 +53,7 @@ export function PrasadCounter() {
         items: cart.map(ci => ({ item_id: ci.item.id, qty: ci.qty })),
         payment_mode: paymentMode,
       }
+      if (paymentMode !== 'cash' && reference.trim()) payload.reference_no = reference.trim()
 
       if (buyer?.is_anonymous) {
         payload.is_anonymous = true
@@ -64,6 +66,7 @@ export function PrasadCounter() {
       const { data } = await api.post('/prasad/sales', payload)
       setLastSale({ id: data.data.id, total_paise: data.data.total_paise, invoice: data.data.invoice_no })
       setCart([])
+      setReference('')
       setBuyer(null)
       setShowBuyerPicker(false)
     } catch (err) {
@@ -212,6 +215,20 @@ export function PrasadCounter() {
                 <option value="cash">{t('common.cash')}</option>
                 <option value="upi">{t('common.upi')}</option>
               </select>
+
+              {/* A non-cash sale had nowhere to record its UTR/txn id, so an
+                  online collection could not be reconciled against the bank
+                  later. Sent as reference_no, which PaymentsService.normalize
+                  puts on the tender itself rather than a parallel scalar. */}
+              {paymentMode !== 'cash' && (
+                <input
+                  className="form-input text-xs"
+                  value={reference}
+                  onChange={e => setReference(e.target.value)}
+                  placeholder={t('prasad.referenceHint', { defaultValue: 'UPI / txn reference (optional)' })}
+                  aria-label={t('prasad.referenceHint', { defaultValue: 'UPI / txn reference (optional)' })}
+                />
+              )}
 
               {/* Optional buyer picker — collapsed by default */}
               <div>

@@ -134,52 +134,87 @@ export function CattleList() {
 
       <SummaryStrip stats={stats} />
 
+      {/* Every field used `className="field"` / `"field-check"`, which are not
+          defined anywhere in the stylesheet — so the labels and inputs rendered
+          as raw inline flow ("Type cow", "Received fromDonor, rescue or purcha")
+          with no borders or spacing. The real classes are form-label /
+          form-input / form-select, as used by AddHallBooking. */}
       {showForm && (
-        <div className="card p-4">
-          <div className="grid grid-cols-3 gap-3">
-            <label className="field">
-              <span>{t('gaushala.tag', { defaultValue: 'Tag' })} *</span>
-              <input value={form.tag_number} onChange={e => setForm({ ...form, tag_number: e.target.value })} />
-            </label>
-            <label className="field">
-              <span>{t('common.name', { defaultValue: 'Name' })}</span>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-            </label>
-            <label className="field">
-              <span>{t('gaushala.category', { defaultValue: 'Type' })}</span>
-              <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+        <form
+          className="card p-4 space-y-4"
+          onSubmit={e => { e.preventDefault(); save() }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="form-label" htmlFor="cattle-tag">
+                {t('gaushala.tag', { defaultValue: 'Tag' })} <span className="text-brand-red">*</span>
+              </label>
+              <input
+                id="cattle-tag" className="form-input" autoFocus required
+                value={form.tag_number}
+                onChange={e => setForm({ ...form, tag_number: e.target.value })}
+                placeholder={t('gaushala.tagHint', { defaultValue: 'e.g. C-101' })}
+              />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="cattle-name">{t('common.name', { defaultValue: 'Name' })}</label>
+              <input id="cattle-name" className="form-input" value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="cattle-type">{t('gaushala.category', { defaultValue: 'Type' })}</label>
+              <select id="cattle-type" className="form-select" value={form.category}
+                onChange={e => setForm({ ...form, category: e.target.value })}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-            </label>
-            <label className="field">
-              <span>{t('gaushala.breed', { defaultValue: 'Breed' })}</span>
-              <input value={form.breed} onChange={e => setForm({ ...form, breed: e.target.value })} />
-            </label>
-            <label className="field">
-              <span>{t('gaushala.sex', { defaultValue: 'Sex' })}</span>
-              <select value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })}>
-                <option value="female">female</option>
-                <option value="male">male</option>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="cattle-breed">{t('gaushala.breed', { defaultValue: 'Breed' })}</label>
+              <input id="cattle-breed" className="form-input" value={form.breed}
+                onChange={e => setForm({ ...form, breed: e.target.value })} />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="cattle-sex">{t('gaushala.sex', { defaultValue: 'Sex' })}</label>
+              <select id="cattle-sex" className="form-select" value={form.sex}
+                onChange={e => setForm({ ...form, sex: e.target.value })}>
+                <option value="female">{t('gaushala.female', { defaultValue: 'Female' })}</option>
+                <option value="male">{t('gaushala.male', { defaultValue: 'Male' })}</option>
               </select>
-            </label>
-            <label className="field">
-              <span>{t('gaushala.dob', { defaultValue: 'Date of birth' })}</span>
-              <input type="date" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
-            </label>
-            <label className="field col-span-2">
-              <span>{t('gaushala.acquiredFrom', { defaultValue: 'Received from' })}</span>
-              <input value={form.acquired_from} onChange={e => setForm({ ...form, acquired_from: e.target.value })}
-                placeholder={t('gaushala.acquiredHint', { defaultValue: 'Donor, rescue or purchase' })} />
-            </label>
-            <label className="field-check mt-6">
-              <input type="checkbox" checked={form.is_milking} onChange={e => setForm({ ...form, is_milking: e.target.checked })} />
-              <span>{t('gaushala.milking', { defaultValue: 'Milking' })}</span>
-            </label>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="cattle-dob">{t('gaushala.dob', { defaultValue: 'Date of birth' })}</label>
+              <input id="cattle-dob" type="date" className="form-input" value={form.date_of_birth}
+                onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="form-label" htmlFor="cattle-from">{t('gaushala.acquiredFrom', { defaultValue: 'Received from' })}</label>
+              <input
+                id="cattle-from" className="form-input" value={form.acquired_from}
+                onChange={e => setForm({ ...form, acquired_from: e.target.value })}
+                placeholder={t('gaushala.acquiredHint', { defaultValue: 'Donor, rescue or purchase' })}
+              />
+            </div>
+            <div className="flex items-center">
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer sm:mt-6">
+                <input
+                  type="checkbox" className="rounded border-slate-300"
+                  checked={form.is_milking}
+                  onChange={e => setForm({ ...form, is_milking: e.target.checked })}
+                />
+                {t('gaushala.milking', { defaultValue: 'Milking' })}
+              </label>
+            </div>
           </div>
-          <button onClick={save} disabled={saving} className="btn-primary btn-sm mt-2">
-            <Save size={14} /> {saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
-          </button>
-        </div>
+
+          <div className="flex gap-3 justify-end border-t border-slate-100 pt-3">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary btn-sm">
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </button>
+            <button type="submit" disabled={saving} className="btn-primary btn-sm">
+              <Save size={14} /> {saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
+            </button>
+          </div>
+        </form>
       )}
 
       <DataTable
