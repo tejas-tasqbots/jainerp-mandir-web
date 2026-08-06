@@ -555,7 +555,7 @@
       "searchPlaceholder": "मोबाइल किंवा ईमेलने शोधा",
       "noMessages": "अद्याप संदेश नाहीत",
       "tpl": {
-        "donation_receipt_v3": "देणगी पावती",
+        "donation_receipt_v4": "देणगी पावती",
         "donation_voided": "देणगी रद्द",
         "donation_request_rejected": "देणगी विनंती नाकारली",
         "donation_bulk_import_complete": "बल्क आयात पूर्ण",
@@ -1062,7 +1062,9 @@
     "qtyHint": "जोडण्यासाठी धन, काढण्यासाठी ऋण",
     "noteOptional": "टीप (ऐच्छिक)",
     "notePlaceholder": "उदा. नवीन तुकडी प्राप्त झाली",
-    "adjusting": "समायोजित करत आहे..."
+    "adjusting": "समायोजित करत आहे...",
+    "saleFailed": "विक्री अयशस्वी",
+    "outOfStock": "साठा संपला"
   },
   "seva": {
     "title": "सेवा बुकिंग",

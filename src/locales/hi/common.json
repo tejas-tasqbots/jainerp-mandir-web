@@ -555,7 +555,7 @@
       "searchPlaceholder": "मोबाइल या ईमेल से खोजें",
       "noMessages": "अभी कोई संदेश नहीं",
       "tpl": {
-        "donation_receipt_v3": "दान रसीद",
+        "donation_receipt_v4": "दान रसीद",
         "donation_voided": "दान रद्द",
         "donation_request_rejected": "दान अनुरोध अस्वीकृत",
         "donation_bulk_import_complete": "बल्क आयात पूर्ण",
@@ -1062,7 +1062,9 @@
     "qtyHint": "जोड़ने के लिए धनात्मक, हटाने के लिए ऋणात्मक",
     "noteOptional": "टिप्पणी (वैकल्पिक)",
     "notePlaceholder": "उदा. नया बैच प्राप्त हुआ",
-    "adjusting": "समायोजित किया जा रहा है..."
+    "adjusting": "समायोजित किया जा रहा है...",
+    "saleFailed": "बिक्री विफल",
+    "outOfStock": "स्टॉक समाप्त"
   },
   "seva": {
     "title": "सेवा बुकिंग",

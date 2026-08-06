@@ -555,7 +555,7 @@
       "searchPlaceholder": "Search by mobile or email",
       "noMessages": "No messages yet",
       "tpl": {
-        "donation_receipt_v3": "Donation receipt",
+        "donation_receipt_v4": "Donation receipt",
         "donation_voided": "Donation cancelled",
         "donation_request_rejected": "Donation request declined",
         "donation_bulk_import_complete": "Bulk import finished",
@@ -1062,7 +1062,9 @@
     "qtyHint": "Positive to add stock, negative to remove",
     "noteOptional": "Note (optional)",
     "notePlaceholder": "e.g. New batch received",
-    "adjusting": "Adjusting..."
+    "adjusting": "Adjusting...",
+    "saleFailed": "Sale failed",
+    "outOfStock": "Out of stock"
   },
   "seva": {
     "title": "Seva Bookings",

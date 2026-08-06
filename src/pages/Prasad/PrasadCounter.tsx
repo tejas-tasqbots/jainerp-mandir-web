@@ -66,8 +66,14 @@ export function PrasadCounter() {
       setCart([])
       setBuyer(null)
       setShowBuyerPicker(false)
-    } catch {
-      toast.error('Sale failed')
+    } catch (err) {
+      // The API answers with a precise reason ({ code: 'OUT_OF_STOCK', message }).
+      // A bare `catch` swallowed it and showed "Sale failed", which left the
+      // cashier with no idea that the item simply had no stock.
+      const e = err as { response?: { data?: { error?: { message?: string }; message?: string } } }
+      toast.error(
+        e.response?.data?.error?.message || e.response?.data?.message || t('prasad.saleFailed'),
+      )
     } finally {
       setSaving(false)
     }
@@ -115,21 +121,36 @@ export function PrasadCounter() {
             <div className="text-center py-10 text-slate-400">{t('prasad.loadingItems')}</div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {items.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => addToCart(item)}
-                  className="card p-4 text-left hover:border-brand-red hover:shadow-md transition-all group"
-                >
-                  <p className="font-semibold text-slate-800 text-sm group-hover:text-brand-red">{item.name}</p>
-                  <p className="text-lg font-bold text-navy-900 mt-1">₹{fmtPaise(item.price_paise)}</p>
-                  {item.gst_rate > 0 && (
-                    <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: item.gst_rate })}</p>
-                  )}
-                  <p className="text-xs text-slate-400 mt-1">{t('prasad.stock', { qty: item.stock_qty ?? 0 })}</p>
-                </button>
-              ))}
+              {items.map(item => {
+                // The sale is rejected server-side when stock_qty < qty, so an
+                // out-of-stock item can only ever fail at checkout. Show that on
+                // the tile instead of letting it into the cart.
+                const outOfStock = Number(item.stock_qty ?? 0) <= 0
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => addToCart(item)}
+                    disabled={outOfStock}
+                    className={
+                      outOfStock
+                        ? 'card p-4 text-left opacity-60 cursor-not-allowed'
+                        : 'card p-4 text-left hover:border-brand-red hover:shadow-md transition-all group'
+                    }
+                  >
+                    <p className="font-semibold text-slate-800 text-sm group-hover:text-brand-red">{item.name}</p>
+                    <p className="text-lg font-bold text-navy-900 mt-1">₹{fmtPaise(item.price_paise)}</p>
+                    {item.gst_rate > 0 && (
+                      <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: item.gst_rate })}</p>
+                    )}
+                    {outOfStock ? (
+                      <p className="text-xs font-medium text-brand-red mt-1">{t('prasad.outOfStock')}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">{t('prasad.stock', { qty: item.stock_qty ?? 0 })}</p>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
