@@ -238,7 +238,12 @@ export function LoginPage() {
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative">
         {/* Language is switchable before sign-in — a Hindi-only cashier used to
             meet an English-only login with no way out. */}
-        <div className="absolute right-4 top-4"><LanguageSwitcher /></div>
+        {/* The switcher sits in its own row rather than floating over the
+            header. It used to be absolutely positioned on top of the logo and
+            hero, so opening it covered the branding — the menu was always
+            clickable, it just landed on top of the artwork. Giving it a row of
+            its own makes all three portal logins read the same way. */}
+        <div className="flex justify-end -mt-2 mb-1 relative z-50"><LanguageSwitcher variant="pill" /></div>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-brand-red flex items-center justify-center mx-auto mb-4">

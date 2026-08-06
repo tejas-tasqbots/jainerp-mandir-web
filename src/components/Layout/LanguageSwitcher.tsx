@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Globe, Check, ChevronDown } from 'lucide-react'
+import { Globe, Check, ChevronDown, Languages } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useAuthStore, type Language } from '../../store/authStore'
 
@@ -25,7 +25,14 @@ const MENU_HEIGHT = 160
  * Without that guard the PATCH 401'd and the optimistic update rolled straight
  * back, which looked like the picker was ignoring clicks.
  */
-export function LanguageSwitcher() {
+/**
+ * `variant` exists so the three portal logins can look identical without
+ * disturbing this component's other home, the post-login TopBar.
+ *  - `bar`  (default) — the understated globe + code used in the TopBar.
+ *  - `pill` — the bordered pill showing the language in its own script, which
+ *    devotee-web and sant-web already use on their login cards.
+ */
+export function LanguageSwitcher({ variant = 'bar' }: { variant?: 'bar' | 'pill' } = {}) {
   const { t } = useTranslation()
   const { language, setLanguage, isLoggedIn, pinLanguage } = useAuthStore()
   const [open, setOpen] = useState(false)
@@ -131,15 +138,28 @@ export function LanguageSwitcher() {
             openMenu()
           }
         }}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-navy-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-1 rounded"
+        className={
+          variant === 'pill'
+            ? 'flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-1'
+            : 'flex items-center gap-1.5 text-sm text-slate-500 hover:text-navy-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-1 rounded'
+        }
         title={t('topBar.language')}
         aria-label={t('topBar.language')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <Globe size={15} className="text-slate-400" aria-hidden="true" />
-        <span className="font-medium">{current.short}</span>
-        <ChevronDown size={13} aria-hidden="true" className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {variant === 'pill' ? (
+          <>
+            <Languages size={13} aria-hidden="true" />
+            {current.native}
+          </>
+        ) : (
+          <>
+            <Globe size={15} className="text-slate-400" aria-hidden="true" />
+            <span className="font-medium">{current.short}</span>
+            <ChevronDown size={13} aria-hidden="true" className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </>
+        )}
       </button>
 
       {open && (
