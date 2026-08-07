@@ -11,6 +11,15 @@ let L: ReceiptLabels = receiptLabels('en')
 
 export interface ReceiptData {
   /**
+   * What this document calls itself. Every template hardcoded "Donation
+   * Receipt", so a room stay, a hall booking and a prasad sale all printed as
+   * donation receipts — with "80G Eligible: No" underneath, which is
+   * misleading on what is really a service bill. The API names the document;
+   * anything that does not falls back to the donation label, so donations are
+   * unchanged.
+   */
+  doc_title?: string | null
+  /**
    * Every tender that settled this receipt. When there is more than one the
    * templates print the split instead of a single mode: a 2800 room bill
    * settled 1500 cash + 1300 UPI used to print "Payment Mode: Cash", naming
@@ -111,6 +120,10 @@ function paymentModeText(r: ReceiptData): string {
       return `${modeName(t.payment_mode)}${ref} \u20b9${fmtRs(Number(t.amount_paise))}`
     })
     .join(' + ')
+}
+
+function docTitle(r: ReceiptData, fallback: string): string {
+  return r.doc_title || fallback
 }
 
 function amountInWords(paise: number): string {
@@ -232,7 +245,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
       </div>
       <div class="receipt-badge">
-        <div class="label">${L.donationReceipt}</div>
+        <div class="label">${docTitle(r, L.donationReceipt)}</div>
         <div class="rno">${r.receipt_number}</div>
         <div class="date">${dateStr}</div>
       </div>
@@ -301,7 +314,7 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
       </div>
       <div class="rhs">
-        <div class="rtitle">${L.donationReceipt}</div>
+        <div class="rtitle">${docTitle(r, L.donationReceipt)}</div>
         <div class="rno">${r.receipt_number}</div>
         <div class="rdate">${dateStr}</div>
       </div>
@@ -369,7 +382,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
       </div>
       <div class="receipt-id">
-        <div class="tag">DONATION RECEIPT</div>
+        <div class="tag">${docTitle(r, L.donationReceipt).toUpperCase()}</div>
         <div class="num">${r.receipt_number}</div>
         <div class="dt">${dateStr}</div>
       </div>
@@ -525,7 +538,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
       </div>
       <div class="receipt-meta">
-        <div class="rt">${L.donationReceipt}</div>
+        <div class="rt">${docTitle(r, L.donationReceipt)}</div>
         <div class="rn">${r.receipt_number}</div>
         <div class="rd">${dateStr}</div>
       </div>
@@ -701,7 +714,7 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       ${(mandir.show_80g && mandir.reg_80g_number) || mandir.pan ? `<div class="ftr-no">${[mandir.reg_80g_number ? 'FTR No / 80G: '+mandir.reg_80g_number : '', mandir.pan ? 'PAN: '+mandir.pan : ''].filter(Boolean).join(' &nbsp;|&nbsp; ')}</div>` : ''}
       <div class="addr">${mandir.address}${mandir.mobile ? ' &nbsp;|&nbsp; Ph: '+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? ' &nbsp;|&nbsp; GSTIN: '+mandir.gstin : ''}</div>
     </div>
-    <div class="dup-banner">DONATION RECEIPT</div>
+    <div class="dup-banner">${docTitle(r, L.donationReceipt).toUpperCase()}</div>
     ${r.is_voided ? '<div class="voided-row">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="meta-row">
       <div class="meta-cell"><div class="k">Cont. No.</div><div class="v">${paymentModeText(r).toUpperCase()}</div></div>
@@ -1135,7 +1148,7 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   <div class="roll">
     <div class="name">${mandir.name}</div>
     <div class="addr">${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</div>
-    <div class="title">${L.donationReceipt}</div>
+    <div class="title">${docTitle(r, L.donationReceipt)}</div>
     ${r.is_voided ? `<div class="voided-t">VOID</div>` : ''}
     ${row(L.receiptNo, r.receipt_number)}
     ${row(L.date, dateStr)}
