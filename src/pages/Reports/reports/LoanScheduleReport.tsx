@@ -103,7 +103,7 @@ export function LoanScheduleReport() {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: [{ value: 'active', label: t('loans.active') }, { value: 'closed', label: t('loans.closed') }] },
       render: r => r.status === 'active'
-        ? <span className="badge-amber">{t('loans.active')}</span>
+        ? <span className="badge-yellow">{t('loans.active')}</span>
         : <span className="badge-gray">{t('loans.closed')}</span>,
     },
   ]

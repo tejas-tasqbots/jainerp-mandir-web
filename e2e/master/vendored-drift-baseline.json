@@ -1,0 +1,25 @@
+{
+  "_comment": [
+    "packages/core and packages/ui are vendored duplicates in all three mobile",
+    "repos with no shared package (see CLAUDE.md). The files listed here already",
+    "differ between copies as of 2026-08-08 and are accepted debt, NOT approval:",
+    "reconciling them needs a per-file decision, because some divergence is",
+    "deliberate (env.dart carries a different API base per app; rbac.dart models",
+    "tenant roles that only mandir-mobile has) and some is a change that was made",
+    "in one app and never ported.",
+    "",
+    "The suite fails on any file NOT listed here, so the debt cannot grow silently.",
+    "Remove an entry once its copies are reconciled."
+  ],
+  "core": [
+    "jainerp_core.dart",
+    "src/api/api_client.dart",
+    "src/auth/auth_flow.dart",
+    "src/auth/auth_repository.dart",
+    "src/auth/session_manager.dart",
+    "src/env.dart",
+    "src/models/models.dart",
+    "src/rbac.dart"
+  ],
+  "ui": []
+}

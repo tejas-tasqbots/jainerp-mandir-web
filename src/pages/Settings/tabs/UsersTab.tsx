@@ -167,7 +167,7 @@ export function UsersTab() {
                     <td className="text-sm text-slate-500">{u.mobile}</td>
                     <td>
                       {isAdminRow ? (
-                        <span className="badge-gold inline-flex items-center gap-1">
+                        <span className="badge-yellow inline-flex items-center gap-1">
                           <Crown size={11} /> {t('settings.users.templeAdmin')}
                         </span>
                       ) : (

@@ -108,7 +108,7 @@ export function DepreciationScheduleReport() {
       filter: { kind: 'enum', param: 'posted', options: [{ value: 'true', label: t('reports.posted') }, { value: 'false', label: t('reports.estimated') }] },
       render: r => r.posted
         ? <span className="badge-green">{t('reports.posted')}</span>
-        : <span className="badge-amber">{t('reports.estimated')}</span>,
+        : <span className="badge-yellow">{t('reports.estimated')}</span>,
     },
   ]
 

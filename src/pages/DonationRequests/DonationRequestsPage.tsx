@@ -276,7 +276,7 @@ export function DonationRequestsPage() {
                       {r.devotee_verified && (
                         <span title={t('ui.otpVerified')}><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
                       )}
-                      {r.is_80g && <span className="badge badge-green text-[10px]">80G</span>}
+                      {r.is_80g && <span className="badge-green text-[10px]">80G</span>}
                     </div>
                     <div className="text-xs text-slate-400 tabular-nums">{r.devotee_mobile}{donorLocation(r) ? ` · ${donorLocation(r)}` : ''}</div>
                   </td>
@@ -368,7 +368,7 @@ export function DonationRequestsPage() {
                   <div>
                     <h2 className="text-base font-bold text-navy-900 flex items-center gap-2">
                       <Landmark size={16} className="text-brand-red" /> ₹{fmtPaise(detail.request.amount_paise)}
-                      {detail.request.is_80g && <span className="badge badge-green text-[10px]">80G</span>}
+                      {detail.request.is_80g && <span className="badge-green text-[10px]">80G</span>}
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5 uppercase">{detail.request.payment_mode} · {detail.request.category || t('donationRequests.general')}</p>
                   </div>
