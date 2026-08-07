@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, X, Package, Pencil } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import type { PrasadItem } from '../../types'
 import { useToast } from '../../components/kit/Toast'
 
@@ -46,6 +46,8 @@ export function PrasadItems() {
       setForm({ name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', initial_stock: '0', low_stock_threshold: '10' })
       setShowAdd(false)
       load()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }
@@ -80,6 +82,8 @@ export function PrasadItems() {
       })
       setEditItem(null)
       load()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

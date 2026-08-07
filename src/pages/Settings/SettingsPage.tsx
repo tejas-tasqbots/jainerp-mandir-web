@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
-import { api, fmtPaise } from '../../lib/api'
+import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
 import { useSensitiveFields, LockedField, VerifiedBanner } from '../../components/SensitiveFields'
+import { useToast } from '../../components/kit/Toast'
 import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
 import { LocationPicker } from '../../components/LocationPicker'
@@ -41,6 +42,7 @@ interface Requirement {
 
 export function SettingsPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { profile, fetchProfile } = useProfileStore()
   const [tab, setTab] = useState<'my-account' | 'profile' | 'public-profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'numbering' | 'messages' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
   const [saving, setSaving] = useState(false)
@@ -258,6 +260,8 @@ export function SettingsPage() {
       await fetchProfile()
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

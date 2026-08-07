@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Lock, Unlock } from 'lucide-react'
-import { api, currentFY } from '../../../lib/api'
+import { api, apiErrorMessage, currentFY } from '../../../lib/api'
 import { FySelect } from '../../../components/FySelect'
 import { useConfirm } from '../../../components/ConfirmDialog'
 import { useToast } from '../../../components/kit/Toast'
@@ -35,6 +35,8 @@ export function AccountingRulesTab() {
       await api.patch('/tenants/me', form)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

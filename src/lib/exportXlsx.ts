@@ -28,6 +28,20 @@ const INR_FORMAT = '#,##,##0.00'
 const NAVY = 'FF0D1B2E'
 
 /**
+ * A worksheet name Excel will accept.
+ *
+ * Excel forbids : \ / ? * [ ] in a sheet name and caps it at 31 characters, and
+ * exceljs throws rather than cleaning it up. Screen titles are used as the
+ * sheet name, so every screen whose title carries a slash — "Donors /
+ * Devotees", "Vendors / Suppliers" — threw, and the caller's `catch` turned it
+ * into "Could not export. Please try again." with no way to tell why.
+ */
+function safeSheetName(name: string): string {
+  const cleaned = name.replace(/[:\\/?*[\]]/g, '-').replace(/\s+/g, ' ').trim()
+  return cleaned.slice(0, 31) || 'Sheet1'
+}
+
+/**
  * Build and download a styled .xlsx: temple letterhead, frozen styled header
  * row, typed columns, bold totals. exceljs is imported lazily so it never
  * weighs down the main bundle.
@@ -38,7 +52,7 @@ export async function exportXlsx(opts: XlsxOptions): Promise<void> {
 
   const wb = new ExcelJS.Workbook()
   wb.created = new Date()
-  const ws = wb.addWorksheet(opts.sheetName || opts.title.slice(0, 28), {
+  const ws = wb.addWorksheet(safeSheetName(opts.sheetName || opts.title), {
     views: [{ state: 'frozen', ySplit: 5 }],
   })
 

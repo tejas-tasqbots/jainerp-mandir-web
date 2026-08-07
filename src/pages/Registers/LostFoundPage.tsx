@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, PackageCheck } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, apiErrorMessage } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
@@ -112,6 +112,8 @@ export function LostFoundPage() {
       setShowForm(false)
       toast.success(t('registers.itemRecorded'))
       load()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

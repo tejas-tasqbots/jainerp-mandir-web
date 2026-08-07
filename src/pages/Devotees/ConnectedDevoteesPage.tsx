@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link2, UserPlus, ShieldCheck, CheckCircle, XCircle, Trash2, RefreshCw, Search, FileSpreadsheet } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, apiErrorMessage } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { useToast } from '../../components/kit/Toast'
 import { useConfirm } from '../../components/ConfirmDialog'
@@ -88,6 +88,8 @@ export function ConnectedDevoteesPage() {
     try {
       await api.patch(`/devotee-links/${id}/approve`)
       await fetchLinks()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally { setActionId(null) }
   }
 
@@ -96,6 +98,8 @@ export function ConnectedDevoteesPage() {
     try {
       await api.patch(`/devotee-links/${id}/reject`)
       await fetchLinks()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally { setActionId(null) }
   }
 
@@ -105,6 +109,8 @@ export function ConnectedDevoteesPage() {
     try {
       await api.delete(`/devotee-links/${id}`)
       await fetchLinks()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally { setActionId(null) }
   }
 

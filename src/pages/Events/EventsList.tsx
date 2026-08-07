@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
-import { api, fmtPaise } from '../../lib/api'
+import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
@@ -220,6 +220,8 @@ export function EventsList() {
         closeForm()
         navigate(`/events/${data.data.id}`)
       }
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

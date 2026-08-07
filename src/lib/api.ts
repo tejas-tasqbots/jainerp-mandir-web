@@ -64,12 +64,42 @@ api.interceptors.response.use(
   }
 )
 
+/**
+ * The message to show the user when an API call fails.
+ *
+ * Prefers the API's own `{ code, message }` error, which is written to be read
+ * ("Booker / contact is required."), and falls back to the caller's wording
+ * when the request never reached the API or carried no message.
+ */
+export function apiErrorMessage(e: unknown, fallback: string): string {
+  const ex = e as { response?: { data?: { error?: { message?: string }; message?: string } } }
+  return ex?.response?.data?.error?.message || ex?.response?.data?.message || fallback
+}
+
 export function fmtPaise(paise: number): string {
   return (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export function parsePaise(rupees: string | number): number {
   return Math.round(Number(rupees) * 100)
+}
+
+/**
+ * The IST calendar date (YYYY-MM-DD) an API date value falls on.
+ *
+ * A Postgres `date` comes back as local midnight and serialises to UTC, so
+ * 2026-08-07 in IST arrives as "2026-08-06T18:30:00.000Z" — slicing that string
+ * gives the day before, and comparing it to a locally-built date never matches.
+ * The trust's books are kept in IST (FY is April–March), so pin the zone rather
+ * than trusting whatever the browser is set to.
+ */
+export function istDate(value: string | Date): string {
+  return new Date(value).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+}
+
+/** Today's date in IST as YYYY-MM-DD — what the register should be keyed on. */
+export function todayIst(): string {
+  return istDate(new Date())
 }
 
 export function currentFY(): string {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
@@ -131,6 +131,8 @@ export function PriestsPage() {
       setShowForm(false); setForm(emptyForm); setEditId(null)
       toast.success(t('common.saved'))
       load()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

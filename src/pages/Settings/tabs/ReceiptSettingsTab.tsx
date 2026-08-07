@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
-import { api } from '../../../lib/api'
+import { api, apiErrorMessage } from '../../../lib/api'
 import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { useToast } from '../../../components/kit/Toast'
 
@@ -450,6 +450,8 @@ export function ReceiptSettingsTab() {
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }

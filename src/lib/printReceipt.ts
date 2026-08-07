@@ -31,7 +31,12 @@ export interface ReceiptData {
     reference_no?: string | null
     paid_on?: string | null
   }> | null
-  receipt_number: string
+  /**
+   * Null until the document is numbered — an unpaid hall booking or a
+   * sponsorship with no invoice yet has none. buildReceiptHtml() substitutes a
+   * placeholder rather than letting 13 interpolation sites print "null".
+   */
+  receipt_number: string | null
   date: string
   mandir: {
     name: string
@@ -96,7 +101,11 @@ function fmtRs(paise: number): string {
   return (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })
 }
 
-function modeName(mode: string): string {
+function modeName(mode: string | null | undefined): string {
+  // An unsettled document (a hall booking still to be paid, a sponsorship with
+  // no tender yet) carries payment_mode: null. Interpolating that printed the
+  // literal "Payment Mode: null" on the guest's copy.
+  if (!mode) return '—'
   const map: Record<string, string> = {
     cash: 'Cash', upi: 'UPI', cheque: 'Cheque',
     netbanking: 'Net Banking', online: 'Online / Card',
@@ -113,7 +122,7 @@ function modeName(mode: string): string {
  */
 function paymentModeText(r: ReceiptData): string {
   const tenders = r.payments ?? []
-  if (tenders.length < 2) return paymentModeText(r)
+  if (tenders.length < 2) return modeName(r.payment_mode)
   return tenders
     .map(t => {
       const ref = t.reference_no ? ` (${t.reference_no})` : ''
@@ -1077,7 +1086,7 @@ export async function buildUpiQr(r: ReceiptData): Promise<string | null> {
     pn: m.name,
     am: (r.amount_paise / 100).toFixed(2),
     cu: 'INR',
-    tn: `Donation ${r.receipt_number}`,
+    tn: r.receipt_number ? `Donation ${r.receipt_number}` : 'Donation',
   })
   try {
     const QR = await import('qrcode')
@@ -1150,7 +1159,7 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="addr">${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</div>
     <div class="title">${docTitle(r, L.donationReceipt)}</div>
     ${r.is_voided ? `<div class="voided-t">VOID</div>` : ''}
-    ${row(L.receiptNo, r.receipt_number)}
+    ${row(L.receiptNo, r.receipt_number ?? '—')}
     ${row(L.date, dateStr)}
     ${row(L.receivedFrom, r.donor?.name || L.anonymous)}
     ${r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
@@ -1165,7 +1174,11 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   </div>`
 }
 
-export function buildReceiptHtml(r: ReceiptData): string {
+export function buildReceiptHtml(input: ReceiptData): string {
+  // A document that has not been numbered yet arrives with receipt_number:
+  // null; every template interpolates it directly, so the guest's copy read
+  // "Receipt null". Substitute once here rather than at all 13 sites.
+  const r: ReceiptData = { ...input, receipt_number: input.receipt_number || '—' }
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
   L = receiptLabels(mandir.receipt_language)

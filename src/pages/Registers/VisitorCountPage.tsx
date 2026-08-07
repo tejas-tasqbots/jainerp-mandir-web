@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Save, Users } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, apiErrorMessage, istDate, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { VisitorCount } from '../../types'
+
+/**
+ * The day's footfall.
+ *
+ * `visitor_counts.total_count` is a plain column that nothing ever writes — it
+ * is not generated and no caller sets it — so it reads 0 on every row ever
+ * recorded, which made the Total column, the day badge, the trend graph and the
+ * Excel export all show zero. Derive it from the two counts that are actually
+ * captured instead. `peak_count` is a concurrent-occupancy reading, not a
+ * footfall tally, so it is deliberately not added in.
+ */
+function totalOf(c: VisitorCount): number {
+  return (c.morning_count ?? 0) + (c.evening_count ?? 0)
+}
 
 export function VisitorCountPage() {
   const { t } = useTranslation()
@@ -15,7 +29,7 @@ export function VisitorCountPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
-  const [today] = useState(new Date().toISOString().slice(0, 10))
+  const [today] = useState(todayIst())
   const [todayRecord, setTodayRecord] = useState<VisitorCount | null>(null)
   const [form, setForm] = useState({ morning_count: '', evening_count: '', notes: '' })
 
@@ -26,7 +40,7 @@ export function VisitorCountPage() {
     },
     { key: 'morning', label: t('registers.morning'), align: 'right', render: c => <>{c.morning_count || '—'}</> },
     { key: 'evening', label: t('registers.evening'), align: 'right', render: c => <>{c.evening_count || '—'}</> },
-    { key: 'total', label: t('registers.totalCol'), align: 'right', render: c => <span className="font-bold">{c.total_count}</span> },
+    { key: 'total', label: t('registers.totalCol'), align: 'right', render: c => <span className="font-bold">{totalOf(c)}</span> },
     { key: 'notes', label: t('registers.notes'), render: c => <span className="text-slate-400 text-xs">{c.notes || '—'}</span> },
      
   ], [t])
@@ -39,9 +53,9 @@ export function VisitorCountPage() {
       const { data } = await api.get(`/visitor-counts?limit=60`)
       const all: VisitorCount[] = data.data || []
       setCounts(all)
-      const tr = all.find(c => c.count_date === today)
+      const tr = all.find(c => istDate(c.count_date) === today)
+      setTodayRecord(tr ?? null)
       if (tr) {
-        setTodayRecord(tr)
         setForm({
           morning_count: String(tr.morning_count || ''),
           evening_count: String(tr.evening_count || ''),
@@ -68,13 +82,13 @@ export function VisitorCountPage() {
         ],
         rows: counts.map(c => [
           new Date(c.count_date).toLocaleDateString('en-IN'),
-          c.morning_count ?? 0, c.evening_count ?? 0, c.total_count, c.notes ?? '',
+          c.morning_count ?? 0, c.evening_count ?? 0, totalOf(c), c.notes ?? '',
         ]),
         totals: [
           t('kit.total'),
           counts.reduce((s, c) => s + (c.morning_count ?? 0), 0),
           counts.reduce((s, c) => s + (c.evening_count ?? 0), 0),
-          counts.reduce((s, c) => s + c.total_count, 0), '',
+          counts.reduce((s, c) => s + totalOf(c), 0), '',
         ],
       })
       toast.success(t('kit.exportReady'))
@@ -87,14 +101,21 @@ export function VisitorCountPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/visitor-counts', {
-        count_date: today,
+      const body = {
         morning_count: form.morning_count ? parseInt(form.morning_count) : undefined,
         evening_count: form.evening_count ? parseInt(form.evening_count) : undefined,
         notes: form.notes || undefined,
-      })
+      }
+      // One row per day: the morning count is entered in the morning and the
+      // evening count added later against the same row. Posting again would hit
+      // the UNIQUE(count_date) index and the day's second entry could never be
+      // saved, so update the row once it exists.
+      if (todayRecord) await api.patch(`/visitor-counts/${todayRecord.id}`, body)
+      else await api.post('/visitor-counts', { count_date: today, ...body })
       toast.success(t('registers.countSaved'))
       load()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('common.saveFailed')))
     } finally {
       setSaving(false)
     }
@@ -112,7 +133,7 @@ export function VisitorCountPage() {
           <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
             <Users size={15} /> {t('registers.todaysCount', { date: new Date(today).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) })}
           </h3>
-          {todayRecord && <span className="badge-blue">{t('registers.total', { count: todayRecord.total_count })}</span>}
+          {todayRecord && <span className="badge-blue">{t('registers.total', { count: totalOf(todayRecord) })}</span>}
         </div>
         <form onSubmit={save} className="card-body">
           <div className="grid grid-cols-3 gap-4">
@@ -150,7 +171,7 @@ export function VisitorCountPage() {
         onPrint={() => window.print()}
         graphData={counts.slice().reverse().map(c => ({
           label: new Date(c.count_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-          value: c.total_count,
+          value: totalOf(c),
         }))}
         graphFormat="count"
         filterState={filterState}

@@ -38,7 +38,6 @@ export function TrialBalance() {
 
   const totalDebit = rows.reduce((s, r) => s + r.debit_paise, 0)
   const totalCredit = rows.reduce((s, r) => s + r.credit_paise, 0)
-  const balanced = totalDebit === totalCredit && totalDebit > 0
 
   const q = search.trim().toLowerCase()
   const visible = q ? rows.filter(r => r.account_name.toLowerCase().includes(q)) : rows
@@ -49,10 +48,16 @@ export function TrialBalance() {
     { key: 'credit', label: t('accounts.credit'), align: 'right', render: r => r.credit_paise > 0 ? `₹${fmtPaise(r.credit_paise)}` : '—' },
   ]
 
+  // `/accounting/trial-balance` returns the closing balance of each cash/bank
+  // account — an account lands in Credit only when it is overdrawn. So debits
+  // can never equal credits for a solvent trust, and the old "Balanced ✓ /
+  // Imbalanced ✗" verdict showed a red "Imbalanced ✗" to every temple with
+  // money in the bank. Report the net position, which is what these rows add up
+  // to, instead of a balance check this report has no basis to make.
   const stats: SummaryStat[] = rows.length ? [
     { label: t('accounts.debit'), value: `₹${fmtPaise(totalDebit)}` },
     { label: t('accounts.credit'), value: `₹${fmtPaise(totalCredit)}` },
-    { label: t('common.status'), value: totalDebit === totalCredit ? t('accounts.balanced') : t('accounts.imbalanced'), tone: balanced ? 'income' : 'expense' },
+    { label: t('accounts.closingBalance'), value: `₹${fmtPaise(totalDebit - totalCredit)}`, tone: 'income' },
   ] : []
 
   async function exportExcel() {
