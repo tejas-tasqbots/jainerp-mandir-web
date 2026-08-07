@@ -33,8 +33,13 @@ export function FixedAssets() {
     depreciation_method: 'SLM', depreciation_rate: '20',
   })
 
+  // NOTE: these columns are not marked `sortable` — DataTable only sorts when
+  // the page also supplies `onSortChange`, and this screen does not. With the
+  // flag but no handler the header still rendered `cursor-pointer`, so it
+  // looked clickable and did nothing. Wiring sort here needs the resource
+  // API's `?sort=<column>&order=` shape and a key→column map.
   const columns: ColumnDef<FixedAsset>[] = [
-    { key: 'name', label: t('accounts.asset'), sortable: true, render: a => <span className="font-medium">{a.name}</span> },
+    { key: 'name', label: t('accounts.asset'), render: a => <span className="font-medium">{a.name}</span> },
     { key: 'purchase_date', label: t('accounts.purchaseDate'), render: a => <span className="text-xs text-slate-500">{new Date(a.purchase_date).toLocaleDateString('en-IN')}</span> },
     { key: 'cost', label: t('accounts.cost'), align: 'right', render: a => `₹${fmtPaise(a.purchase_cost_paise)}` },
     {

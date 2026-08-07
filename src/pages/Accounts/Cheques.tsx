@@ -113,14 +113,14 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
   }, [])
 
   const columns: ColumnDef<Donation>[] = useMemo(() => [
-    { key: 'date', label: t('common.date'), sortable: true, render: d => <span className="text-xs text-slate-500">{new Date(d.created_at).toLocaleDateString('en-IN')}</span> },
+    { key: 'date', label: t('common.date'), render: d => <span className="text-xs text-slate-500">{new Date(d.created_at).toLocaleDateString('en-IN')}</span> },
     { key: 'invoice', label: t('donations.invoiceNo'), render: d => <span className="font-mono text-xs text-brand-blue">{d.invoice_no}</span> },
     { key: 'donor', label: t('donations.donor'), render: d => <span className="font-medium">{d.donor_name || '—'}</span> },
     { key: 'cheque_no', label: t('cheques.chequeNo'), render: d => <span className="font-mono text-xs">{d.cheque_number || '—'}</span> },
     { key: 'bank', label: t('cheques.bank'), render: d => <span className="text-slate-600">{d.cheque_bank || '—'}</span> },
     { key: 'cheque_date', label: t('cheques.chequeDate'), render: d => <span className="text-xs text-slate-400">{d.cheque_date ? new Date(d.cheque_date).toLocaleDateString('en-IN') : '—'}</span> },
     {
-      key: 'amount', label: t('common.amount'), align: 'right', sortable: true,
+      key: 'amount', label: t('common.amount'), align: 'right',
       // The cheque is one TENDER of the donation (migration 018). A donation
       // settled part-cash / part-cheque must show the cheque's own value here,
       // not the donation total — showing the total is what made a 1000 cheque
@@ -352,13 +352,13 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
   const [bouncing, setBouncing] = useState(false)
 
   const columns: ColumnDef<Expense>[] = useMemo(() => [
-    { key: 'date', label: t('common.date'), sortable: true, render: e => <span className="text-xs text-slate-500">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</span> },
+    { key: 'date', label: t('common.date'), render: e => <span className="text-xs text-slate-500">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</span> },
     { key: 'description', label: t('expenses.description'), render: e => <span className="font-medium">{e.description}</span> },
     { key: 'vendor', label: t('expenses.vendor'), render: e => <span className="text-slate-600">{e.vendor_name || '—'}</span> },
     { key: 'cheque_no', label: t('cheques.chequeNo'), render: e => <span className="font-mono text-xs">{e.cheque_number || '—'}</span> },
     { key: 'bank', label: t('cheques.bank'), render: e => <span className="text-slate-600">{e.cheque_bank || '—'}</span> },
     { key: 'cheque_date', label: t('cheques.chequeDate'), render: e => <span className="text-xs text-slate-400">{e.cheque_date ? new Date(e.cheque_date).toLocaleDateString('en-IN') : '—'}</span> },
-    { key: 'amount', label: t('common.amount'), align: 'right', sortable: true, render: e => <span className="font-semibold">₹{fmtPaise(e.amount_paise)}</span> },
+    { key: 'amount', label: t('common.amount'), align: 'right', render: e => <span className="font-semibold">₹{fmtPaise(e.amount_paise)}</span> },
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'cheque_status', options: ISSUED_STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },

@@ -28,13 +28,18 @@ export function Loans() {
     interest_rate: '0', start_date: new Date().toISOString().slice(0, 10), end_date: '',
   })
 
+  // NOTE: these columns are not marked `sortable` — DataTable only sorts when
+  // the page also supplies `onSortChange`, and this screen does not. With the
+  // flag but no handler the header still rendered `cursor-pointer`, so it
+  // looked clickable and did nothing. Wiring sort here needs the resource
+  // API's `?sort=<column>&order=` shape and a key→column map.
   const columns: ColumnDef<Loan>[] = [
     {
       key: 'type', label: t('accounts.type'),
       filter: { kind: 'enum', param: 'loan_type', options: [{ value: 'taken', label: t('accounts.loanTaken') }, { value: 'given', label: t('accounts.loanGiven') }] },
       render: l => <span className={l.loan_type === 'taken' ? 'badge-red' : 'badge-green'}>{l.loan_type === 'taken' ? t('accounts.typeTaken') : t('accounts.typeGiven')}</span>,
     },
-    { key: 'party', label: t('accounts.party'), sortable: true, render: l => <span className="font-medium">{l.party_name}</span> },
+    { key: 'party', label: t('accounts.party'), render: l => <span className="font-medium">{l.party_name}</span> },
     { key: 'principal', label: t('accounts.principal'), align: 'right', render: l => `₹${fmtPaise(l.principal_paise)}` },
     { key: 'interest', label: t('accounts.interest'), align: 'right', render: l => `${l.interest_rate}%` },
     { key: 'repaid', label: t('accounts.repaid'), align: 'right', render: l => <span className="text-green-700">₹{fmtPaise(l.repaid_paise)}</span> },
