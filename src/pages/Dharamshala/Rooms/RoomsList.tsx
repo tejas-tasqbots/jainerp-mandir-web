@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Plus, Receipt, Trash2, X } from 'lucide-react'
+import { FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
@@ -54,6 +54,9 @@ export function RoomsList() {
   const [checkoutRows, setCheckoutRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [checkingOut, setCheckingOut] = useState(false)
   const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
+  const [collectModal, setCollectModal] = useState<{ booking: RoomBooking; bill: Record<string, any> } | null>(null)
+  const [collectRows, setCollectRows] = useState<PaymentRow[]>([emptyPaymentRow()])
+  const [collecting, setCollecting] = useState(false)
   const { profile } = useProfileStore()
   const [cancelModal, setCancelModal] = useState<{ id: string; guestName: string } | null>(null)
   const [cancelReason, setCancelReason] = useState('')
@@ -165,6 +168,19 @@ export function RoomsList() {
               title={t('dharamshala.viewBill')} aria-label={t('dharamshala.viewBill')}
             >
               <FileText size={14} />
+            </button>
+          )}
+          {/* A guest can leave owing money — checkout does not require the bill
+              to be settled. Without this the balance was simply stranded: the
+              row showed ₹1,300 due and offered no way to take it. Available on
+              any live booking with a balance, checked out or not. */}
+          {b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0 && (
+            <button
+              onClick={() => openCollect(b)}
+              className="p-1 text-slate-400 hover:text-brand-green rounded"
+              title={t('dharamshala.collectPayment')} aria-label={t('dharamshala.collectPayment')}
+            >
+              <IndianRupee size={14} />
             </button>
           )}
           {/* The guest-facing document, as opposed to the bill above: it carries
@@ -318,6 +334,39 @@ export function RoomsList() {
       toast.error(err.response?.data?.error?.message || t('dharamshala.checkoutFailed'))
     } finally {
       setCheckingOut(false)
+    }
+  }
+
+  /** Take the outstanding balance on a booking, including after checkout. */
+  async function openCollect(b: RoomBooking) {
+    try {
+      const { data } = await api.get(`/room-bookings/${b.id}/bill`)
+      setCollectModal({ booking: b, bill: data?.data ?? data })
+      setCollectRows([emptyPaymentRow()])
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(err.response?.data?.error?.message || t('dharamshala.billLoadFailed'))
+    }
+  }
+
+  async function submitCollect() {
+    if (!collectModal) return
+    const entered = sumPaise(collectRows)
+    const due = Number(collectModal.bill.due_paise ?? 0)
+    if (entered <= 0) { toast.error(t('dharamshala.enterAmount')); return }
+    if (entered > due) { toast.error(t('dharamshala.overpayment')); return }
+    setCollecting(true)
+    try {
+      await api.post(`/room-bookings/${collectModal.booking.id}/payments`, { payments: toPayload(collectRows) })
+      toast.success(t('dharamshala.paymentRecorded'))
+      setCollectModal(null)
+      setCollectRows([emptyPaymentRow()])
+      load()
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(err.response?.data?.error?.message || t('dharamshala.paymentFailed'))
+    } finally {
+      setCollecting(false)
     }
   }
 
@@ -487,6 +536,49 @@ export function RoomsList() {
                   : sumPaise(checkoutRows) === 0
                     ? t('dharamshala.checkoutWithoutPayment')
                     : t('dharamshala.checkOutButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collect an outstanding balance, including on a checked-out stay. */}
+      {collectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-navy-900">{t('dharamshala.collectPayment')}</h3>
+                <p className="text-sm text-slate-500">
+                  {collectModal.booking.guest_name} · {t('dharamshala.room')} {collectModal.booking.room_number}
+                </p>
+              </div>
+              <button onClick={() => setCollectModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-1 text-sm border-y border-slate-100 py-3 mb-4">
+              <Row label={t('dharamshala.total')} value={collectModal.bill.total_paise} />
+              <Row label={t('dharamshala.paymentsReceived')} value={collectModal.bill.paid_paise} />
+              <div className="flex justify-between font-semibold">
+                <span>{t('dharamshala.balance')}</span>
+                <span className="text-red-600">₹{fmtPaise(collectModal.bill.due_paise ?? 0)}</span>
+              </div>
+            </div>
+
+            <PaymentSplitInput
+              rows={collectRows}
+              onChange={setCollectRows}
+              totalPaise={Number(collectModal.bill.total_paise ?? 0)}
+              paidPaise={Number(collectModal.bill.paid_paise ?? 0)}
+              disabled={collecting}
+            />
+
+            <div className="flex gap-3 justify-end mt-5">
+              <button onClick={() => setCollectModal(null)} className="btn-secondary btn-sm">{t('common.cancel')}</button>
+              <button onClick={submitCollect} disabled={collecting} className="btn-primary btn-sm">
+                {collecting ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </div>

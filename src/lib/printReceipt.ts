@@ -10,6 +10,18 @@ import { receiptLabels, type ReceiptLabels } from './receiptLabels'
 let L: ReceiptLabels = receiptLabels('en')
 
 export interface ReceiptData {
+  /**
+   * Every tender that settled this receipt. When there is more than one the
+   * templates print the split instead of a single mode: a 2800 room bill
+   * settled 1500 cash + 1300 UPI used to print "Payment Mode: Cash", naming
+   * whichever tender happened to be recorded first and misstating the rest.
+   */
+  payments?: Array<{
+    payment_mode: string
+    amount_paise: number
+    reference_no?: string | null
+    paid_on?: string | null
+  }> | null
   receipt_number: string
   date: string
   mandir: {
@@ -81,6 +93,24 @@ function modeName(mode: string): string {
     netbanking: 'Net Banking', online: 'Online / Card',
   }
   return map[mode] || mode
+}
+
+/**
+ * What the receipt says under "Payment Mode".
+ *
+ * One tender (or none recorded) reads exactly as before. Two or more print as
+ * "Cash \u20b91,500.00 + UPI \u20b91,300.00", with the reference kept where one
+ * was captured, so the document states what was actually paid.
+ */
+function paymentModeText(r: ReceiptData): string {
+  const tenders = r.payments ?? []
+  if (tenders.length < 2) return paymentModeText(r)
+  return tenders
+    .map(t => {
+      const ref = t.reference_no ? ` (${t.reference_no})` : ''
+      return `${modeName(t.payment_mode)}${ref} \u20b9${fmtRs(Number(t.amount_paise))}`
+    })
+    .join(' + ')
 }
 
 function amountInWords(paise: number): string {
@@ -224,7 +254,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       </div>
       <table>
         <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
-        <tr><td>${L.paymentMode}</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>${L.paymentMode}</td><td>${paymentModeText(r)}</td></tr>
         <tr><td>80G Eligible</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? 'Yes' : 'No'}</span></td></tr>
       </table>
       ${regBlock(mandir)}
@@ -280,7 +310,7 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="field"><span class="k">${L.receivedFrom}</span><span class="v">${r.donor?.name || L.anonymous}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
     ${donorPan(r) ? `<div class="field"><span class="k">${L.donorPan}</span><span class="v">${donorPan(r)}</span></div>` : ''}
     <div class="field"><span class="k">${L.category}</span><span class="v">${r.category || '—'}</span></div>
-    <div class="field"><span class="k">${L.paymentMode}</span><span class="v">${modeName(r.payment_mode)}</span></div>
+    <div class="field"><span class="k">${L.paymentMode}</span><span class="v">${paymentModeText(r)}</span></div>
     <div class="field"><span class="k">80G Eligible</span><span class="v">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</span></div>
     <div class="field amount-row"><span class="k">${L.amount}</span><span class="v">₹ ${fmtRs(r.amount_paise)}</span></div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
@@ -366,7 +396,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
       </div>
       <div class="details">
-        <div class="detail-item"><div class="k">${L.paymentMode}</div><div class="v">${modeName(r.payment_mode)}</div></div>
+        <div class="detail-item"><div class="k">${L.paymentMode}</div><div class="v">${paymentModeText(r)}</div></div>
         <div class="detail-item"><div class="k">80G Eligible</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? 'Yes ✓' : 'No'}</span></div></div>
       </div>
       ${regBlock(mandir)}
@@ -434,7 +464,7 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <hr class="divider">
       <table>
         <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
-        <tr><td>${L.paymentMode}</td><td>${modeName(r.payment_mode)}</td></tr>
+        <tr><td>${L.paymentMode}</td><td>${paymentModeText(r)}</td></tr>
         <tr><td>80G Eligible</td><td>${r.is_80g_eligible ? '✓ Yes' : 'No'}</td></tr>
         <tr><td>${L.amount}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
         <tr class="words-row"><td></td><td>${amountInWords(r.amount_paise)}</td></tr>
@@ -520,7 +550,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="sec-title">Details</div>
         <div class="dl">
           <div><div class="dt">${L.category}</div><div class="dd">${r.category || '—'}</div></div>
-          <div><div class="dt">${L.paymentMode}</div><div class="dd">${modeName(r.payment_mode)}</div></div>
+          <div><div class="dt">${L.paymentMode}</div><div class="dd">${paymentModeText(r)}</div></div>
           <div><div class="dt">80G Eligible</div><div class="dd ${r.is_80g_eligible ? 'elig-yes' : 'elig-no'}">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</div></div>
         </div>
       </div>
@@ -609,10 +639,10 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
           <div class="v">${r.category || L.generalDonation}</div>
         </div>
         <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">Payment details:</div>
-          <div class="v">${modeName(r.payment_mode)}</div>
+          <div class="v">${paymentModeText(r)}</div>
         </div>
         <div style="margin-top:10px"><div class="sec-hdr" style="margin:-4px -20px 10px">${L.modeOfPayment}:</div>
-          <div class="v">${modeName(r.payment_mode)}</div>
+          <div class="v">${paymentModeText(r)}</div>
         </div>
         ${r.is_80g_eligible && mandir.show_80g ? `<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:3px;font-size:10px;color:#92400e"><b>80G Eligible</b> — Tax exemption certificate available</div>` : ''}
       </div>
@@ -674,14 +704,14 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="dup-banner">DONATION RECEIPT</div>
     ${r.is_voided ? '<div class="voided-row">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="meta-row">
-      <div class="meta-cell"><div class="k">Cont. No.</div><div class="v">${modeName(r.payment_mode).toUpperCase()}</div></div>
+      <div class="meta-cell"><div class="k">Cont. No.</div><div class="v">${paymentModeText(r).toUpperCase()}</div></div>
       <div class="meta-cell"><div class="k">Receipt Number</div><div class="v">${r.receipt_number}</div></div>
       <div class="meta-cell"><div class="k">${L.date}</div><div class="v">${dateStr}</div></div>
     </div>
     <div class="rcvd-row">${L.receivedFrom}: &nbsp;<b>${r.donor?.name || L.anonymousDonor}</b>${r.donor?.mobile ? ' &nbsp;&nbsp; '+L.mobile+': <b>'+r.donor.mobile+'</b>' : ''}${donorPan(r) ? ' &nbsp;&nbsp; PAN: <b>'+donorPan(r)+'</b>' : ''}</div>
     <div class="addr-row">
       <div>${L.category}: <b>${r.category || L.generalDonation}</b></div>
-      <div>${L.mode}: <b>${modeName(r.payment_mode)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? L.yes : L.no}</b></div>
+      <div>${L.mode}: <b>${paymentModeText(r)}</b> &nbsp;|&nbsp; 80G: <b>${r.is_80g_eligible ? L.yes : L.no}</b></div>
     </div>
     <table class="main">
       <thead><tr><th>${L.description}</th><th>${L.amount}</th></tr></thead>
@@ -765,7 +795,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
       <table class="details">
         <thead><tr><th>${L.modeOfPayment}</th><th>${L.instrumentNo}</th><th>${L.instrumentDate}</th><th>${L.realizedAmount}</th></tr></thead>
         <tbody><tr>
-          <td>${modeName(r.payment_mode)}</td>
+          <td>${paymentModeText(r)}</td>
           <td>${r.receipt_number}</td>
           <td>${dateStr}</td>
           <td class="amt-col">INR ${fmtRs(r.amount_paise)}</td>
@@ -866,12 +896,12 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
           </td>
           <td class="amount-cell">
             ${fmtRs(r.amount_paise)}<br>
-            <span style="font-size:11px;font-weight:400;color:#6b7280">${L.mode}: ${modeName(r.payment_mode)}</span>
+            <span style="font-size:11px;font-weight:400;color:#6b7280">${L.mode}: ${paymentModeText(r)}</span>
           </td>
         </tr>
       </table>` : `
       <div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>
-      <div class="field-row"><span class="lbl">${L.modeOfPayment}</span><span class="val">${modeName(r.payment_mode)}</span></div>`}
+      <div class="field-row"><span class="lbl">${L.modeOfPayment}</span><span class="val">${paymentModeText(r)}</span></div>`}
       <div class="sig-row">
         <div class="sig-box">
           <div class="sig-line"></div>
@@ -991,7 +1021,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
         <div class="card">
           <div class="lbl">Donation Details</div>
           <div class="li">${L.category}: <b>${r.category || L.generalDonation}</b></div>
-          <div class="li">${L.paymentMode}: <b>${modeName(r.payment_mode)}</b></div>
+          <div class="li">${L.paymentMode}: <b>${paymentModeText(r)}</b></div>
           <div class="li">Nature: <b>Voluntary donation (not corpus/anonymous)</b></div>
           <div class="li">80G Eligible: <span class="badge badge-green">Yes</span></div>
         </div>
@@ -1113,7 +1143,7 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     ${r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
     ${donorPan(r) ? row(L.pan, donorPan(r)!) : ''}
     ${row(L.category, r.category || L.generalDonation)}
-    ${row(L.paymentMode, modeName(r.payment_mode))}
+    ${row(L.paymentMode, paymentModeText(r))}
     <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     ${r.is_80g_eligible && mandir.show_80g ? `<div class="note">${L.valid80g}</div>` : ''}
