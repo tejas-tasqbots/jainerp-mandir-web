@@ -22,6 +22,19 @@ const ISSUED_STATUSES: IssuedStatus[] = ['issued', 'cleared', 'bounced']
 
 interface Account { id: string; name: string; type: string }
 
+/**
+ * What this cheque is actually worth.
+ *
+ * The cheque lifecycle lives on the payments TENDER (migration 018), so the
+ * API sends `cheque_amount_paise` alongside the donation's own `amount_paise`.
+ * A donation of ₹1,400 settled ₹400 cash + ₹1,000 cheque has a ₹1,000 cheque;
+ * reading `amount_paise` here reported ₹1,400. Falls back to the donation
+ * total for rows predating the migration, where the two are the same anyway.
+ */
+function chequePaise(d: { cheque_amount_paise?: number | null; amount_paise: number }): number {
+  return Number(d.cheque_amount_paise ?? d.amount_paise ?? 0)
+}
+
 export function Cheques() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -106,7 +119,14 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
     { key: 'cheque_no', label: t('cheques.chequeNo'), render: d => <span className="font-mono text-xs">{d.cheque_number || '—'}</span> },
     { key: 'bank', label: t('cheques.bank'), render: d => <span className="text-slate-600">{d.cheque_bank || '—'}</span> },
     { key: 'cheque_date', label: t('cheques.chequeDate'), render: d => <span className="text-xs text-slate-400">{d.cheque_date ? new Date(d.cheque_date).toLocaleDateString('en-IN') : '—'}</span> },
-    { key: 'amount', label: t('common.amount'), align: 'right', sortable: true, render: d => <span className="font-semibold">₹{fmtPaise(d.amount_paise)}</span> },
+    {
+      key: 'amount', label: t('common.amount'), align: 'right', sortable: true,
+      // The cheque is one TENDER of the donation (migration 018). A donation
+      // settled part-cash / part-cheque must show the cheque's own value here,
+      // not the donation total — showing the total is what made a 1000 cheque
+      // on a 1400 receipt read as 1400.
+      render: d => <span className="font-semibold">₹{fmtPaise(chequePaise(d))}</span>,
+    },
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'cheque_status', options: RECEIVED_STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -161,7 +181,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
 
   const pendingClearance = rows.filter(d => !d.is_voided && (d.cheque_status === 'received' || d.cheque_status === 'deposited'))
   const stats: SummaryStat[] = [
-    { label: t('cheques.pendingClearance'), value: `₹${fmtPaise(pendingClearance.reduce((s, d) => s + d.amount_paise, 0))}`, sub: t('cheques.pendingCount', { count: pendingClearance.length }) },
+    { label: t('cheques.pendingClearance'), value: `₹${fmtPaise(pendingClearance.reduce((s, d) => s + chequePaise(d), 0))}`, sub: t('cheques.pendingCount', { count: pendingClearance.length }) },
     { label: t('cheques.statusReceived'), value: String(rows.filter(d => d.cheque_status === 'received' && !d.is_voided).length) },
     { label: t('cheques.statusDeposited'), value: String(rows.filter(d => d.cheque_status === 'deposited' && !d.is_voided).length) },
     { label: t('cheques.statusBounced'), value: String(rows.filter(d => d.cheque_status === 'bounced').length), tone: 'expense' },
@@ -185,9 +205,9 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
         rows: all.map(d => [
           new Date(d.created_at).toLocaleDateString('en-IN'), d.invoice_no, d.donor_name ?? '',
           d.cheque_number ?? '', d.cheque_bank ?? '', d.cheque_date ? new Date(d.cheque_date).toLocaleDateString('en-IN') : '',
-          d.amount_paise, d.is_voided ? t('donations.voided') : statusLabel[(d.cheque_status ?? 'received') as ReceivedStatus],
+          chequePaise(d), d.is_voided ? t('donations.voided') : statusLabel[(d.cheque_status ?? 'received') as ReceivedStatus],
         ]),
-        totals: [t('kit.total'), '', '', '', '', '', all.reduce((s, d) => s + d.amount_paise, 0), ''],
+        totals: [t('kit.total'), '', '', '', '', '', all.reduce((s, d) => s + chequePaise(d), 0), ''],
       })
       toast.success(t('kit.exportReady'))
     } catch { toast.error(t('kit.exportFailed')) }
