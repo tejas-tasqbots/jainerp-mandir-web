@@ -9,21 +9,13 @@ import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRa
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 
-interface ModeRow { payment_mode: string; count: number; amount_paise: number }
-interface StreamRow { label: string; amount_paise: number; emphasis?: 'total' | 'net' }
+import { buildStreamRows, type CollectionStreams, type StreamRow } from './collectionStreams'
 
-interface CollectionData {
+interface ModeRow { payment_mode: string; count: number; amount_paise: number }
+
+interface CollectionData extends CollectionStreams {
   from: string
   to: string
-  donations_paise: number
-  seva_paise: number
-  prasad_paise: number
-  bhojanshala_paise: number
-  room_advance_paise: number
-  hall_advance_paise: number
-  total_collection_paise: number
-  expenses_paise: number
-  net_paise: number
   payment_modes: ModeRow[]
 }
 
@@ -52,20 +44,7 @@ export function CollectionSummaryReport() {
     }
   }
 
-  const streamRows: StreamRow[] = useMemo(() => {
-    if (!data) return []
-    return [
-      { label: t('reports.streamDonations'), amount_paise: data.donations_paise },
-      { label: t('reports.streamSeva'), amount_paise: data.seva_paise },
-      { label: t('reports.streamPrasad'), amount_paise: data.prasad_paise },
-      { label: t('reports.streamBhojanshala'), amount_paise: data.bhojanshala_paise },
-      { label: t('reports.streamRoomAdvance'), amount_paise: data.room_advance_paise },
-      { label: t('reports.streamHallAdvance'), amount_paise: data.hall_advance_paise },
-      { label: t('reports.streamTotalCollection'), amount_paise: data.total_collection_paise, emphasis: 'total' },
-      { label: t('reports.streamExpenses'), amount_paise: data.expenses_paise },
-      { label: t('reports.streamNet'), amount_paise: data.net_paise, emphasis: 'net' },
-    ]
-  }, [data, t])
+  const streamRows: StreamRow[] = useMemo(() => (data ? buildStreamRows(data, t) : []), [data, t])
 
   const streamColumns: ColumnDef<StreamRow>[] = [
     { key: 'label', label: t('reports.stream'), render: r => <span className={r.emphasis ? 'font-bold' : ''}>{r.label}</span> },

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText, Download, RefreshCw } from 'lucide-react'
 import { currentFY } from '../../lib/api'
+import { useAuthStore } from '../../store/authStore'
 import { downloadReport } from '../../lib/downloadReport'
 import { DailyCollectionReport } from './reports/DailyCollectionReport'
 import { CollectionSummaryReport } from './reports/CollectionSummaryReport'
@@ -28,7 +29,14 @@ type ReportKey =
   | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'cash-flow' | 'event-collection' | 'gst-summary'
   | 'depreciation-schedule' | 'loan-schedule' | 'service-register'
 
-interface RailItem { key: ReportKey; labelKey: string }
+/**
+ * `module` names the entitlement a report needs. The sidebar already hides
+ * screens a trust has not bought (lib/rbac canSee), but this rail did not — so
+ * a donation-only trust was offered Pledge Register, Creditor Aging, Service
+ * Registers, Event-wise Collection and the Depreciation Schedule, and every one
+ * of them answered 403. Core reports carry no module and are always shown.
+ */
+interface RailItem { key: ReportKey; labelKey: string; module?: string }
 interface RailGroup { groupKey: string; items: RailItem[] }
 
 const RAIL: RailGroup[] = [
@@ -40,9 +48,9 @@ const RAIL: RailGroup[] = [
       { key: 'all-transactions', labelKey: 'reports.allTransactions' },
       { key: 'donation-register', labelKey: 'reports.donationRegister' },
       { key: 'expense-register', labelKey: 'reports.expenseRegister' },
-      { key: 'pledge-register', labelKey: 'reports.pledgeRegister' },
-      { key: 'creditor-aging', labelKey: 'reports.creditorAging' },
-      { key: 'service-register', labelKey: 'reports.serviceRegister' },
+      { key: 'pledge-register', labelKey: 'reports.pledgeRegister', module: 'bolis' },
+      { key: 'creditor-aging', labelKey: 'reports.creditorAging', module: 'creditors' },
+      { key: 'service-register', labelKey: 'reports.serviceRegister', module: 'seva' },
     ],
   },
   {
@@ -59,14 +67,14 @@ const RAIL: RailGroup[] = [
       { key: 'donation-yoy', labelKey: 'reports.donationYoY' },
       { key: 'top-donors', labelKey: 'reports.topDonors' },
       { key: 'cash-flow', labelKey: 'reports.cashFlow' },
-      { key: 'event-collection', labelKey: 'reports.eventCollection' },
+      { key: 'event-collection', labelKey: 'reports.eventCollection', module: 'events' },
     ],
   },
   {
     groupKey: 'reports.groupStatutory',
     items: [
       { key: 'gst-summary', labelKey: 'reports.gstSummary' },
-      { key: 'depreciation-schedule', labelKey: 'reports.depreciationSchedule' },
+      { key: 'depreciation-schedule', labelKey: 'reports.depreciationSchedule', module: 'fixed_assets' },
       { key: 'loan-schedule', labelKey: 'reports.loanSchedule' },
     ],
   },
@@ -95,10 +103,18 @@ const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
 
 export function ReportsHome() {
   const { t } = useTranslation()
+  const modules = useAuthStore(s => s.modules)
   const [selected, setSelected] = useState<ReportKey>('daily-collection')
   const [caPackLoading, setCaPackLoading] = useState(false)
 
   const Active = REPORT_COMPONENTS[selected]
+
+  // `modules === null` means "not known yet" (a cold desktop boot) — show
+  // everything rather than blanking the rail on a guess, exactly as the sidebar
+  // does. An entitlement is not a permission, so this applies to temple_admin.
+  const rail = RAIL
+    .map(g => ({ ...g, items: g.items.filter(i => !i.module || !modules || modules.includes(i.module)) }))
+    .filter(g => g.items.length > 0)
 
   async function downloadCaPack() {
     setCaPackLoading(true)
@@ -114,7 +130,7 @@ export function ReportsHome() {
       {/* Rail */}
       <nav className="w-56 flex-shrink-0 space-y-5 no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('reports.title')}</h1>
-        {RAIL.map(group => (
+        {rail.map(group => (
           <div key={group.groupKey}>
             <p className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               {t(group.groupKey)}
