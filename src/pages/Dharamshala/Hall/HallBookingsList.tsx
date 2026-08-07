@@ -478,6 +478,22 @@ export function HallBookingsList() {
               </div>
             </div>
 
+            {(billModal.in_clearing_paise ?? 0) > 0 && (
+              /* A cheque is a promise until it clears, so "paid" and "realised"
+                 are not the same number. Showing only the total made a bill
+                 settled by an uncleared cheque look fully collected. */
+              <div className="mt-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">{t('dharamshala.realised', { defaultValue: 'Realised' })}</span>
+                  <span>₹{fmtPaise(billModal.realized_paise ?? 0)}</span>
+                </div>
+                <div className="flex justify-between text-amber-700">
+                  <span>{t('dharamshala.inClearing', { defaultValue: 'Cheque in clearing' })}</span>
+                  <span>₹{fmtPaise(billModal.in_clearing_paise ?? 0)}</span>
+                </div>
+              </div>
+            )}
+
             <p className="form-label mt-4">{t('dharamshala.paymentsReceived')}</p>
             {billModal.payments?.length ? (
               <div className="space-y-1 text-sm">

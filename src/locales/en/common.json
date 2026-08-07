@@ -1015,7 +1015,9 @@
     "issueBillLabel": "Mark completed and issue the bill",
     "issueBillHint": "Issues the HALL invoice number and sends the bill on WhatsApp. Cannot be undone.",
     "cancelReason": "Reason",
-    "cancelReasonHint": "Recorded on the booking and in the audit trail"
+    "cancelReasonHint": "Recorded on the booking and in the audit trail",
+    "realised": "Realised",
+    "inClearing": "Cheque in clearing"
   },
   "prasad": {
     "counterTitle": "Prasad Counter",
