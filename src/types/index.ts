@@ -420,12 +420,15 @@ export interface FixedAsset {
   depreciation_method: 'SLM' | 'WDV'
   depreciation_rate: number
   accumulated_depreciation_paise: number
-  active: boolean
+  /** Column name is `is_active`; reading `active` made every asset read as disposed. */
+  is_active: boolean
+  is_disposed: boolean
 }
 
 export interface Loan {
   id: string
-  type: 'taken' | 'given'
+  /** Column name is `loan_type`; reading `type` made every loan read as "given". */
+  loan_type: 'taken' | 'given'
   party_name: string
   principal_paise: number
   interest_rate: number

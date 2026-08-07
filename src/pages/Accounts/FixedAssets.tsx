@@ -47,8 +47,8 @@ export function FixedAssets() {
     { key: 'wdv', label: t('accounts.wdv'), align: 'right', render: a => <span className="font-semibold">₹{fmtPaise(a.purchase_cost_paise - a.accumulated_depreciation_paise)}</span> },
     {
       key: 'status', label: t('common.status'),
-      filter: { kind: 'enum', param: 'active', options: [{ value: 'true', label: t('accounts.active') }, { value: 'false', label: t('accounts.disposed') }] },
-      render: a => a.active ? <span className="badge-green">{t('accounts.active')}</span> : <span className="badge-gray">{t('accounts.disposed')}</span>,
+      filter: { kind: 'enum', param: 'is_active', options: [{ value: 'true', label: t('accounts.active') }, { value: 'false', label: t('accounts.disposed') }] },
+      render: a => a.is_active ? <span className="badge-green">{t('accounts.active')}</span> : <span className="badge-gray">{t('accounts.disposed')}</span>,
     },
   ]
 
@@ -141,7 +141,7 @@ export function FixedAssets() {
         rows: rows.map(a => [
           a.name, new Date(a.purchase_date).toLocaleDateString('en-IN'), a.purchase_cost_paise, a.depreciation_method,
           a.depreciation_rate, a.accumulated_depreciation_paise, a.purchase_cost_paise - a.accumulated_depreciation_paise,
-          a.active ? t('accounts.active') : t('accounts.disposed'),
+          a.is_active ? t('accounts.active') : t('accounts.disposed'),
         ]),
         totals: [t('kit.total'), '', rows.reduce((s, a) => s + a.purchase_cost_paise, 0), '', '', rows.reduce((s, a) => s + a.accumulated_depreciation_paise, 0), rows.reduce((s, a) => s + (a.purchase_cost_paise - a.accumulated_depreciation_paise), 0), ''],
       })

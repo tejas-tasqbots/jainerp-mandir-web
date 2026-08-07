@@ -31,8 +31,8 @@ export function Loans() {
   const columns: ColumnDef<Loan>[] = [
     {
       key: 'type', label: t('accounts.type'),
-      filter: { kind: 'enum', param: 'type', options: [{ value: 'taken', label: t('accounts.loanTaken') }, { value: 'given', label: t('accounts.loanGiven') }] },
-      render: l => <span className={l.type === 'taken' ? 'badge-red' : 'badge-green'}>{l.type === 'taken' ? t('accounts.typeTaken') : t('accounts.typeGiven')}</span>,
+      filter: { kind: 'enum', param: 'loan_type', options: [{ value: 'taken', label: t('accounts.loanTaken') }, { value: 'given', label: t('accounts.loanGiven') }] },
+      render: l => <span className={l.loan_type === 'taken' ? 'badge-red' : 'badge-green'}>{l.loan_type === 'taken' ? t('accounts.typeTaken') : t('accounts.typeGiven')}</span>,
     },
     { key: 'party', label: t('accounts.party'), sortable: true, render: l => <span className="font-medium">{l.party_name}</span> },
     { key: 'principal', label: t('accounts.principal'), align: 'right', render: l => `₹${fmtPaise(l.principal_paise)}` },
@@ -116,7 +116,7 @@ export function Loans() {
           { header: t('accounts.start'), type: 'date' }, { header: t('common.status'), width: 10 },
         ],
         rows: rows.map(l => [
-          l.type === 'taken' ? t('accounts.typeTaken') : t('accounts.typeGiven'), l.party_name, l.principal_paise,
+          l.loan_type === 'taken' ? t('accounts.typeTaken') : t('accounts.typeGiven'), l.party_name, l.principal_paise,
           l.interest_rate, l.repaid_paise, l.principal_paise - l.repaid_paise,
           new Date(l.start_date).toLocaleDateString('en-IN'), l.status === 'active' ? t('accounts.active') : t('accounts.closed'),
         ]),
