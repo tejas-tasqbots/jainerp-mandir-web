@@ -62,8 +62,11 @@ export function Ledger() {
     { key: 'date', label: t('accounts.date'), render: e => <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString('en-IN')}</span> },
     { key: 'description', label: t('accounts.description'), render: e => e.description },
     { key: 'reference', label: t('accounts.reference'), render: e => <span className="font-mono text-xs text-slate-400">{e.reference || '—'}</span> },
-    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => e.debit_paise > 0 ? <span className="text-red-600">₹{fmtPaise(e.debit_paise)}</span> : '—' },
-    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => e.credit_paise > 0 ? <span className="text-green-700">₹{fmtPaise(e.credit_paise)}</span> : '—' },
+    // Debit = money into this account, credit = money out (the temple's own
+    // books, not the bank's mirror of them). The colours followed the old
+    // inverted convention, so a donation was painted red as a "debit".
+    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => e.debit_paise > 0 ? <span className="text-green-700">₹{fmtPaise(e.debit_paise)}</span> : '—' },
+    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => e.credit_paise > 0 ? <span className="text-red-600">₹{fmtPaise(e.credit_paise)}</span> : '—' },
     { key: 'balance', label: t('accounts.balance'), align: 'right', render: e => <span className="font-semibold">₹{fmtPaise(e.balance_paise)}</span> },
   ]
 
@@ -72,8 +75,8 @@ export function Ledger() {
   const closingBalance = filtered.length ? filtered[filtered.length - 1].balance_paise : 0
 
   const stats: SummaryStat[] = accountId ? [
-    { label: t('accounts.debit'), value: `₹${fmtPaise(totalDebit)}`, tone: 'expense' },
-    { label: t('accounts.credit'), value: `₹${fmtPaise(totalCredit)}`, tone: 'income' },
+    { label: t('accounts.debit'), value: `₹${fmtPaise(totalDebit)}`, tone: 'income' },
+    { label: t('accounts.credit'), value: `₹${fmtPaise(totalCredit)}`, tone: 'expense' },
     { label: t('accounts.closingBalance'), value: `₹${fmtPaise(closingBalance)}` },
   ] : []
 

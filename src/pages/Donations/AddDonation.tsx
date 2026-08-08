@@ -40,6 +40,7 @@ export function AddDonation() {
     utr_number: '',
     cheque_number: '',
     is_80g_eligible: true,
+    fund_type: 'general',
     // Opt-in, never pre-ticked. A donation is not agreement to be added to a
     // temple's mailing list — the counter has to ask, and the default is no.
     wants_event_updates: false,
@@ -63,6 +64,7 @@ export function AddDonation() {
         utr_number: d.utr_number ?? '',
         cheque_number: d.cheque_number ?? '',
         is_80g_eligible: d.is_80g_eligible ?? true,
+        fund_type: d.fund_type ?? 'general',
         wants_event_updates: d.wants_event_updates ?? false,
         note: d.notes ?? '',
       })
@@ -122,6 +124,7 @@ export function AddDonation() {
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
         is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked,
+        fund_type: form.fund_type,
       }
 
       // The inline-added PAN rides along so the API saves it onto the donor record.
@@ -207,6 +210,23 @@ export function AddDonation() {
                 <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
               ))}
             </select>
+          </div>
+
+          {/* Fund type — corpus gifts are exempt under s.11(1)(d) and must be
+              kept out of income, and this drives Form 10BD's "Type of
+              donation". Defaulting to General means nothing changes for a
+              temple that never takes corpus gifts. */}
+          <div>
+            <label htmlFor="fund-type" className="form-label">{t('donations.fundType')}</label>
+            <select id="fund-type" className="form-select" value={form.fund_type}
+              onChange={e => setForm(f => ({ ...f, fund_type: e.target.value }))}>
+              <option value="general">{t('donations.fundGeneral')}</option>
+              <option value="corpus">{t('donations.fundCorpus')}</option>
+              <option value="specific">{t('donations.fundSpecific')}</option>
+            </select>
+            {form.fund_type === 'corpus' && (
+              <p className="mt-1 text-xs text-slate-500">{t('donations.fundCorpusHint')}</p>
+            )}
           </div>
 
           {/* Amount + Payment */}

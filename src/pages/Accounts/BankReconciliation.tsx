@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { Upload, CheckCircle2, AlertTriangle, FileSpreadsheet, Save, History } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -21,12 +21,33 @@ interface StatementRow { date: string; description: string; amount_paise: number
 
 interface MatchedRow { book: BookEntry; statement: StatementRow }
 
+interface SavedRecon {
+  id: string
+  account_name: string
+  period_from: string
+  period_to: string
+  book_balance_paise: number
+  statement_balance_paise: number
+  difference_paise: number
+  matched_count: number
+  unmatched_book_count: number
+  unmatched_stmt_count: number
+  notes?: string | null
+  reconciled_at: string
+  reconciled_by_name?: string | null
+}
+
 /**
  * Bank reconciliation — paste/upload the bank's own statement CSV and match
  * it against our Bank Book for the same period. Matching (same date ±2 days,
  * same amount and side) and the reconciliation result are computed entirely
  * in the browser and not persisted — this is a point-in-time check, run it
  * again whenever you want a fresh comparison. No new tables, no server load.
+ *
+ * Convention: the book's `debit_paise` is money IN and `credit_paise` money
+ * OUT (the trust's own books). The bank's statement is signed from the BANK's
+ * point of view, so a deposit is positive there — hence debit maps to positive
+ * when matching. See doc-v2/Accounting_Audit_2026-08.md B2.
  */
 export function BankReconciliation() {
   const { t } = useTranslation()
@@ -37,6 +58,14 @@ export function BankReconciliation() {
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('bank-recon', 'thisMonth'))
   const [bookEntries, setBookEntries] = useState<BookEntry[]>([])
   const [, setLoadingBook] = useState(false)
+
+  // Saved BRS history. The comparison stays client-side, but the RESULT is
+  // now recorded — an auditor asks for the reconciliation as at the year end,
+  // and "re-run it and hope" is not a reconciliation
+  // (doc-v2/Accounting_Audit_2026-08.md B4).
+  const [saved, setSaved] = useState<SavedRecon[]>([])
+  const [saving, setSaving] = useState(false)
+  const [reconNotes, setReconNotes] = useState('')
 
   const [csvText, setCsvText] = useState('')
   const [statementRows, setStatementRows] = useState<StatementRow[]>([])
@@ -50,7 +79,16 @@ export function BankReconciliation() {
     }).catch(() => {})
   }, [])
 
-  useEffect(() => { if (accountId) loadBook() }, [accountId, range])
+  useEffect(() => { if (accountId) { loadBook(); loadSaved() } }, [accountId, range])
+
+  async function loadSaved() {
+    try {
+      const { data } = await api.get(`/accounting/bank-reconciliations?account_id=${accountId}`)
+      setSaved(data.data || [])
+    } catch {
+      setSaved([])
+    }
+  }
 
   async function loadBook() {
     setLoadingBook(true)
@@ -134,7 +172,11 @@ export function BankReconciliation() {
       const sDate = new Date(s.date).getTime()
       const candidate = bookPool.find(b => {
         if (b._used) return false
-        const bAmount = b.credit_paise > 0 ? b.credit_paise : -b.debit_paise
+        // Statement rows are signed from the bank's view (+deposit, -withdrawal).
+        // Our book now uses debit = money IN, so debit maps to positive here.
+        // This read `credit_paise` under the pre-2026-08 inverted convention;
+        // leaving it would have inverted every match and reconciled nothing.
+        const bAmount = b.debit_paise > 0 ? b.debit_paise : -b.credit_paise
         if (bAmount !== s.amount_paise) return false
         const bDate = new Date(b.date).getTime()
         return Math.abs(bDate - sDate) <= 2 * 86_400_000
@@ -159,6 +201,44 @@ export function BankReconciliation() {
     { label: t('bankRecon.unmatchedInStatement'), value: String(unmatchedStatement.length), tone: unmatchedStatement.length ? 'expense' : 'default' },
   ] : []
 
+  // Closing balance per our books = the running balance on the last entry;
+  // per the bank = the same opening plus every statement movement. The
+  // difference between them is the figure the auditor looks at first.
+  const bookBalancePaise = bookEntries.length ? (bookEntries[bookEntries.length - 1] as BookEntry & { balance_paise?: number }).balance_paise ?? 0 : 0
+  const statementNetPaise = statementRows.reduce((sum, r) => sum + r.amount_paise, 0)
+
+  async function saveRecon() {
+    if (!accountId) { toast.error(t('bankRecon.selectAccountFirst')); return }
+    if (!statementRows.length) { toast.info(t('bankRecon.nothingToReconcile')); return }
+    setSaving(true)
+    try {
+      await api.post('/accounting/bank-reconciliations', {
+        account_id: accountId,
+        period_from: range.from,
+        period_to: range.to,
+        book_balance_paise: bookBalancePaise,
+        statement_balance_paise: statementNetPaise,
+        matched_count: matched.length,
+        unmatched_book_count: unmatchedBook.length,
+        unmatched_stmt_count: unmatchedStatement.length,
+        notes: reconNotes || null,
+        detail: {
+          matched: matched.map(m => ({ date: m.book.date, description: m.book.description, amount_paise: m.book.debit_paise || -m.book.credit_paise })),
+          unmatched_book: unmatchedBook.map(b => ({ date: b.date, description: b.description, amount_paise: b.debit_paise || -b.credit_paise })),
+          unmatched_statement: unmatchedStatement,
+        },
+      })
+      setReconNotes('')
+      toast.success(t('bankRecon.saved'))
+      loadSaved()
+    } catch (err: unknown) {
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      toast.error(ex.response?.data?.error?.message || t('bankRecon.saveFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function exportReport() {
     const account = accounts.find(a => a.id === accountId)
     if (!matched.length && !unmatchedBook.length && !unmatchedStatement.length) { toast.info(t('kit.nothingToExport')); return }
@@ -174,8 +254,8 @@ export function BankReconciliation() {
           { header: t('common.amount'), type: 'money' },
         ],
         rows: [
-          ...matched.map(m => [t('bankRecon.matched'), m.book.date, m.book.description, (m.book.credit_paise || -m.book.debit_paise)]),
-          ...unmatchedBook.map(b => [t('bankRecon.unmatchedInBooks'), b.date, b.description, (b.credit_paise || -b.debit_paise)]),
+          ...matched.map(m => [t('bankRecon.matched'), m.book.date, m.book.description, (m.book.debit_paise || -m.book.credit_paise)]),
+          ...unmatchedBook.map(b => [t('bankRecon.unmatchedInBooks'), b.date, b.description, (b.debit_paise || -b.credit_paise)]),
           ...unmatchedStatement.map(s => [t('bankRecon.unmatchedInStatement'), s.date, s.description, s.amount_paise]),
         ],
       })
@@ -228,6 +308,66 @@ export function BankReconciliation() {
       </div>
 
       {statementRows.length > 0 && (
+        <div className="card no-print">
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('bankRecon.signOff')}</h3></div>
+          <div className="card-body space-y-3">
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div><span className="text-slate-500 block text-xs">{t('bankRecon.perBooks')}</span><span className="font-mono font-semibold">₹{fmtPaise(bookBalancePaise)}</span></div>
+              <div><span className="text-slate-500 block text-xs">{t('bankRecon.perStatement')}</span><span className="font-mono font-semibold">₹{fmtPaise(statementNetPaise)}</span></div>
+              <div>
+                <span className="text-slate-500 block text-xs">{t('bankRecon.difference')}</span>
+                <span className={`font-mono font-semibold ${bookBalancePaise - statementNetPaise === 0 ? 'text-green-700' : 'text-red-600'}`}>
+                  ₹{fmtPaise(bookBalancePaise - statementNetPaise)}
+                </span>
+              </div>
+            </div>
+            <input className="form-input" placeholder={t('bankRecon.notesPlaceholder')}
+              value={reconNotes} onChange={e => setReconNotes(e.target.value)} />
+            <button onClick={saveRecon} disabled={saving} className="btn-primary btn-sm">
+              <Save size={14} /> {saving ? t('common.saving') : t('bankRecon.saveRecon')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {saved.length > 0 && (
+        <div className="card no-print">
+          <div className="card-header flex items-center gap-2">
+            <History size={14} className="text-slate-400" />
+            <h3 className="font-semibold text-sm">{t('bankRecon.history')}</h3>
+          </div>
+          <div className="card-body overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+                  <th className="py-1.5">{t('bankRecon.period')}</th>
+                  <th className="py-1.5 text-right">{t('bankRecon.perBooks')}</th>
+                  <th className="py-1.5 text-right">{t('bankRecon.perStatement')}</th>
+                  <th className="py-1.5 text-right">{t('bankRecon.difference')}</th>
+                  <th className="py-1.5 text-right">{t('bankRecon.matched')}</th>
+                  <th className="py-1.5">{t('bankRecon.reconciledBy')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saved.map(r => (
+                  <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                    <td className="py-1.5">{new Date(r.period_from).toLocaleDateString('en-IN')} – {new Date(r.period_to).toLocaleDateString('en-IN')}</td>
+                    <td className="py-1.5 text-right font-mono tabular-nums">₹{fmtPaise(r.book_balance_paise)}</td>
+                    <td className="py-1.5 text-right font-mono tabular-nums">₹{fmtPaise(r.statement_balance_paise)}</td>
+                    <td className={`py-1.5 text-right font-mono tabular-nums font-semibold ${r.difference_paise === 0 ? 'text-green-700' : 'text-red-600'}`}>₹{fmtPaise(r.difference_paise)}</td>
+                    <td className="py-1.5 text-right">{r.matched_count}</td>
+                    <td className="py-1.5 text-xs text-slate-500">
+                      {r.reconciled_by_name || '—'} · {new Date(r.reconciled_at).toLocaleDateString('en-IN')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {statementRows.length > 0 && (
         <>
           <SummaryStrip stats={stats} />
 
@@ -276,7 +416,7 @@ export function BankReconciliation() {
                       <tr key={i}>
                         <td className="text-xs">{new Date(b.date).toLocaleDateString('en-IN')}</td>
                         <td className="text-slate-600">{b.description}</td>
-                        <td className={`text-right font-semibold tabular-nums ${b.debit_paise > 0 ? 'text-red-600' : 'text-green-700'}`}>
+                        <td className={`text-right font-semibold tabular-nums ${b.debit_paise > 0 ? 'text-green-700' : 'text-red-600'}`}>
                           ₹{fmtPaise(b.debit_paise > 0 ? b.debit_paise : b.credit_paise)}
                         </td>
                       </tr>
@@ -304,7 +444,7 @@ export function BankReconciliation() {
                       <td className="text-xs">{new Date(m.book.date).toLocaleDateString('en-IN')}</td>
                       <td className="text-slate-600">{m.book.description}</td>
                       <td className="text-right font-semibold tabular-nums text-green-700">
-                        ₹{fmtPaise(m.book.credit_paise || m.book.debit_paise)}
+                        ₹{fmtPaise(m.book.debit_paise || m.book.credit_paise)}
                       </td>
                     </tr>
                   ))}

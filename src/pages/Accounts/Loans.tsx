@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Save } from 'lucide-react'
+import { IndianRupee, Plus, Save, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
-import type { Loan } from '../../types'
+import type { Account, Loan } from '../../types'
 
 const PAGE_SIZE = 20
 
@@ -23,6 +23,19 @@ export function Loans() {
 
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [accounts, setAccounts] = useState<Account[]>([])
+
+  // Repayment goes through the dedicated endpoint, never the generic PATCH:
+  // `repaid_paise` is now derived from the dated `loan_repayments` ledger so
+  // that both legs of a loan reach the cash statements, and the API rejects a
+  // direct write to it.
+  const [repayModal, setRepayModal] = useState<{ id: string; party: string; outstanding: number } | null>(null)
+  const [repayAmt, setRepayAmt] = useState('')
+  const [repayMode, setRepayMode] = useState('cash')
+  const [repayAccountId, setRepayAccountId] = useState('')
+  const [repayDate, setRepayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [repaying, setRepaying] = useState(false)
+  const [repayError, setRepayError] = useState('')
   const [form, setForm] = useState({
     type: 'taken', party_name: '', principal: '',
     interest_rate: '0', start_date: new Date().toISOString().slice(0, 10), end_date: '',
@@ -50,6 +63,12 @@ export function Loans() {
       filter: { kind: 'enum', param: 'status', options: [{ value: 'active', label: t('accounts.active') }, { value: 'closed', label: t('accounts.closed') }] },
       render: l => l.status === 'active' ? <span className="badge-blue">{t('accounts.active')}</span> : <span className="badge-gray">{t('accounts.closed')}</span>,
     },
+    {
+      key: 'actions', label: '', align: 'right',
+      render: l => l.principal_paise - l.repaid_paise > 0
+        ? <button className="btn-secondary btn-sm" onClick={() => openRepay(l)}><IndianRupee size={13} /> {t('accounts.recordRepayment')}</button>
+        : null,
+    },
   ]
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
@@ -64,9 +83,13 @@ export function Loans() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await api.get(`/loans?${buildParams(PAGE_SIZE, page)}`)
-      setLoans(data.data || [])
-      setMeta(data.meta || null)
+      const [ln, ac] = await Promise.all([
+        api.get(`/loans?${buildParams(PAGE_SIZE, page)}`),
+        api.get('/accounts?is_active=true'),
+      ])
+      setLoans(ln.data.data || [])
+      setMeta(ln.data.meta || null)
+      setAccounts(ac.data.data || [])
     } catch {
       setLoans([])
       setMeta(null)
@@ -99,6 +122,44 @@ export function Loans() {
       setSaving(false)
     }
   }
+
+  function openRepay(l: Loan) {
+    setRepayModal({ id: l.id, party: l.party_name, outstanding: l.principal_paise - l.repaid_paise })
+    setRepayAmt('')
+    setRepayMode('cash')
+    setRepayAccountId('')
+    setRepayDate(new Date().toISOString().slice(0, 10))
+    setRepayError('')
+  }
+
+  async function submitRepay(e: React.FormEvent) {
+    e.preventDefault()
+    if (!repayModal) return
+    const paise = parsePaise(repayAmt)
+    if (!paise || paise <= 0) { setRepayError(t('accounts.enterValidAmount')); return }
+    if (paise > repayModal.outstanding) { setRepayError(t('accounts.repaymentExceedsOutstanding', { amount: fmtPaise(repayModal.outstanding) })); return }
+    if (repayMode !== 'cash' && !repayAccountId) { setRepayError(t('accounts.selectBankAccount')); return }
+    setRepaying(true)
+    setRepayError('')
+    try {
+      await api.post(`/loans/${repayModal.id}/repay`, {
+        amount_paise: paise,
+        payment_mode: repayMode,
+        payment_account_id: repayMode === 'cash' ? undefined : repayAccountId,
+        payment_date: repayDate,
+      })
+      setRepayModal(null)
+      toast.success(t('accounts.repaymentRecorded'))
+      load()
+    } catch (err: unknown) {
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      setRepayError(ex.response?.data?.error?.message || t('accounts.repaymentFailed'))
+    } finally {
+      setRepaying(false)
+    }
+  }
+
+  const bankAccounts = accounts.filter(a => a.type !== 'cash')
 
   const stats: SummaryStat[] = meta ? [
     { label: t('accounts.principal'), value: `₹${fmtPaise(loans.reduce((s, l) => s + l.principal_paise, 0))}` },
@@ -192,6 +253,65 @@ export function Loans() {
         emptyAction={{ label: t('accounts.addLoan'), onClick: () => setShowForm(true) }}
         onClearFilters={() => { setFilterState({}); setPage(1) }}
       />
+
+      {repayModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="font-bold text-navy-900">{t('accounts.recordRepayment')}</h2>
+              <button onClick={() => setRepayModal(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            <form onSubmit={submitRepay} className="p-6 space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                <p className="text-slate-500">{t('accounts.party')}: {repayModal.party}</p>
+                <p className="text-slate-500">{t('accounts.outstanding')}: ₹{fmtPaise(repayModal.outstanding)}</p>
+              </div>
+              <div>
+                <label className="form-label">{t('accounts.amount')}</label>
+                <input type="number" step="0.01" min="0.01" max={(repayModal.outstanding / 100).toFixed(2)}
+                  className="form-input" placeholder="0.00" value={repayAmt}
+                  onChange={e => { setRepayAmt(e.target.value); setRepayError('') }} autoFocus required />
+                <button type="button" className="mt-1 text-xs text-brand-red hover:underline"
+                  onClick={() => setRepayAmt((repayModal.outstanding / 100).toFixed(2))}>
+                  {t('accounts.payFullOutstanding', { amount: fmtPaise(repayModal.outstanding) })}
+                </button>
+              </div>
+              <div>
+                <label className="form-label">{t('accounts.paymentDate')}</label>
+                <input type="date" className="form-input" value={repayDate}
+                  onChange={e => { setRepayDate(e.target.value); setRepayError('') }} required />
+              </div>
+              <div>
+                <label className="form-label">{t('accounts.paymentMode')}</label>
+                <select className="form-input" value={repayMode}
+                  onChange={e => { setRepayMode(e.target.value); setRepayError('') }}>
+                  <option value="cash">{t('common.cash')}</option>
+                  <option value="upi">{t('common.upi')}</option>
+                  <option value="cheque">{t('common.cheque')}</option>
+                  <option value="netbanking">{t('common.netbanking')}</option>
+                </select>
+              </div>
+              {repayMode !== 'cash' && (
+                <div>
+                  <label className="form-label">{t('accounts.bankAccount')}</label>
+                  <select className="form-input" value={repayAccountId}
+                    onChange={e => { setRepayAccountId(e.target.value); setRepayError('') }}>
+                    <option value="">{t('accounts.selectAccount')}</option>
+                    {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
+              {repayError && <p className="text-sm text-red-600">{repayError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setRepayModal(null)} className="btn-secondary">{t('common.cancel')}</button>
+                <button type="submit" disabled={repaying} className="btn-success">
+                  {repaying ? t('common.saving') : t('accounts.recordRepayment')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

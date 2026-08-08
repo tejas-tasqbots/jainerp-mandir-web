@@ -63,8 +63,10 @@ export function DayBook() {
     },
     { key: 'description', label: t('accounts.description'), render: e => e.description },
     { key: 'reference', label: t('accounts.reference'), render: e => <span className="font-mono text-xs text-slate-400">{e.reference || '—'}</span> },
-    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => e.debit_paise > 0 ? <span className="text-red-600">₹{fmtPaise(e.debit_paise)}</span> : '—' },
-    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => e.credit_paise > 0 ? <span className="text-green-700">₹{fmtPaise(e.credit_paise)}</span> : '—' },
+    // Debit = money in (green), credit = money out (red). The colours were the
+    // other way round under the pre-2026-08 inverted convention.
+    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => e.debit_paise > 0 ? <span className="text-green-700">₹{fmtPaise(e.debit_paise)}</span> : '—' },
+    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => e.credit_paise > 0 ? <span className="text-red-600">₹{fmtPaise(e.credit_paise)}</span> : '—' },
   ]
 
   const totalDebit = filtered.reduce((s, e) => s + e.debit_paise, 0)

@@ -39,6 +39,7 @@ const SCREENS: ScreenTarget[] = [
   { route: '/accounts/day-book', labelKey: 'nav.dayBook' },
   { route: '/accounts/ledger', labelKey: 'nav.ledger' },
   { route: '/accounts/trial-balance', labelKey: 'nav.trialBalance' },
+  { route: '/accounts/general-ledger', labelKey: 'nav.generalLedger' },
   { route: '/accounts/balance-sheet', labelKey: 'nav.balanceSheet' },
   { route: '/reports', labelKey: 'nav.reports' },
   { route: '/certificates', labelKey: 'nav.certificates' },

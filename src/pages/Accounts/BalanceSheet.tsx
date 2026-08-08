@@ -19,6 +19,9 @@ interface BSData {
   assets: {
     cash_and_bank: CashBankEntry[]
     cash_and_bank_total_paise: number
+    cheques_in_hand_paise: number
+    other?: { account: string; code: string; balance_paise: number }[]
+    other_total_paise?: number
     fixed_assets_paise: number
     loans_given_paise: number
     total_paise: number
@@ -26,8 +29,13 @@ interface BSData {
   liabilities: {
     creditors_paise: number
     loans_taken_paise: number
+    other?: { account: string; code: string; balance_paise: number }[]
     total_paise: number
   }
+  funds?: { code: string; name: string; opening_paise: number; movement_paise: number; closing_paise: number }[]
+  funds_total_paise?: number
+  difference_paise?: number
+  source?: string
 }
 
 export function BalanceSheet() {
@@ -53,13 +61,27 @@ export function BalanceSheet() {
 
   const assetRows: Row[] = data ? [
     ...data.assets.cash_and_bank.map(a => ({ label: `${a.account} (${a.type})`, paise: a.balance_paise })),
+    // Cheques received but not yet cleared are an asset, but not bank money —
+    // showing them inside the bank balance is what made a bank reconciliation
+    // impossible (doc-v2/Accounting_Audit_2026-08.md B3).
+    ...(data.assets.cheques_in_hand_paise > 0 ? [{ label: t('accounts.chequesInHand'), paise: data.assets.cheques_in_hand_paise }] : []),
     { label: t('accounts.fixedAssetsNet'), paise: data.assets.fixed_assets_paise },
     ...(data.assets.loans_given_paise > 0 ? [{ label: t('accounts.loansGivenOutstanding'), paise: data.assets.loans_given_paise }] : []),
+    // Any other asset head the ledger carries — Suspense, most importantly.
+    // Hardcoding the asset list is what let Suspense fall out of total assets
+    // once (doc-v2/Accounting_Audit_2026-08.md, Phase 3 verification).
+    ...(data.assets.other ?? []).filter(o => o.balance_paise !== 0).map(o => ({ label: o.account, paise: o.balance_paise })),
   ] : []
   const liabilityRows: Row[] = data ? [
     ...(data.liabilities.creditors_paise > 0 ? [{ label: t('accounts.creditorsOutstanding'), paise: data.liabilities.creditors_paise }] : []),
     ...(data.liabilities.loans_taken_paise > 0 ? [{ label: t('accounts.loansTakenOutstanding'), paise: data.liabilities.loans_taken_paise }] : []),
-    { label: t('accounts.corpusNetWorth'), paise: corpus, bold: true },
+    ...(data.liabilities.other ?? []).filter(o => o.balance_paise !== 0).map(o => ({ label: o.account, paise: o.balance_paise })),
+    // From the ledger the funds are real balances, not a plug. Fall back to the
+    // computed net worth only for years that predate the ledger.
+    ...(data.funds?.length
+      ? data.funds.map(f => ({ label: f.name, paise: f.closing_paise }))
+      : [{ label: t('accounts.corpusNetWorth'), paise: corpus, bold: true }]),
+    ...(data.funds?.length ? [{ label: t('accounts.corpusNetWorth'), paise: (data.funds_total_paise ?? 0), bold: true }] : []),
   ] : []
 
   const rowCols: ColumnDef<Row>[] = [
@@ -123,6 +145,30 @@ export function BalanceSheet() {
         <FySelect value={fy} onChange={setFy} />
         {data && <span className="badge-green">{t('accounts.asOfEndOfFy')}</span>}
       </div>
+
+      {data?.difference_paise !== undefined && data.difference_paise !== 0 && (
+
+
+        <div className="card border-l-4 border-l-red-600">
+
+
+          <div className="card-body text-sm">
+
+
+            <span className="font-bold text-red-700">{t('accounts.doesNotBalance')}</span>
+
+
+            <span className="text-slate-500"> — {t('accounts.differenceOf')} ₹{fmtPaise(data.difference_paise)}</span>
+
+
+          </div>
+
+
+        </div>
+
+
+      )}
+
 
       <SummaryStrip stats={stats} />
 

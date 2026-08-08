@@ -67,6 +67,7 @@ const navItems: NavItem[] = [
       { labelKey: 'nav.dayBook', to: '/accounts/day-book' },
       { labelKey: 'nav.ledger', to: '/accounts/ledger' },
       { labelKey: 'nav.trialBalance', to: '/accounts/trial-balance' },
+      { labelKey: 'nav.generalLedger', to: '/accounts/general-ledger' },
       { labelKey: 'nav.receiptsPayments', to: '/accounts/receipts-payments' },
       { labelKey: 'nav.incomeExpenditure', to: '/accounts/income-expenditure' },
       { labelKey: 'nav.balanceSheet', to: '/accounts/balance-sheet' },

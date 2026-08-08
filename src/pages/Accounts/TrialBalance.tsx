@@ -54,6 +54,11 @@ export function TrialBalance() {
   // Imbalanced ✗" verdict showed a red "Imbalanced ✗" to every temple with
   // money in the bank. Report the net position, which is what these rows add up
   // to, instead of a balance check this report has no basis to make.
+  //
+  // The page is titled "Cash & Bank Balances" for the same reason: there is no
+  // chart of accounts behind it, so it is not a trial balance and calling it
+  // one misleads the trust's auditor. A real one arrives with the journal layer
+  // — doc-v2/Accounting_Audit_2026-08.md §1 and Phase 3.
   const stats: SummaryStat[] = rows.length ? [
     { label: t('accounts.debit'), value: `₹${fmtPaise(totalDebit)}` },
     { label: t('accounts.credit'), value: `₹${fmtPaise(totalCredit)}` },

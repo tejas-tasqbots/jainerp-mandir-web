@@ -99,8 +99,8 @@ export function CashBank() {
     { key: 'date', label: t('common.date'), render: e => <span className="text-xs">{new Date(e.date).toLocaleDateString('en-IN')}</span> },
     { key: 'description', label: t('accounts.description'), render: e => <span className="font-medium">{e.description}</span> },
     { key: 'reference', label: t('accounts.reference'), render: e => <span className="font-mono text-xs text-slate-400">{e.reference || '—'}</span> },
-    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => <>{e.debit_paise ? `₹${fmtPaise(e.debit_paise)}` : '—'}</> },
-    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => <span className="text-green-700">{e.credit_paise ? `₹${fmtPaise(e.credit_paise)}` : '—'}</span> },
+    { key: 'debit', label: t('accounts.debit'), align: 'right', render: e => <span className="text-green-700">{e.debit_paise ? `₹${fmtPaise(e.debit_paise)}` : '—'}</span> },
+    { key: 'credit', label: t('accounts.credit'), align: 'right', render: e => <span className="text-red-600">{e.credit_paise ? `₹${fmtPaise(e.credit_paise)}` : '—'}</span> },
     { key: 'balance', label: t('accounts.balance'), align: 'right', render: e => <span className={`font-semibold ${e.balance_paise < 0 ? 'text-red-600' : ''}`}>₹{fmtPaise(e.balance_paise)}</span> },
      
   ], [t])
@@ -116,8 +116,10 @@ export function CashBank() {
   const totalCredit = entries.reduce((s, e) => s + e.credit_paise, 0)
   const stats: SummaryStat[] = selected ? [
     { label: t('accounts.currentBalance'), value: `₹${fmtPaise(selected.balance_paise)}`, tone: selected.balance_paise < 0 ? 'expense' : 'income' },
-    { label: t('accounts.moneyIn'), value: `₹${fmtPaise(totalCredit)}`, tone: 'income' },
-    { label: t('accounts.moneyOut'), value: `₹${fmtPaise(totalDebit)}`, tone: 'expense' },
+    // Debit is money IN since the 2026-08 convention fix; these two tiles read
+    // the opposite columns before it and would now be exactly reversed.
+    { label: t('accounts.moneyIn'), value: `₹${fmtPaise(totalDebit)}`, tone: 'income' },
+    { label: t('accounts.moneyOut'), value: `₹${fmtPaise(totalCredit)}`, tone: 'expense' },
   ] : []
 
   async function exportExcel() {
