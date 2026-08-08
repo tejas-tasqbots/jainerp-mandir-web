@@ -1,6 +1,6 @@
 # Master test pack
 
-703 executable cases across all four APIs, all four portals, the three Flutter
+705 executable cases across all four APIs, all four portals, the three Flutter
 apps and the Electron desktop edition. Every case asserts something specific and
 fails for exactly one reason.
 
@@ -37,7 +37,7 @@ that reads as "the app is down".
 | `06-tenancy-security` | 49 | Cross-tenant isolation, SQL injection, stored XSS, PAN handling, CORS, secrets, rate limits, audit completeness |
 | `07-static-contract` | 38 | CSS class drift, double-stringified bodies, envelope shape, `check:sql`, migrations, lint, typecheck, build, i18n parity |
 | `08-mobile-desktop` | 31 | `dart analyze`, `flutter test` per package, vendored-package drift, release config, Electron sync/licence |
-| `09-mandir-crud` | 284 | 14-operation CRUD lifecycle × 20 resources across every mandir module — create payloads derived from `information_schema` |
+| `09-mandir-crud` | 286 | 14-operation CRUD lifecycle × 20 resources across every mandir module — create payloads derived from `information_schema` |
 
 ## What this pack does that the older suites do not
 

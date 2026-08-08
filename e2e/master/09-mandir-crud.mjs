@@ -290,6 +290,56 @@ await suite('09-mandir-crud', async () => {
     return 'no secret columns in list payloads';
   });
 
+  await t('TC-CRUD-MONEY-01', 'P1', 'every money table the generic delete can reach is soft-deletable', async () => {
+    // remove() falls back to a real DELETE when a table has neither deleted_at
+    // nor is_active. Seven money-bearing tables were in that position, so a
+    // mis-click through the generic CRUD surface destroyed payroll, TDS or an
+    // opening balance outright — the audit `before` snapshot was the only copy
+    // left, recoverable by an engineer but not by anyone using the product.
+    // Tenant-migration 021 gave them all deleted_at.
+    const bad = psql(
+      `SELECT c.table_name
+         FROM information_schema.columns c
+        WHERE c.table_schema = '${S}'
+          AND c.table_name IN ('employee_salary_records','priest_salary_records','tds_records',
+                               'account_opening_balances','annadaan_entries',
+                               'annadaan_sponsorships','inventory_transactions')
+        GROUP BY c.table_name
+        HAVING bool_or(c.column_name = 'deleted_at') = false`,
+    );
+    expect.eq(bad.length, 0, `money tables that still hard-delete: ${bad.map((r) => r[0]).join(', ')}`);
+    return '7 money tables soft-deletable';
+  });
+
+  await t('TC-CRUD-MONEY-02', 'P1', 'a soft-deleted money row stops counting in its register', async () => {
+    // This matters more than the delete itself: a soft-deleted row that a
+    // report still totals is worse than the hard delete it replaced, because
+    // the money silently stays in the figures. Both annadaan readers filter
+    // deleted_at, as does the opening balance the cash/bank reports build on.
+    const day = new Date(Date.now() + (5000 + Math.floor(Math.random() * 3000)) * 864e5)
+      .toISOString().slice(0, 10);
+    const made = await mandirApi('POST', '/annadaan-entries', {
+      token: ADMIN,
+      body: { entry_date: day, meals_served: 100, cost_per_meal_paise: 5000, total_cost_paise: 500000 },
+    });
+    expect.http2xx(made);
+    const rowId = made.data.id;
+    const inRegister = async () => {
+      const r = await mandirApi(
+        'GET', `/reports/service-register?type=annadaan&from=${day}&to=${day}`, { token: ADMIN });
+      return (r.data?.rows ?? []).filter((x) => x.id === rowId).length;
+    };
+    expect.eq(await inRegister(), 1, 'a live entry should appear in the register');
+    await mandirApi('DELETE', `/annadaan-entries/${rowId}`, { token: ADMIN });
+    expect.eq(psql1(`SELECT count(*) FROM ${S}.annadaan_entries WHERE id = '${rowId}'`), '1',
+      'the delete should be soft, not a real DELETE');
+    expect.eq(await inRegister(), 0, 'a deleted entry is still counted in the register');
+    await mandirApi('POST', `/annadaan-entries/${rowId}/restore`, { token: ADMIN, body: {} });
+    expect.eq(await inRegister(), 1, 'a restored entry should count again');
+    await mandirApi('DELETE', `/annadaan-entries/${rowId}`, { token: ADMIN });
+    return 'counted → deleted → uncounted → restored';
+  });
+
   await t('TC-CRUD-REG-03', 'P1', 'a cashier cannot write to an accountant-only resource', async () => {
     const cashier = (await mandirLogin(FIXTURES.cashier)).token;
     // `gst-rates` and `accounts` declare writeRoles: ['accountant'].
