@@ -94,10 +94,17 @@ await suite('08-mobile-desktop', async () => {
   });
 
   // ═══════════════════════ Vendored package drift ══════════════════════════
-  // The single highest-value check here: three copies of the same source with
-  // no shared package between them.
+  // Three copies of the same source with no shared package between them.
+  //
+  // `packages/ui` genuinely is one source in three places and must stay
+  // byte-identical. `packages/core` is a shared base each app specialises —
+  // its eight divergences were diffed and are structural (different API port
+  // per app, tenant module entitlements on mandir only, devotee's own auth
+  // repository), so they are declared in vendored-drift-baseline.json rather
+  // than treated as debt. What this case actually guards is a change made in
+  // one copy and never ported: any *undeclared* difference fails.
   for (const pkg of ['core', 'ui']) {
-    await t(`TC-MOB-DRIFT-${pkg}`, 'P1', `packages/${pkg} is identical across all three mobile apps`, async () => {
+    await t(`TC-MOB-DRIFT-${pkg}`, 'P1', `packages/${pkg} has no undeclared divergence between the three apps`, async () => {
       const byApp = {};
       for (const app of MOBILES) {
         const dir = join(ROOT, app, 'packages', pkg, 'lib');
@@ -128,17 +135,18 @@ await suite('08-mobile-desktop', async () => {
         const variants = new Set(apps.map((a) => byApp[a][name]));
         if (variants.size > 1) diffs.push(name);
       }
-      // Known divergences are baselined so this case guards against the debt
-      // *growing* rather than sitting permanently red on debt that needs a
-      // per-file reconciliation decision. See vendored-drift-baseline.json.
+      // Declared divergences are baselined so this case guards against a real
+      // un-ported change rather than sitting red on deliberate per-app
+      // structure. See vendored-drift-baseline.json for the diff of each.
       const baseline = new Set(BASELINE[pkg] ?? []);
       const fresh = diffs.filter((d) => !baseline.has(d));
       const healed = [...baseline].filter((b) => !diffs.includes(b));
       expect.eq(fresh.length, 0,
-        `${fresh.length} NEW divergence(s) since the baseline — a change was made ` +
-        `in one app and never ported:\n  ` + fresh.slice(0, 12).join('\n  '));
+        `${fresh.length} UNDECLARED divergence(s) — diff each one: if it is a fix ` +
+        `made in one app and not the others, port it; only declare it in the ` +
+        `baseline if the difference is structural:\n  ` + fresh.slice(0, 12).join('\n  '));
       const note = healed.length ? `; ${healed.length} baselined file(s) now match — drop them from the baseline` : '';
-      return `${shared.length} shared, ${diffs.length} known-diverged, 0 new${note}`;
+      return `${shared.length} shared, ${diffs.length} declared, 0 undeclared${note}`;
     });
   }
 
@@ -207,6 +215,19 @@ await suite('08-mobile-desktop', async () => {
     }
     expect.eq(bad.length, 0, bad.join('; '));
     return 'all three default to /api/v1 and accept --dart-define';
+  });
+
+  await t('TC-MOB-004b', 'P1', 'each mobile app targets its OWN API port', async () => {
+    // The concrete bug the vendored env.dart causes: the sant app once shipped
+    // with :3106 (mandir's port) because the file was copied between repos,
+    // which 404s every call silently. Pinned so a future copy-paste fails here.
+    const want = { 'mandir-mobile': '3106', 'devotee-mobile': '3107', 'sant-mobile': '3108' };
+    for (const [app, port] of Object.entries(want)) {
+      const src = readFileSync(join(ROOT, app, 'packages/core/lib/src/env.dart'), 'utf8');
+      const got = src.match(/http:\/\/10\.0\.2\.2:(\d+)\/api\/v1/)?.[1];
+      expect.eq(got, port, `${app} default API port`);
+    }
+    return 'mandir:3106 devotee:3107 sant:3108';
   });
 
   await t('TC-MOB-005', 'P1', 'the sant mobile client uses sant_* naming, not maharaj_*', async () => {

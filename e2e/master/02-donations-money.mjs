@@ -75,25 +75,46 @@ await suite('02-donations-money', async () => {
     return `id ${r.data.id.slice(0, 8)}`;
   });
 
-  await t('TC-MON-011', 'P1', 'a donation above the paise ceiling is refused, never wrapped', async () => {
-    // Money columns are INTEGER paise, so the ceiling is ~₹2.14 crore. What
-    // matters is that an over-large gift is *rejected with a clear message*
-    // rather than silently overflowing into a negative or truncated amount.
-    const r = await donate({ amount_paise: 10000000000, donor: { name: 'Big Donor', mobile: '9000012304' } });
-    expect.rejected(r, 'an amount past the ceiling must be refused');
-    expect.ok(/too large/i.test(r.json?.error?.message ?? ''), `message should explain the ceiling: ${r.json?.error?.message}`);
-    const wrapped = psql1(`SELECT count(*) FROM ${S}.donations WHERE amount_paise < 0`);
-    expect.eq(Number(wrapped), 0, 'no negative amounts from integer wraparound');
-    return r.json.error.message;
+  await t('TC-MON-011', 'P1', 'a very large donation records exactly (money columns are BIGINT)', async () => {
+    // Money columns were INTEGER paise, capping a single gift at ~₹2.14 crore —
+    // the API refused anything larger with "That amount is too large for this
+    // field. Please split it or contact support." Splitting corrupts the donor's
+    // 80G record, which has to show one receipt for one gift, so migration 036 /
+    // tenant-migration 019 widened every `*_paise` column to BIGINT.
+    for (const amount of [2147483647, 10000000000, 500000000000]) {
+      const r = await donate({ amount_paise: amount, donor: { name: 'Big Gift', mobile: '9000012304' } });
+      expect.http2xx(r, `₹${amount / 100} should now be recordable`);
+      const stored = psql1(`SELECT amount_paise FROM ${S}.donations WHERE id = '${r.data.id}'`);
+      expect.eq(Number(stored), amount, 'stored exactly, no truncation');
+    }
+    return '₹2.14cr, ₹10cr, ₹500cr all exact';
   });
 
-  await t('TC-MON-011b', 'P2', 'a large-but-legal donation round-trips exactly', async () => {
-    const amount = 100000000; // ₹10,00,000
-    const r = await donate({ amount_paise: amount, donor: { name: 'Large Legal', mobile: '9000012311' } });
-    expect.http2xx(r);
-    const stored = psql1(`SELECT amount_paise FROM ${S}.donations WHERE id = '${r.data.id}'`);
-    expect.eq(Number(stored), amount, 'value as stored in postgres');
-    return `₹${amount / 100}`;
+  await t('TC-MON-011b', 'P1', 'no money column is still INTEGER anywhere in this tenant', async () => {
+    const narrow = psql1(
+      `SELECT count(*) FROM information_schema.columns
+        WHERE table_schema = '${S}' AND column_name LIKE '%\\_paise' AND data_type = 'integer'`,
+    );
+    expect.eq(Number(narrow), 0, 'an INTEGER paise column would reintroduce the ~₹2.14 crore ceiling');
+    return 'all BIGINT';
+  });
+
+  await t('TC-MON-011c', 'P1', 'integer wraparound never produced a negative amount', async () => {
+    const wrapped = psql1(`SELECT count(*) FROM ${S}.donations WHERE amount_paise < 0`);
+    expect.eq(Number(wrapped), 0, 'negative amounts from overflow');
+    return '0 negative';
+  });
+
+  await t('TC-MON-011d', 'P1', 'an amount past JavaScript\u2019s safe integer range is refused', async () => {
+    // BIGINT is wider than JS can represent exactly: Number('9007199254740993')
+    // is 9007199254740992, and the old `Number.isInteger` check said yes — the
+    // API would have stored an amount nobody typed. 2^53 paise is ~₹90 trillion,
+    // so nothing real is excluded.
+    const r = await donate({
+      amount_paise: '9007199254740993', donor: { name: 'Unsafe', mobile: '9000012314' },
+    });
+    expect.rejected(r, 'a value JS has already rounded must not be stored');
+    return `${r.status} ${r.code}`;
   });
 
   await t('TC-MON-012', 'P1', 'every listed amount_paise is an integer', async () => {

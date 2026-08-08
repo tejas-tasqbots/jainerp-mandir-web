@@ -1,6 +1,6 @@
 # Master test pack
 
-402 executable cases across all four APIs, all four portals, the three Flutter
+405 executable cases across all four APIs, all four portals, the three Flutter
 apps and the Electron desktop edition. Every case asserts something specific and
 fails for exactly one reason.
 
@@ -30,13 +30,13 @@ that reads as "the app is down".
 | Suite | Cases | Covers |
 |---|--:|---|
 | `01-auth-rbac` | 53 | OTP login (all 3 flows), super-admin password+TOTP, JWT forgery/expiry/`alg=none`, sessions, refresh, the tenant role gate |
-| `02-donations-money` | 68 | Integer-paise validation, gapless receipt series, void + reissue, 80G/PAN, cheque lifecycle, global-ledger mirror, audit |
+| `02-donations-money` | 70 | Integer-paise validation, gapless receipt series, void + reissue, 80G/PAN, cheque lifecycle, global-ledger mirror, audit |
 | `03-modules` | 57 | Rooms, halls, prasad, seva, events, bhojanshala, expenses, bolis, generic resource registry |
 | `04-superadmin` | 66 | Tenant lifecycle, the 4 access controls, plans + custom plans, module entitlements, licensing, billing, the change-request queue |
 | `05-devotee-sant` | 49 | Cross-temple ledger ownership, 80G, temple directory, stays, notifications, sant reps, the `maharaj_*` → `sant_*` rename |
 | `06-tenancy-security` | 41 | Cross-tenant isolation, SQL injection, stored XSS, PAN handling, CORS, secrets, rate limits, audit completeness |
 | `07-static-contract` | 38 | CSS class drift, double-stringified bodies, envelope shape, `check:sql`, migrations, lint, typecheck, build, i18n parity |
-| `08-mobile-desktop` | 30 | `dart analyze`, `flutter test` per package, vendored-package drift, release config, Electron sync/licence |
+| `08-mobile-desktop` | 31 | `dart analyze`, `flutter test` per package, vendored-package drift, release config, Electron sync/licence |
 
 ## What this pack does that the older suites do not
 
@@ -68,9 +68,13 @@ Re-running the pack must not change its result. Two places needed care:
   ceiling was enforced on both routes — that cannot be un-done and would make
   those cases permanently red instead of guarding current behaviour.
 
-`vendored-drift-baseline.json` records the 8 `packages/core` files that already
-differ between the three mobile repos. The check fails on anything *not* listed,
-so the debt cannot grow while the known part awaits a per-file decision.
+`vendored-drift-baseline.json` declares the 8 `packages/core` files that differ
+between the three mobile repos **by design** — each app targets its own API port,
+only mandir carries module entitlements, only devotee has its own auth
+repository. They are not debt, and copying between the repos to "fix" them is how
+the sant app once shipped calling mandir-api on the wrong port. `packages/ui`
+genuinely is one source in three places and is byte-identical. The check fails on
+any *undeclared* difference, which is what catches a real un-ported change.
 
 ## Adding a case
 
