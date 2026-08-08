@@ -1,6 +1,6 @@
 # Master test pack
 
-405 executable cases across all four APIs, all four portals, the three Flutter
+410 executable cases across all four APIs, all four portals, the three Flutter
 apps and the Electron desktop edition. Every case asserts something specific and
 fails for exactly one reason.
 
@@ -30,7 +30,7 @@ that reads as "the app is down".
 | Suite | Cases | Covers |
 |---|--:|---|
 | `01-auth-rbac` | 53 | OTP login (all 3 flows), super-admin password+TOTP, JWT forgery/expiry/`alg=none`, sessions, refresh, the tenant role gate |
-| `02-donations-money` | 70 | Integer-paise validation, gapless receipt series, void + reissue, 80G/PAN, cheque lifecycle, global-ledger mirror, audit |
+| `02-donations-money` | 75 | Integer-paise validation, gapless receipt series, void + reissue, 80G/PAN, cheque lifecycle, global-ledger mirror, audit |
 | `03-modules` | 57 | Rooms, halls, prasad, seva, events, bhojanshala, expenses, bolis, generic resource registry |
 | `04-superadmin` | 66 | Tenant lifecycle, the 4 access controls, plans + custom plans, module entitlements, licensing, billing, the change-request queue |
 | `05-devotee-sant` | 49 | Cross-temple ledger ownership, 80G, temple directory, stays, notifications, sant reps, the `maharaj_*` → `sant_*` rename |

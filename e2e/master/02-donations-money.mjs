@@ -27,6 +27,20 @@ const donate = (body, token = ADMIN) =>
     body: { category: 'General', payment_mode: 'cash', is_80g: false, ...body },
   });
 
+/**
+ * A donor's current-FY giving as the Donors list reports it, looked up by
+ * MOBILE. A donor is identified by mobile, not by name — reusing a fixed mobile
+ * across runs resolves to the same donor row and keeps its original name, so
+ * searching by a fresh name silently matched nothing.
+ */
+async function fyGiving(mobile) {
+  const r = await mandirApi('GET', `/donors?q=${encodeURIComponent(mobile)}&limit=1`, { token: ADMIN });
+  return Number(r.data?.[0]?.cumulative_amount_current_fy_paise ?? -1);
+}
+
+/** A mobile no other run will reuse, so each case gets its own donor. */
+const freshMobile = () => `90${String(Math.floor(Math.random() * 90000000 + 10000000))}`;
+
 await suite('02-donations-money', async () => {
   ADMIN = (await mandirLogin(FIXTURES.admin)).token;
   CASHIER = (await mandirLogin(FIXTURES.cashier)).token;
@@ -607,6 +621,66 @@ await suite('02-donations-money', async () => {
     const r = await donate({ amount_paise: 9900, donor: { name: `NoBlock ${uniq()}`, mobile: '9000012408' } });
     expect.http2xx(r);
     return 'write succeeded';
+  });
+
+  // ───────────────────────── Donor FY cumulative ───────────────────────────
+  // This figure drives the Donors list column, its XLSX export, the screen's
+  // "FY giving" total and the 80G threshold conversation with a donor.
+  await t('TC-FY-001', 'P1', 'a donor\u2019s FY giving reflects a new gift', async () => {
+    const mobile = freshMobile();
+    const r = await donate({ amount_paise: 400000, donor: { name: `FYCase ${uniq()}`, mobile } });
+    expect.http2xx(r);
+    const got = await fyGiving(mobile);
+    expect.eq(got, 400000, 'FY giving after one gift');
+    return `₹${got / 100}`;
+  });
+
+  await t('TC-FY-002', 'P1', 'voiding removes the gift from FY giving', async () => {
+    const mobile = freshMobile();
+    const r = await donate({ amount_paise: 400000, donor: { name: `FYCase ${uniq()}`, mobile } });
+    await mandirApi('PATCH', `/donations/${r.data.id}/void`, { token: ADMIN, body: { reason: 'QA' } });
+    expect.eq(await fyGiving(mobile), 0, 'a voided gift must not count');
+    return '0';
+  });
+
+  await t('TC-FY-003', 'P1', 'giving from a PRIOR financial year does not count as this year\u2019s', async () => {
+    // The bug this pins: the figure used to come from a stored running total
+    // that nothing ever reset at the year rollover — no cron, and "Close Books"
+    // only sets tenants.locked_fy. From the second FY onward a column named
+    // `current_fy` reported all-time giving, silently and permanently.
+    const mobile = freshMobile();
+    const r = await donate({ amount_paise: 900000, donor: { name: `FYCase ${uniq()}`, mobile } });
+    expect.eq(await fyGiving(mobile), 900000, 'counts while it is in this FY');
+    const donorId = psql1(`SELECT donor_id FROM ${S}.donations WHERE id = '${r.data.id}'`);
+    psql(`UPDATE ${S}.donations SET created_at = created_at - interval '1 year' WHERE donor_id = '${donorId}'`);
+    expect.eq(await fyGiving(mobile), 0, 'a gift dated in the previous FY must not count as this FY');
+    return 'prior-FY giving excluded';
+  });
+
+  await t('TC-FY-004', 'P1', 'the list and the profile agree on a donor\u2019s FY giving', async () => {
+    // Two read paths existed; only one derived the figure, so they could differ
+    // for the same donor on the same screen refresh.
+    const mobile = freshMobile();
+    const r = await donate({ amount_paise: 250000, donor: { name: `FYCase ${uniq()}`, mobile } });
+    const donorId = psql1(`SELECT donor_id FROM ${S}.donations WHERE id = '${r.data.id}'`);
+    const one = await mandirApi('GET', `/donors/${donorId}`, { token: ADMIN });
+    expect.http2xx(one);
+    const fromList = await fyGiving(mobile);
+    expect.eq(Number(one.data.cumulative_amount_current_fy_paise), fromList, 'profile and list disagree');
+    expect.eq(fromList, 250000, 'both should report the single gift');
+    return `both ₹${fromList / 100}`;
+  });
+
+  await t('TC-FY-005', 'P1', 'FY giving is derived, so it can never drift from the donations', async () => {
+    const drift = psql1(
+      `SELECT count(*) FROM ${S}.donors d
+        WHERE d.deleted_at IS NULL AND d.created_at >= '${RUN_START}'
+          AND d.cumulative_amount_current_fy_paise <> 0`,
+    );
+    // Nothing writes the stored column any more; a non-zero value on a donor
+    // this run created would mean a cache was reintroduced somewhere.
+    expect.eq(Number(drift), 0, 'a write to the deprecated cached column has come back');
+    return 'no cached writes';
   });
 
   // ───────────────────────── Audit trail ───────────────────────────────────
