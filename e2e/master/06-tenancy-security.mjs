@@ -161,6 +161,37 @@ await suite('06-tenancy-security', async () => {
     return 'predicates are parameterised';
   });
 
+  await t('TC-ISO-009', 'P1', 'no tenant is live without the schema it points at', async () => {
+    // A registry row can outlive (or precede) its schema: `other-mandir` was
+    // `active` + `access_enabled` with no `tenant_other` schema. The platform
+    // believed it was live, so the per-minute notification cron retried it
+    // forever and every request routed to it would have 500'd. In production
+    // this shape means a provisioning run failed part-way and nothing noticed.
+    //
+    // Scoped to schemas that should live in THIS database — a pooled or
+    // dedicated tenant's schema sits in its own physical DB.
+    const rows = psql(
+      `SELECT t.slug FROM public.tenants t
+        WHERE t.access_enabled AND t.schema_name IS NOT NULL
+          AND COALESCE(t.db_name, 'jainerp') = 'jainerp'
+          AND NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname = t.schema_name)`,
+    );
+    expect.eq(rows.length, 0, `live tenants with no schema: ${rows.map((r) => r[0]).join(', ')}`);
+    return 'every live tenant has its schema';
+  });
+
+  await t('TC-ISO-010', 'P1', 'access_enabled cannot be set directly, only derived', async () => {
+    // Four orthogonal controls feed it. If it were ever made writable, a
+    // suspended mandir could be re-opened without changing status.
+    const expr = psql1(
+      `SELECT generation_expression FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'access_enabled'`,
+    );
+    expect.ok(expr && /status/.test(expr) && /is_active/.test(expr) && /deleted_at/.test(expr),
+      `access_enabled is no longer generated from all three controls: ${expr}`);
+    return expr;
+  });
+
   // ═══════════════════════ SQL injection ═══════════════════════════════════
   await t('TC-SEC-001', 'P1', 'injection payloads in a search box are inert', async () => {
     for (const p of INJECTION) {
@@ -452,6 +483,106 @@ await suite('06-tenancy-security', async () => {
     const apps = new Set(out.map((f) => f.split('/apps/')[1].split('/')[0]));
     expect.ok(apps.size >= 3, `only ${[...apps].join(',')} guard outbound comms`);
     return [...apps].join(',');
+  });
+
+  // ═══════════════════════ Production config safety ═══════════════════════
+  // These settings all have development-safe defaults so local dev needs no
+  // .env. That is exactly how a production deploy comes up insecure without
+  // anything appearing to fail.
+  await t('TC-CFG-001', 'P1', 'every API refuses to boot in production with OTP mocking on', async () => {
+    const { execSync } = await import('node:child_process');
+    const bad = [];
+    for (const api of ['mandir-api', 'superadmin-api', 'devotee-api', 'sant-api']) {
+      const dir = `/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP/apps/${api}`;
+      const out = execSync(
+        `NODE_ENV=production JWT_SECRET=$(openssl rand -hex 32) DB_PASSWORD=real OTP_MOCK=true ` +
+        `PAN_ENCRYPTION_KEY=$(openssl rand -hex 32) ENCRYPTION_KEY=$(openssl rand -hex 32) ` +
+        `node -e "const{collectProductionConfigProblems:c}=require('./dist/common/config-guard.js');` +
+        `console.log(c(process.env,{requirePanKey:true,requireEncryptionKey:true}).length)"`,
+        { cwd: dir, shell: '/bin/bash', encoding: 'utf8' },
+      ).trim();
+      if (Number(out) < 1) bad.push(api);
+    }
+    expect.eq(bad.length, 0, `these APIs would boot with OTP_MOCK=true in production: ${bad}`);
+    return '4 APIs refuse';
+  });
+
+  await t('TC-CFG-002', 'P1', 'the guard names every unsafe default, not just the first', async () => {
+    const { execSync } = await import('node:child_process');
+    const dir = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP/apps/mandir-api';
+    // Nothing set at all: the worst case, and the one a fresh environment hits.
+    const out = execSync(
+      `NODE_ENV=production node -e "const{collectProductionConfigProblems:c}=require('./dist/common/config-guard.js');` +
+      `console.log(JSON.stringify(c({NODE_ENV:'production'},{requirePanKey:true})))"`,
+      { cwd: dir, shell: '/bin/bash', encoding: 'utf8' },
+    );
+    const problems = JSON.parse(out);
+    for (const want of ['OTP_MOCK', 'JWT_SECRET', 'DB_PASSWORD', 'PAN_ENCRYPTION_KEY']) {
+      expect.ok(problems.some((p) => p.includes(want)), `${want} not reported`);
+    }
+    return `${problems.length} problems reported`;
+  });
+
+  await t('TC-CFG-003', 'P1', 'the guard is inert outside production', async () => {
+    // A guard that breaks local dev gets disabled, and then protects nothing.
+    const { execSync } = await import('node:child_process');
+    const dir = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP/apps/mandir-api';
+    const out = execSync(
+      `NODE_ENV=development node -e "const{assertProductionConfig:a}=require('./dist/common/config-guard.js');` +
+      `a({NODE_ENV:'development'},{requirePanKey:true});console.log('ok')"`,
+      { cwd: dir, shell: '/bin/bash', encoding: 'utf8' },
+    ).trim();
+    expect.eq(out, 'ok', 'the guard fired outside production');
+    return 'dev unaffected';
+  });
+
+  await t('TC-CFG-004', 'P1', 'no deploy compose defaults OTP mocking to on', async () => {
+    const { readFileSync, existsSync } = await import('node:fs');
+    const root = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP';
+    const files = [`${root}/deploy-repo/docker-compose.aws.yml`, `${root}/docker-compose.gcp.yml`];
+    const bad = [];
+    for (const f of files) {
+      if (!existsSync(f)) continue;
+      const text = readFileSync(f, 'utf8');
+      // `${OTP_MOCK:-true}` means "mock unless told otherwise" — fail-open.
+      if (/OTP_MOCK:\s*\$\{OTP_MOCK:-true\}/.test(text)) bad.push(f.split('/').pop());
+    }
+    expect.eq(bad.length, 0, `compose files defaulting OTP_MOCK to true: ${bad}`);
+    return `${files.length} compose files fail closed`;
+  });
+
+  await t('TC-CFG-005', 'P1', 'every API that stores PANs is given its own encryption key', async () => {
+    const { readFileSync, existsSync } = await import('node:fs');
+    const root = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP';
+    const bad = [];
+    for (const f of [`${root}/deploy-repo/docker-compose.aws.yml`, `${root}/docker-compose.gcp.yml`]) {
+      if (!existsSync(f)) continue;
+      const text = readFileSync(f, 'utf8');
+      // Services reading PAN_ENCRYPTION_KEY: mandir-api (aka mandiradmin-api)
+      // and devotee-api. Without it the key is derived from JWT_SECRET, so
+      // rotating that secret orphans every stored PAN.
+      const supplied = (text.match(/PAN_ENCRYPTION_KEY:/g) ?? []).length;
+      if (supplied < 2) bad.push(`${f.split('/').pop()} supplies ${supplied}/2`);
+    }
+    expect.eq(bad.length, 0, `PAN key missing: ${bad.join('; ')}`);
+    return 'both APIs supplied in both compose files';
+  });
+
+  await t('TC-CFG-006', 'P1', 'a PAN written under the old derived key is still readable', async () => {
+    // Introducing PAN_ENCRYPTION_KEY must not orphan PANs already stored under
+    // the JWT-derived key — that would be the same silent loss, triggered by
+    // the fix instead of by a rotation.
+    const { execSync } = await import('node:child_process');
+    const dir = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP/apps/mandir-api';
+    const script =
+      `process.env.JWT_SECRET='legacy-secret-value';delete process.env.PAN_ENCRYPTION_KEY;` +
+      `const a=require('./dist/common/pan-crypto.js');const blob=a.encryptPan('ABCDE1234F');` +
+      `process.env.PAN_ENCRYPTION_KEY=require('crypto').randomBytes(32).toString('hex');` +
+      `delete require.cache[require.resolve('./dist/common/pan-crypto.js')];` +
+      `const b=require('./dist/common/pan-crypto.js');console.log(b.decryptPan(blob));`;
+    const out = execSync(`node -e "${script}"`, { cwd: dir, shell: '/bin/bash', encoding: 'utf8' }).trim();
+    expect.eq(out, 'ABCDE1234F', 'a legacy-key PAN became unreadable once a dedicated key was set');
+    return 'legacy PANs survive the key introduction';
   });
 
   // ═══════════════════════ Audit completeness ══════════════════════════════

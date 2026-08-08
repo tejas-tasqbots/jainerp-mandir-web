@@ -185,6 +185,55 @@ await suite('02-donations-money', async () => {
     return `${issued[0]}…${issued[4]}`;
   });
 
+  await t('TC-DON-003c', 'P1', 'the series hands out no duplicate when a NEW financial year opens', async () => {
+    // The dangerous case is the first receipts of a new FY, when no series row
+    // exists yet, issued by several tills at once. The old code seeded the row
+    // at 1, incremented it, and on seeing 2 reset the counter back to 1 to keep
+    // 1 as the first number — which, concurrently, rewound a counter another
+    // till had already drawn from. Eight parallel allocations returned
+    // `3,5,4,6,1,1,7,3`: numbers 1 and 3 each issued twice, to different donors,
+    // in the same statutory series. Only at the FY boundary, only under
+    // concurrency, and never in a single-threaded test.
+    //
+    // Driven through real parallel connections rather than the API: the service
+    // always allocates in the *current* FY, so the rollover cannot be reached
+    // through HTTP, and `psql()` is synchronous so it cannot overlap requests.
+    const pg = (await import(
+      '../../../mandir-api/node_modules/pg/lib/index.js')).default;
+    const FY = '9999-00';
+    const pool = new pg.Pool({
+      host: 'localhost', port: 5434, user: 'jainerp',
+      password: 'jainerp_dev', database: 'jainerp', max: 16,
+    });
+    try {
+      await pool.query(`DELETE FROM ${S}.invoice_series WHERE fy = $1`, [FY]);
+      // Mirrors InvoiceSeriesService.next(): seed at 0, then one atomic
+      // UPDATE … RETURNING. No path writes current_no backwards.
+      const alloc = async () => {
+        const c = await pool.connect();
+        try {
+          await c.query(
+            `INSERT INTO ${S}.invoice_series (type, prefix, fy, current_no)
+             VALUES ('DONATION', 'DON', $1, 0) ON CONFLICT (type, fy) DO NOTHING`, [FY]);
+          const r = await c.query(
+            `UPDATE ${S}.invoice_series SET current_no = current_no + 1
+              WHERE type = 'DONATION' AND fy = $1 RETURNING current_no`, [FY]);
+          return Number(r.rows[0].current_no);
+        } finally { c.release(); }
+      };
+      const issued = await Promise.all(Array.from({ length: 12 }, alloc));
+      const sorted = [...issued].sort((a, b) => a - b);
+      const dupes = [...new Set(issued.filter((v, i) => issued.indexOf(v) !== i))];
+      expect.eq(dupes.length, 0, `duplicate receipt numbers issued: ${dupes.join(', ')}`);
+      expect.eq(sorted[0], 1, 'a new FY must start at 1');
+      expect.ok(sorted.every((v, i) => v === i + 1), `not contiguous: ${sorted.join(',')}`);
+      return `1..${sorted.length} across 12 concurrent tills, no duplicates`;
+    } finally {
+      await pool.query(`DELETE FROM ${S}.invoice_series WHERE fy = $1`, [FY]).catch(() => {});
+      await pool.end();
+    }
+  });
+
   await t('TC-DON-003b', 'P1', 'a rejected donation does not burn a receipt number', async () => {
     const fy = receiptNo.split('/')[1];
     const before = Number(psql1(
