@@ -345,7 +345,7 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
   }
 }
 
-export function ReceiptSettingsTab() {
+export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'donor-payments') => void } = {}) {
   const toast = useToast()
   const { t } = useTranslation()
   const [form, setForm] = useState(BLANK)
@@ -672,24 +672,52 @@ export function ReceiptSettingsTab() {
           </div>
         </div>
 
-        {/* Payment details */}
+        {/* Payment details — READ-ONLY MIRROR.
+            These fields are owned by Settings → Donor Payments and stored once
+            in kshetra_profile. They used to be editable here AND there AND on
+            Temple Profile: three forms, three Save buttons, one row underneath.
+            Editing in one tab left the others showing stale values until a
+            reload, which reads as "it didn't save".
+            It matters more than tidiness: this is the account a devotee
+            actually transfers money into, and the same value is printed on the
+            receipt as proof. Two editable copies is one opportunity for the
+            receipt to name an account the donor never paid. One owner, read
+            everywhere. */}
         <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.paymentHeading')}</h3></div>
-          <div className="card-body grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="form-label">{t('settings.receipts.upiId')}</label>
-              <input className="form-input" placeholder="temple@upi" value={form.upi_id}
-                onChange={e => set('upi_id', e.target.value)} />
-            </div>
-            <div><label className="form-label">{t('settings.receipts.bankAccountName')}</label>
-              <input className="form-input" value={form.bank_account_name} onChange={e => set('bank_account_name', e.target.value)} /></div>
-            <div><label className="form-label">{t('settings.receipts.accountNumber')}</label>
-              <input className="form-input" value={form.bank_account_no} onChange={e => set('bank_account_no', e.target.value)} /></div>
-            <div><label className="form-label">{t('settings.receipts.ifsc')}</label>
-              <input className="form-input uppercase" value={form.bank_ifsc}
-                onChange={e => set('bank_ifsc', e.target.value.toUpperCase())} /></div>
-            <div><label className="form-label">{t('settings.receipts.bankName')}</label>
-              <input className="form-input" value={form.bank_name} onChange={e => set('bank_name', e.target.value)} /></div>
+          <div className="card-header flex items-center justify-between">
+            <h3 className="font-semibold text-sm">{t('settings.receipts.paymentHeading')}</h3>
+            <button
+              type="button"
+              onClick={() => onGoToTab?.('donor-payments')}
+              className="text-xs font-semibold text-brand-red hover:underline"
+            >
+              {t('settings.receipts.managePaymentDetails')}
+            </button>
+          </div>
+          <div className="card-body">
+            <p className="text-xs text-slate-500 mb-3">{t('settings.receipts.paymentDetailsOwnedElsewhere')}</p>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div className="col-span-2 flex justify-between border-b border-slate-100 pb-1">
+                <dt className="text-slate-500">{t('settings.receipts.upiId')}</dt>
+                <dd className="font-medium">{form.upi_id || <span className="text-slate-400">—</span>}</dd>
+              </div>
+              <div className="col-span-2 flex justify-between border-b border-slate-100 pb-1">
+                <dt className="text-slate-500">{t('settings.receipts.bankAccountName')}</dt>
+                <dd className="font-medium">{form.bank_account_name || <span className="text-slate-400">—</span>}</dd>
+              </div>
+              <div className="col-span-2 flex justify-between border-b border-slate-100 pb-1">
+                <dt className="text-slate-500">{t('settings.receipts.accountNumber')}</dt>
+                <dd className="font-medium font-mono">{form.bank_account_no || <span className="text-slate-400">—</span>}</dd>
+              </div>
+              <div className="col-span-2 flex justify-between border-b border-slate-100 pb-1">
+                <dt className="text-slate-500">{t('settings.receipts.ifsc')}</dt>
+                <dd className="font-medium font-mono">{form.bank_ifsc || <span className="text-slate-400">—</span>}</dd>
+              </div>
+              <div className="col-span-2 flex justify-between">
+                <dt className="text-slate-500">{t('settings.receipts.bankName')}</dt>
+                <dd className="font-medium">{form.bank_name || <span className="text-slate-400">—</span>}</dd>
+              </div>
+            </dl>
           </div>
         </div>
 

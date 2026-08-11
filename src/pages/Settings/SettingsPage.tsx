@@ -432,7 +432,7 @@ export function SettingsPage() {
       {tab === 'trustees' && <TrusteesTab />}
       {tab === 'accounts' && <BankAccountsTab />}
       {tab === 'donor-payments' && <DonorPaymentsTab />}
-      {tab === 'receipts' && <ReceiptSettingsTab />}
+      {tab === 'receipts' && <ReceiptSettingsTab onGoToTab={setTab} />}
 
       {tab === 'numbering' && <NumberingTab />}
 

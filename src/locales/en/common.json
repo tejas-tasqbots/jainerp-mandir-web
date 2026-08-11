@@ -284,7 +284,9 @@
       "language": "Receipt language",
       "showUpiQr": "Print a UPI payment QR on receipts",
       "upiQrNeedsId": "Add a UPI ID above for the QR to appear on receipts.",
-      "thermalNote": "The thermal layout is a compact text-only receipt; the design templates below apply to A4 only."
+      "thermalNote": "The thermal layout is a compact text-only receipt; the design templates below apply to A4 only.",
+      "managePaymentDetails": "Manage in Donor Payments →",
+      "paymentDetailsOwnedElsewhere": "These are the details devotees pay into, set once in Settings → Donor Payments. They are printed on receipts exactly as shown here, so the account a donor pays and the account on their receipt can never differ."
     },
     "accounting": {
       "saved": "Accounting rules saved!",
