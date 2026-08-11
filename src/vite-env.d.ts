@@ -11,8 +11,11 @@
 interface ImportMetaEnv {
   /**
    * Origin of superadmin-api, which serves the PUBLIC self-serve onboarding
-   * API (it owns tenant provisioning). Unset in dev, where vite.config.ts
-   * proxies `/api/onboarding` to localhost:3105 instead.
+   * API (it owns tenant provisioning).
+   *
+   * Optional at every stage: under `vite dev` the relative `/api/onboarding`
+   * proxy is used, and a production build falls back to the deployed host. It
+   * exists to point a build at a different API (staging, a branch deploy).
    */
   readonly VITE_ONBOARDING_API_URL?: string
 }

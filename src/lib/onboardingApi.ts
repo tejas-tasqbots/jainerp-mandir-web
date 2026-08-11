@@ -11,12 +11,25 @@ import axios from 'axios'
  *    another tab.
  *
  * Base URL resolution:
- *  - `VITE_ONBOARDING_API_URL` when set (production: the superadmin API host);
- *  - otherwise `/api/onboarding`, which vite.config.ts proxies to :3105 in dev.
+ *  1. `VITE_ONBOARDING_API_URL` when the build sets it;
+ *  2. under `vite dev` only, the relative `/api/onboarding` path that
+ *     vite.config.ts proxies to :3105;
+ *  3. otherwise the deployed superadmin-api host.
+ *
+ * Step 3 is not a nicety. The relative path in step 2 exists ONLY inside the
+ * vite dev server — nothing serves it in a built bundle. Falling back to it in
+ * production made every request hit mandir-web's own origin and 404
+ * ("Cannot GET /api/onboarding/api/v1/public/onboarding/plans"), so the wizard
+ * opened on "Could not load our plans just now" and could go no further. The
+ * deploy workflow does not pass VITE_ONBOARDING_API_URL, so the default has to
+ * be a real host — exactly as the marketing site's `plansApi.ts` already does.
  */
-const BASE_URL = (import.meta.env.VITE_ONBOARDING_API_URL as string | undefined)
-  ? `${(import.meta.env.VITE_ONBOARDING_API_URL as string).replace(/\/+$/, '')}/api/v1/public/onboarding`
-  : '/api/onboarding/api/v1/public/onboarding'
+const BASE_URL = (() => {
+  const configured = (import.meta.env.VITE_ONBOARDING_API_URL as string | undefined)?.replace(/\/+$/, '')
+  if (configured) return `${configured}/api/v1/public/onboarding`
+  if (import.meta.env.DEV) return '/api/onboarding/api/v1/public/onboarding'
+  return 'https://dev-api-admin.jainerp.org/api/v1/public/onboarding'
+})()
 
 export const onboardingApi = axios.create({
   baseURL: BASE_URL,
