@@ -21,6 +21,7 @@ import { PublicProfileTab } from './tabs/PublicProfileTab'
 import { GalleryTab } from './tabs/GalleryTab'
 import { TrusteesTab } from './tabs/TrusteesTab'
 import { MyAccountTab } from './tabs/MyAccountTab'
+import { SetupMeter } from '../../components/SetupChecklist'
 
 /**
  * Plan limit columns store -1 to mean "no cap" (that is how the Enterprise plan
@@ -287,7 +288,12 @@ export function SettingsPage() {
 
   return (
     <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts', 'messages'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
-      <h1 className="text-xl font-bold text-navy-900">{t('settings.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-navy-900">{t('settings.title')}</h1>
+        {/* Stays here even after the dashboard card is dismissed, so setup is
+            never something a trust can lose track of. */}
+        <SetupMeter />
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         {[

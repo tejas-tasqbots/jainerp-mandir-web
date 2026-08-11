@@ -2320,5 +2320,186 @@
     "reversed": "Entry reversed",
     "reverseFailed": "Could not reverse the entry",
     "reversalReason": "Reason for reversal"
+  },
+  "setup": {
+    "title": "Finish setting up your Mandir",
+    "subtitle_one": "{{count}} thing left before your receipts are complete",
+    "subtitle_other": "{{count}} things left before your receipts are complete",
+    "complete": "complete",
+    "showAll": "Show everything",
+    "hideAll": "Hide the list",
+    "dismiss": "Hide this. You can finish setup later from Settings.",
+    "finishSetup": "Finish setup",
+    "allDone": "Setup complete",
+    "groups": {
+      "identity": {
+        "title": "Trust identity",
+        "description": "Printed at the top of every receipt and invoice you issue."
+      },
+      "tax": {
+        "title": "Tax & compliance",
+        "description": "Without these, an 80G receipt cannot be claimed by your donor."
+      },
+      "money": {
+        "title": "Money & payments",
+        "description": "Where donations land, and what a donor is told to pay into."
+      },
+      "receipts": {
+        "title": "Receipts",
+        "description": "How your receipts look and how they are numbered."
+      },
+      "modules": {
+        "title": "Your modules",
+        "description": "Each module needs its own master data before it can be used."
+      },
+      "people": {
+        "title": "Your team",
+        "description": "Who else can sign in and record entries."
+      }
+    },
+    "items": {
+      "name": {
+        "label": "Trust/Temple name",
+        "why": "The name donors see on their receipt."
+      },
+      "address": {
+        "label": "Full address",
+        "why": "Required on an 80G receipt for it to be valid."
+      },
+      "pincode": {
+        "label": "PIN code",
+        "why": "Part of the address on statutory receipts."
+      },
+      "contact": {
+        "label": "Phone and email",
+        "why": "How a donor reaches you about their receipt."
+      },
+      "pan": {
+        "label": "Trust PAN",
+        "why": "Printed on 80G receipts and required for Form 10BD."
+      },
+      "reg_80g": {
+        "label": "80G registration number",
+        "why": "The number that lets a donor claim the deduction."
+      },
+      "reg_12a": {
+        "label": "12A / 12AB registration",
+        "why": "Establishes the trust's exempt status."
+      },
+      "gstin": {
+        "label": "GSTIN",
+        "why": "Shown on invoices where GST is charged."
+      },
+      "cash_bank_account": {
+        "label": "At least one cash or bank account",
+        "why": "Every receipt is posted against an account; without one nothing can be recorded."
+      },
+      "payment_details": {
+        "label": "UPI or bank details for donors",
+        "why": "Shown to devotees paying you directly, and printed on receipts."
+      },
+      "categories": {
+        "label": "Donation categories",
+        "why": "Lets you report on what the money was given for."
+      },
+      "numbering": {
+        "label": "Receipt numbering series",
+        "why": "Gapless numbering is what an auditor checks first."
+      },
+      "template": {
+        "label": "Receipt template chosen",
+        "why": "Pick the layout donors will receive."
+      },
+      "logo": {
+        "label": "Trust logo",
+        "why": "Makes a receipt recognisably yours. Optional but recommended."
+      },
+      "rooms": {
+        "label": "Add rooms with tariffs",
+        "why": "No booking can be taken until at least one room exists."
+      },
+      "prasad_items": {
+        "label": "Add prasad items and prices",
+        "why": "The counter cannot sell an empty catalogue."
+      },
+      "seva_types": {
+        "label": "Set up your seva list and rates",
+        "why": "Replace the samples with the sevas this trust actually offers."
+      },
+      "cattle": {
+        "label": "Add your cattle records",
+        "why": "The gaushala register starts empty."
+      },
+      "staff": {
+        "label": "Invite at least one more user",
+        "why": "So the trust does not depend on a single person's phone."
+      },
+      "trustees": {
+        "label": "Add your trustees",
+        "why": "Shown on the public profile and used on certificates."
+      }
+    }
+  },
+  "tour": {
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Got it",
+    "replay": "Show me around again",
+    "welcome": {
+      "title": "Welcome to JainERP",
+      "body": "A two-minute look at where everything lives. You can skip at any point and restart it later from Help."
+    },
+    "dashboard": {
+      "title": "Your day at a glance",
+      "body": "Collections, expenses and today's activity for the period you pick. It only shows the modules your trust actually uses."
+    },
+    "donations": {
+      "title": "Record a donation",
+      "body": "Take a donation and print or share its 80G receipt from the same screen. The receipt number is issued automatically and never skips."
+    },
+    "expenses": {
+      "title": "Record what you spend",
+      "body": "Enter expenses against a head and an account, so income and expenditure always balance without separate bookkeeping."
+    },
+    "donors": {
+      "title": "Your donors",
+      "body": "Every donor's giving history, PAN and 80G details in one place — used to generate Form 10BD at year end."
+    },
+    "dharamshala": {
+      "title": "Rooms and halls",
+      "body": "Check availability, take a booking, collect the tariff and check the guest out. Rooms free themselves for the next guest."
+    },
+    "prasad": {
+      "title": "Prasad counter",
+      "body": "Sell prasad at the counter with stock tracked as you go, so what you have on hand is always current."
+    },
+    "seva": {
+      "title": "Seva and pooja",
+      "body": "Take seva bookings against your published rates and give the devotee a receipt on the spot."
+    },
+    "gaushala": {
+      "title": "Gaushala",
+      "body": "Cattle records, feed and milk, plus cow sponsorships that post straight to the donation ledger."
+    },
+    "accounts": {
+      "title": "Your books",
+      "body": "Day book, ledger, trial balance and income & expenditure — built from the entries above, with nothing to re-enter."
+    },
+    "reports": {
+      "title": "Registers and reports",
+      "body": "Every register your auditor asks for, filtered by date, and exportable to Excel or PDF."
+    },
+    "settings": {
+      "title": "Settings",
+      "body": "Your trust details, receipt templates, numbering series and staff accounts. This is where the setup checklist sends you."
+    },
+    "setup": {
+      "title": "Finish your setup",
+      "body": "This card tracks the details your receipts still need. Do the one it suggests and the percentage moves."
+    },
+    "help": {
+      "title": "That's the tour",
+      "body": "You can replay it any time from Help in the top bar. Start by recording your first donation."
+    }
   }
 }

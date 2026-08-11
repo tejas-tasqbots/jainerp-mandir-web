@@ -1,13 +1,16 @@
-import { LogOut, User, RefreshCw, Search, Keyboard } from 'lucide-react'
+import { LogOut, User, RefreshCw, Search, Keyboard, Compass } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { api } from '../../lib/api'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { resetTour } from '../Walkthrough'
 
 export function TopBar() {
   const { t } = useTranslation()
   const { user, tenant, logout } = useAuthStore()
+  const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
@@ -45,6 +48,23 @@ export function TopBar() {
             <span className="text-xs text-slate-400 capitalize">({user.roles[0].replace('_', ' ')})</span>
           )}
         </div>
+        {/* Replay the tour. The single most useful moment for a walkthrough is
+            after somebody has skipped it, so it must be reachable on demand. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (user?.id && tenant?.id) resetTour('mandir', user.id, tenant.id)
+            navigate('/')
+            // The Dashboard owns the tour; give it a tick to mount before
+            // asking it to start, so this works from any page.
+            setTimeout(() => window.dispatchEvent(new Event('jainerp:replay-tour')), 250)
+          }}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+          title={t('tour.replay')}
+          aria-label={t('tour.replay')}
+        >
+          <Compass size={16} />
+        </button>
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event('open-shortcuts-sheet'))}

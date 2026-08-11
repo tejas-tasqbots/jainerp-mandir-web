@@ -99,7 +99,9 @@ function NavGroup({ item }: { item: NavItem }) {
   }, [location.pathname, hasActiveChild])
 
   return (
-    <div>
+    // Groups (Dharamshala, People, Accounts) are tour anchors too — derived
+    // from the group's label key so it matches the MANDIR_TOUR step names.
+    <div data-tour={`nav-${item.labelKey.replace(/^nav\./, '').toLowerCase()}`}>
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-navy-900 rounded-md transition-colors"
@@ -192,6 +194,10 @@ export function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to!}
+              // Anchor for the first-run walkthrough (components/Walkthrough).
+              // Derived from the route so a new nav entry is tourable without
+              // anyone remembering to add one.
+              data-tour={`nav-${item.to!.replace(/^\//, '').split('/')[0]}`}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2.5 text-sm rounded-md transition-colors ${
                   isActive

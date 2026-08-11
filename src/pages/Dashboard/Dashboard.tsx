@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { SetupChecklist } from '../../components/SetupChecklist'
+import { MANDIR_TOUR, Walkthrough, hasSeenTour } from '../../components/Walkthrough'
 import {
   IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
   Users, ShoppingBag, Bell, Lock
@@ -10,6 +12,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend
 } from 'recharts'
 import { api, fmtPaise } from '../../lib/api'
+import { useAuthStore } from '../../store/authStore'
 import type { DashboardOverview } from '../../types'
 
 const COLORS = ['#2176AE', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
@@ -28,6 +31,25 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>('month')
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // First-run tour. Started once the dashboard has actually rendered, because
+  // the tour anchors to real elements — opening it against a loading skeleton
+  // would spotlight nothing.
+  const { user, tenant } = useAuthStore()
+  const [tourOpen, setTourOpen] = useState(false)
+  useEffect(() => {
+    if (loading || !user?.id || !tenant?.id) return
+    if (hasSeenTour('mandir', user.id, tenant.id)) return
+    const timer = setTimeout(() => setTourOpen(true), 600)
+    return () => clearTimeout(timer)
+  }, [loading, user?.id, tenant?.id])
+
+  // Help → "Show me around" replays it without a reload.
+  useEffect(() => {
+    const replay = () => setTourOpen(true)
+    window.addEventListener('jainerp:replay-tour', replay)
+    return () => window.removeEventListener('jainerp:replay-tour', replay)
+  }, [])
 
   useEffect(() => { load() }, [period])
 
@@ -97,6 +119,13 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <Walkthrough name="mandir" steps={MANDIR_TOUR} open={tourOpen} onClose={() => setTourOpen(false)} />
+
+      {/* Setup completion. Renders itself away at 100% or once dismissed —
+          which is also why the tour anchor lives inside it, not on a wrapper
+          here: an empty wrapper would still match and spotlight nothing. */}
+      <SetupChecklist />
+
       {denied?.deniedPath && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <Lock size={16} className="mt-0.5 shrink-0" />
