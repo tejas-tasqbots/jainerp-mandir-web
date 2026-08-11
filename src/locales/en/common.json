@@ -25,7 +25,9 @@
     "resendFailed": "Could not resend OTP",
     "verifyFailed": "Invalid OTP",
     "selectTempleFailed": "Failed to select temple",
-    "templeUnavailable": "This mandir is not available. Please contact your temple admin or email {{email}}."
+    "templeUnavailable": "This mandir is not available. Please contact your temple admin or email {{email}}.",
+    "newMandir": "New Mandir?",
+    "registerCta": "Register Your Trust/Temple"
   },
   "nav": {
     "dashboard": "Dashboard",

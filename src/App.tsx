@@ -5,6 +5,7 @@ import { ConfirmProvider } from './components/ConfirmDialog'
 import { ToastProvider } from './components/kit/Toast'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
+import { RegisterPage } from './pages/Register/RegisterPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
 import { DonationsHub } from './pages/Donations/DonationsHub'
 import { AddDonation } from './pages/Donations/AddDonation'
@@ -112,6 +113,11 @@ export default function App() {
       <ToastProvider>
       <ConfirmProvider>
       <Routes>
+        {/* Self-serve Trust/Temple registration. Public, and declared outside
+            the auth branch so it is reachable from the website and from the
+            login page without a session — and still reachable if a signed-in
+            user follows a registration link. */}
+        <Route path="/register" element={<RegisterPage />} />
         {!isLoggedIn ? (
           <Route path="*" element={<LoginPage />} />
         ) : (

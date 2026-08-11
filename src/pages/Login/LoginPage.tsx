@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Building2, Phone, ShieldCheck, ChevronLeft, ChevronRight, RotateCw, Lock } from 'lucide-react'
 import { LanguageSwitcher } from '../../components/Layout/LanguageSwitcher'
 import { useAuthStore } from '../../store/authStore'
@@ -21,6 +22,17 @@ interface TenantChoice {
 }
 
 const SUPPORT_EMAIL = 'contact@jainerp.org'
+
+/**
+ * True inside the Electron desktop shell (loaded over file://). Mirrors the
+ * check in App.tsx. The desktop edition is licensed to a mandir that already
+ * exists, so it has no signup path — offering "Register" there would send an
+ * offline user to a page that cannot reach the onboarding API.
+ */
+const isDesktopBuild =
+  typeof window !== 'undefined' &&
+  (Boolean((window as unknown as { electronAPI?: { isElectron?: boolean } }).electronAPI?.isElectron) ||
+    window.location.protocol === 'file:')
 
 /**
  * Shown whenever a mandir is suspended / deactivated / deleted.
@@ -274,6 +286,25 @@ export function LoginPage() {
               <Phone size={16} />
               {loading ? t('login.sendingOtp') : t('login.sendOtp')}
             </button>
+
+            {/* Second entry point into the ONE registration flow. The website's
+                "Register Your Trust/Temple" CTA lands on this same /register
+                route — there is no separate signup for people who arrive here
+                instead of at jainerp.org. Hidden on the desktop edition, which
+                is licensed to an existing mandir and has no signup path. */}
+            {!isDesktopBuild && (
+              <div className="pt-4 mt-2 border-t border-slate-100 text-center">
+                <p className="text-sm text-slate-500">{t('login.newMandir')}</p>
+                <Link
+                  to="/register"
+                  className="btn-secondary w-full justify-center py-2.5 mt-2"
+                  data-testid="register-cta"
+                >
+                  <Building2 size={15} />
+                  {t('login.registerCta')}
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
