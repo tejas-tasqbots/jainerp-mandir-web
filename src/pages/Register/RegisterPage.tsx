@@ -410,7 +410,14 @@ export function RegisterPage() {
   const selectedPlan = catalogue?.plans.find((p) => p.name === reg?.plan_name) ?? null
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    // `h-full overflow-y-auto`, not `min-h-screen`: index.css sets
+    // `html, body, #root { height: 100%; overflow: hidden }` because the
+    // signed-in app is a fixed-height shell that scrolls in its own `.app-main`
+    // container. A page outside that shell therefore has nowhere to scroll and
+    // is simply CLIPPED at the viewport — which is what happened here: the
+    // registration form is taller than a screen, so everything below the fold
+    // was unreachable. The login page never showed it because it fits.
+    <div className="h-full overflow-y-auto bg-slate-100">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
