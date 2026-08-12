@@ -30,12 +30,13 @@ import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
  *    path means no second set of validation rules to drift.
  */
 
-type StepKey = 'identity' | 'tax' | 'money' | 'receipts' | 'public' | 'team' | 'done'
+type StepKey = 'identity' | 'tax' | 'money' | 'categories' | 'receipts' | 'public' | 'team' | 'done'
 
 const STEPS: Array<{ key: StepKey; labelKey: string }> = [
   { key: 'identity', labelKey: 'setupWizard.steps.identity' },
   { key: 'tax', labelKey: 'setupWizard.steps.tax' },
   { key: 'money', labelKey: 'setupWizard.steps.money' },
+  { key: 'categories', labelKey: 'setupWizard.steps.categories' },
   { key: 'receipts', labelKey: 'setupWizard.steps.receipts' },
   { key: 'public', labelKey: 'setupWizard.steps.public' },
   { key: 'team', labelKey: 'setupWizard.steps.team' },
@@ -59,7 +60,7 @@ interface Form {
   area: string; mobile: string; email: string; website: string
   pan: string; reg_80g_number: string; reg_12ab_number: string
   is_gst_registered: boolean; gstin: string
-  upi_id: string; bank_account_name: string; bank_account_no: string; bank_ifsc: string; bank_name: string
+  upi_id: string; bank_name: string
   donation_receipt_template: string; custom_receipt_footer: string
   about: string; main_deity: string; darshan_timings: string
 }
@@ -69,7 +70,7 @@ const BLANK: Form = {
   area: '', mobile: '', email: '', website: '',
   pan: '', reg_80g_number: '', reg_12ab_number: '',
   is_gst_registered: false, gstin: '',
-  upi_id: '', bank_account_name: '', bank_account_no: '', bank_ifsc: '', bank_name: '',
+  upi_id: '', bank_name: '',
   donation_receipt_template: '', custom_receipt_footer: '',
   about: '', main_deity: '', darshan_timings: '',
 }
@@ -87,8 +88,17 @@ export function SetupWizard() {
   // trust has none — re-asking somebody who already has accounts would create
   // a duplicate.
   const [needsAccount, setNeedsAccount] = useState(false)
-  const [account, setAccount] = useState({ name: '', type: 'cash', bank_name: '', account_no: '', ifsc: '' })
+  const [account, setAccount] = useState({ name: '', bank_name: '', account_no: '', ifsc: '' })
   const [trustee, setTrustee] = useState({ name: '', designation: '', mobile: '' })
+  // Comma-separated on purpose: a trust listing its heads types them faster
+  // than it adds them one row at a time, and this is the one chance to catch
+  // them while they are thinking about it.
+  const [newCategories, setNewCategories] = useState('')
+  const [newHeads, setNewHeads] = useState('')
+  const [existing, setExisting] = useState<{ categories: number; heads: number }>({ categories: 0, heads: 0 })
+  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; bank_name: string; account_no: string; ifsc: string }>>([])
+  const [pickedAccount, setPickedAccount] = useState('')
+  const [accountLocked, setAccountLocked] = useState(false)
 
   const set = (patch: Partial<Form>) => setForm(f => ({ ...f, ...patch }))
   const stepIndex = STEPS.findIndex(s => s.key === step)
@@ -119,8 +129,33 @@ export function SetupWizard() {
         main_deity: String(pub.main_deity ?? ''),
         darshan_timings: String(pub.darshan_timings ?? ''),
       } as Form)
-      const money = progress?.groups.find(g => g.key === 'money')
-      setNeedsAccount(!money?.items.find(i => i.key === 'cash_bank_account')?.done)
+      // Which bank accounts could receive a devotee transfer, and which one is
+      // already nominated. `needsAccount` is about whether we have to CREATE
+      // one — not whether to ask at all. An earlier version conflated the two,
+      // so a trust that already had accounts was never offered the choice and
+      // finished setup with no donation account nominated.
+      const [acctRes, nominated] = await Promise.all([
+        api.get('/accounts', { params: { limit: 100 } }).catch(() => null),
+        api.get('/tenants/me/donation-account').then(r => r.data?.data ?? null).catch(() => null),
+      ])
+      const all = (acctRes?.data?.data ?? []) as Array<Record<string, any>>
+      const banks = all.filter(a => a.type === 'bank' && a.is_active
+        && String(a.account_no ?? '').trim() && String(a.ifsc ?? '').trim())
+      setBankAccounts(banks.map(a => ({
+        id: a.id, name: a.name, bank_name: a.bank_name ?? '', account_no: a.account_no ?? '', ifsc: a.ifsc ?? '',
+      })))
+      setPickedAccount(nominated?.id ?? '')
+      setAccountLocked(!!nominated?.is_verified)
+      setNeedsAccount(banks.length === 0)
+      // Counts, not contents: the step only needs to know whether to ask.
+      const [cats, heads] = await Promise.all([
+        api.get('/donation-categories', { params: { limit: 1 } }).catch(() => null),
+        api.get('/expense-categories', { params: { limit: 1 } }).catch(() => null),
+      ])
+      setExisting({
+        categories: cats?.data?.meta?.total ?? (cats?.data?.data?.length ?? 0),
+        heads: heads?.data?.meta?.total ?? (heads?.data?.data?.length ?? 0),
+      })
     } catch (e: any) {
       setError(e?.response?.data?.error?.message ?? t('setupWizard.loadFailed'))
     } finally {
@@ -149,21 +184,51 @@ export function SetupWizard() {
         case 'tax':
           await patchProfile(['pan', 'reg_80g_number', 'reg_12ab_number', 'is_gst_registered', 'gstin'])
           break
-        case 'money':
-          if (needsAccount && account.name.trim()) {
-            await api.post('/accounts', {
+        case 'money': {
+          // Create the account AND nominate it as the one devotees pay into.
+          //
+          // This step used to type bank details into kshetra_profile. Those
+          // columns are dead now — the devotee app reads the nominated
+          // `accounts` row that the platform verified — so collecting them here
+          // would have quietly produced a trust that looks set up and shows
+          // donors nothing.
+          let accountId = pickedAccount
+          if (needsAccount && account.name.trim() && account.account_no.trim() && account.ifsc.trim()) {
+            const { data } = await api.post('/accounts', {
               name: account.name.trim(),
-              type: account.type,
-              bank_name: account.type === 'bank' ? account.bank_name.trim() || null : null,
-              account_no: account.type === 'bank' ? account.account_no.trim() || null : null,
-              ifsc: account.type === 'bank' ? account.ifsc.trim().toUpperCase() || null : null,
-              is_default_cash: account.type === 'cash',
-              is_default_bank: account.type === 'bank',
+              type: 'bank',
+              bank_name: account.bank_name.trim() || null,
+              account_no: account.account_no.trim(),
+              ifsc: account.ifsc.trim().toUpperCase(),
+              is_default_bank: true,
             })
+            accountId = data?.data?.id ?? ''
             setNeedsAccount(false)
           }
-          await patchProfile(['upi_id', 'bank_account_name', 'bank_account_no', 'bank_ifsc', 'bank_name'])
+          // Never re-nominate a verified account: the server refuses it, and
+          // sending it anyway would surface an error the user cannot act on.
+          if (accountId && !accountLocked) {
+            // Best-effort: a trust that already has a verified account gets a
+            // documented refusal, and failing the whole step for that would be
+            // wrong — nothing else on this screen is at fault.
+            await api.patch('/tenants/me/donation-account', { account_id: accountId }).catch(() => {})
+          }
+          await patchProfile(['upi_id'])
           break
+        }
+        case 'categories': {
+          // A donation cannot be recorded without a category, nor an expense
+          // without a head — so these are collected before the trust is sent
+          // off to record anything, not left to be discovered at the counter.
+          const add = async (path: string, names: string[]) => {
+            for (const name of names.map(n => n.trim()).filter(Boolean)) {
+              await api.post(path, { name, is_active: true }).catch(() => {})
+            }
+          }
+          await add('/donation-categories', newCategories.split(',').filter(Boolean))
+          await add('/expense-categories', newHeads.split(',').filter(Boolean))
+          break
+        }
         case 'receipts':
           await patchProfile(['donation_receipt_template', 'custom_receipt_footer'])
           break
@@ -341,51 +406,104 @@ export function SetupWizard() {
 
           {step === 'money' && (
             <Section title={t('setupWizard.money.title')} hint={t('setupWizard.money.hint')}>
+              {/* ONE bank account, asked for once.
+                  This step used to ask twice — an account for the books, then
+                  the same digits again as "payment details" on the profile.
+                  The devotee app now reads the nominated account, so the second
+                  copy was collected and discarded: worse than never asking,
+                  because the trust believed it had told us. */}
               {needsAccount ? (
                 <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-                  <p className="text-sm font-semibold text-slate-700">{t('setup.items.cash_bank_account.label')}</p>
-                  <p className="text-xs text-slate-500 -mt-2">{t('setup.items.cash_bank_account.why')}</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {t('setupWizard.money.bankTitle')}
+                  </p>
+                  <p className="text-xs text-slate-500 -mt-2">{t('setupWizard.money.bankHint')}</p>
                   <Row>
                     <Field label={t('setupWizard.f.accountName')} value={account.name}
-                      onChange={v => setAccount(a => ({ ...a, name: v }))} />
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">{t('setupWizard.f.accountType')}</label>
-                      <select className="form-select w-full" value={account.type}
-                        onChange={e => setAccount(a => ({ ...a, type: e.target.value }))}>
-                        <option value="cash">{t('setupWizard.f.cash')}</option>
-                        <option value="bank">{t('setupWizard.f.bank')}</option>
-                      </select>
-                    </div>
+                      onChange={v => setAccount(a => ({ ...a, name: v }))}
+                      hint={t('setupWizard.money.holderHint')} />
+                    <Field label={t('setupWizard.f.bankName')} value={account.bank_name}
+                      onChange={v => setAccount(a => ({ ...a, bank_name: v }))} />
                   </Row>
-                  {account.type === 'bank' && (
-                    <Row>
-                      <Field label={t('setupWizard.f.bankName')} value={account.bank_name}
-                        onChange={v => setAccount(a => ({ ...a, bank_name: v }))} />
-                      <Field label={t('setupWizard.f.accountNo')} value={account.account_no}
-                        onChange={v => setAccount(a => ({ ...a, account_no: v }))} />
-                    </Row>
-                  )}
+                  <Row>
+                    <Field label={t('setupWizard.f.accountNo')} value={account.account_no}
+                      onChange={v => setAccount(a => ({ ...a, account_no: v }))} />
+                    <Field label="IFSC" value={account.ifsc} maxLength={11} uppercase
+                      onChange={v => setAccount(a => ({ ...a, ifsc: v.toUpperCase() }))} />
+                  </Row>
+                  <p className="text-xs text-slate-400">{t('setupWizard.money.verifyNote')}</p>
                 </div>
               ) : (
-                <p className="text-sm text-green-700 inline-flex items-center gap-1.5">
-                  <Check size={14} /> {t('setupWizard.money.accountDone')}
-                </p>
+                /* Accounts already exist, so the job here is CHOOSING which one
+                   faces donors — not typing another. */
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-slate-700">{t('setupWizard.money.bankTitle')}</p>
+                  <p className="text-xs text-slate-500">{t('setupWizard.money.bankHint')}</p>
+                  {bankAccounts.map(a => (
+                    <label key={a.id}
+                      className={`flex items-center gap-3 rounded-xl border p-3 ${
+                        pickedAccount === a.id ? 'border-brand-red bg-red-50/40' : 'border-slate-200'
+                      } ${accountLocked ? 'opacity-70' : 'cursor-pointer hover:bg-slate-50'}`}>
+                      <input type="radio" name="wizard-donation-account" disabled={accountLocked}
+                        checked={pickedAccount === a.id} onChange={() => setPickedAccount(a.id)} />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-slate-800">{a.name}</span>
+                        <span className="block text-xs text-slate-500">
+                          {[a.bank_name, a.account_no, a.ifsc].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                  <p className="text-xs text-slate-400">
+                    {accountLocked
+                      ? t('setupWizard.money.lockedNote')
+                      : t('setupWizard.money.verifyNote')}
+                  </p>
+                </div>
               )}
 
-              <p className="text-sm font-semibold text-slate-700 pt-2">{t('setup.items.payment_details.label')}</p>
-              <p className="text-xs text-slate-500 -mt-2">{t('setup.items.payment_details.why')}</p>
-              <Field label={t('setupWizard.f.upiId')} value={form.upi_id} onChange={v => set({ upi_id: v })} />
-              <Row>
-                <Field label={t('setup.items.bank_account_name.label')} value={form.bank_account_name}
-                  onChange={v => set({ bank_account_name: v })} />
-                <Field label={t('setupWizard.f.bankName')} value={form.bank_name} onChange={v => set({ bank_name: v })} />
-              </Row>
-              <Row>
-                <Field label={t('setupWizard.f.accountNo')} value={form.bank_account_no}
-                  onChange={v => set({ bank_account_no: v })} />
-                <Field label="IFSC" value={form.bank_ifsc} maxLength={11} uppercase
-                  onChange={v => set({ bank_ifsc: v.toUpperCase() })} />
-              </Row>
+              <div className="pt-2">
+                <Field label={t('setupWizard.f.upiId')} value={form.upi_id}
+                  onChange={v => set({ upi_id: v })} hint={t('setupWizard.money.upiHint')} />
+              </div>
+            </Section>
+          )}
+
+          {step === 'categories' && (
+            <Section title={t('setupWizard.categories.title')} hint={t('setupWizard.categories.hint')}>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  {t('setup.items.categories.label')}
+                </label>
+                <input
+                  className="form-input w-full"
+                  placeholder={t('setupWizard.categories.donationPlaceholder')}
+                  value={newCategories}
+                  onChange={e => setNewCategories(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  {existing.categories > 0
+                    ? t('setupWizard.categories.alreadyHave', { count: existing.categories })
+                    : t('setup.items.categories.why')}
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  {t('setup.items.expense_heads.label')}
+                </label>
+                <input
+                  className="form-input w-full"
+                  placeholder={t('setupWizard.categories.expensePlaceholder')}
+                  value={newHeads}
+                  onChange={e => setNewHeads(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  {existing.heads > 0
+                    ? t('setupWizard.categories.alreadyHave', { count: existing.heads })
+                    : t('setup.items.expense_heads.why')}
+                </p>
+              </div>
+              <p className="text-xs text-slate-400">{t('setupWizard.categories.commaHint')}</p>
             </Section>
           )}
 

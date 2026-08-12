@@ -2600,7 +2600,8 @@
       "receipts": "Receipts",
       "public": "Public page",
       "team": "Your team",
-      "done": "Done"
+      "done": "Done",
+      "categories": "Categories"
     },
     "identity": {
       "title": "Your trust's details",
@@ -2614,7 +2615,13 @@
     "money": {
       "title": "Where the money goes",
       "hint": "One account to post receipts against, and the details a donor pays into.",
-      "accountDone": "You already have a cash or bank account set up."
+      "accountDone": "You already have a cash or bank account set up.",
+      "bankTitle": "Your bank account",
+      "bankHint": "The account devotees are told to pay into, and where receipts are posted. One account, asked for once.",
+      "holderHint": "Use the trust's name as it appears on the cheque.",
+      "verifyNote": "JainERP verifies these details before any devotee is shown them.",
+      "upiHint": "Devotees scan a QR generated from this — you do not need to upload one.",
+      "lockedNote": "This account is verified and live, so it cannot be changed here."
     },
     "receipts": {
       "title": "Your receipts",
@@ -2653,6 +2660,14 @@
       "upiId": "UPI ID",
       "trusteeName": "Trustee name",
       "designation": "Designation"
+    },
+    "categories": {
+      "title": "What you collect and what you spend on",
+      "hint": "A donation needs a category and an expense needs a head — without them nothing can be recorded at the counter.",
+      "donationPlaceholder": "General, Annadaan, Building Fund, Paryushan Seva",
+      "expensePlaceholder": "Electricity, Salaries, Repairs, Puja Samagri",
+      "commaHint": "Separate with commas. You can add more any time in Settings → Categories & Dropdowns.",
+      "alreadyHave": "You already have {{count}}. Anything you type here is added to them."
     }
   }
 }
