@@ -60,8 +60,18 @@ const sql = (db, q) => execFileSync('psql',
   { env: { ...process.env, PGPASSWORD: 'jainerp_dev' }, encoding: 'utf8' }).trim();
 const SCHEMA = 'tenant_04421be9ebb420aba729c625';
 
-// Start from a clean slate: nominated, not verified.
-sql('jainerp_pool_1', `UPDATE ${SCHEMA}.accounts SET donation_verified_at=NULL, donation_verified_hash=NULL, donation_verify_note=NULL`);
+// Start from a clean slate: nominated, not verified, WITH the passbook page on
+// file. Verification now requires that document — the console disables the
+// button without it and the API refuses the call — so a suite that cleared
+// only the verification columns was setting up a state no reviewer can act on.
+const PNG_1PX =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+sql('jainerp_pool_1', `UPDATE ${SCHEMA}.accounts
+   SET donation_verified_at=NULL, donation_verified_hash=NULL, donation_verify_note=NULL,
+       donation_proof_data='${PNG_1PX}', donation_proof_mime='image/png',
+       donation_proof_kind='passbook', donation_proof_name='passbook.png',
+       donation_proof_uploaded_at=NOW()
+ WHERE is_primary_for_donations`);
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
@@ -113,8 +123,9 @@ try {
     /E2E Test Trust/i.test(q) && /awaiting review/i.test(q));
   await page.screenshot({ path: `${process.env.SHOTS}02-queue.png` });
 
-  await page.click('button:has-text("Verify")');
-  await page.waitForTimeout(700);
+  await page.locator('tr', { hasText: 'E2E Test Trust' })
+    .locator('button:has-text("verify")').first().click();
+  await page.waitForTimeout(900);
   await page.fill('textarea', 'Cancelled cheque checked');
   await page.locator('.modal-actions button:has-text("Verify")').click();
   await page.waitForTimeout(1800);
@@ -131,7 +142,12 @@ try {
   await page.screenshot({ path: `${process.env.SHOTS}04-locked.png` });
 
   // ── 4. the case this was built for: edited after approval ───────────────
-  sql('jainerp_pool_1', `UPDATE ${SCHEMA}.accounts SET account_no='77777777777777' WHERE is_primary_for_donations`);
+  // A DIFFERENT number every run. The fixed one silently became a no-op on the
+  // second run — the row already held it from the run before, so nothing
+  // changed, the fingerprint still matched, and the three assertions below
+  // failed for a reason that had nothing to do with the rule they test.
+  const EDITED_NO = String(Date.now()).slice(-12).padStart(14, '9');
+  sql('jainerp_pool_1', `UPDATE ${SCHEMA}.accounts SET account_no='${EDITED_NO}' WHERE is_primary_for_donations`);
   rec('devotee stops seeing it after the account is edited', (await devSees()) === false);
   body = await mandirSettings();
   rec('trust is told the details changed after verification',

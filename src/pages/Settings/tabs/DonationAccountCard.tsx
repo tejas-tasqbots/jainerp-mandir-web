@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, BadgeCheck, Landmark, Lock, RefreshCw } from 'lucide-react'
+import { AlertTriangle, BadgeCheck, FileImage, Landmark, Lock, RefreshCw, Upload } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
 
 /**
@@ -45,7 +45,15 @@ interface DonationAccount {
   verified_at: string | null
   changed_since_verification: boolean
   verify_note: string | null
+  has_proof: boolean
+  proof_kind: string | null
+  proof_name: string | null
+  proof_uploaded_at: string | null
 }
+
+/** Matches the server's list. A PDF is deliberately not accepted. */
+const PROOF_ACCEPT = 'image/jpeg,image/png'
+const PROOF_MAX_BYTES = 4 * 1024 * 1024
 
 export function DonationAccountCard({ accounts, onChanged }: {
   accounts: Account[]
@@ -57,8 +65,71 @@ export function DonationAccountCard({ accounts, onChanged }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [choice, setChoice] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [proofKind, setProofKind] = useState('passbook')
+  const [preview, setPreview] = useState<string | null>(null)
 
   useEffect(() => { load() }, [])
+
+  /**
+   * Show the document already on file.
+   *
+   * Fetched on demand rather than with the account row: a trust opening
+   * Settings should not pull a few hundred KB of base64 it may never look at,
+   * and the same shape is used by the platform's review queue where that cost
+   * would be paid once per trust in the list.
+   */
+  async function showProof() {
+    if (preview) { setPreview(null); return }
+    try {
+      const { data } = await api.get('/tenants/me/donation-account/proof')
+      const p = data.data
+      setPreview(`data:${p.mime};base64,${p.data}`)
+    } catch (e) {
+      setError(apiErrorMessage(e, t('settings.donationAccount.proofLoadFailed', { defaultValue: 'Could not open the uploaded file.' })))
+    }
+  }
+
+  async function uploadProof(file: File) {
+    setError('')
+    if (!PROOF_ACCEPT.split(',').includes(file.type)) {
+      setError(t('settings.donationAccount.proofType', { defaultValue: 'Please choose a JPG or PNG photo.' }))
+      return
+    }
+    // Checked here as well as on the server so the trust is told before they
+    // spend a minute uploading over a temple's connection, not after.
+    if (file.size > PROOF_MAX_BYTES) {
+      setError(t('settings.donationAccount.proofSize', {
+        defaultValue: 'That image is {{size}} MB. Please choose one under 4 MB.',
+        size: (file.size / 1024 / 1024).toFixed(1),
+      }))
+      return
+    }
+    setUploading(true)
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(String(r.result))
+        r.onerror = () => reject(r.error)
+        r.readAsDataURL(file)
+      })
+      const { data } = await api.post('/tenants/me/donation-account/proof', {
+        // The server strips the prefix itself, but sending the bare payload
+        // keeps the request smaller and the stored value unambiguous.
+        data: dataUrl.replace(/^data:[^;]+;base64,/, ''),
+        mime: file.type,
+        name: file.name,
+        kind: proofKind,
+      })
+      setCurrent(data.data ?? null)
+      setPreview(dataUrl)
+      onChanged?.()
+    } catch (e) {
+      setError(apiErrorMessage(e, t('settings.donationAccount.proofFailed', { defaultValue: 'Could not upload that file.' })))
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -191,6 +262,88 @@ export function DonationAccountCard({ accounts, onChanged }: {
                 </span>
               </label>
             ))}
+          </div>
+        )}
+
+        {/* ── proof of the account ──────────────────────────────────────────
+            Only once an account is nominated: asking for a passbook page
+            before there is an account for it to evidence has nothing to
+            attach it to, and the server refuses it for that reason. */}
+        {current && (
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileImage size={15} className="text-slate-400" />
+              <h4 className="text-sm font-semibold text-slate-800">
+                {t('settings.donationAccount.proofTitle', { defaultValue: 'Proof this account belongs to the trust' })}
+              </h4>
+              {current.has_proof && (
+                <span className="badge-green ml-auto inline-flex items-center gap-1">
+                  <BadgeCheck size={12} /> {t('settings.donationAccount.proofOnFile', { defaultValue: 'Uploaded' })}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-slate-500">
+              {t('settings.donationAccount.proofHelp', {
+                defaultValue:
+                  'Photograph the first page of the passbook — the page showing the account holder name, account number and IFSC together. A statement first page or a cancelled cheque works too. We check the details above against it before devotees are shown anything.',
+              })}
+            </p>
+
+            {!locked && (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="form-input w-auto text-sm"
+                  value={proofKind}
+                  onChange={e => setProofKind(e.target.value)}
+                >
+                  <option value="passbook">{t('settings.donationAccount.proofPassbook', { defaultValue: 'Passbook first page' })}</option>
+                  <option value="statement">{t('settings.donationAccount.proofStatement', { defaultValue: 'Statement first page' })}</option>
+                  <option value="cheque">{t('settings.donationAccount.proofCheque', { defaultValue: 'Cancelled cheque' })}</option>
+                </select>
+                <label className={`btn-secondary cursor-pointer ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                  {uploading ? <RefreshCw size={15} className="animate-spin" /> : <Upload size={15} />}
+                  {current.has_proof
+                    ? t('settings.donationAccount.proofReplace', { defaultValue: 'Replace photo' })
+                    : t('settings.donationAccount.proofUpload', { defaultValue: 'Upload photo' })}
+                  <input
+                    type="file"
+                    accept={PROOF_ACCEPT}
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      // Reset the input so re-picking the same file after a
+                      // failed upload still fires a change event.
+                      e.target.value = ''
+                      if (f) void uploadProof(f)
+                    }}
+                  />
+                </label>
+                {current.has_proof && (
+                  <button type="button" className="btn-ghost text-sm" onClick={showProof}>
+                    {preview
+                      ? t('settings.donationAccount.proofHide', { defaultValue: 'Hide' })
+                      : t('settings.donationAccount.proofView', { defaultValue: 'View uploaded photo' })}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!current.has_proof && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {t('settings.donationAccount.proofMissing', {
+                  defaultValue:
+                    'We cannot verify the account until this is uploaded — this is what is holding up your bank transfer option.',
+                })}
+              </p>
+            )}
+
+            {preview && (
+              <img
+                src={preview}
+                alt={t('settings.donationAccount.proofTitle', { defaultValue: 'Proof this account belongs to the trust' }) as string}
+                className="max-h-80 rounded-lg border border-slate-200"
+              />
+            )}
           </div>
         )}
 

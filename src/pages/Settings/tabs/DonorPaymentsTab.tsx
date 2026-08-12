@@ -14,10 +14,6 @@ export function DonorPaymentsTab() {
   const [form, setForm] = useState({
     accept_donor_requests: true,
     upi_id: '',
-    bank_account_name: '',
-    bank_account_no: '',
-    bank_ifsc: '',
-    bank_name: '',
   })
   const [reg80g, setReg80g] = useState<string | null>(null)
   const sens = useSensitiveFields()
@@ -31,10 +27,6 @@ export function DonorPaymentsTab() {
       setForm({
         accept_donor_requests: p.accept_donor_requests !== false,
         upi_id: (p.upi_id as string) || '',
-        bank_account_name: (p.bank_account_name as string) || '',
-        bank_account_no: (p.bank_account_no as string) || '',
-        bank_ifsc: (p.bank_ifsc as string) || '',
-        bank_name: (p.bank_name as string) || '',
       })
       setReg80g((p.reg_80g_number as string) || null)
     }).catch(() => {})
@@ -47,10 +39,6 @@ export function DonorPaymentsTab() {
       const payload: Record<string, unknown> = {
         ...form,
         upi_id: form.upi_id.trim() || null,
-        bank_account_name: form.bank_account_name.trim() || null,
-        bank_account_no: form.bank_account_no.trim() || null,
-        bank_ifsc: form.bank_ifsc.trim().toUpperCase() || null,
-        bank_name: form.bank_name.trim() || null,
       }
       // A verified mandir's locked fields are rejected outright by the API, and
       // it rejects the whole payload — so sending an unchanged locked value
@@ -127,51 +115,15 @@ export function DonorPaymentsTab() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.donorPayments.bankHeading')}</h3></div>
-        <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            
-            {sens.isLocked('bank_account_name') ? (
-              <LockedField label={t('settings.donorPayments.accountHolderName') as string} value={form.bank_account_name}
-                field="bank_account_name" pending={sens.pendingFor('bank_account_name')} onRequest={sens.openRequest} />
-            ) : (<><label className="form-label">{t('settings.donorPayments.accountHolderName')}</label>
-            <input type="text" className="form-input" placeholder={t('settings.donorPayments.accountHolderPlaceholder') as string}
-              value={form.bank_account_name} onChange={e => setForm(f => ({ ...f, bank_account_name: e.target.value }))} /></>)}
-          
-          </div>
-          <div>
-            
-            {sens.isLocked('bank_account_no') ? (
-              <LockedField label={t('settings.donorPayments.accountNumber') as string} value={form.bank_account_no}
-                field="bank_account_no" pending={sens.pendingFor('bank_account_no')} onRequest={sens.openRequest} />
-            ) : (<><label className="form-label">{t('settings.donorPayments.accountNumber')}</label>
-            <input type="text" className="form-input font-mono" maxLength={20}
-              value={form.bank_account_no} onChange={e => setForm(f => ({ ...f, bank_account_no: e.target.value.replace(/\D/g, '') }))} /></>)}
-          
-          </div>
-          <div>
-            
-            {sens.isLocked('bank_ifsc') ? (
-              <LockedField label={t('settings.donorPayments.ifsc') as string} value={form.bank_ifsc}
-                field="bank_ifsc" pending={sens.pendingFor('bank_ifsc')} onRequest={sens.openRequest} />
-            ) : (<><label className="form-label">{t('settings.donorPayments.ifsc')}</label>
-            <input type="text" className="form-input font-mono uppercase" maxLength={11} placeholder="SBIN0001234"
-              value={form.bank_ifsc} onChange={e => setForm(f => ({ ...f, bank_ifsc: e.target.value.toUpperCase() }))} /></>)}
-          
-          </div>
-          <div>
-            
-            {sens.isLocked('bank_name') ? (
-              <LockedField label={t('settings.donorPayments.bankName') as string} value={form.bank_name}
-                field="bank_name" pending={sens.pendingFor('bank_name')} onRequest={sens.openRequest} />
-            ) : (<><label className="form-label">{t('settings.donorPayments.bankName')}</label>
-            <input type="text" className="form-input" placeholder="State Bank of India"
-              value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></>)}
-          
-          </div>
-        </div>
-      </div>
+      {/* No bank-account fields here.
+          They used to sit right below the UPI card: the same account number,
+          IFSC, holder name and bank the trust had already entered under Bank &
+          Cash Accounts, retyped, and locked behind a SECOND approval flow of
+          their own (field change requests). So one bank account was captured
+          twice and had to be approved twice, by two different mechanisms, and
+          the two copies could disagree with nothing to reconcile them.
+          The nominated account above is the single source now — it is the row
+          the devotee app reads, and the row the platform verifies. */}
 
       <button type="submit" disabled={saving} className="btn-primary">
         <Save size={15} /> {saving ? t('settings.saving') : t('settings.donorPayments.saveButton')}

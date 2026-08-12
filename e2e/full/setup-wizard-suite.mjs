@@ -25,6 +25,29 @@ const t = await post('/auth/select-tenant', { selection_token: v.selection_token
 const TOK = t.access_token;
 const get = async (p) => (await (await fetch(API + p, { headers: { Authorization: `Bearer ${TOK}` } })).json());
 
+// Un-verify the donation account before walking the wizard.
+//
+// A verified account is LOCKED — the money step disables the radios, which is
+// correct product behaviour and exactly what the donation-account suite leaves
+// behind. Without this reset the two suites pass or fail depending on the order
+// they were run in, which is a suite that reports on its own history rather
+// than on the code.
+try {
+  const { execFileSync } = await import('node:child_process');
+  const sql = (db, q) => execFileSync('psql',
+    ['-h', process.env.PGHOST ?? '127.0.0.1', '-p', process.env.PGPORT ?? '5433',
+     '-U', 'jainerp', '-d', db, '-tAc', q],
+    { env: { ...process.env, PGPASSWORD: process.env.PGPASSWORD ?? 'jainerp_dev' }, encoding: 'utf8' }).trim();
+  const schema = sql('jainerp', `SELECT schema_name FROM public.tenants WHERE slug='e2e-test-trust-55121877'`);
+  const db = sql('jainerp', `SELECT COALESCE(db_name,'jainerp') FROM public.tenants WHERE slug='e2e-test-trust-55121877'`);
+  if (schema) {
+    sql(db, `UPDATE ${schema}.accounts SET donation_verified_at=NULL, donation_verified_by=NULL,
+             donation_verified_hash=NULL, donation_verify_note=NULL WHERE is_primary_for_donations`);
+  }
+} catch (e) {
+  console.log(`  (could not reset the donation account: ${String(e).slice(0, 90)})`);
+}
+
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true });
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage();
 page.setDefaultTimeout(25000);

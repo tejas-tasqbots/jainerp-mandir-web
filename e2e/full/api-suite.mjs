@@ -8,9 +8,13 @@
  * Emits one line per case: PASS/FAIL <TC-ID> <title>. Exit 1 if any P1 fails.
  */
 const BASE = process.env.E2E_API ?? 'http://localhost:3106/api/v1';
-const ADMIN_MOBILE = '9876512345';
-const CASHIER_MOBILE = '9844444444';
-const TENANT = 'smoke-portal';
+// Fixtures come from the environment so the suite can be pointed at any
+// tenant. Hardcoding smoke-portal meant every assertion failed with an
+// auth error the moment it ran against a different database, which reads
+// as sixty product defects rather than one missing fixture.
+const ADMIN_MOBILE = (process.env.E2E_MOBILE ?? '9876512345').replace(/\D/g, '').slice(-10);
+const CASHIER_MOBILE = (process.env.E2E_CASHIER_MOBILE ?? '9844444444').replace(/\D/g, '').slice(-10);
+const TENANT = process.env.E2E_SLUG ?? 'smoke-portal';
 
 const results = [];
 function record(id, pri, title, ok, detail = '') {
@@ -77,8 +81,15 @@ async function run() {
 
   // fresh selection token for the wrong-tenant test (each verify consumes one)
   const { sel: sel2 } = await login(ADMIN_MOBILE);
-  const wrongTenant = await http('POST', '/auth/select-tenant', { body: { selection_token: sel2, tenant_slug: 'ext-322583' } });
-  record('TC-AUTH-07', 'P2', 'select tenant the user is not a member of blocked', wrongTenant.status === 403, `status=${wrongTenant.status} code=${wrongTenant.code}`);
+  // A slug that EXISTS but this admin does not belong to, supplied by the
+  // caller. The hardcoded 'ext-322583' only exists in one database, so anywhere
+  // else this returned 404 (no such tenant) and the test claimed a membership
+  // check had failed when it had never been reached.
+  const OTHER = process.env.E2E_OTHER_SLUG;
+  if (OTHER) {
+    const wrongTenant = await http('POST', '/auth/select-tenant', { body: { selection_token: sel2, tenant_slug: OTHER } });
+    record('TC-AUTH-07', 'P2', 'select tenant the user is not a member of blocked', wrongTenant.status === 403, `status=${wrongTenant.status} code=${wrongTenant.code}`);
+  }
 
   if (REFRESH) {
     const refr = await http('POST', '/auth/refresh', { body: { refresh_token: REFRESH } });

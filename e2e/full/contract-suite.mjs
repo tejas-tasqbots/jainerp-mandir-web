@@ -11,8 +11,12 @@
  * The `uiFields` lists below were extracted from the React pages' row accessors.
  */
 const BASE = process.env.E2E_API ?? 'http://localhost:3106/api/v1';
-const ADMIN_MOBILE = '9876512345';
-const TENANT = 'smoke-portal';
+// Fixtures come from the environment so the suite can be pointed at any
+// tenant. Hardcoding smoke-portal meant every assertion failed with an
+// auth error the moment it ran against a different database, which reads
+// as sixty product defects rather than one missing fixture.
+const ADMIN_MOBILE = (process.env.E2E_MOBILE ?? '9876512345').replace(/\D/g, '').slice(-10);
+const TENANT = process.env.E2E_SLUG ?? 'smoke-portal';
 
 async function http(method, path, { token, body } = {}) {
   const res = await fetch(`${BASE}${path}`, {
