@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { SetupChecklist } from '../../components/SetupChecklist'
 import { MANDIR_TOUR, Walkthrough, hasSeenTour } from '../../components/Walkthrough'
+import { fetchSetup } from '../../components/SetupChecklist'
+import { hasBeenOfferedWizard, markWizardOffered } from '../Setup/SetupWizard'
 import {
   IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
   Users, ShoppingBag, Bell, Lock
@@ -37,6 +39,21 @@ export function Dashboard() {
   // would spotlight nothing.
   const { user, tenant } = useAuthStore()
   const [tourOpen, setTourOpen] = useState(false)
+
+  // A newly onboarded trust is taken through setup step by step ONCE, the same
+  // shape as the registration it just finished. Offered, not enforced: the
+  // wizard is skippable throughout and this never fires again, after which the
+  // checklist card below carries the same work.
+  useEffect(() => {
+    if (!tenant?.id || hasBeenOfferedWizard(tenant.id)) return
+    let cancelled = false
+    fetchSetup().then(setup => {
+      if (cancelled || !setup || setup.complete || setup.dismissed) return
+      markWizardOffered(tenant.id)
+      navigate('/setup', { replace: true })
+    })
+    return () => { cancelled = true }
+  }, [tenant?.id])
   useEffect(() => {
     if (loading || !user?.id || !tenant?.id) return
     if (hasSeenTour('mandir', user.id, tenant.id)) return

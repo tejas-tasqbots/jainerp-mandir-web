@@ -141,6 +141,16 @@ export function SetupChecklist({ onDismissed }: { onDismissed?: () => void }) {
           </button>
         )}
 
+        {/* The step-by-step route through the same work, for somebody who
+            would rather be walked through it than pick items off a list. */}
+        <button
+          onClick={() => navigate('/setup')}
+          className="mt-3 w-full btn-secondary justify-center !py-2 text-sm"
+          data-testid="setup-wizard-link"
+        >
+          {t('setupWizard.startCta')}
+        </button>
+
         <button
           onClick={() => setOpen(o => !o)}
           className="mt-3 text-xs font-semibold text-slate-500 hover:text-slate-700 inline-flex items-center gap-1"
@@ -222,8 +232,8 @@ export function SetupMeter() {
           style={{ width: `${setup.percent}%` }} />
       </div>
       <span className="font-semibold text-slate-700">{setup.percent}%</span>
-      {!setup.complete && setup.next && (
-        <button onClick={() => navigate(setup.next!.route)} className="text-xs font-semibold text-brand-red hover:underline">
+      {!setup.complete && (
+        <button onClick={() => navigate('/setup')} className="text-xs font-semibold text-brand-red hover:underline">
           {t('setup.finishSetup')}
         </button>
       )}

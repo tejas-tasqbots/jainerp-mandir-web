@@ -651,7 +651,8 @@
     "saveFailed": "Could not save",
     "notes": "Notes",
     "print": "Print",
-    "splitPaymentHintGeneric": "The split must add up to the amount collected."
+    "splitPaymentHintGeneric": "The split must add up to the amount collected.",
+    "back": "Back"
   },
   "donations": {
     "title": "Donations",
@@ -2580,6 +2581,77 @@
     "help": {
       "title": "That's the tour",
       "body": "You can replay it any time from Help in the top bar. Start by recording your first donation."
+    }
+  },
+  "setupWizard": {
+    "title": "Set up your Mandir",
+    "subtitle": "A few short steps, the same as your registration. Skip anything you would rather do later.",
+    "doThisLater": "Do this later",
+    "skipStep": "Skip this step",
+    "goToDashboard": "Go to dashboard",
+    "startCta": "Set up step by step",
+    "loadFailed": "Could not load your settings just now.",
+    "saveFailed": "Could not save. Please check the fields and try again.",
+    "steps": {
+      "identity": "Trust details",
+      "tax": "Tax & 80G",
+      "money": "Money",
+      "receipts": "Receipts",
+      "public": "Public page",
+      "team": "Your team",
+      "done": "Done"
+    },
+    "identity": {
+      "title": "Your trust's details",
+      "hint": "These print at the top of every receipt and invoice you issue."
+    },
+    "tax": {
+      "title": "Tax and 80G",
+      "hint": "Without these a donor cannot claim their deduction, and the receipt has to be reissued.",
+      "gstRegistered": "This trust is registered for GST"
+    },
+    "money": {
+      "title": "Where the money goes",
+      "hint": "One account to post receipts against, and the details a donor pays into.",
+      "accountDone": "You already have a cash or bank account set up."
+    },
+    "receipts": {
+      "title": "Your receipts",
+      "hint": "How the document your donor receives looks.",
+      "templateHint": "You can change this later and see a preview in Settings → Receipt Settings.",
+      "logoHint": "Upload your logo in Settings → Receipt Settings — it needs a file, so it is not part of this flow."
+    },
+    "public": {
+      "title": "What devotees see",
+      "hint": "Your page in the devotee app. This is what somebody reads before deciding to give or visit."
+    },
+    "team": {
+      "title": "Your trustees",
+      "hint": "Add one now; the rest, and your staff logins, are in Settings.",
+      "moreHint": "Add more trustees and invite staff in Settings → Trustees and Users."
+    },
+    "done": {
+      "title": "That is the essentials done",
+      "hint": "Here is where your setup stands. Nothing below blocks you from working.",
+      "stillToDo": "Still to do",
+      "anytime": "You can finish the rest any time from Settings, or from the card on your dashboard."
+    },
+    "f": {
+      "address": "Address",
+      "city": "City",
+      "state": "State",
+      "mobile": "Mobile",
+      "email": "Email",
+      "website": "Website",
+      "accountName": "Account name",
+      "accountType": "Type",
+      "cash": "Cash",
+      "bank": "Bank",
+      "bankName": "Bank name",
+      "accountNo": "Account number",
+      "upiId": "UPI ID",
+      "trusteeName": "Trustee name",
+      "designation": "Designation"
     }
   }
 }

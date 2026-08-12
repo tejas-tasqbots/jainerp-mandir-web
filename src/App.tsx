@@ -55,6 +55,7 @@ import { RecycleBinPage } from './pages/Registers/RecycleBinPage'
 import { ActivityLogPage } from './pages/Registers/ActivityLogPage'
 import { VisitorCountPage } from './pages/Registers/VisitorCountPage'
 import { SettingsPage } from './pages/Settings/SettingsPage'
+import { SetupWizard } from './pages/Setup/SetupWizard'
 import { SantPage } from './pages/Sant/SantPage'
 import { HelpPage } from './pages/Help/HelpPage'
 import { useAuthStore } from './store/authStore'
@@ -207,6 +208,9 @@ export default function App() {
             {/* Settings & Help */}
             <Route path="/sant" element={<SantPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            {/* First-login setup. A route, not a modal, so "finish setup later"
+                is a link somebody can come back to or be sent. */}
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="/help" element={<HelpPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
