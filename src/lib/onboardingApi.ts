@@ -51,6 +51,15 @@ export function invoiceUrl(registrationId: string, claimToken: string, channel =
 // send renders as blank, which is the recurring trap in this codebase).
 // ---------------------------------------------------------------------------
 
+/** A plan's caps. -1 means unlimited throughout the plan model. */
+export interface PlanLimits {
+  max_users: number
+  max_devices: number
+  max_receipts_per_month: number
+  max_sms_per_month: number
+  max_storage_mb: number
+}
+
 export interface PlanModule {
   key: string
   display_name: string
@@ -70,13 +79,7 @@ export interface CataloguePlan {
   database_label: string
   trial_days: number
   highlights: string[]
-  limits: {
-    max_users: number
-    max_devices: number
-    max_receipts_per_month: number
-    max_sms_per_month: number
-    max_storage_mb: number
-  }
+  limits: PlanLimits
   modules: PlanModule[]
   pricing: {
     currency: string

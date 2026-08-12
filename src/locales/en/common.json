@@ -2367,8 +2367,8 @@
         "description": "Settings → Public profile and Gallery. What a devotee reads about you in the devotee app before giving or visiting."
       },
       "accounting": {
-        "title": "Accounting rules",
-        "description": "Settings → Accounting Rules. How your books are kept — set this before the first entry, not after."
+        "title": "Opening balances",
+        "description": "Settings → Bank & Cash Accounts. What each account held when you started, so the books agree with the tin."
       },
       "messages": {
         "title": "Messages to donors",

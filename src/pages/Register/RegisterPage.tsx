@@ -5,10 +5,7 @@ import {
   ShieldCheck, Sparkles, AlertTriangle, Database, FileText, LogIn, RotateCw,
 } from 'lucide-react'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
-import {
-  apiError, Catalogue, CataloguePlan, clearDraft, inr, invoiceUrl, loadDraft,
-  loadRazorpay, onboarding, Registration, saveDraft,
-} from '../../lib/onboardingApi'
+import { Catalogue, CataloguePlan, PlanLimits, Registration, apiError, clearDraft, inr, invoiceUrl, loadDraft, loadRazorpay, onboarding, saveDraft } from '../../lib/onboardingApi'
 import { CustomPlanForm } from './CustomPlanForm'
 
 /**
@@ -75,6 +72,29 @@ const EMPTY: DetailsForm = {
 
 /** Statuses where the only sensible screen is "what is happening to my account". */
 const TERMINAL_PHASES = new Set(['setup', 'done'])
+
+
+/**
+ * A plan's limits as sentences, for cards whose highlights have not been
+ * written yet. -1 means unlimited throughout the plan model.
+ *
+ * This is a fallback, not a feature list: it keeps a thin plan from rendering
+ * as a blank column, and disappears the moment real copy exists.
+ */
+function planLimitLines(l: PlanLimits | undefined): string[] {
+  if (!l) return []
+  const n = (v: number | undefined, one: string, many: string) =>
+    v == null ? null : v < 0 ? `Unlimited ${many}` : `${v} ${v === 1 ? one : many}`
+  return [
+    n(l.max_users, 'user', 'users'),
+    n(l.max_devices, 'device', 'devices'),
+    l.max_receipts_per_month == null
+      ? null
+      : l.max_receipts_per_month < 0
+        ? 'Unlimited receipts a month'
+        : `${l.max_receipts_per_month} receipts a month`,
+  ].filter((x): x is string => !!x)
+}
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -854,6 +874,16 @@ function PlanStep({
                   <li key={h} className="flex items-start gap-2 text-sm text-slate-700">
                     <Check size={14} className="mt-0.5 flex-none text-brand-red" />
                     {h}
+                  </li>
+                ))}
+                {/* A plan with no highlights written for it rendered as an
+                    empty box under a price — which reads as "this plan does
+                    nothing". Its limits are real data the buyer needs anyway,
+                    so they stand in until someone writes the copy. */}
+                {p.highlights.length === 0 && planLimitLines(p.limits).map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-sm text-slate-700">
+                    <Check size={14} className="mt-0.5 flex-none text-brand-red" />
+                    {line}
                   </li>
                 ))}
                 {p.modules.length > 0 && (
