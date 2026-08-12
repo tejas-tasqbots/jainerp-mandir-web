@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, X, Pencil } from 'lucide-react'
 import { api, fmtPaise, parsePaise, currentFY } from '../../../lib/api'
+import { DonationAccountCard } from './DonationAccountCard'
 
 interface Account {
   id: string
@@ -185,6 +186,11 @@ export function BankAccountsTab() {
           <p className="text-xs text-slate-400">{t('settings.accounts.balanceHelp', { fy })}</p>
         </div>
       </div>
+
+      {/* Which of the accounts above devotees are told to pay into. It sits
+          here rather than on a tab of its own because the choice is only
+          meaningful next to the list it chooses from. */}
+      <DonationAccountCard accounts={accounts} onChanged={load} />
     </div>
   )
 }
