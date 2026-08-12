@@ -839,8 +839,14 @@ function PlanStep({
               {p.description && <p className="mt-3 text-sm text-slate-600">{p.description}</p>}
 
               <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                {/* No "pooled/dedicated database" wording. A trust choosing a
+                    plan is deciding what the software does for them, not which
+                    hosting topology it runs on — and "shared database" reads to
+                    a customer as "my donor records are mixed with someone
+                    else's", which is both alarming and untrue. The tier still
+                    drives provisioning; it just is not a selling point. */}
                 <Database size={13} className={p.tenancy_tier === 'dedicated' ? 'text-brand-red' : ''} />
-                {p.database_label}
+                {p.tenancy_tier === 'dedicated' ? 'Your own private instance' : 'Fully managed hosting'}
               </div>
 
               <ul className="mt-4 flex-1 space-y-2">
@@ -908,7 +914,7 @@ function ReviewStep({
           <Row label="Billing" value={reg.billing_cycle === 'yearly' ? 'Annual' : 'Monthly'} />
           <Row
             label="Database"
-            value={reg.tenancy_tier === 'dedicated' ? 'Separate, dedicated database' : 'Shared (pooled) database'}
+            value={reg.tenancy_tier === 'dedicated' ? 'Your own private instance' : 'Fully managed hosting'}
           />
           {reg.modules.length > 0 && (
             <Row

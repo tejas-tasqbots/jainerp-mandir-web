@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
@@ -14,7 +15,6 @@ import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
 import { NumberingTab } from './tabs/NumberingTab'
 import { MessagesTab } from './tabs/MessagesTab'
-import { AccountingRulesTab } from './tabs/AccountingRulesTab'
 import { UsersTab } from './tabs/UsersTab'
 import { BackupTab } from './tabs/BackupTab'
 import { PublicProfileTab } from './tabs/PublicProfileTab'
@@ -41,11 +41,75 @@ interface Requirement {
   updated_at: string
 }
 
+/**
+ * The tabs, in the order they are shown.
+ *
+ * Three tabs were folded into their owners because the same field was editable
+ * from several places at once — `upi_id` was on Temple Profile, Receipt
+ * Settings AND Donor Payments, and the bank fields on two of them. A setting
+ * with three owners has no owner: whichever screen was saved last won, and
+ * nobody could say which one was authoritative.
+ *
+ *   donor-payments → accounts        (donor-facing payment details belong with
+ *                                     the accounts the money lands in)
+ *   gallery        → public-profile  (photos are part of the public page)
+ *   accounting     → removed         (the accounting basis is a platform
+ *                                     decision, set by the super admin; a trust
+ *                                     switching it mid-year restates every
+ *                                     statement it has already filed)
+ */
+const TAB_IDS = [
+  'my-account', 'profile', 'public-profile', 'trustees', 'accounts',
+  'receipts', 'numbering', 'messages', 'masters', 'users', 'backup',
+  'privacy', 'subscription',
+] as const
+type TabId = (typeof TAB_IDS)[number]
+
+/** Old ?tab= values kept working, so existing links and bookmarks still land. */
+const TAB_ALIASES: Record<string, TabId> = {
+  'donor-payments': 'accounts',
+  gallery: 'public-profile',
+  accounting: 'profile',
+}
+
 export function SettingsPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { profile, fetchProfile } = useProfileStore()
-  const [tab, setTab] = useState<'my-account' | 'profile' | 'public-profile' | 'trustees' | 'masters' | 'gallery' | 'accounts' | 'donor-payments' | 'receipts' | 'numbering' | 'messages' | 'accounting' | 'users' | 'backup' | 'subscription' | 'privacy'>('profile')
+  /**
+   * Tabs, and the ?tab= that addresses them.
+   *
+   * This page used to hold the tab in plain state seeded with 'profile' and
+   * ignore the query string entirely, so every deep link — every item on the
+   * setup checklist, every "fix this" the wizard hands out — landed on Temple
+   * Profile whatever it asked for. The links were right; nothing was reading
+   * them.
+   *
+   * `gallery`, `donor-payments` and `accounting` are still accepted as aliases
+   * so old links, bookmarks and anything already in the wild keep working after
+   * those tabs were folded into their owners.
+   */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requested = searchParams.get('tab') ?? ''
+  const initialTab = (TAB_ALIASES[requested] ?? (TAB_IDS.includes(requested as TabId) ? requested : 'profile')) as TabId
+  const [tab, setTabState] = useState<TabId>(initialTab)
+
+  // Keep the URL in step, so a tab is shareable and Back works between tabs.
+  const setTab = (next: TabId) => {
+    setTabState(next)
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev)
+      p.set('tab', next)
+      return p
+    }, { replace: true })
+  }
+
+  // A later navigation to /settings?tab=… (the checklist, while already on
+  // Settings) changes the query but not the component, so react to it.
+  useEffect(() => {
+    const want = TAB_ALIASES[requested] ?? (TAB_IDS.includes(requested as TabId) ? (requested as TabId) : null)
+    if (want && want !== tab) setTabState(want)
+  }, [requested])
   const [saving, setSaving] = useState(false)
   const sens = useSensitiveFields()
   const [success, setSuccess] = useState(false)
@@ -302,19 +366,16 @@ export function SettingsPage() {
           { id: 'public-profile', labelKey: 'settings.tabs.publicProfile' },
           { id: 'trustees', labelKey: 'settings.tabs.trustees' },
           { id: 'accounts', labelKey: 'settings.tabs.accounts' },
-          { id: 'donor-payments', labelKey: 'settings.tabs.donorPayments' },
           { id: 'receipts', labelKey: 'settings.tabs.receipts' },
           { id: 'numbering', labelKey: 'settings.tabs.numbering' },
           { id: 'messages', labelKey: 'settings.tabs.messages' },
-          { id: 'accounting', labelKey: 'settings.tabs.accounting' },
           { id: 'masters', labelKey: 'settings.tabs.masters' },
-          { id: 'gallery', labelKey: 'settings.tabs.gallery' },
           { id: 'users', labelKey: 'settings.tabs.users' },
           { id: 'backup', labelKey: 'settings.tabs.backup' },
           { id: 'privacy', labelKey: 'settings.tabs.privacy' },
           { id: 'subscription', labelKey: 'settings.tabs.subscription' },
         ].map(tabItem => (
-          <button key={tabItem.id} onClick={() => setTab(tabItem.id as typeof tab)}
+          <button key={tabItem.id} onClick={() => setTab(tabItem.id as TabId)}
             className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === tabItem.id ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
             {t(tabItem.labelKey)}
           </button>
@@ -408,21 +469,26 @@ export function SettingsPage() {
                 ) : (<><label className="form-label">{t('settings.profile.reg12ab')}</label><input className="form-input" value={form.reg_12ab_number} onChange={e => setForm(f => ({ ...f, reg_12ab_number: e.target.value }))} /></>)}</div>
               </div>
             </div>
+            {/* The receipt block that used to sit here is gone.
+                It edited upi_id, show_80g_on_receipt and custom_receipt_footer
+                — all three of which Receipt Settings already owns, and upi_id
+                is also on Donor Payments. Three screens writing one field means
+                whichever was saved last won, and no screen could be called
+                authoritative. Each of those fields now has exactly one home. */}
             <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{t('settings.profile.receiptSettings')}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>{sens.isLocked('upi_id') ? (
-                  <LockedField label={t('settings.profile.upiId') as string} value={form.upi_id}
-                    field="upi_id" pending={sens.pendingFor('upi_id')} onRequest={sens.openRequest} />
-                ) : (<><label className="form-label">{t('settings.profile.upiId')}</label><input className="form-input" placeholder="temple@upi" value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} /></>)}</div>
-                <div className="flex items-center gap-3 mt-5">
-                  <input type="checkbox" id="show80g" checked={form.show_80g_on_receipt} onChange={e => setForm(f => ({ ...f, show_80g_on_receipt: e.target.checked }))} className="w-4 h-4" />
-                  <label htmlFor="show80g" className="text-sm">{t('settings.profile.show80gOnReceipt')}</label>
-                </div>
-              </div>
-              <div className="mt-3">
-                <label className="form-label">{t('settings.profile.customFooter')}</label>
-                <textarea className="form-input" rows={2} value={form.custom_receipt_footer} onChange={e => setForm(f => ({ ...f, custom_receipt_footer: e.target.value }))} placeholder={t('settings.profile.footerPlaceholder') as string} />
+              <p className="text-sm text-slate-500">
+                {t('settings.profile.movedNote', {
+                  defaultValue:
+                    'Receipt layout, the 80G line and your footer are in Receipt Settings. UPI and bank details for donors are under Bank & Cash Accounts.',
+                })}
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button type="button" onClick={() => setTab('receipts')} className="btn-secondary btn-sm">
+                  {t('settings.tabs.receipts')}
+                </button>
+                <button type="button" onClick={() => setTab('accounts')} className="btn-secondary btn-sm">
+                  {t('settings.tabs.accounts')}
+                </button>
               </div>
             </div>
           </div>
@@ -436,19 +502,30 @@ export function SettingsPage() {
       )}
 
       {tab === 'trustees' && <TrusteesTab />}
-      {tab === 'accounts' && <BankAccountsTab />}
-      {tab === 'donor-payments' && <DonorPaymentsTab />}
+      {/* Donor-facing payment details sit WITH the accounts the money lands
+          in, rather than on a tab of their own. They were previously editable
+          from here, from Receipt Settings and from Temple Profile at once. */}
+      {tab === 'accounts' && (
+        <div className="space-y-6">
+          <BankAccountsTab />
+          <DonorPaymentsTab />
+        </div>
+      )}
       {tab === 'receipts' && <ReceiptSettingsTab onGoToTab={setTab} />}
 
       {tab === 'numbering' && <NumberingTab />}
 
       {tab === 'messages' && <MessagesTab />}
-      {tab === 'accounting' && <AccountingRulesTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'backup' && <BackupTab />}
 
-      {tab === 'public-profile' && <PublicProfileTab />}
-      {tab === 'gallery' && <GalleryTab />}
+      {/* Photos are part of the public page, not a separate concern. */}
+      {tab === 'public-profile' && (
+        <div className="space-y-6">
+          <PublicProfileTab />
+          <GalleryTab />
+        </div>
+      )}
 
       {tab === 'masters' && (
         <div className="space-y-4">

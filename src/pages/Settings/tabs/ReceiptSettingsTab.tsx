@@ -345,7 +345,7 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
   }
 }
 
-export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'donor-payments') => void } = {}) {
+export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts') => void } = {}) {
   const toast = useToast()
   const { t } = useTranslation()
   const [form, setForm] = useState(BLANK)
@@ -688,7 +688,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'donor-pay
             <h3 className="font-semibold text-sm">{t('settings.receipts.paymentHeading')}</h3>
             <button
               type="button"
-              onClick={() => onGoToTab?.('donor-payments')}
+              onClick={() => onGoToTab?.('accounts')}
               className="text-xs font-semibold text-brand-red hover:underline"
             >
               {t('settings.receipts.managePaymentDetails')}

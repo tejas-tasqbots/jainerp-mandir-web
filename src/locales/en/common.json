@@ -162,7 +162,8 @@
       "show80gOnReceipt": "Show 80G details on receipts",
       "customFooter": "Custom Receipt Footer",
       "footerPlaceholder": "Jai Jinendra! Thank you for your donation.",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "movedNote": "Receipt layout, the 80G line and your footer are in Receipt Settings. UPI and bank details for donors are under Bank & Cash Accounts."
     },
     "trustees": {
       "heading": "Trustees",

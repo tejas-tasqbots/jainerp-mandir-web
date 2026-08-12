@@ -14,7 +14,6 @@ export function DonorPaymentsTab() {
   const [form, setForm] = useState({
     accept_donor_requests: true,
     upi_id: '',
-    upi_qr_cdn_url: '',
     bank_account_name: '',
     bank_account_no: '',
     bank_ifsc: '',
@@ -32,7 +31,6 @@ export function DonorPaymentsTab() {
       setForm({
         accept_donor_requests: p.accept_donor_requests !== false,
         upi_id: (p.upi_id as string) || '',
-        upi_qr_cdn_url: (p.upi_qr_cdn_url as string) || '',
         bank_account_name: (p.bank_account_name as string) || '',
         bank_account_no: (p.bank_account_no as string) || '',
         bank_ifsc: (p.bank_ifsc as string) || '',
@@ -49,7 +47,6 @@ export function DonorPaymentsTab() {
       const payload: Record<string, unknown> = {
         ...form,
         upi_id: form.upi_id.trim() || null,
-        upi_qr_cdn_url: form.upi_qr_cdn_url.trim() || null,
         bank_account_name: form.bank_account_name.trim() || null,
         bank_account_no: form.bank_account_no.trim() || null,
         bank_ifsc: form.bank_ifsc.trim().toUpperCase() || null,
@@ -122,20 +119,11 @@ export function DonorPaymentsTab() {
             <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiIdHelp')}</p></>)}
           
           </div>
-          <div>
-            {sens.isLocked('upi_qr_cdn_url') ? (
-              <LockedField label={t('settings.donorPayments.upiQrUrl') as string} value={form.upi_qr_cdn_url}
-                field="upi_qr_cdn_url" pending={sens.pendingFor('upi_qr_cdn_url')} onRequest={sens.openRequest} />
-            ) : (<>
-              <label className="form-label">{t('settings.donorPayments.upiQrUrl')}</label>
-              <input type="url" className="form-input" placeholder="https://…/upi-qr.png"
-                value={form.upi_qr_cdn_url} onChange={e => setForm(f => ({ ...f, upi_qr_cdn_url: e.target.value }))} />
-              <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiQrUrlHelp')}</p>
-            </>)}
-            {form.upi_qr_cdn_url.trim() && (
-              <img src={form.upi_qr_cdn_url.trim()} alt={t('ui.upiQrPreview')} className="mt-2 w-32 h-32 object-contain rounded-md border border-slate-200 bg-white" />
-            )}
-          </div>
+          {/* No "UPI QR image URL" field. The devotee app draws the QR from the
+              UPI id above, client-side, everywhere it shows one. A hosted image
+              would be a second place the same payment address lives — and the
+              one that silently goes stale when the UPI id changes, pointing
+              donors at an account the trust no longer uses. */}
         </div>
       </div>
 
