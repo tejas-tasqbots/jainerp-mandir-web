@@ -2334,19 +2334,19 @@
     "groups": {
       "identity": {
         "title": "Trust identity",
-        "description": "Printed at the top of every receipt and invoice you issue."
+        "description": "Settings → Temple Profile. Printed at the top of every receipt and invoice you issue."
       },
       "tax": {
         "title": "Tax & compliance",
-        "description": "Without these, an 80G receipt cannot be claimed by your donor."
+        "description": "Settings → Temple Profile. Without these, an 80G receipt cannot be claimed by your donor."
       },
       "money": {
         "title": "Money & payments",
-        "description": "Where donations land, and what a donor is told to pay into."
+        "description": "Settings → Bank & Cash Accounts and Donor Payments. Where donations land, and what a donor is told to pay into."
       },
       "receipts": {
-        "title": "Receipts",
-        "description": "How your receipts look and how they are numbered."
+        "title": "Receipts & numbering",
+        "description": "Settings → Receipt Settings and Numbering. How your receipts look and how they are numbered."
       },
       "modules": {
         "title": "Your modules",
@@ -2354,7 +2354,23 @@
       },
       "people": {
         "title": "Your team",
-        "description": "Who else can sign in and record entries."
+        "description": "Settings → My Account, Trustees and Users. Who else can sign in, and who the trust answers to."
+      },
+      "masters": {
+        "title": "Categories & dropdowns",
+        "description": "Settings → Categories & Dropdowns. The lists your staff pick from when recording an entry."
+      },
+      "public": {
+        "title": "Your public page",
+        "description": "Settings → Public profile and Gallery. What a devotee reads about you in the devotee app before giving or visiting."
+      },
+      "accounting": {
+        "title": "Accounting rules",
+        "description": "Settings → Accounting Rules. How your books are kept — set this before the first entry, not after."
+      },
+      "messages": {
+        "title": "Messages to donors",
+        "description": "Settings → Messages. The WhatsApp and SMS your donors receive from you."
       }
     },
     "items": {
@@ -2437,6 +2453,70 @@
       "trustees": {
         "label": "Add your trustees",
         "why": "Shown on the public profile and used on certificates."
+      },
+      "area": {
+        "label": "Locality / area",
+        "why": "What devotees search a dharamshala by — “Palitana”, not just the city."
+      },
+      "map_pin": {
+        "label": "Map pin",
+        "why": "Puts a Directions button on your temple page in the devotee app."
+      },
+      "upi_qr": {
+        "label": "UPI QR code",
+        "why": "A devotee scans instead of typing your UPI id — fewer wrong transfers."
+      },
+      "bank_account_name": {
+        "label": "Account holder name",
+        "why": "What a donor must type as the beneficiary, or the transfer bounces."
+      },
+      "receipt_footer": {
+        "label": "Receipt footer note",
+        "why": "Your thank-you line, or the declaration your auditor wants on every receipt."
+      },
+      "expense_heads": {
+        "label": "Expense heads",
+        "why": "Without them every expense lands in one bucket and the I&E statement says nothing."
+      },
+      "payment_modes": {
+        "label": "Payment modes",
+        "why": "Cash, UPI, cheque, bank — how a receipt records the way money arrived."
+      },
+      "about": {
+        "label": "About this trust",
+        "why": "The paragraph a devotee reads before deciding to give."
+      },
+      "main_deity": {
+        "label": "Mulnayak / main deity",
+        "why": "The first thing a Jain devotee looks for when choosing a temple to visit."
+      },
+      "darshan_timings": {
+        "label": "Darshan timings",
+        "why": "Stops the phone calls asking when you open."
+      },
+      "links": {
+        "label": "Website or social links",
+        "why": "Where a devotee goes to see more of your work."
+      },
+      "gallery": {
+        "label": "Photos of your temple",
+        "why": "A page with no photographs gets scrolled past."
+      },
+      "opening_balances": {
+        "label": "Opening balances on your accounts",
+        "why": "Without them your cash book starts at zero and never agrees with the tin."
+      },
+      "accounting_basis": {
+        "label": "Cash or accrual basis",
+        "why": "Decides when income is recognised. Changing it later restates every statement."
+      },
+      "comms_templates": {
+        "label": "Review your message templates",
+        "why": "Check what goes out in your name before a donor reads it."
+      },
+      "my_account": {
+        "label": "Your own name on your account",
+        "why": "Signs the entries you record and appears in the activity log."
       }
     }
   },
