@@ -21,14 +21,28 @@ const rec = (id, ok, detail = '') => {
   results.push({ id, ok, detail });
   console.log(`  ${ok ? '✔' : '✘'} ${id}${detail ? ' — ' + detail : ''}`);
 };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Retries on 429.
+ *
+ * The auth endpoints are throttled, and this suite logs in three times. Run on
+ * its own it passes; run after the others it hit the limiter and died on
+ * `Cannot read properties of null` — reporting a product failure whose only
+ * cause was how fast the suite itself was going. A suite that fails based on
+ * what ran before it is a suite that cannot be believed either way.
+ */
 const call = async (base, p, { method = 'GET', body, tok } = {}) => {
-  const r = await fetch(base + p, {
-    method,
-    headers: { 'content-type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  let j = null; try { j = await r.json(); } catch { /* 204 */ }
-  return { status: r.status, body: j };
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(base + p, {
+      method,
+      headers: { 'content-type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let j = null; try { j = await r.json(); } catch { /* 204 */ }
+    if (r.status === 429 && attempt < 6) { await sleep(5000 * (attempt + 1)); continue; }
+    return { status: r.status, body: j };
+  }
 };
 const sql = (db, q) => execFileSync('psql',
   ['-h', '127.0.0.1', '-p', process.env.PGPORT ?? '5434', '-U', 'jainerp', '-d', db, '-tAc', q],
@@ -150,9 +164,14 @@ rec('the receipt does not print the retired profile columns',
 
 const eDb = 'jainerp_pool_1';
 const live = sql(eDb, `SELECT COALESCE(account_no,'') FROM ${eSchema}.accounts WHERE is_primary_for_donations`);
-const isVerified = sql(eDb, `SELECT (donation_verified_at IS NOT NULL AND donation_verified_hash IS NOT NULL)::text
-                               FROM ${eSchema}.accounts WHERE is_primary_for_donations`);
-if (isVerified === 'true') {
+// Ask the API, not the columns. "Verified" in this product means verified AND
+// the digits unchanged since — the fingerprint is the whole point. A raw
+// `donation_verified_at IS NOT NULL` is true even for an account that was
+// edited after approval, so this expected a bank block the product had
+// deliberately withdrawn and called the correct behaviour a failure.
+const acctNow = (await call(MA, '/tenants/me/donation-account', { tok: ETOK })).body?.data;
+const isVerified = acctNow?.is_verified === true;
+if (isVerified) {
   rec('a verified account prints on the receipt', html.includes(live), `looking for ${live}`);
 } else {
   rec('an unverified account prints no bank block', !html.includes(live), `must not print ${live}`);
