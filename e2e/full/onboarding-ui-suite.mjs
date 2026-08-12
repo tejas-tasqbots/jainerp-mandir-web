@@ -58,6 +58,18 @@ async function getSetup() {
 
 await apiLogin();
 
+// PRECONDITION. The wizard is offered only to a trust that still has setup to
+// do AND has not dismissed the checklist — both correct behaviours, and both
+// make this suite order-dependent unless it establishes the state itself. It
+// also dismisses the card at OB-18, so a second run would otherwise fail at
+// OB-01 with no bug present. Clear one field to make the trust measurably
+// incomplete, and un-dismiss.
+await fetch(`${API}/tenants/me`, {
+  method: 'PATCH',
+  headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+  body: JSON.stringify({ custom_receipt_footer: '', setup_done: false }),
+});
+
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
 const page = await ctx.newPage();

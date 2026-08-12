@@ -198,11 +198,23 @@ export function SetupWizard() {
   async function next() {
     if (!(await saveStep())) return
     const i = STEPS.findIndex(s => s.key === step)
-    const nextKey = STEPS[Math.min(i + 1, STEPS.length - 1)].key
-    if (nextKey === 'done') setSetup(await fetchSetup())
-    setStep(nextKey)
+    setStep(STEPS[Math.min(i + 1, STEPS.length - 1)].key)
     window.scrollTo({ top: 0 })
   }
+
+  // Refresh on ARRIVAL at the summary, not on the transition into it.
+  //
+  // Refreshing inside next() looked equivalent and was not: the summary is also
+  // reachable by skipping, and skip() does not save, so a user who filled two
+  // steps and skipped the rest was shown the percentage from page load. The one
+  // screen whose entire job is to say where you stand was the one that could be
+  // stale.
+  useEffect(() => {
+    if (step !== 'done') return
+    let cancelled = false
+    fetchSetup().then(s => { if (!cancelled) setSetup(s) })
+    return () => { cancelled = true }
+  }, [step])
 
   /** Skip does NOT save — a half-typed field the user walked away from is not
       an answer, and writing it would be putting words in their mouth. */
