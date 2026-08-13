@@ -1,6 +1,8 @@
 {
+  "brand": {
+    "portal": "मंदिर/ट्रस्ट"
+  },
   "login": {
-    "heading": "मंदिर लॉगिन",
     "mobileLabel": "मोबाइल क्रमांक",
     "sendOtp": "OTP पाठवा",
     "sendingOtp": "OTP पाठवत आहे...",

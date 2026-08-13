@@ -1,6 +1,8 @@
 {
+  "brand": {
+    "portal": "Temple/Trust"
+  },
   "login": {
-    "heading": "Mandir Login",
     "mobileLabel": "Mobile Number",
     "sendOtp": "Send OTP",
     "sendingOtp": "Sending OTP...",

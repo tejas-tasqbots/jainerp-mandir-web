@@ -11,7 +11,6 @@ import { api } from '../../lib/api'
 import { canSee } from '../../lib/rbac'
 import { useIsOnline } from '../../lib/useIsOnline'
 import { useAuthStore } from '../../store/authStore'
-import { useProfileStore } from '../../store/profileStore'
 
 interface NavItem {
   labelKey: string
@@ -158,7 +157,6 @@ function usePendingRequestCount(): number {
 
 export function Sidebar() {
   const { t } = useTranslation()
-  const { profile } = useProfileStore()
   const roles = useAuthStore(s => s.user?.roles)
   const modules = useAuthStore(s => s.modules)
   const pendingRequests = usePendingRequestCount()
@@ -178,11 +176,14 @@ export function Sidebar() {
   return (
     <aside className="w-60 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col h-full">
       <div className="px-4 py-5 border-b border-slate-200">
+        {/* The logo is the wordmark with the portal it belongs to underneath —
+            the same lockup as the favicon and the mobile launcher icon. The
+            temple's own name is in the TopBar, so it isn't repeated here. */}
         <div className="text-2xl font-bold leading-none tracking-tight">
           <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
         </div>
-        <p className="text-slate-400 text-xs mt-1 truncate">
-          {profile?.name || 'Temple Management'}
+        <p className="text-slate-500 text-xs font-semibold mt-1 truncate">
+          {t('brand.portal')}
         </p>
       </div>
 
