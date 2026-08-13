@@ -230,6 +230,70 @@ await suite('08-mobile-desktop', async () => {
     return 'mandir:3106 devotee:3107 sant:3108';
   });
 
+  await t('TC-MOB-004c', 'P1', 'each app ships the env file a distributable build needs', async () => {
+    // Every env.dart tells the builder to pass --dart-define-from-file=env/dev.json
+    // and none of those files existed, so `flutter build apk --release` silently
+    // baked in the emulator loopback (10.0.2.2). The APK installs, launches, and
+    // then fails every request — which reads as "the OTP never arrives", not as
+    // a build error. That shipped on 2026-08-13.
+    const want = { 'mandir-mobile': 'mandir', 'devotee-mobile': 'devotee', 'sant-mobile': 'sant' };
+    const bad = [];
+    for (const [app, host] of Object.entries(want)) {
+      const file = join(ROOT, app, 'app/env/dev.json');
+      if (!existsSync(file)) { bad.push(`${app}: app/env/dev.json is missing`); continue; }
+      const url = JSON.parse(readFileSync(file, 'utf8')).API_BASE_URL ?? '';
+      // https, because a release build refuses cleartext; the app's own host,
+      // because pointing one app at another's API 404s every call.
+      if (!url.startsWith('https://')) bad.push(`${app}: ${url} is not https`);
+      if (!url.includes(`dev-api-${host}.jainerp.org`)) bad.push(`${app}: ${url} is not its own API`);
+      if (!url.endsWith('/api/v1')) bad.push(`${app}: ${url} is not versioned`);
+    }
+    expect.eq(bad.length, 0, bad.join('; '));
+    return 'all three ship env/dev.json pointing at their own https API';
+  });
+
+  await t('TC-MOB-004d', 'P1', 'a release build with no API URL refuses to run', async () => {
+    // Belt to TC-MOB-004c's braces: even if someone builds without the env file,
+    // the app must say so on its first frame instead of failing at sign-in.
+    const bad = [];
+    for (const app of MOBILES) {
+      const main = stripDart(readFileSync(join(ROOT, app, 'app/lib/main.dart'), 'utf8'));
+      if (!/kReleaseMode\s*&&\s*apiUrlUnreachableOnDevice/.test(main)) {
+        bad.push(`${app}: main() has no unreachable-API guard`);
+      }
+      if (!/MisconfiguredBuildApp/.test(main)) bad.push(`${app}: guard shows no explanation screen`);
+    }
+    expect.eq(bad.length, 0, bad.join('; '));
+    return 'all three fail loudly at launch';
+  });
+
+  await t('TC-MOB-006', 'P1', 'each app has ONE name across every surface', async () => {
+    // The apps carried three or four names each (home screen "Sadhu-Sadhvi Seva",
+    // iOS "Mandir Admin", task switcher "JainERP Sadhu-Sadhvi", session list
+    // "Mandir Admin mobile"), so a user could not tell which app they were in.
+    const want = {
+      'mandir-mobile': 'JainERP Mandir',
+      'devotee-mobile': 'JainERP Devotee',
+      'sant-mobile': 'JainERP Sant',
+    };
+    const bad = [];
+    for (const [app, name] of Object.entries(want)) {
+      const read = (p) => readFileSync(join(ROOT, app, p), 'utf8');
+      const label = read('app/android/app/src/main/AndroidManifest.xml').match(/android:label="([^"]*)"/)?.[1];
+      if (label !== name) bad.push(`${app}: home-screen label is "${label}"`);
+      const ios = read('app/ios/Runner/Info.plist')
+        .match(/<key>CFBundleDisplayName<\/key>\s*<string>([^<]*)<\/string>/)?.[1];
+      if (ios !== name) bad.push(`${app}: iOS display name is "${ios}"`);
+      const title = stripDart(read('app/lib/main.dart')).match(/title: '([^']*)'/)?.[1];
+      if (title !== name) bad.push(`${app}: task-switcher title is "${title}"`);
+      const device = stripDart(read('app/lib/features/auth/login_screen.dart'))
+        .match(/deviceName: '([^']*)'/)?.[1];
+      if (device !== `${name} (Android)`) bad.push(`${app}: session-list name is "${device}"`);
+    }
+    expect.eq(bad.length, 0, bad.join('; '));
+    return 'JainERP Mandir / Devotee / Sant, on all four surfaces each';
+  });
+
   await t('TC-MOB-005', 'P1', 'the sant mobile client uses sant_* naming, not maharaj_*', async () => {
     // The vendored core copies had already diverged on exactly this.
     const stale = [];
