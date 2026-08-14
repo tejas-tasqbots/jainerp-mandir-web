@@ -1,31 +1,33 @@
 /**
  * Functional API E2E — sect (sampradaya) capture and scoping, migration 032.
  *
- * Digambar and Shwetambar are distinct traditions. This suite proves the two
- * things that make the rollout safe:
+ * Digambar and Shwetambar are distinct traditions. Since 2026-08-14 the devotee
+ * app **scopes discovery to the devotee's own tradition by default** and lets
+ * them ask for all of them per request (`traditions=all`). There is no
+ * environment flag any more, so there is one mode, not two:
  *
- *   FLAG OFF (default) — capture works and NOTHING a user sees changes. Run
- *                        with the APIs started normally.
- *   FLAG ON            — devotees see only their own tradition, non-Jain trusts
- *                        stay visible, and people who never set a sect still see
- *                        everything. Run with SECT_FILTER_ENFORCED=true on
- *                        superadmin-api + devotee-api, and pass E2E_SECT=on.
+ *   node e2e/full/sect-suite.mjs
  *
- * The second mode is the one that would empty the app if the predicate were
- * wrong, so it asserts the "unknown is not excluded" rule explicitly rather
- * than only the happy path.
+ * What this suite is really defending is the pair of rules that keep scoping
+ * from hiding real temples from real donors, plus the product rule that giving
+ * is never refused:
  *
- *   node e2e/full/sect-suite.mjs             # flag-off expectations
- *   E2E_SECT=on node e2e/full/sect-suite.mjs # flag-on expectations
+ *   - a temple or sant with NO recorded sect is visible to every tradition
+ *   - a non-Jain trust is visible to everyone (sect does not apply to it)
+ *   - a devotee with no sect sees everything
+ *   - "All traditions" really does return the other tradition
+ *   - a cross-tradition donation and a cross-tradition room booking still work
  *
- * Re-run `superadmin-api/scripts/seed-qa-tester.ts` first — MFA enrolment is
- * one-shot by design.
+ * The first four are the ones that would empty somebody's app if the predicate
+ * were wrong, and they fail silently — a scoped list looks perfectly healthy.
+ *
+ * Re-run `superadmin-api/scripts/seed-qa-tester.ts` first if the QA super admin
+ * does not exist yet; sa-auth.mjs handles the one-shot MFA enrolment itself.
  */
-import { superAdminLogin as saLogin, QA_ID, QA_PASSWORD } from './sa-auth.mjs';
+import { superAdminLogin as saLogin } from './sa-auth.mjs';
 
 const SA = process.env.E2E_SA_API ?? 'http://localhost:3105/api/v1';
 const DEVOTEE = process.env.E2E_DEVOTEE_API ?? 'http://localhost:3107/api/v1';
-const ENFORCED = (process.env.E2E_SECT ?? 'off') === 'on';
 
 const results = [];
 function record(id, pri, title, ok, detail = '') {
@@ -42,14 +44,19 @@ async function http(base, method, path, { token, body } = {}) {
   const text = await res.text();
   let json = null;
   try { json = JSON.parse(text); } catch { /* html */ }
-  return { status: res.status, json, text, data: json?.data, code: json?.error?.code ?? json?.code };
+  return {
+    status: res.status, json, text,
+    data: json?.data, meta: json?.meta,
+    code: json?.error?.code ?? json?.code,
+  };
 }
 const sa = (m, p, o) => http(SA, m, p, o);
 const dv = (m, p, o) => http(DEVOTEE, m, p, o);
-const rowsOf = (r) => (Array.isArray(r.data) ? r.data : r.data?.rows ?? []);
+const rowsOf = (r) => (Array.isArray(r.data) ? r.data : r.data?.rows ?? r.data?.stays ?? []);
+const idsOf = (r) => rowsOf(r).map((x) => x.id ?? x.tenant_id);
 
-// TOTP enrolment is one-shot, so the secret is cached by sa-auth.mjs; without
-// that only the first suite in a run could log in as super admin.
+// TOTP enrolment is one-shot, so sa-auth.mjs resets it before each login;
+// without that only the first suite in a run could log in as super admin.
 const superAdminLogin = () => saLogin(sa);
 
 async function devoteeLogin(mobile) {
@@ -113,19 +120,21 @@ async function makeSant(token, label, { sect } = {}) {
 }
 
 async function run() {
-  console.log(`\n=== Sect scoping — SA ${SA} / devotee ${DEVOTEE} — expecting filter ${ENFORCED ? 'ON' : 'OFF'} ===\n`);
+  console.log(`\n=== Sect scoping — SA ${SA} / devotee ${DEVOTEE} ===\n`);
   const ADMIN = await superAdminLogin();
-  /** Provisioned only in enforced mode; collected so cleanup stays unconditional. */
-  const stayTemples = [];
 
   // ---------- capture ----------
   const dig = await makeTemple(ADMIN, 'dig', { sect: 'digambar' });
   const shw = await makeTemple(ADMIN, 'shw', { sect: 'shwetambar' });
   const unset = await makeTemple(ADMIN, 'unset');
   const hindu = await makeTemple(ADMIN, 'hindu', { templeType: 'hindu' });
+  const shwStay = await makeTemple(ADMIN, 'shwstay', {
+    sect: 'shwetambar', preset: 'dharamshala_trust',
+  });
   const digSant = await makeSant(ADMIN, 'dig', { sect: 'digambar' });
   const shwSant = await makeSant(ADMIN, 'shw', { sect: 'shwetambar' });
   const unsetSant = await makeSant(ADMIN, 'unset');
+  const temples = [dig, shw, unset, hindu, shwStay];
 
   const digDetail = await sa('GET', `/admin/tenants/${dig.id}`, { token: ADMIN });
   record('SECT-01', 'P1', 'a temple’s sampradaya is captured at onboarding',
@@ -146,7 +155,7 @@ async function run() {
   });
   record('SECT-03', 'P2', 'an unknown sect is refused', badSect.status === 400, `status=${badSect.status}`);
 
-  // ---------- the readiness report (the gate for enabling the filter) ----------
+  // ---------- the readiness report ----------
   const readiness = await sa('GET', '/admin/sect-readiness', { token: ADMIN });
   record('SECT-04', 'P1', 'the "sect not set" report exists and counts what is outstanding',
     readiness.status === 200 && typeof readiness.data?.outstanding === 'number',
@@ -158,8 +167,11 @@ async function run() {
     !(readiness.data?.temples?.rows ?? []).some((t) => t.id === hindu.id) &&
     (readiness.data?.temples?.not_applicable ?? 0) >= 1,
     `not_applicable=${readiness.data?.temples?.not_applicable}`);
-  record('SECT-07', 'P1', 'the report reflects the live flag state',
-    readiness.data?.enforced === ENFORCED, `enforced=${readiness.data?.enforced}`);
+  // The report names the live model rather than a flag: there is no longer a
+  // switch to flip, so `enforced` / `ready_to_enforce` would be describing
+  // behaviour the code no longer has.
+  record('SECT-07', 'P1', 'the report names the live scoping model',
+    readiness.data?.scoping === 'discovery_default', `scoping=${readiness.data?.scoping}`);
 
   // ---------- backfill ----------
   const fix = await sa('PATCH', `/admin/tenants/${unset.id}/sect`, {
@@ -167,6 +179,8 @@ async function run() {
   });
   record('SECT-08', 'P1', 'a temple’s sect can be backfilled from the report',
     fix.status === 200 && fix.data?.sect === 'digambar', `sect=${fix.data?.sect}`);
+  // Put it back: SECT-14 needs a temple that genuinely has no sect.
+  await sa('PATCH', `/admin/tenants/${unset.id}/sect`, { token: ADMIN, body: { sect: null } });
 
   const hinduFix = await sa('PATCH', `/admin/tenants/${hindu.id}/sect`, {
     token: ADMIN, body: { sect: 'digambar' },
@@ -192,7 +206,7 @@ async function run() {
   record('SECT-24', 'P1', 'a non-Jain trust cannot be ONBOARDED with a Jain sect either',
     hinduWithSect.status === 400 && hinduWithSect.code === 'SECT_NOT_APPLICABLE',
     `status=${hinduWithSect.status} code=${hinduWithSect.code}`);
-  if (hinduWithSect.status === 201) stayTemples.push({ id: hinduWithSect.data.id, slug: hinduWithSect.data.slug });
+  if (hinduWithSect.status === 201) temples.push({ id: hinduWithSect.data.id, slug: hinduWithSect.data.slug });
 
   // ---------- devotees ----------
   const digDevotee = `98221${String(Math.floor(10000 + Math.random() * 89999))}`;
@@ -209,105 +223,128 @@ async function run() {
   record('SECT-11', 'P1', 'sect is optional for a devotee too',
     noneMe.status === 200 && !noneMe.data?.sect, `sect=${noneMe.data?.sect ?? 'null'}`);
 
-  // ---------- what the devotee actually sees ----------
-  const dirDig = rowsOf(await dv('GET', '/temples/directory?limit=100', { token: DIG_TOKEN }));
-  const sawShw = dirDig.some((t) => t.id === shw.id);
-  const sawDig = dirDig.some((t) => t.id === dig.id);
-  const sawHindu = dirDig.some((t) => t.id === hindu.id);
+  // ---------- the temple directory ----------
+  const scoped = await dv('GET', '/temples/directory?limit=100', { token: DIG_TOKEN });
+  const scopedIds = idsOf(scoped);
+  record('SECT-12', 'P1', 'by default a devotee sees their own tradition, not the other',
+    scopedIds.includes(dig.id) && !scopedIds.includes(shw.id),
+    `digambar=${scopedIds.includes(dig.id)} shwetambar=${scopedIds.includes(shw.id)}`);
+  record('SECT-13', 'P1', 'a non-Jain trust is still listed — sect does not apply to it',
+    scopedIds.includes(hindu.id), `hindu=${scopedIds.includes(hindu.id)}`);
+  // The rule that makes a partial backfill safe: a temple that never told us
+  // must not disappear from the tradition it may well belong to.
+  record('SECT-14', 'P1', 'a temple with NO recorded sect is still listed',
+    scopedIds.includes(unset.id), `unset=${scopedIds.includes(unset.id)}`);
 
-  if (!ENFORCED) {
-    record('SECT-12', 'P1', 'FLAG OFF: nothing is filtered — the other tradition is still visible',
-      sawShw && sawDig, `digambar=${sawDig} shwetambar=${sawShw}`);
-    const donate = await dv('POST', '/me/donate', {
-      token: DIG_TOKEN, body: { tenant_slug: shw.slug, category: 'general', amount_paise: 10000 },
-    });
-    record('SECT-13', 'P1', 'FLAG OFF: a cross-tradition donation is allowed',
-      donate.status === 200 || donate.status === 201, `status=${donate.status} code=${donate.code ?? ''}`);
-  } else {
-    record('SECT-12', 'P1', 'FLAG ON: only the devotee’s own tradition is listed',
-      sawDig && !sawShw, `digambar=${sawDig} shwetambar=${sawShw}`);
-    record('SECT-13', 'P1', 'FLAG ON: a non-Jain trust is still visible — sect does not apply to it',
-      sawHindu, `hindu=${sawHindu}`);
+  const all = await dv('GET', '/temples/directory?limit=100&traditions=all', { token: DIG_TOKEN });
+  const allIds = idsOf(all);
+  record('SECT-15', 'P1', '"All traditions" really does return the other tradition',
+    allIds.includes(dig.id) && allIds.includes(shw.id),
+    `digambar=${allIds.includes(dig.id)} shwetambar=${allIds.includes(shw.id)}`);
 
-    const donate = await dv('POST', '/me/donate', {
-      token: DIG_TOKEN, body: { tenant_slug: shw.slug, category: 'general', amount_paise: 10000 },
-    });
-    record('SECT-14', 'P1', 'FLAG ON: a cross-tradition donation is refused with SECT_MISMATCH',
-      donate.status === 403 && donate.code === 'SECT_MISMATCH', `status=${donate.status} code=${donate.code}`);
+  record('SECT-25', 'P1', 'meta.sect_scope reports what was applied, for the UI switch',
+    scoped.meta?.sect_scope?.scope === 'mine' &&
+    scoped.meta?.sect_scope?.viewer_sect === 'digambar' &&
+    scoped.meta?.sect_scope?.applied === 'digambar' &&
+    all.meta?.sect_scope?.scope === 'all' &&
+    all.meta?.sect_scope?.applied === null,
+    `mine=${JSON.stringify(scoped.meta?.sect_scope)} all=${JSON.stringify(all.meta?.sect_scope)}`);
 
-    const ownDonate = await dv('POST', '/me/donate', {
-      token: DIG_TOKEN, body: { tenant_slug: dig.slug, category: 'general', amount_paise: 10000 },
-    });
-    record('SECT-15', 'P1', 'FLAG ON: donating within your own tradition still works',
-      ownDonate.status === 200 || ownDonate.status === 201, `status=${ownDonate.status}`);
+  const dirNone = idsOf(await dv('GET', '/temples/directory?limit=100', { token: NONE_TOKEN }));
+  record('SECT-16', 'P1', 'a devotee with NO sect still sees every tradition',
+    dirNone.includes(dig.id) && dirNone.includes(shw.id), `n=${dirNone.length}`);
 
-    // The rule that makes a partial backfill safe.
-    const dirNone = rowsOf(await dv('GET', '/temples/directory?limit=100', { token: NONE_TOKEN }));
-    record('SECT-16', 'P1', 'FLAG ON: a devotee with NO sect still sees every tradition',
-      dirNone.some((t) => t.id === dig.id) && dirNone.some((t) => t.id === shw.id),
-      `n=${dirNone.length}`);
+  // Facets are counted under the same scope as the list they filter: a
+  // "Maharashtra (12)" built from both traditions promises rows the scoped
+  // list then refuses to return.
+  const facets = await dv('GET', '/temples/directory/facets', { token: DIG_TOKEN });
+  const facetsAll = await dv('GET', '/temples/directory/facets?traditions=all', { token: DIG_TOKEN });
+  const mh = (r) => (r.data?.states ?? []).find((s) => s.value === 'Maharashtra')?.count ?? 0;
+  record('SECT-26', 'P2', 'directory facets are counted under the same scope as the list',
+    mh(facetsAll) > mh(facets), `scoped=${mh(facets)} all=${mh(facetsAll)}`);
 
-    const noSectDonate = await dv('POST', '/me/donate', {
-      token: NONE_TOKEN, body: { tenant_slug: shw.slug, category: 'general', amount_paise: 10000 },
-    });
-    record('SECT-17', 'P1', 'FLAG ON: a devotee with no sect can still donate anywhere',
-      noSectDonate.status === 200 || noSectDonate.status === 201, `status=${noSectDonate.status}`);
-  }
+  // ---------- giving is never blocked ----------
+  // The point of the whole model: scoping shapes discovery, not what a devotee
+  // is allowed to give to. Cross-tradition giving genuinely happens.
+  const donate = await dv('POST', '/me/donate', {
+    token: DIG_TOKEN, body: { tenant_slug: shw.slug, category: 'general', amount_paise: 10000 },
+  });
+  record('SECT-17', 'P1', 'a cross-tradition donation is still allowed',
+    donate.status === 200 || donate.status === 201, `status=${donate.status} code=${donate.code ?? ''}`);
 
-  // ---------- clearing a sect (both modes) ----------
+  const ownDonate = await dv('POST', '/me/donate', {
+    token: DIG_TOKEN, body: { tenant_slug: dig.slug, category: 'general', amount_paise: 10000 },
+  });
+  record('SECT-27', 'P1', 'donating within your own tradition still works',
+    ownDonate.status === 200 || ownDonate.status === 201, `status=${ownDonate.status}`);
+
+  // Booking takes money the same way donating does, and is refused the same
+  // way: not at all. This 403'd with SECT_MISMATCH under the old hard filter.
+  //
+  // The dates are computed, not hardcoded: a fixed 2026-09-01 quietly becomes a
+  // past date and the window validator rejects it, which would leave this
+  // asserting "not SECT_MISMATCH" against a 400 it never reached the sect check
+  // to earn. Asserting 200 means the request really did go all the way through.
+  const day = (n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const avail = await dv(
+    'GET',
+    `/temples/${shwStay.slug}/rooms/availability?from=${day(7)}&to=${day(8)}`,
+    { token: DIG_TOKEN },
+  );
+  record('SECT-23', 'P1', 'a cross-tradition room booking is not refused for sect',
+    avail.status === 200 && avail.code !== 'SECT_MISMATCH',
+    `status=${avail.status} code=${avail.code ?? ''}`);
+
+  // ---------- clearing a sect ----------
   // "Prefer not to say" sends '' — @IsOptional() only skips null/undefined, so
-  // this 400'd and a devotee stayed pinned to whatever sect they first picked.
-  // Under enforcement that is also the only tradition they can see or give to,
-  // so it has to be reversible without a support ticket.
-  await dv('PATCH', '/me', { token: DIG_TOKEN, body: { sect: 'digambar' } });
+  // this 400'd and a devotee stayed pinned to whatever sect they first picked,
+  // which is also the only tradition their app would then lead with.
   const cleared = await dv('PATCH', '/me', { token: DIG_TOKEN, body: { sect: '' } });
   const clearedMe = await dv('GET', '/me', { token: DIG_TOKEN });
   record('SECT-18', 'P1', 'a devotee can go back to "Prefer not to say"',
     cleared.status === 200 && !clearedMe.data?.sect,
     `status=${cleared.status} sect=${clearedMe.data?.sect ?? 'null'}`);
+  const afterClear = idsOf(await dv('GET', '/temples/directory?limit=100', { token: DIG_TOKEN }));
+  record('SECT-28', 'P1', 'clearing it puts every tradition back',
+    afterClear.includes(shw.id), `shwetambar=${afterClear.includes(shw.id)}`);
   await dv('PATCH', '/me', { token: DIG_TOKEN, body: { sect: 'digambar' } });
 
+  // ---------- the sant directory ----------
   record('SECT-19', 'P1', 'a sant’s sampradaya is captured by the super admin',
     digSant.sect === 'digambar', `sect=${digSant.sect}`);
 
-  // ---------- the sant directory (documented as scoped, never asserted) ----------
-  const santsDig = rowsOf(await dv('GET', '/sant?limit=100', { token: DIG_TOKEN }));
-  const sawDigSant = santsDig.some((s) => s.id === digSant.id);
-  const sawShwSant = santsDig.some((s) => s.id === shwSant.id);
-  const sawUnsetSant = santsDig.some((s) => s.id === unsetSant.id);
+  const santsScoped = idsOf(await dv('GET', '/sant?limit=100', { token: DIG_TOKEN }));
+  record('SECT-20', 'P1', 'the sant directory leads with the viewer’s tradition',
+    santsScoped.includes(digSant.id) && !santsScoped.includes(shwSant.id),
+    `digambar=${santsScoped.includes(digSant.id)} shwetambar=${santsScoped.includes(shwSant.id)}`);
+  // Ascetics have no "not applicable" case, so a NULL is genuinely
+  // "not captured yet" and must stay visible.
+  record('SECT-21', 'P1', 'a sant with no recorded sect is still listed',
+    santsScoped.includes(unsetSant.id), `unset_sant=${santsScoped.includes(unsetSant.id)}`);
 
-  if (!ENFORCED) {
-    record('SECT-20', 'P1', 'FLAG OFF: the sant directory is not filtered either',
-      sawDigSant && sawShwSant, `digambar=${sawDigSant} shwetambar=${sawShwSant}`);
-  } else {
-    record('SECT-20', 'P1', 'FLAG ON: the sant directory shows only the viewer’s tradition',
-      sawDigSant && !sawShwSant, `digambar=${sawDigSant} shwetambar=${sawShwSant}`);
-    // Ascetics have no "not applicable" case, so a NULL is genuinely
-    // "not captured yet" and must stay visible.
-    record('SECT-21', 'P1', 'FLAG ON: a sant with no recorded sect is still listed',
-      sawUnsetSant, `unset_sant_visible=${sawUnsetSant}`);
-    const santsNone = rowsOf(await dv('GET', '/sant?limit=100', { token: NONE_TOKEN }));
-    record('SECT-22', 'P1', 'FLAG ON: a devotee with no sect still sees every tradition’s sants',
-      santsNone.some((s) => s.id === digSant.id) && santsNone.some((s) => s.id === shwSant.id),
-      `n=${santsNone.length}`);
+  const santsAll = idsOf(await dv('GET', '/sant?limit=100&traditions=all', { token: DIG_TOKEN }));
+  record('SECT-22', 'P1', '"All traditions" returns the other tradition’s sants too',
+    santsAll.includes(digSant.id) && santsAll.includes(shwSant.id), `n=${santsAll.length}`);
 
-    // Room booking gates on sect too. That is not in Sect_Segregation.md §5,
-    // which lists only directory/sant/donate — booking takes money just as
-    // donating does, so it is asserted here rather than left to the code.
-    const shwStay = await makeTemple(ADMIN, 'shwstay', { sect: 'shwetambar', preset: 'dharamshala_trust' });
-    stayTemples.push(shwStay);
-    const avail = await dv(
-      'GET',
-      `/temples/${shwStay.slug}/rooms/availability?check_in=2026-09-01&check_out=2026-09-02`,
-      { token: DIG_TOKEN },
-    );
-    record('SECT-23', 'P1', 'FLAG ON: booking a room cross-tradition is refused with SECT_MISMATCH',
-      avail.status === 403 && avail.code === 'SECT_MISMATCH',
-      `status=${avail.status} code=${avail.code}`);
-  }
+  // An explicit sampradaya in the filter row is the devotee choosing one, and
+  // must beat the default scoping — otherwise "show me Shwetambar sants"
+  // silently returns Digambar ones.
+  const santsExplicit = idsOf(
+    await dv('GET', '/sant?limit=100&traditions=all&sect=shwetambar', { token: DIG_TOKEN }),
+  );
+  record('SECT-29', 'P1', 'an explicit sect filter overrides the default scoping',
+    santsExplicit.includes(shwSant.id) && !santsExplicit.includes(digSant.id),
+    `shwetambar=${santsExplicit.includes(shwSant.id)} digambar=${santsExplicit.includes(digSant.id)}`);
+
+  // ---------- stay search ----------
+  const staysScoped = idsOf(await dv('GET', '/stays/search?limit=50', { token: DIG_TOKEN }));
+  const staysAll = idsOf(await dv('GET', '/stays/search?limit=50&traditions=all', { token: DIG_TOKEN }));
+  record('SECT-30', 'P1', 'stay search is scoped the same way, and opens up on request',
+    !staysScoped.includes(shwStay.id) && staysAll.includes(shwStay.id),
+    `scoped=${staysScoped.includes(shwStay.id)} all=${staysAll.includes(shwStay.id)}`);
 
   // ---------- cleanup ----------
-  for (const t of [dig, shw, unset, hindu, ...stayTemples]) {
+  for (const t of temples) {
     await sa('DELETE', `/admin/tenants/${t.id}`, { token: ADMIN, body: { confirm_slug: t.slug } });
   }
   for (const s of [digSant, shwSant, unsetSant]) {
@@ -317,7 +354,7 @@ async function run() {
   const passed = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok);
   const p1Failed = failed.filter((r) => r.pri === 'P1');
-  console.log(`\n=== SECT SUMMARY (${ENFORCED ? 'enforced' : 'capture-only'}): ${passed}/${results.length} passed, ${failed.length} failed (${p1Failed.length} P1) ===`);
+  console.log(`\n=== SECT SUMMARY: ${passed}/${results.length} passed, ${failed.length} failed (${p1Failed.length} P1) ===`);
   if (failed.length) console.log('FAILURES:', failed.map((r) => r.id).join(', '));
   process.exit(p1Failed.length ? 1 : 0);
 }

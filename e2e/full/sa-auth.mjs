@@ -26,11 +26,19 @@ export const QA_PASSWORD = 'QaTest@12345';
 const PG_CONTAINER = process.env.E2E_PG_CONTAINER ?? 'jainerp-superadmin-pg';
 const PG_DB = process.env.E2E_PG_DB ?? 'jainerp';
 const PG_USER = process.env.E2E_PG_USER ?? 'jainerp';
+const PG_HOST = process.env.E2E_PG_HOST ?? 'localhost';
+const PG_PORT = process.env.E2E_PG_PORT ?? '5434';
+const PG_PASSWORD = process.env.E2E_PG_PASSWORD ?? 'jainerp_dev';
 
 /**
  * Put the QA super-admin back in the "never enrolled" state so `mfa/setup`
  * issues a fresh secret we actually know. Also clears any lockout left by a
  * previous run's failed codes.
+ *
+ * Tries `docker exec` first (the documented dev setup), then a direct `psql`
+ * over TCP. The fallback matters: the docker daemon needs root on some dev
+ * boxes, and without it every suite failed at login with a message blaming the
+ * seed script rather than the missing container.
  */
 function clearQaTotp() {
   const sql = `UPDATE public.super_admin_credentials c
@@ -48,7 +56,17 @@ function clearQaTotp() {
     });
     return true;
   } catch {
-    // No docker/psql here — fall through and hope the account is un-enrolled.
+    /* no docker (or no such container) — try a local psql instead */
+  }
+  try {
+    execFileSync(
+      'psql',
+      ['-h', PG_HOST, '-p', String(PG_PORT), '-U', PG_USER, '-d', PG_DB, '-tAc', sql],
+      { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PGPASSWORD: PG_PASSWORD } },
+    );
+    return true;
+  } catch {
+    // No psql either — fall through and hope the account is un-enrolled.
     return false;
   }
 }

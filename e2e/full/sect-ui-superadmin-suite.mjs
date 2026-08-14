@@ -12,14 +12,44 @@
 import { execFileSync } from 'node:child_process';
 import { superAdminLogin as saLogin, QA_ID, QA_PASSWORD } from './sa-auth.mjs';
 
-const { chromium } = await import(process.env.PLAYWRIGHT_PATH ?? 'playwright');
+// Playwright ships CJS, so an absolute-path import lands the namespace under
+// `default`; a bare 'playwright' resolves to the named export. Reading both is
+// what ui-suite.mjs already does — without it this file threw
+// "Cannot read properties of undefined" before the first assertion ever ran.
+const pw = await import(process.env.PLAYWRIGHT_PATH ?? 'playwright');
+const chromium = pw.chromium ?? pw.default?.chromium;
 const WEB = process.env.SA_WEB ?? 'http://localhost:5180';
 const API = process.env.E2E_SA_API ?? 'http://localhost:3105/api/v1';
-const PG = { c: process.env.PG_CONTAINER ?? 'jainerp-superadmin-pg', u: 'jainerp', d: 'jainerp' };
+const PG = {
+  c: process.env.PG_CONTAINER ?? 'jainerp-superadmin-pg',
+  u: process.env.E2E_PG_USER ?? 'jainerp',
+  d: process.env.E2E_PG_DB ?? 'jainerp',
+  host: process.env.E2E_PG_HOST ?? 'localhost',
+  port: process.env.E2E_PG_PORT ?? '5434',
+  password: process.env.E2E_PG_PASSWORD ?? 'jainerp_dev',
+};
 
 const results = [];
 const rec = (id, ok, d = '') => { results.push({ id, ok }); console.log(`  ${ok ? '✔ PASS' : '✘ FAIL'} ${id}${d ? ' — ' + d : ''}`); };
-const psql = (sql) => execFileSync('docker', ['exec', PG.c, 'psql', '-U', PG.u, '-d', PG.d, '-tAc', sql], { encoding: 'utf8' }).trim();
+/**
+ * Read a value straight from Postgres — this suite verifies what the console
+ * WROTE, not what it echoed back.
+ *
+ * Falls back to a local psql when there is no docker container, the same as
+ * sa-auth.mjs: the daemon needs root on some dev boxes, and without the
+ * fallback the whole suite died on its first query.
+ */
+function psql(sql) {
+  try {
+    return execFileSync('docker', ['exec', PG.c, 'psql', '-U', PG.u, '-d', PG.d, '-tAc', sql],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch {
+    return execFileSync('psql',
+      ['-h', PG.host, '-p', String(PG.port), '-U', PG.u, '-d', PG.d, '-tAc', sql],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PGPASSWORD: PG.password } },
+    ).trim();
+  }
+}
 
 async function sa(method, path, { token, body } = {}) {
   const res = await fetch(API + path, { method,
@@ -115,7 +145,7 @@ rec('SA-SECT-13 the fixed sant drops off the outstanding list',
   (await page.locator('tr', { hasText: santName }).count()) === 0);
 psql(`DELETE FROM public.sant_profiles WHERE name = '${santName}'`);
 
-await page.screenshot({ path: process.env.SHOT ?? 'sa-sect.png', fullPage: true });
+await page.screenshot({ path: process.env.SHOT ?? 'e2e/full/screens/sa-sect.png', fullPage: true });
 await browser.close();
 const bad = results.filter(r => !r.ok);
 console.log(`\n=== SUPERADMIN SECT UI: ${results.length - bad.length}/${results.length} passed ===`);

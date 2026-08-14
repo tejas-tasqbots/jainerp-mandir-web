@@ -6,10 +6,38 @@
  * super admin's backfill list.
  */
 import { execFileSync } from 'node:child_process';
-const { chromium } = await import(process.env.PLAYWRIGHT_PATH ?? 'playwright');
+// Playwright ships CJS, so an absolute-path import lands the namespace under
+// `default`; a bare 'playwright' resolves to the named export. Reading both is
+// what ui-suite.mjs already does — without it this file threw
+// "Cannot read properties of undefined" before the first assertion ever ran.
+const pw = await import(process.env.PLAYWRIGHT_PATH ?? 'playwright');
+const chromium = pw.chromium ?? pw.default?.chromium;
 const PG_CONTAINER = process.env.PG_CONTAINER ?? 'jainerp-superadmin-pg';
-const PG_USER = process.env.PG_USER ?? 'jainerp';
-const PG_DB = process.env.PG_DB ?? 'jainerp';
+const PG_USER = process.env.PG_USER ?? process.env.E2E_PG_USER ?? 'jainerp';
+const PG_DB = process.env.PG_DB ?? process.env.E2E_PG_DB ?? 'jainerp';
+const PG_HOST = process.env.E2E_PG_HOST ?? 'localhost';
+const PG_PORT = process.env.E2E_PG_PORT ?? '5434';
+const PG_PASSWORD = process.env.E2E_PG_PASSWORD ?? 'jainerp_dev';
+
+/**
+ * Read a value straight from Postgres — this suite checks what the form SENT,
+ * which no API response can tell it.
+ *
+ * Falls back to a local psql when there is no docker container: the daemon
+ * needs root on some dev boxes, and without the fallback the suite died on its
+ * first query rather than reporting anything.
+ */
+function psql(sql) {
+  try {
+    return execFileSync('docker', ['exec', PG_CONTAINER, 'psql', '-U', PG_USER, '-d', PG_DB, '-tAc', sql],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  } catch {
+    return execFileSync('psql',
+      ['-h', PG_HOST, '-p', String(PG_PORT), '-U', PG_USER, '-d', PG_DB, '-tAc', sql],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PGPASSWORD: PG_PASSWORD } },
+    ).trim();
+  }
+}
 const BASE = process.env.SANT_WEB ?? 'http://localhost:5175';
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true });
@@ -64,9 +92,7 @@ await page.waitForTimeout(4500);
 // Read it back from the DATABASE, not the screen and not the list API: the
 // bug was in what the form SENT, and a freshly registered profile is
 // unverified so it is deliberately absent from the devotee-facing list.
-const row = execFileSync('docker', ['exec', PG_CONTAINER, 'psql', '-U', PG_USER, '-d', PG_DB, '-tAc',
-  `SELECT sect, sub_sect FROM public.sant_profiles WHERE name = '${name}'`],
-  { encoding: 'utf8' }).trim();
+const row = psql(`SELECT sect, sub_sect FROM public.sant_profiles WHERE name = '${name}'`);
 const [gotSect, gotSub] = row.split('|');
 rec('SANT-UI-05 the profile was created', !!row, `row=${row || 'none'}`);
 rec('SANT-UI-06 the chosen sampradaya was actually stored', gotSect === 'digambar', `sect=${gotSect || 'null'}`);
@@ -92,11 +118,10 @@ await page.selectOption('#profil-sub-sect', 'Murtipujak');
 await page.locator('button:has-text("Save Changes")').first().click();
 await page.waitForTimeout(3500);
 
-const after = execFileSync('docker', ['exec', PG_CONTAINER, 'psql', '-U', PG_USER, '-d', PG_DB, '-tAc',
-  `SELECT sect, sub_sect FROM public.sant_profiles WHERE name = '${name}'`], { encoding: 'utf8' }).trim();
+const after = psql(`SELECT sect, sub_sect FROM public.sant_profiles WHERE name = '${name}'`);
 rec('SANT-UI-11 the edited sampradaya is stored', after === 'shwetambar|Murtipujak', `row=${after}`);
 
-await page.screenshot({ path: process.env.SHOT ?? 'sant-sect-form.png', fullPage: true });
+await page.screenshot({ path: process.env.SHOT ?? 'e2e/full/screens/sant-sect-form.png', fullPage: true });
 await browser.close();
 const bad = results.filter(r => !r.ok);
 console.log(`\n=== SANT SECT UI: ${results.length - bad.length}/${results.length} passed ===`);

@@ -271,21 +271,41 @@ const PG = {
   container: process.env.E2E_PG_CONTAINER ?? 'jainerp-superadmin-pg',
   db: process.env.E2E_PG_DB ?? 'jainerp',
   user: process.env.E2E_PG_USER ?? 'jainerp',
+  host: process.env.E2E_PG_HOST ?? 'localhost',
+  port: process.env.E2E_PG_PORT ?? '5434',
+  password: process.env.E2E_PG_PASSWORD ?? 'jainerp_dev',
 };
 
 /**
- * Run SQL in the dev postgres container. Returns rows as arrays of strings.
+ * Run SQL against the dev postgres. Returns rows as arrays of strings.
  * Fields are split on SOH (0x01) rather than `|` so that values containing a
  * pipe — notes, addresses, names — do not silently shift the columns.
+ *
+ * Tries the docker container first (the documented dev setup), then a local
+ * psql over TCP. The fallback matters: the docker daemon needs root on some dev
+ * boxes, and without it every suite in this pack aborted at SETUP with a
+ * docker-socket error rather than running a single case.
  */
 const SEP = '\x01';
 export function psql(sql, { db = PG.db } = {}) {
-  const out = execFileSync(
-    'docker',
-    ['exec', PG.container, 'psql', '-U', PG.user, '-d', db, '-tAF', SEP, '-c', sql],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-  );
-  return out.trim() ? out.trim().split('\n').map((l) => l.split(SEP)) : [];
+  const parse = (out) =>
+    out.trim() ? out.trim().split('\n').map((l) => l.split(SEP)) : [];
+  try {
+    return parse(execFileSync(
+      'docker',
+      ['exec', PG.container, 'psql', '-U', PG.user, '-d', db, '-tAF', SEP, '-c', sql],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    ));
+  } catch (e) {
+    // Only fall back when docker itself is unusable — a SQL error must still
+    // surface as a SQL error, not be retried into a confusing second failure.
+    if (!/docker|Cannot connect|not found|No such container/i.test(String(e.stderr ?? e.message))) throw e;
+  }
+  return parse(execFileSync(
+    'psql',
+    ['-h', PG.host, '-p', String(PG.port), '-U', PG.user, '-d', db, '-tAF', SEP, '-c', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PGPASSWORD: PG.password } },
+  ));
 }
 
 /** Single scalar from a query. */
