@@ -336,6 +336,37 @@ async function run() {
     santsExplicit.includes(shwSant.id) && !santsExplicit.includes(digSant.id),
     `shwetambar=${santsExplicit.includes(shwSant.id)} digambar=${santsExplicit.includes(digSant.id)}`);
 
+  // ---------- the rest of the sant surfaces ----------
+  // These three are scoped server-side too, and each one is a place a devotee
+  // could otherwise be shown half a gazetteer with no way to tell. Asserting
+  // meta.sect_scope is asserting that the SWITCH can be drawn at all — without
+  // it the page has no way to know it is scoped, which is the silent-filter
+  // failure the whole design exists to avoid.
+  const withMeta = async (path) => {
+    const r = await dv('GET', path, { token: DIG_TOKEN });
+    return r.meta?.sect_scope ?? null;
+  };
+  const chatMeta = await withMeta('/sant/chaturmas?year=2026');
+  const eventsMeta = await withMeta('/sant/events');
+  const mapMeta = await withMeta('/sant/map?north=37&south=6&east=98&west=68');
+  record('SECT-31', 'P1', 'chaturmas, events and the map all report their scope',
+    chatMeta?.applied === 'digambar' && eventsMeta?.applied === 'digambar' &&
+    mapMeta?.applied === 'digambar',
+    `chaturmas=${chatMeta?.applied} events=${eventsMeta?.applied} map=${mapMeta?.applied}`);
+
+  const mapAll = await dv('GET', '/sant/map?north=37&south=6&east=98&west=68&traditions=all', { token: DIG_TOKEN });
+  record('SECT-32', 'P1', 'they take traditions=all like every other list',
+    mapAll.meta?.sect_scope?.applied === null && Array.isArray(mapAll.data),
+    `applied=${mapAll.meta?.sect_scope?.applied} rows=${Array.isArray(mapAll.data)}`);
+
+  // The years dropdown drives the gazetteer, so it must be counted under the
+  // same scope — a year offering "12 ascetics" above a list of 5 is the facet
+  // bug in a different costume.
+  const yearsScoped = await dv('GET', '/sant/chaturmas/years', { token: DIG_TOKEN });
+  record('SECT-33', 'P2', 'the chaturmas year counts are scoped like the list',
+    yearsScoped.status === 200 && Array.isArray(yearsScoped.data),
+    `n=${(yearsScoped.data ?? []).length}`);
+
   // ---------- stay search ----------
   const staysScoped = idsOf(await dv('GET', '/stays/search?limit=50', { token: DIG_TOKEN }));
   const staysAll = idsOf(await dv('GET', '/stays/search?limit=50&traditions=all', { token: DIG_TOKEN }));
