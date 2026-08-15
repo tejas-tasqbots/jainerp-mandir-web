@@ -7,6 +7,7 @@ import {
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import { Catalogue, CataloguePlan, PlanLimits, Registration, apiError, clearDraft, inr, invoiceUrl, loadDraft, loadRazorpay, onboarding, saveDraft } from '../../lib/onboardingApi'
 import { CustomPlanForm } from './CustomPlanForm'
+import { LocationPicker } from '../../components/LocationPicker'
 
 /**
  * Self-serve registration for a new Trust/Temple.
@@ -50,6 +51,8 @@ interface DetailsForm {
   city: string
   state: string
   pincode: string
+  lat: number | null
+  lng: number | null
   admin_name: string
   admin_mobile: string
   admin_email: string
@@ -64,7 +67,7 @@ interface DetailsForm {
 
 const EMPTY: DetailsForm = {
   trust_name: '', temple_type: 'jain', sect: '', sub_sect: '',
-  line1: '', line2: '', city: '', state: '', pincode: '',
+  line1: '', line2: '', city: '', state: '', pincode: '', lat: null, lng: null,
   admin_name: '', admin_mobile: '', admin_email: '',
   mandir_mobile: '', mandir_email: '', website: '',
   gstin: '', pan: '', reg_80g_number: '', reg_12a_number: '',
@@ -174,6 +177,7 @@ export function RegisterPage() {
       sub_sect: r.sub_sect ?? '',
       line1: a.line1 ?? '', line2: a.line2 ?? '', city: a.city ?? '',
       state: a.state ?? '', pincode: a.pincode ?? '',
+      lat: a.lat != null ? Number(a.lat) : null, lng: a.lng != null ? Number(a.lng) : null,
       admin_name: r.admin_name ?? '',
       admin_mobile: r.admin_mobile ?? '',
       admin_email: r.admin_email ?? '',
@@ -200,6 +204,12 @@ export function RegisterPage() {
     setError('')
   }
 
+  /** The map pin — two numbers at once, so it cannot go through `set`. */
+  const setPin = (lat: number | null, lng: number | null) => {
+    setForm((f) => ({ ...f, lat, lng }))
+    setError('')
+  }
+
   function detailsPayload() {
     // Only send what the applicant filled in: the DTO validates GSTIN/PAN/email
     // formats, and an empty string is not a valid GSTIN — sending '' would 400
@@ -214,6 +224,9 @@ export function RegisterPage() {
       address: {
         line1: blank(form.line1), line2: blank(form.line2), city: blank(form.city),
         state: blank(form.state), pincode: blank(form.pincode),
+        // The map pin. Optional by design (FR-MAP-005/007) — omitting it is
+        // valid and simply means the trust has no pin on the devotee map yet.
+        lat: form.lat ?? undefined, lng: form.lng ?? undefined,
       },
       admin_name: form.admin_name.trim(),
       admin_mobile: form.admin_mobile,
@@ -494,7 +507,7 @@ export function RegisterPage() {
         )}
 
         {step === 'details' && (
-          <DetailsStep form={form} set={set} loading={loading} onNext={submitDetails} />
+          <DetailsStep form={form} set={set} setPin={setPin} loading={loading} onNext={submitDetails} />
         )}
 
         {step === 'verify' && reg && (
@@ -615,10 +628,12 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 }
 
 function DetailsStep({
-  form, set, loading, onNext,
+  form, set, setPin, loading, onNext,
 }: {
   form: DetailsForm
   set: (k: keyof DetailsForm) => (v: string) => void
+  /** The map pin is the one field that is not a string, so `set` cannot carry it. */
+  setPin: (lat: number | null, lng: number | null) => void
   loading: boolean
   onNext: () => void
 }) {
@@ -663,6 +678,37 @@ function DetailsStep({
           <Field label="City" value={form.city} onChange={set('city')} />
           <Field label="State" value={form.state} onChange={set('state')} hint="Used for the GST place of supply on your invoice" />
           <Field label="PIN code" value={form.pincode} onChange={set('pincode')} maxLength={6} />
+        </div>
+
+        {/* The map pin (FR-MAP-007). Nothing in onboarding used to ask for one,
+            so a trust appeared in the devotee directory and was invisible on the
+            discovery map until somebody happened to open Settings → Temple
+            Profile — the only other place it can be set. Optional on purpose:
+            skipping it is valid and simply means no pin yet. */}
+        <div className="mt-4">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <label className="text-sm font-medium text-slate-700">
+              Location on the map <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            {(form.lat != null && form.lng != null) && (
+              <button
+                type="button"
+                onClick={() => setPin(null, null)}
+                className="text-xs text-slate-500 hover:text-brand-red underline"
+              >
+                Remove pin
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-2">
+            Devotees use this to find you and get directions. You can add or change it later in
+            Settings → Temple Profile.
+          </p>
+          <LocationPicker
+            lat={form.lat}
+            lng={form.lng}
+            onChange={(lat, lng) => setPin(lat, lng)}
+          />
         </div>
       </Card>
 

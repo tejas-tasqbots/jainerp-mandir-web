@@ -242,6 +242,42 @@ await suite('11-entitlements-giving-map', async () => {
     return 'BAD_BOUNDS';
   });
 
+  await t('TC-MAP-07', 'P1', 'a pin given at onboarding reaches the map without a second visit', async () => {
+    // FR-MAP-007. Nothing in onboarding used to ask for coordinates, so a trust
+    // was in the directory and invisible on the map until somebody happened to
+    // open Settings → Temple Profile. Both writes matter: the tenant's own
+    // profile AND the public.tenants mirror the map actually reads.
+    const geoSlug = `geo-qa-${uniq()}`;
+    const created = await saApi('POST', '/admin/tenants', {
+      token: SA,
+      body: {
+        name: `Geo QA ${geoSlug}`, temple_type: 'jain', slug: geoSlug,
+        plan: 'starter', billing_cycle: 'monthly', tenancy_tier: 'pooled',
+        admin_contact: { name: 'Geo QA', mobile: `+91${testMobile()}`, email: `${geoSlug}@test.in` },
+        address: { line1: '1 QA Marg', city: 'Indore', state: 'MP', pincode: '452001',
+                   lat: 22.7196, lng: 75.8577 },
+      },
+    });
+    expect.http2xx(created, 'onboarding must accept a map pin');
+    try {
+      const schema = psql1(`SELECT schema_name FROM public.tenants WHERE slug = '${geoSlug}'`);
+      const prof = psql(`SELECT lat, lng FROM ${schema}.kshetra_profile`)[0] ?? [];
+      expect.ok(Number(prof[0]) === 22.7196, `kshetra_profile.lat = ${prof[0]}`);
+      const mirror = psql(`SELECT lat, lng FROM public.tenants WHERE slug = '${geoSlug}'`)[0] ?? [];
+      expect.ok(Number(mirror[0]) === 22.7196, `public.tenants.lat mirror = ${mirror[0]}`);
+
+      const pins = await devoteeApi(
+        'GET', '/temples/map?north=23.5&south=22&east=76.5&west=75&traditions=all', { token: DEV });
+      expect.ok(pins.data.some((x) => x.slug === geoSlug),
+        'a temple pinned at onboarding must appear on the map immediately');
+      return 'profile + mirror + map';
+    } finally {
+      await saApi('DELETE', `/admin/tenants/${created.data.id}`, {
+        token: SA, body: { confirm_slug: geoSlug },
+      });
+    }
+  });
+
   // ── cleanup ───────────────────────────────────────────────────────────────
   await t('TC-ENT-CLEANUP', 'P3', 'the fixture tenant is removed', async () => {
     const r = await saApi('DELETE', `/admin/tenants/${TENANT_ID}`, {
