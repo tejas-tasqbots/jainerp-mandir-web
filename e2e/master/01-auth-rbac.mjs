@@ -10,16 +10,46 @@
  *   node e2e/master/01-auth-rbac.mjs
  */
 import {
+  otpFor,
   suite, t, skip, expect, FIXTURES,
   mandirApi, saApi, devoteeApi, santApi,
   mandirLogin, devoteeLogin, superAdminLogin, psql1, testMobile,
 } from './lib.mjs';
 
 await suite('01-auth-rbac', async () => {
+  /**
+   * send-otp, retried past a 429.
+   *
+   * `/auth/*` overrides the global 600/60s throttler with **20 per 60s**
+   * (`@Throttle({ default: { ttl: 60_000, limit: 20 } })` on AuthController),
+   * and this suite alone spends more than that. A case asserting how send-otp
+   * NORMALISES a mobile is not asserting the rate limit, so a 429 there is a
+   * correct-but-useless answer to a question we did not ask — waiting for the
+   * window is what a real client does. Throttling itself is pinned by
+   * TC-AUTH-029, TC-SEC-021 and TC-SEC-021b.
+   */
+  const sendOtpBody = async (body) => {
+    let r;
+    for (const wait of [0, 5_000, 15_000, 30_000, 45_000]) {
+      if (wait) await new Promise((res) => setTimeout(res, wait));
+      r = await mandirApi('POST', '/auth/send-otp', { body });
+      if (r.status !== 429) return r;
+    }
+    return r;
+  };
+  const sendOtp = async (mobile) => {
+    let r;
+    for (const wait of [0, 5_000, 15_000, 30_000, 45_000]) {
+      if (wait) await new Promise((res) => setTimeout(res, wait));
+      r = await mandirApi('POST', '/auth/send-otp', { body: { mobile } });
+      if (r.status !== 429) return r;
+    }
+    return r;
+  };
   // ─────────────────────────── Mandir OTP login ───────────────────────────
   let otp;
   await t('TC-AUTH-001', 'P1', 'send-otp returns a dev OTP in mock mode', async () => {
-    const r = await mandirApi('POST', '/auth/send-otp', { body: { mobile: FIXTURES.admin } });
+    const r = await sendOtp(FIXTURES.admin);
     expect.http2xx(r);
     otp = r.data?.dev_otp;
     expect.ok(otp, 'no dev_otp — is OTP_MOCK=true?');
@@ -32,34 +62,51 @@ await suite('01-auth-rbac', async () => {
   });
 
   await t('TC-AUTH-003', 'P2', 'send-otp accepts a +91 prefixed mobile', async () => {
-    const r = await mandirApi('POST', '/auth/send-otp', { body: { mobile: `+91${FIXTURES.admin}` } });
+    const r = await sendOtp(`+91${FIXTURES.admin}`);
     expect.http2xx(r, 'E.164 form should normalise to the same user');
     return 'normalised';
   });
 
+  /**
+   * A validation case has to see the VALIDATION error, not merely "some 4xx".
+   * `expect.rejected` accepts any 4xx, so under the 20/60s auth throttle these
+   * three passed on a 429 — reporting that a malformed mobile was rejected when
+   * the server had not looked at the mobile at all. Same unearned-pass shape as
+   * TC-DEV-006: green on the wrong reason is not green.
+   */
+  const expectRejectedOnMerit = (r, what) => {
+    expect.ok(r.status !== 429,
+      `${what}: got 429 RATE_LIMITED — the validation never ran, so this case proved nothing`);
+    expect.rejected(r, what);
+  };
+
   await t('TC-AUTH-004', 'P1', 'send-otp rejects a malformed mobile', async () => {
-    const r = await mandirApi('POST', '/auth/send-otp', { body: { mobile: '123' } });
-    expect.rejected(r);
+    const r = await sendOtp('123');
+    expectRejectedOnMerit(r, 'malformed mobile');
     return `${r.status} ${r.code}`;
   });
 
   await t('TC-AUTH-005', 'P1', 'send-otp rejects a missing mobile', async () => {
-    const r = await mandirApi('POST', '/auth/send-otp', { body: {} });
-    expect.rejected(r);
+    const r = await sendOtpBody({});
+    expectRejectedOnMerit(r, 'missing mobile');
     return `${r.status} ${r.code}`;
   });
 
   await t('TC-AUTH-006', 'P2', 'send-otp rejects a non-numeric mobile', async () => {
-    const r = await mandirApi('POST', '/auth/send-otp', { body: { mobile: 'abcdefghij' } });
-    expect.rejected(r);
+    const r = await sendOtp('abcdefghij');
+    expectRejectedOnMerit(r, 'non-numeric mobile');
     return `${r.status}`;
   });
 
   let selectionToken, memberships;
   await t('TC-AUTH-007', 'P1', 'verify-otp returns a selection token + memberships', async () => {
-    const send = await mandirApi('POST', '/auth/send-otp', { body: { mobile: FIXTURES.admin } });
+    // TC-AUTH-029 deliberately burns the auth throttle budget (20/min), so any
+    // case that needs a USABLE OTP has to back off exactly like mandirLogin
+    // does. Reading `.data.dev_otp` off a 429 is how this suite used to report
+    // "Cannot read properties of null" as a P1 product failure.
+    const otp = await otpFor(mandirApi, FIXTURES.admin);
     const r = await mandirApi('POST', '/auth/verify-otp', {
-      body: { mobile: FIXTURES.admin, otp: send.data.dev_otp },
+      body: { mobile: FIXTURES.admin, otp },
     });
     expect.http2xx(r);
     selectionToken = r.data?.selection_token;
@@ -91,8 +138,7 @@ await suite('01-auth-rbac', async () => {
   });
 
   await t('TC-AUTH-011', 'P1', 'an OTP cannot be replayed after it is consumed', async () => {
-    const send = await mandirApi('POST', '/auth/send-otp', { body: { mobile: FIXTURES.admin } });
-    const code = send.data.dev_otp;
+    const code = await otpFor(mandirApi, FIXTURES.admin);
     const first = await mandirApi('POST', '/auth/verify-otp', { body: { mobile: FIXTURES.admin, otp: code } });
     expect.http2xx(first, 'first use should succeed');
     const second = await mandirApi('POST', '/auth/verify-otp', { body: { mobile: FIXTURES.admin, otp: code } });
@@ -127,9 +173,8 @@ await suite('01-auth-rbac', async () => {
   });
 
   await t('TC-AUTH-015', 'P1', 'select-tenant rejects a tenant the user does not belong to', async () => {
-    const send = await mandirApi('POST', '/auth/send-otp', { body: { mobile: FIXTURES.admin } });
     const ver = await mandirApi('POST', '/auth/verify-otp', {
-      body: { mobile: FIXTURES.admin, otp: send.data.dev_otp },
+      body: { mobile: FIXTURES.admin, otp: await otpFor(mandirApi, FIXTURES.admin) },
     });
     const r = await mandirApi('POST', '/auth/select-tenant', {
       body: { selection_token: ver.data.selection_token, tenant_slug: 'no-such-tenant-xyz' },
@@ -437,9 +482,10 @@ await suite('01-auth-rbac', async () => {
   await t('TC-AUTH-029', 'P1', 'a burst of send-otp is absorbed or throttled, never a 5xx', async () => {
     // Deliberately *not* asserting that a 429 appears. Two different limits
     // exist and neither fires reliably here: the per-mobile SMS cap is skipped
-    // when OTP_MOCK is on (nothing is sent), and the global throttler is
-    // 600/60s, so whether a short burst trips it depends on what the rest of
-    // the pack did in the preceding minute. Asserting 429 made this pass or
+    // when OTP_MOCK is on (nothing is sent), and the auth throttler is 20/60s
+    // (AuthController overrides the global 600/60s), so whether a short burst
+    // trips it depends on what the rest of the pack did in the preceding
+    // minute. Asserting 429 made this pass or
     // fail on run order rather than on behaviour. The limits themselves are
     // pinned deterministically by TC-SEC-021 (cap wiring) and TC-SEC-021b
     // (wrong-OTP lockout).

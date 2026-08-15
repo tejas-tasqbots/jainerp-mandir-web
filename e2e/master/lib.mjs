@@ -193,7 +193,7 @@ export const santApi = (m, p, o) => req(URLS.santApi, m, p, o);
  * what a real client does, and it keeps a full run from depending on the order
  * the suites happen to execute in.
  */
-async function otpFor(api, mobile) {
+export async function otpFor(api, mobile) {
   let last = null;
   for (const waitMs of [0, 5_000, 15_000, 30_000, 30_000]) {
     if (waitMs) await new Promise((r) => setTimeout(r, waitMs));
