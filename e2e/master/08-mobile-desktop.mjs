@@ -17,7 +17,7 @@
  *   node e2e/master/08-mobile-desktop.mjs
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { suite, t, skip, expect } from './lib.mjs';
@@ -378,6 +378,18 @@ await suite('08-mobile-desktop', async () => {
       expect.rejected(r, `key "${key}" was accepted`);
     }
     return '3 bad keys refused';
+  });
+
+  await t('TC-DSK-006', 'P1', 'the desktop packaging contract holds', async () => {
+    // The desktop has no UI of its own — it packages mandir-web's build. Three
+    // places have to agree on how, and its CI cannot verify the real packaging
+    // because mandir-web is a separate private repo. This runs the contract
+    // check that can be done without one.
+    const r = spawnSync('node', ['scripts/check-packaging.mjs'], {
+      cwd: `${ROOT}/mandir-desktop`, encoding: 'utf8',
+    });
+    expect.eq(r.status, 0, `check:packaging failed:\n${r.stdout ?? ''}${r.stderr ?? ''}`);
+    return 'extraResources, resource path and build:web ordering all agree';
   });
 
   await t('TC-DSK-005', 'P1', 'the desktop edition ships no server-side PDF dependency', async () => {

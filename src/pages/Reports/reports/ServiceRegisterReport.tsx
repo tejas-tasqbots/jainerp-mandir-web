@@ -84,7 +84,16 @@ export function ServiceRegisterReport() {
   // `modules === null` means "not known yet" (a cold desktop boot) — offer
   // everything rather than blanking the rail on a guess, as the sidebar does.
   const modules = useAuthStore(s => s.modules)
-  const available = TYPES.filter(ty => !modules || modules.includes(REGISTER_MODULE[ty]))
+  /**
+   * What the API says this trust may ask for. Authoritative once it arrives —
+   * the local map below only has to get the FIRST paint right, before any
+   * response exists. Every other report here renders what it is given rather
+   * than keeping its own copy of the entitlement map; this one was re-deriving
+   * it and would have drifted the moment a register changed hands.
+   */
+  const [serverTypes, setServerTypes] = useState<RegisterType[] | null>(null)
+  const available = serverTypes
+    ?? TYPES.filter(ty => !modules || modules.includes(REGISTER_MODULE[ty]))
   const [type, setType] = useState<RegisterType>(() => available[0] ?? 'seva')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('report-service-register', 'thisMonth'))
   const [rows, setRows] = useState<Row[]>([])
@@ -112,6 +121,9 @@ export function ServiceRegisterReport() {
       const { data } = await api.get(`/reports/service-register?${params}`)
       setRows(data.data?.rows ?? [])
       setTotals(data.data?.totals ?? null)
+      // An API older than `available_types` simply leaves the local map in charge.
+      const from = data.data?.available_types
+      if (Array.isArray(from)) setServerTypes(from.filter((x: string) => (TYPES as string[]).includes(x)) as RegisterType[])
     } catch {
       setRows([])
       setTotals(null)
