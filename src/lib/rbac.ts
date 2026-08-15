@@ -81,6 +81,17 @@ const PATH_MODULE: Record<string, string> = {
   '/certificates': 'certificates',
   '/gaushala': 'gaushala',
   '/masters/priests': 'seva',
+  // Accounting is core, but two of its screens are not: the asset register and
+  // its depreciation schedule are the `fixed_assets` module, and the server has
+  // always refused them without it (resource-registry, DepreciationController).
+  // Only the nav had not caught up, so a Basic trust opened "Fixed Assets" from
+  // its own sidebar and got MODULE_NOT_ENABLED.
+  '/accounts/fixed-assets': 'fixed_assets',
+  // Same for the two Registers screens that are front-desk work rather than
+  // bookkeeping — `resource-registry` gates lost-found and visitor-counts on
+  // `frontdesk`. Recycle Bin and Activity Log stay core.
+  '/registers/lost-found': 'frontdesk',
+  '/registers/visitor-count': 'frontdesk',
 }
 
 /** The module owning `path`, or null when it is core (always visible). */

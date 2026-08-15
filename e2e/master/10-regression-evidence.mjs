@@ -18,26 +18,27 @@
  *   node e2e/master/10-regression-evidence.mjs
  */
 import { readFileSync, existsSync } from 'node:fs';
-import { execFileSync, execSync } from 'node:child_process';
-import { suite, t, expect, FIXTURES, psql, psql1, schemaOf, mandirApi, saApi, devoteeApi, mandirLogin, superAdminLogin } from './lib.mjs';
+import { execSync } from 'node:child_process';
+import {
+  suite, t, expect, FIXTURES, psql, psql1, psqlFile, schemaOf, tenantDatabases,
+  mandirApi, saApi, devoteeApi, mandirLogin, superAdminLogin,
+} from './lib.mjs';
 
 const ROOT = '/home/ayush/Documents/tasqbots/Projects/tasqbots-JainERP';
 const APIS = ['mandir-api', 'superadmin-api', 'devotee-api', 'sant-api'];
 const PORTALS = ['mandir-web', 'superadmin-web', 'devotee-web', 'sant-web'];
 const S = schemaOf(FIXTURES.tenant);
 
-const PG = { container: 'jainerp-superadmin-pg', user: 'jainerp' };
-/** Run SQL against a named database in the dev container. */
+/**
+ * Run SQL against a named database. Goes through `psql()` rather than shelling
+ * `docker exec` itself — that hard-coded container name aborted this whole
+ * suite at SETUP on any box where the docker daemon needs root, which is the
+ * same failure `psql()` already grew a TCP fallback for.
+ */
 function sqlOn(db, sql) {
-  return execFileSync('docker', ['exec', PG.container, 'psql', '-U', PG.user, '-d', db, '-tA', '-c', sql],
-    { encoding: 'utf8' }).trim();
+  return psql(sql, { db }).map((r) => r.join('\t')).join('\n').trim();
 }
-/** Every database that holds tenant schemas. */
-function tenantDatabases() {
-  return psql(`SELECT datname FROM pg_database WHERE datname LIKE 'jainerp%' AND NOT datistemplate ORDER BY 1`)
-    .map(([d]) => d)
-    .filter((db) => Number(sqlOn(db, `SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'tenant\\_%'`)) > 0);
-}
+
 const src = (app, path) => readFileSync(`${ROOT}/apps/${app}/${path}`, 'utf8');
 
 await suite('10-regression-evidence', async () => {
@@ -100,21 +101,27 @@ await suite('10-regression-evidence', async () => {
   await t('TC-EV-004', 'P1', 'the money migrations are idempotent — re-running changes nothing', async () => {
     // DbBootstrapService re-executes every migration file on every boot, so a
     // migration that is not idempotent corrupts the schema on the second deploy.
-    const before = psql1(
-      `SELECT count(*) FROM information_schema.columns
-        WHERE table_schema LIKE 'tenant\\_%' AND column_name = 'deleted_at'`);
-    for (const f of ['019_money_bigint.sql', '020_soft_delete_recyclables.sql', '021_soft_delete_money_tables.sql']) {
-      execSync(
-        `docker exec -i ${PG.container} psql -U ${PG.user} -d jainerp -q -v ON_ERROR_STOP=1 ` +
-        `-f - < "${ROOT}/apps/superadmin-api/db/tenant-migrations/${f}"`,
-        { encoding: 'utf8', shell: '/bin/bash', stdio: ['ignore', 'pipe', 'pipe'] },
-      );
+    // Counted and replayed against the databases that actually HOLD tenant
+    // schemas. This used to look only at `jainerp`, where a pooled deployment
+    // has none at all — so `before` and `after` were both 0 and the assertion
+    // passed without replaying anything the schemas could notice.
+    const DBS = tenantDatabases();
+    const deletedAtCols = () =>
+      DBS.reduce((n, db) => n + Number(psql1(
+        `SELECT count(*) FROM information_schema.columns
+          WHERE table_schema LIKE 'tenant\\_%' AND column_name = 'deleted_at'`,
+        { db },
+      ) ?? 0), 0);
+
+    const before = deletedAtCols();
+    for (const db of DBS) {
+      for (const f of ['019_money_bigint.sql', '020_soft_delete_recyclables.sql', '021_soft_delete_money_tables.sql']) {
+        psqlFile(`${ROOT}/apps/superadmin-api/db/tenant-migrations/${f}`, { db });
+      }
     }
-    const after = psql1(
-      `SELECT count(*) FROM information_schema.columns
-        WHERE table_schema LIKE 'tenant\\_%' AND column_name = 'deleted_at'`);
+    const after = deletedAtCols();
     expect.eq(after, before, 'a re-run changed the schema — the migration is not idempotent');
-    return `${before} deleted_at columns, unchanged on re-run`;
+    return `${before} deleted_at columns across ${DBS.length} db(s), unchanged on re-run`;
   });
 
   await t('TC-EV-005', 'P1', 'migration 019 commits per schema rather than in one transaction', async () => {

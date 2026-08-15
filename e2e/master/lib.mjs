@@ -17,7 +17,7 @@
  *     await t('TC-X-01', 'P1', 'thing works', async () => { ... });
  *   });
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -276,18 +276,10 @@ const PG = {
   password: process.env.E2E_PG_PASSWORD ?? 'jainerp_dev',
 };
 
-/**
- * Run SQL against the dev postgres. Returns rows as arrays of strings.
- * Fields are split on SOH (0x01) rather than `|` so that values containing a
- * pipe — notes, addresses, names — do not silently shift the columns.
- *
- * Tries the docker container first (the documented dev setup), then a local
- * psql over TCP. The fallback matters: the docker daemon needs root on some dev
- * boxes, and without it every suite in this pack aborted at SETUP with a
- * docker-socket error rather than running a single case.
- */
 const SEP = '\x01';
-export function psql(sql, { db = PG.db } = {}) {
+
+/** Low-level runner: exactly one database, no schema resolution. */
+function runPsql(sql, db) {
   const parse = (out) =>
     out.trim() ? out.trim().split('\n').map((l) => l.split(SEP)) : [];
   try {
@@ -308,10 +300,113 @@ export function psql(sql, { db = PG.db } = {}) {
   ));
 }
 
+/**
+ * schema_name → the database that schema actually lives in. Built once, lazily.
+ *
+ * A tenant schema is NOT necessarily in `jainerp`. A `pooled` tenant lives in a
+ * shared pool database (`jainerp_pool_1`, …) and a `dedicated` one in its own,
+ * and `public.tenants.db_name` records which. Resolved from the registry rather
+ * than guessed, so a suite cannot be wrong about it.
+ */
+let SCHEMA_DB = null;
+function schemaDbMap() {
+  if (SCHEMA_DB) return SCHEMA_DB;
+  SCHEMA_DB = new Map();
+  try {
+    for (const [schema, db] of runPsql(
+      `SELECT schema_name, COALESCE(db_name, '${PG.db}') FROM public.tenants WHERE schema_name IS NOT NULL`,
+      PG.db,
+    )) {
+      SCHEMA_DB.set(schema, db);
+    }
+  } catch {
+    // A registry we cannot read is not fatal here: every caller that does not
+    // name a tenant schema still works against the default database.
+  }
+  return SCHEMA_DB;
+}
+
+/**
+ * Run SQL against the dev postgres. Returns rows as arrays of strings.
+ * Fields are split on SOH (0x01) rather than `|` so that values containing a
+ * pipe — notes, addresses, names — do not silently shift the columns.
+ *
+ * Tries the docker container first (the documented dev setup), then a local
+ * psql over TCP. The fallback matters: the docker daemon needs root on some dev
+ * boxes, and without it every suite in this pack aborted at SETUP with a
+ * docker-socket error rather than running a single case.
+ *
+ * **The database is derived from the schema the SQL names**, unless the caller
+ * passes one explicitly. Every suite builds its queries as `${S}.donations`
+ * from `schemaOf(FIXTURES.tenant)` and then ran them against `jainerp` — but
+ * `smoke-portal` is a POOLED tenant, so its schema is in `jainerp_pool_1` and
+ * all 24 of those cases failed with "relation does not exist". Worse than the
+ * noise: an assertion of the form "this row is NOT in the table" passes on a
+ * missing table for the wrong reason, so the gap could hand out unearned passes
+ * as easily as false failures.
+ */
+export function psql(sql, { db } = {}) {
+  if (!db) {
+    const text = String(sql);
+    // A schema used as a QUALIFIER (`tenant_x.donations`) names its database.
+    const named = [...text.matchAll(/\b(tenant_[0-9a-f]+)\s*\./gi)].map((m) => m[1]);
+    // So does a schema named as a VALUE in a CATALOG query
+    // (`information_schema.columns WHERE table_schema = 'tenant_…'`,
+    // `pg_namespace.nspname = 'tenant_…'`). Catalogs are per-database, so
+    // asking one about a schema it does not contain answers "no such column"
+    // rather than erroring — which is how 18 CRUD cases decided every table
+    // had neither `deleted_at` nor `is_active`, took the hard-delete branch,
+    // and failed against an API that had soft-deleted correctly.
+    //
+    // Deliberately NOT applied to ordinary statements: `UPDATE public.tenants
+    // SET schema_name = 'tenant_…'` (TC-SEC-005) names a schema as data, and
+    // the row it writes lives in the registry database.
+    if (/\binformation_schema\.|\bpg_namespace\b|\bpg_class\b|\bpg_constraint\b/i.test(text)) {
+      named.push(...[...text.matchAll(/'(tenant_[0-9a-f]+)'/gi)].map((m) => m[1]));
+    }
+    for (const schema of named) {
+      const found = schemaDbMap().get(schema);
+      if (found) { db = found; break; }
+    }
+  }
+  return runPsql(sql, db ?? PG.db);
+}
+
 /** Single scalar from a query. */
 export function psql1(sql, opts) {
   const rows = psql(sql, opts);
   return rows[0]?.[0];
+}
+
+/**
+ * Execute a .sql FILE. Same docker→TCP fallback as `psql()`.
+ *
+ * `-f`, not `-c`: `-c` wraps everything in one implicit transaction, and the
+ * migrations this replays commit deliberately per schema (one transaction over
+ * hundreds of schemas exhausted the lock table — see TC-EV-005). Running them
+ * through `-c` would test something the deploy never does.
+ */
+export function psqlFile(file, { db = PG.db } = {}) {
+  try {
+    return execFileSync(
+      'docker',
+      ['exec', '-i', PG.container, 'psql', '-U', PG.user, '-d', db, '-q', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
+      { encoding: 'utf8', input: readFileSync(file, 'utf8'), stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+  } catch (e) {
+    if (!/docker|Cannot connect|not found|No such container/i.test(String(e.stderr ?? e.message))) throw e;
+  }
+  return execFileSync(
+    'psql',
+    ['-h', PG.host, '-p', String(PG.port), '-U', PG.user, '-d', db, '-q', '-v', 'ON_ERROR_STOP=1', '-f', file],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PGPASSWORD: PG.password } },
+  );
+}
+
+/** Every database that actually holds tenant schemas (main + pools + dedicated). */
+export function tenantDatabases() {
+  const dbs = new Set(schemaDbMap().values());
+  return dbs.size ? [...dbs].sort() : [PG.db];
 }
 
 /** Resolve a tenant slug to its schema name. */
@@ -319,6 +414,31 @@ export function schemaOf(slug) {
   const s = psql1(`SELECT schema_name FROM public.tenants WHERE slug = '${slug}'`);
   if (!s) throw new Error(`no such tenant: ${slug}`);
   return s;
+}
+
+/** The database a tenant's schema lives in (`jainerp`, a pool DB, or its own). */
+export function dbOf(slug) {
+  return psql1(
+    `SELECT COALESCE(db_name, '${PG.db}') FROM public.tenants WHERE slug = '${slug}'`,
+  ) ?? PG.db;
+}
+
+/**
+ * Same answer keyed by schema name, for callers that only hold the schema —
+ * and for SQL where the schema is a **quoted value** rather than a qualifier
+ * (`information_schema.columns WHERE table_schema = 'tenant_…'`, `pg_namespace`
+ * lookups), which `psql()` cannot route on its own.
+ */
+export function dbForSchema(schema) {
+  return schemaDbMap().get(schema) ?? PG.db;
+}
+
+/** Connection settings for a `pg.Pool` against a tenant's own database. */
+export function pgConfigFor(slug) {
+  return {
+    host: PG.host, port: Number(PG.port), user: PG.user,
+    password: PG.password, database: dbOf(slug),
+  };
 }
 
 export const uniq = () => Math.floor(Math.random() * 900000 + 100000);

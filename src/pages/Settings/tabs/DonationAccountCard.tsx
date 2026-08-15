@@ -319,7 +319,7 @@ export function DonationAccountCard({ accounts, onChanged }: {
                   />
                 </label>
                 {current.has_proof && (
-                  <button type="button" className="btn-ghost text-sm" onClick={showProof}>
+                  <button type="button" className="btn-secondary btn-sm" onClick={showProof}>
                     {preview
                       ? t('settings.donationAccount.proofHide', { defaultValue: 'Hide' })
                       : t('settings.donationAccount.proofView', { defaultValue: 'View uploaded photo' })}

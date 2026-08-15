@@ -11,7 +11,7 @@
  */
 import {
   suite, t, expect, FIXTURES,
-  mandirApi, mandirLogin, psql, psql1, schemaOf, uniq,
+  mandirApi, mandirLogin, psql, psql1, schemaOf, pgConfigFor, uniq,
 } from './lib.mjs';
 
 const S = schemaOf(FIXTURES.tenant);
@@ -201,10 +201,10 @@ await suite('02-donations-money', async () => {
     const pg = (await import(
       '../../../mandir-api/node_modules/pg/lib/index.js')).default;
     const FY = '9999-00';
-    const pool = new pg.Pool({
-      host: 'localhost', port: 5434, user: 'jainerp',
-      password: 'jainerp_dev', database: 'jainerp', max: 16,
-    });
+    // The tenant's OWN database, not `jainerp`: smoke-portal is a POOLED
+    // tenant, so its schema lives in a shared pool DB and this hard-coded
+    // `database: 'jainerp'` could not see `invoice_series` at all.
+    const pool = new pg.Pool({ ...pgConfigFor(FIXTURES.tenant), max: 16 });
     try {
       await pool.query(`DELETE FROM ${S}.invoice_series WHERE fy = $1`, [FY]);
       // Mirrors InvoiceSeriesService.next(): seed at 0, then one atomic

@@ -13,7 +13,7 @@
  * payload from the schema means the test asks for what the table actually
  * demands, not what a screen happens to send.
  */
-import { psql } from './lib.mjs';
+import { psql, dbForSchema } from './lib.mjs';
 
 const rand = () => Math.floor(Math.random() * 900000 + 100000);
 
@@ -31,6 +31,7 @@ export function columnsOf(schema, table) {
        FROM information_schema.columns
       WHERE table_schema = '${schema}' AND table_name = '${table}'
       ORDER BY ordinal_position`,
+    { db: dbForSchema(schema) },
   ).map(([name, type, nullable, hasDefault, maxLen]) => ({
     name, type, nullable: nullable === 'YES', hasDefault: hasDefault === 'true',
     maxLen: Number(maxLen) || 0,
@@ -45,6 +46,7 @@ export function uniqueColumns(schema, table) {
        JOIN pg_class t ON t.oid = c.conrelid
        JOIN pg_namespace n ON n.oid = t.relnamespace
       WHERE n.nspname = '${schema}' AND t.relname = '${table}' AND c.contype = 'u'`,
+    { db: dbForSchema(schema) },
   )) {
     const cols = def.match(/UNIQUE \(([^)]+)\)/)?.[1];
     if (cols && !cols.includes(',')) out.add(cols.trim());
@@ -60,6 +62,7 @@ export function checkOptions(schema, table) {
        JOIN pg_class t ON t.oid = c.conrelid
        JOIN pg_namespace n ON n.oid = t.relnamespace
       WHERE n.nspname = '${schema}' AND t.relname = '${table}' AND c.contype = 'c'`,
+    { db: dbForSchema(schema) },
   )) {
     // CHECK (((status)::text = ANY ((ARRAY['a'::character varying, ...])::text[])))
     const col = def.match(/\(\(?([a-z_]+)\)?::/)?.[1] ?? def.match(/\(([a-z_]+)\s/)?.[1];
@@ -81,6 +84,7 @@ export function foreignKeys(schema, table) {
        JOIN unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord) ON true
        JOIN pg_attribute att ON att.attrelid = t.oid AND att.attnum = k.attnum
       WHERE n.nspname = '${schema}' AND t.relname = '${table}' AND c.contype = 'f'`,
+    { db: dbForSchema(schema) },
   )) out[col] = refTable;
   return out;
 }

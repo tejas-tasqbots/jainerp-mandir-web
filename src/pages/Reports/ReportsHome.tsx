@@ -30,13 +30,18 @@ type ReportKey =
   | 'depreciation-schedule' | 'loan-schedule' | 'service-register'
 
 /**
- * `module` names the entitlement a report needs. The sidebar already hides
- * screens a trust has not bought (lib/rbac canSee), but this rail did not — so
- * a donation-only trust was offered Pledge Register, Creditor Aging, Service
+ * `modules` names the entitlements a report needs — ANY one of them is enough,
+ * matching the API's `@RequiresModule(...)`. The sidebar already hides screens a
+ * trust has not bought (lib/rbac canSee), but this rail did not — so a
+ * donation-only trust was offered Pledge Register, Creditor Aging, Service
  * Registers, Event-wise Collection and the Depreciation Schedule, and every one
- * of them answered 403. Core reports carry no module and are always shown.
+ * of them answered 403. Core reports carry none and are always shown.
+ *
+ * "Any of" matters for Service Registers in particular: it covers six counters,
+ * and gating it on `seva` alone hid the Room Register from a Dharamshala trust
+ * that does run rooms — the opposite failure to the one this rail fixes.
  */
-interface RailItem { key: ReportKey; labelKey: string; module?: string }
+interface RailItem { key: ReportKey; labelKey: string; modules?: string[] }
 interface RailGroup { groupKey: string; items: RailItem[] }
 
 const RAIL: RailGroup[] = [
@@ -48,9 +53,12 @@ const RAIL: RailGroup[] = [
       { key: 'all-transactions', labelKey: 'reports.allTransactions' },
       { key: 'donation-register', labelKey: 'reports.donationRegister' },
       { key: 'expense-register', labelKey: 'reports.expenseRegister' },
-      { key: 'pledge-register', labelKey: 'reports.pledgeRegister', module: 'bolis' },
-      { key: 'creditor-aging', labelKey: 'reports.creditorAging', module: 'creditors' },
-      { key: 'service-register', labelKey: 'reports.serviceRegister', module: 'seva' },
+      { key: 'pledge-register', labelKey: 'reports.pledgeRegister', modules: ['bolis'] },
+      { key: 'creditor-aging', labelKey: 'reports.creditorAging', modules: ['creditors'] },
+      {
+        key: 'service-register', labelKey: 'reports.serviceRegister',
+        modules: ['seva', 'dharamshala', 'prasad', 'bhojanshala', 'annadaan'],
+      },
     ],
   },
   {
@@ -67,14 +75,14 @@ const RAIL: RailGroup[] = [
       { key: 'donation-yoy', labelKey: 'reports.donationYoY' },
       { key: 'top-donors', labelKey: 'reports.topDonors' },
       { key: 'cash-flow', labelKey: 'reports.cashFlow' },
-      { key: 'event-collection', labelKey: 'reports.eventCollection', module: 'events' },
+      { key: 'event-collection', labelKey: 'reports.eventCollection', modules: ['events'] },
     ],
   },
   {
     groupKey: 'reports.groupStatutory',
     items: [
       { key: 'gst-summary', labelKey: 'reports.gstSummary' },
-      { key: 'depreciation-schedule', labelKey: 'reports.depreciationSchedule', module: 'fixed_assets' },
+      { key: 'depreciation-schedule', labelKey: 'reports.depreciationSchedule', modules: ['fixed_assets'] },
       { key: 'loan-schedule', labelKey: 'reports.loanSchedule' },
     ],
   },
@@ -113,7 +121,10 @@ export function ReportsHome() {
   // everything rather than blanking the rail on a guess, exactly as the sidebar
   // does. An entitlement is not a permission, so this applies to temple_admin.
   const rail = RAIL
-    .map(g => ({ ...g, items: g.items.filter(i => !i.module || !modules || modules.includes(i.module)) }))
+    .map(g => ({
+      ...g,
+      items: g.items.filter(i => !i.modules || !modules || i.modules.some(m => modules.includes(m))),
+    }))
     .filter(g => g.items.length > 0)
 
   async function downloadCaPack() {

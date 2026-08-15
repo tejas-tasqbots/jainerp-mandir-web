@@ -10,7 +10,14 @@ import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRa
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 
-const TYPES = ['donation', 'expense', 'seva', 'prasad', 'bhojanshala', 'room', 'hall'] as const
+/**
+ * The type chips this trust should be offered. The API names them in
+ * `included_types` — it unions only the counters the trust has a module for, so
+ * a hard-coded list here offered a donation-only trust filters for Prasad, Room
+ * and Hall that could only ever return nothing. Falls back to the full list for
+ * an API older than that field.
+ */
+const ALL_TYPES = ['donation', 'expense', 'seva', 'prasad', 'bhojanshala', 'room', 'hall']
 
 interface TxnRow {
   date: string
@@ -25,6 +32,7 @@ interface TxnRow {
 
 interface TxnData {
   rows: TxnRow[]
+  included_types?: string[]
   totals: { count: number; inflow_paise: number; outflow_paise: number; net_paise: number }
 }
 
@@ -69,11 +77,13 @@ export function AllTransactionsReport() {
       (r.reference ?? '').toLowerCase().includes(q))
   }, [data, q])
 
+  const types = data?.included_types ?? ALL_TYPES
+
   const columns: ColumnDef<TxnRow>[] = [
     { key: 'date', label: t('common.date'), render: r => <span className="text-xs text-slate-500">{new Date(r.date).toLocaleDateString('en-IN')}</span> },
     {
       key: 'type', label: t('reports.txnKind'),
-      filter: { kind: 'enum', param: 'type', options: TYPES.map(ty => ({ value: ty, label: typeLabel(ty) })) },
+      filter: { kind: 'enum', param: 'type', options: types.map(ty => ({ value: ty, label: typeLabel(ty) })) },
       render: r => <span className={r.direction === 'in' ? 'badge-green' : 'badge-red'}>{typeLabel(r.type)}</span>,
     },
     { key: 'party', label: t('reports.party'), render: r => <span className="font-medium">{r.party || '—'}</span> },

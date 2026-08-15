@@ -9,10 +9,27 @@ import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryS
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import { trendByDay } from '../../../lib/chartData'
+import { useAuthStore } from '../../../store/authStore'
 
 type RegisterType = 'seva' | 'room' | 'hall' | 'prasad' | 'bhojanshala' | 'annadaan'
 
 const TYPES: RegisterType[] = ['seva', 'room', 'hall', 'prasad', 'bhojanshala', 'annadaan']
+
+/**
+ * The module each register belongs to — mirrors REGISTER_MODULE in
+ * mandir-api/src/reports/reports.service.ts, which now refuses a register the
+ * trust has no module for. Chips are filtered here rather than waiting for that
+ * refusal, so a Bhojanshala-only trust never sees a Room Register button that
+ * answers MODULE_NOT_ENABLED.
+ */
+const REGISTER_MODULE: Record<RegisterType, string> = {
+  seva: 'seva',
+  room: 'dharamshala',
+  hall: 'dharamshala',
+  prasad: 'prasad',
+  bhojanshala: 'bhojanshala',
+  annadaan: 'annadaan',
+}
 
 /** Every register row, loosely typed — the columns differ per register. */
 interface Row {
@@ -64,12 +81,25 @@ const dateCell = (d?: string | null) =>
 export function ServiceRegisterReport() {
   const { t } = useTranslation()
   const toast = useToast()
-  const [type, setType] = useState<RegisterType>('seva')
+  // `modules === null` means "not known yet" (a cold desktop boot) — offer
+  // everything rather than blanking the rail on a guess, as the sidebar does.
+  const modules = useAuthStore(s => s.modules)
+  const available = TYPES.filter(ty => !modules || modules.includes(REGISTER_MODULE[ty]))
+  const [type, setType] = useState<RegisterType>(() => available[0] ?? 'seva')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('report-service-register', 'thisMonth'))
   const [rows, setRows] = useState<Row[]>([])
   const [totals, setTotals] = useState<Totals | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+
+  // The entitlement list can arrive AFTER first paint (desktop restores the
+  // session, then fetches the profile), so the default picked above may be a
+  // register this trust does not have. Correct it once it is known rather than
+  // firing a request the API will refuse.
+  useEffect(() => {
+    if (available.length && !available.includes(type)) setType(available[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modules])
 
   useEffect(() => { load() }, [type, range])
 
@@ -250,7 +280,7 @@ export function ServiceRegisterReport() {
       <PrintLetterhead title={t(`reports.register.${type}`)} subtitle={rangeCaption(range, t('dateRange.all'))} />
 
       <div className="flex items-center gap-2 flex-wrap no-print">
-        {TYPES.map(ty => (
+        {available.map(ty => (
           <button key={ty} type="button" onClick={() => setType(ty)}
             className={`px-3 py-1.5 text-sm rounded-md font-medium ${
               type === ty ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>

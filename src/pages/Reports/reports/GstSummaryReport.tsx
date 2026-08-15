@@ -10,11 +10,31 @@ import { useToast } from '../../../components/kit/Toast'
 
 interface GstRow { head: string; amount_paise: number; emphasis?: 'total' | 'net' }
 
+/**
+ * Output GST heads are optional on purpose: the API charges GST only on the
+ * counters the trust has a module for — a donation-only trust gets `total_paise`
+ * and nothing else — and names what it sent in `included_heads`. Rendering all
+ * three unconditionally printed "₹NaN" for the missing ones, and once that is
+ * fixed to 0, "Rooms ₹0" beside a real input-credit figure still reads as
+ * unbilled takings rather than a counter the trust does not run.
+ */
 interface GstSummary {
-  output_gst: { rooms_paise: number; halls_paise: number; prasad_paise: number; total_paise: number }
+  output_gst: {
+    rooms_paise?: number
+    halls_paise?: number
+    prasad_paise?: number
+    total_paise: number
+  }
+  included_heads?: string[]
   input_gst_paise: number
   net_payable_paise: number
 }
+
+const OUTPUT_HEADS: { key: string; labelKey: string }[] = [
+  { key: 'rooms', labelKey: 'reports.gstOutputRooms' },
+  { key: 'halls', labelKey: 'reports.gstOutputHalls' },
+  { key: 'prasad', labelKey: 'reports.gstOutputPrasad' },
+]
 
 export function GstSummaryReport() {
   const { t } = useTranslation()
@@ -39,13 +59,16 @@ export function GstSummaryReport() {
 
   const rows: GstRow[] = useMemo(() => {
     if (!data) return []
+    const out = data.output_gst as Record<string, number | undefined>
+    // An API older than `included_heads` sends all three; fall back to whichever
+    // keys are actually present rather than inventing zeroes.
+    const heads = OUTPUT_HEADS.filter(h =>
+      data.included_heads ? data.included_heads.includes(h.key) : out[`${h.key}_paise`] != null)
     return [
-      { head: t('reports.gstOutputRooms'), amount_paise: data.output_gst.rooms_paise },
-      { head: t('reports.gstOutputHalls'), amount_paise: data.output_gst.halls_paise },
-      { head: t('reports.gstOutputPrasad'), amount_paise: data.output_gst.prasad_paise },
-      { head: t('reports.gstOutputTotal'), amount_paise: data.output_gst.total_paise, emphasis: 'total' },
+      ...heads.map(h => ({ head: t(h.labelKey), amount_paise: out[`${h.key}_paise`] ?? 0 })),
+      { head: t('reports.gstOutputTotal'), amount_paise: data.output_gst.total_paise, emphasis: 'total' as const },
       { head: t('reports.gstInput'), amount_paise: data.input_gst_paise },
-      { head: t('reports.gstNetPayable'), amount_paise: data.net_payable_paise, emphasis: 'net' },
+      { head: t('reports.gstNetPayable'), amount_paise: data.net_payable_paise, emphasis: 'net' as const },
     ]
   }, [data, t])
 
