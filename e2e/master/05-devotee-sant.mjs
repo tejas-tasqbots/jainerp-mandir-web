@@ -75,10 +75,15 @@ await suite('05-devotee-sant', async () => {
     const r = await devoteeApi('GET', '/me/transactions?limit=50', { token: DEV });
     const ids = r.data.map((x) => x.id).filter(Boolean);
     if (!ids.length) return 'no transactions to check';
+    // The owning column is `global_user_id` (it holds a `public.global_users.id`,
+    // which is what DEV_ID is). This read named `donor_user_id`, which does not
+    // exist on the table — but the early return above meant the query only ever
+    // ran once a devotee actually had mirrored giving, so the case reported a
+    // pass on empty data for as long as the fixture had none.
     const foreign = psql1(
       `SELECT count(*) FROM public.global_transactions
         WHERE id IN (${ids.map((i) => `'${i}'`).join(',')})
-          AND (donor_user_id IS DISTINCT FROM '${DEV_ID}')`,
+          AND (global_user_id IS DISTINCT FROM '${DEV_ID}')`,
     );
     expect.eq(Number(foreign), 0, 'the ledger returned another devotee’s giving');
     return `${ids.length} rows, all owned`;
