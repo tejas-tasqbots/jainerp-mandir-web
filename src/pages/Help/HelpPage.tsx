@@ -1,4 +1,4 @@
-import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, CheckCircle, Keyboard } from 'lucide-react'
+import { HelpCircle, Phone, Mail, BookOpen, ExternalLink, Keyboard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SHORTCUTS } from '../../lib/shortcuts'
 
@@ -111,30 +111,6 @@ const topics = [
   },
 ]
 
-const apiCoverage = [
-  { endpoint: 'POST /auth/send-otp, /verify-otp, /select-tenant', ui: 'Login Page — OTP flow', status: 'connected' },
-  { endpoint: 'GET/POST /donations, PATCH /:id/void, GET /:id/receipt', ui: 'Donations List + Add Donation', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH/DELETE /expenses', ui: 'Expenses List + Add + Edit + Delete', status: 'connected' },
-  { endpoint: 'GET/POST /donors, PATCH /donors/:id, GET /donors/:id/ledger', ui: 'Donor List + Profile (with edit)', status: 'connected' },
-  { endpoint: 'GET /devotees/search, POST /devotees/register, POST /devotees/verify-otp', ui: 'DevoteePicker (all transaction forms)', status: 'connected' },
-  { endpoint: 'GET /devotee-links, POST /invite, PATCH /:id/approve, /:id/reject, DELETE /:id', ui: 'Connected Devotees page', status: 'connected' },
-  { endpoint: 'GET/POST /room-bookings, PATCH /:id/checkin, /checkout, /cancel', ui: 'Rooms List + New Booking', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /hall-bookings', ui: 'Hall Bookings List + Add', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /prasad/items, POST /:id/adjust-stock, POST/GET /prasad/sales', ui: 'Prasad Counter POS + Manage Items', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /seva-bookings', ui: 'Seva Bookings + Add', status: 'connected' },
-  { endpoint: 'POST/GET /bhojanshala/sales, PATCH /:id/redeem, GET /daily-summary', ui: 'Bhojanshala with Redeem Tokens', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /bolis, POST /:id/payments, POST /:id/waive, GET /:id/intimation', ui: 'Donations → Pledges tab + Pay + Waive + Intimation', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH/DELETE /events, GET /:id/registrations, POST /:id/announce', ui: 'Events List + Detail + Edit + Delete', status: 'connected' },
-  { endpoint: 'GET /dashboard', ui: 'Dashboard with KPIs and Charts', status: 'connected' },
-  { endpoint: 'GET /reports/daily-collection, /donation-register, /expense-register, /gst-summary', ui: 'Reports page with export', status: 'connected' },
-  { endpoint: 'GET /compliance/80g-certificates, POST /form-10bd/generate, GET /tds-report', ui: 'Certificates & TDS page', status: 'connected' },
-  { endpoint: 'GET/PATCH /tenants/me, PATCH /tenants/me/privacy, GET /subscription, /usage', ui: 'Settings — Profile + Subscription tabs', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /users', ui: 'Settings → Users', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /vendors, /priests, /employees, /volunteers', ui: 'Masters — Vendors, Priests, Employees', status: 'connected' },
-  { endpoint: 'GET/POST/PATCH /inventory-items', ui: 'Masters — Inventory', status: 'connected' },
-  { endpoint: 'GET /accounting/ledger, /day-book, /income-expenditure, /balance-sheet', ui: 'Accounts module', status: 'connected' },
-  { endpoint: 'GET/POST /registers/lost-found, /visitor-counts', ui: 'Registers — Lost & Found, Visitor Count', status: 'connected' },
-]
 
 export function HelpPage() {
   const { t } = useTranslation()
@@ -185,29 +161,6 @@ export function HelpPage() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* API Coverage Table */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-            <CheckCircle size={15} />{t('ui.apiConnStatus')}</h3>
-          <span className="badge-green">{apiCoverage.filter(a => a.status === 'connected').length} / {apiCoverage.length} endpoints connected</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead><tr><th>{t('ui.apiEndpoint')}</th><th>{t('ui.connectedUi')}</th><th>{t('ui.status')}</th></tr></thead>
-            <tbody>
-              {apiCoverage.map((a, i) => (
-                <tr key={i}>
-                  <td className="font-mono text-xs text-slate-600">{a.endpoint}</td>
-                  <td className="text-sm">{a.ui}</td>
-                  <td><span className="badge-green flex items-center gap-1"><CheckCircle size={10} />{t('ui.connected')}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 
