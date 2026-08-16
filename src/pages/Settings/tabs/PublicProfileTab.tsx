@@ -4,6 +4,7 @@ import { BookOpen, ImagePlus, Link2, Plus, Save, Trash2, X } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { compressImage } from '../../../lib/imageCompress'
 import { DarshanTimings } from '../../../components/DarshanTimings'
+import { MulnayakPicker } from '../../../components/MulnayakPicker'
 
 interface ProfileLink { id: string; kind: string; label?: string | null; url: string }
 interface Publication {
@@ -55,6 +56,7 @@ export function PublicProfileTab() {
    * refused with a message the trustee cannot act on.
    */
   const [cover, setCover] = useState<{ dataUri: string; name: string } | null>(null)
+  const [templeType, setTempleType] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [ok, setOk] = useState('')
@@ -76,6 +78,7 @@ export function PublicProfileTab() {
         darshan_timings: d.darshan_timings ?? '',
         languages: (d.languages ?? []).join(', '),
       })
+      setTempleType(d.temple_type ?? null)
       setLinks(l.data.data ?? [])
       setPubs(b.data.data ?? [])
     } catch { /* keep whatever is on screen */ }
@@ -189,12 +192,12 @@ export function PublicProfileTab() {
                 placeholder="1893"
                 onChange={e => setForm(f => ({ ...f, founded_year: e.target.value }))} />
             </div>
-            <div>
-              <label className="form-label">{t('settings.publicProfile.mainDeity', 'Mulnayak / main deity')}</label>
-              <input className="form-input" value={form.main_deity}
-                placeholder="Bhagwan Adinath"
-                onChange={e => setForm(f => ({ ...f, main_deity: e.target.value }))} />
-            </div>
+            <MulnayakPicker
+              label={t('settings.publicProfile.mainDeity', 'Mulnayak / main deity')}
+              value={form.main_deity}
+              templeType={templeType}
+              onChange={v => setForm(f => ({ ...f, main_deity: v }))}
+            />
           </div>
 
           {/* Picked, not typed — but a value that does not parse stays exactly

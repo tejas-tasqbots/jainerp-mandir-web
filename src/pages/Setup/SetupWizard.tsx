@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeft, Check, ChevronRight, Loader2, Sparkles } from
 import { api } from '../../lib/api'
 import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
 import { DarshanTimings } from '../../components/DarshanTimings'
+import { MulnayakPicker } from '../../components/MulnayakPicker'
 import { COMMON_DONATION_CATEGORIES, COMMON_EXPENSE_HEADS, SuggestedListPicker } from '../../components/SuggestedListPicker'
 
 /**
@@ -99,6 +100,7 @@ export function SetupWizard() {
   const [newHeads, setNewHeads] = useState('')
   const [existing, setExisting] = useState<{ categories: number; heads: number }>({ categories: 0, heads: 0 })
   const [existingNames, setExistingNames] = useState<{ categories: string[]; heads: string[] }>({ categories: [], heads: [] })
+  const [templeType, setTempleType] = useState<string | null>(null)
   const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; bank_name: string; account_no: string; ifsc: string }>>([])
   const [pickedAccount, setPickedAccount] = useState('')
   const [accountLocked, setAccountLocked] = useState(false)
@@ -132,6 +134,7 @@ export function SetupWizard() {
         main_deity: String(pub.main_deity ?? ''),
         darshan_timings: String(pub.darshan_timings ?? ''),
       } as Form)
+      setTempleType((pub.temple_type as string) ?? null)
       // Which bank accounts could receive a devotee transfer, and which one is
       // already nominated. `needsAccount` is about whether we have to CREATE
       // one — not whether to ask at all. An earlier version conflated the two,
@@ -531,8 +534,12 @@ export function SetupWizard() {
               <Field label={t('setup.items.about.label')} value={form.about} onChange={v => set({ about: v })}
                 hint={t('setup.items.about.why')} multiline />
               <Row>
-                <Field label={t('setup.items.main_deity.label')} value={form.main_deity}
-                  onChange={v => set({ main_deity: v })} />
+                <MulnayakPicker
+                  label={t('setup.items.main_deity.label')}
+                  value={form.main_deity}
+                  templeType={templeType}
+                  onChange={v => set({ main_deity: v })}
+                />
                 <DarshanTimings
                   label={t('setup.items.darshan_timings.label')}
                   value={form.darshan_timings}
