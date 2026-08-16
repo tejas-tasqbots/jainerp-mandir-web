@@ -112,6 +112,16 @@ const topics = [
 ]
 
 
+/* Platform support contacts.
+   Kept beside each other and used for both the link and the visible text, so a
+   card can never show one address while dialling or mailing another — which is
+   what happened here: the page still offered a placeholder 1234567890 and the
+   old tasqbots address long after the API had moved to PLATFORM_SUPPORT_PHONE /
+   PLATFORM_SUPPORT_EMAIL. */
+const SUPPORT_PHONE = '+91 91565 25532'
+const SUPPORT_PHONE_E164 = '+919156525532'
+const SUPPORT_EMAIL = 'support@jainerp.org'
+
 export function HelpPage() {
   const { t } = useTranslation()
   return (
@@ -169,18 +179,21 @@ export function HelpPage() {
         <div className="card-header"><h3 className="font-semibold text-sm">{t('ui.supportFeedback')}</h3></div>
         <div className="card-body">
           <div className="grid grid-cols-3 gap-4">
-            <a href="tel:+911234567890" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
+            <a href={`tel:${SUPPORT_PHONE_E164}`} className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
               <div className="p-2 bg-green-100 rounded-lg"><Phone size={16} className="text-green-600" /></div>
               <div>
                 <p className="font-medium text-sm">{t('ui.callSupport')}</p>
+                {/* The number itself, not only the tel: link — a trustee on a
+                    desktop has nothing to dial from and needs to read it. */}
+                <p className="text-xs text-slate-600">{SUPPORT_PHONE}</p>
                 <p className="text-xs text-slate-400">{t('ui.supportHours')}</p>
               </div>
             </a>
-            <a href="mailto:support@tasqbots.com" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
               <div className="p-2 bg-blue-100 rounded-lg"><Mail size={16} className="text-blue-600" /></div>
               <div>
                 <p className="font-medium text-sm">{t('ui.emailSupport')}</p>
-                <p className="text-xs text-slate-400">support@tasqbots.com</p>
+                <p className="text-xs text-slate-400">{SUPPORT_EMAIL}</p>
               </div>
             </a>
             <a href="/settings" className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors">
