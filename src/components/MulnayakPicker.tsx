@@ -27,17 +27,21 @@ export interface Tirthankar {
 }
 
 /**
- * How a Tirthankar is named on screen and in the record: "Mallinath Bhagwan".
+ * How a Tirthankar is named on screen and in the record: "Bhagwan Mallinath".
+ *
+ * Bhagwan leads, which is the form trusts here already wrote by hand — the
+ * value on file when this was free text was "Bhagwan Adinath". Deliberately
+ * without "Shri 1008": that is Digambar usage, and one field serves both
+ * traditions.
  *
  * The honorific is part of the STORED value, not decoration added at render
- * time. A Tirthankar is not referred to by a bare surname, and the value is
- * read back by the devotee app, the temple's public page and anything printed
- * from them — keeping the honorific here means every one of those reads
- * correctly without each repo carrying its own copy of these twenty-four names
- * to decorate them with. The set is still closed and canonical, so grouping
- * temples by their mulnayak works exactly as it would on the bare name.
+ * time. A Tirthankar is not referred to by a bare name, and the value is read
+ * back by the devotee app's temple page and anything printed from it — keeping
+ * it in the record means each of those reads correctly without carrying its own
+ * copy of these twenty-four names to decorate. The set is still closed and
+ * canonical, so grouping temples by their mulnayak is unaffected.
  */
-export const tirthankarTitle = (name: string) => `${name} Bhagwan`
+export const tirthankarTitle = (name: string) => `Bhagwan ${name}`
 
 /** The twenty-four, in order. `aka` carries the Digambar/Shwetambar and
  *  Sanskrit variants so an existing value still matches its own entry. */
