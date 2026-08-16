@@ -18,13 +18,26 @@ import { useTranslation } from 'react-i18next'
      one of the twenty-four selects Other and is kept exactly as written. */
 
 export interface Tirthankar {
-  /** Stored value — the short name a temple actually uses. */
+  /** The bare name, used only for matching what is already on file. */
   name: string
   /** Position in the sequence, shown so the list reads in the canonical order. */
   n: number
   /** Names the same Bhagwan is also known by, for matching what is on file. */
   aka?: string[]
 }
+
+/**
+ * How a Tirthankar is named on screen and in the record: "Mallinath Bhagwan".
+ *
+ * The honorific is part of the STORED value, not decoration added at render
+ * time. A Tirthankar is not referred to by a bare surname, and the value is
+ * read back by the devotee app, the temple's public page and anything printed
+ * from them — keeping the honorific here means every one of those reads
+ * correctly without each repo carrying its own copy of these twenty-four names
+ * to decorate them with. The set is still closed and canonical, so grouping
+ * temples by their mulnayak works exactly as it would on the bare name.
+ */
+export const tirthankarTitle = (name: string) => `${name} Bhagwan`
 
 /** The twenty-four, in order. `aka` carries the Digambar/Shwetambar and
  *  Sanskrit variants so an existing value still matches its own entry. */
@@ -120,7 +133,7 @@ export function MulnayakPicker({
       <label className="form-label">{label}</label>
       <select
         className="form-input"
-        value={other ? OTHER : (matched?.name ?? '')}
+        value={other ? OTHER : (matched ? tirthankarTitle(matched.name) : '')}
         onChange={e => {
           const v = e.target.value
           if (v === OTHER) { setOther(true); onChange('') } else { setOther(false); onChange(v) }
@@ -128,8 +141,8 @@ export function MulnayakPicker({
       >
         <option value="">{t('mulnayak.choose', 'Select the mulnayak…')}</option>
         {TIRTHANKARS.map(x => (
-          <option key={x.n} value={x.name}>
-            {x.n}. {x.name}{x.aka?.length ? ` (${x.aka[0]})` : ''}
+          <option key={x.n} value={tirthankarTitle(x.name)}>
+            {x.n}. {tirthankarTitle(x.name)}{x.aka?.length ? ` (${x.aka[0]})` : ''}
           </option>
         ))}
         <option value={OTHER}>{t('mulnayak.other', 'Other / not a Tirthankar')}</option>
@@ -146,9 +159,10 @@ export function MulnayakPicker({
 
       {/* What is on file said the same thing in different words — say so rather
           than silently swapping it for the canonical spelling. */}
-      {!other && matched && value && norm(value) !== norm(matched.name) && (
+      {!other && matched && value && norm(value) !== norm(tirthankarTitle(matched.name)) && (
         <p className="mt-1 text-xs text-slate-400">
-          {t('mulnayak.matched', 'On file as “{{v}}” — saving stores {{n}}.', { v: value, n: matched.name })}
+          {t('mulnayak.matched', 'On file as “{{v}}” — saving stores {{n}}.',
+            { v: value, n: tirthankarTitle(matched.name) })}
         </p>
       )}
     </div>
