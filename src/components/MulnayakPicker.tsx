@@ -78,17 +78,26 @@ export function matchTirthankar(value: string): Tirthankar | null {
   return keys.find(k => k.key && v.includes(k.key))?.t ?? null
 }
 
+/** Registered types that are definitely not Jain, so the Tirthankars do not apply. */
+const NON_JAIN = new Set(['hindu', 'sikh', 'buddhist', 'gurudwara', 'church'])
+
 export function MulnayakPicker({
   value, onChange, label, templeType,
 }: {
   value: string
   onChange: (v: string) => void
   label: string
-  /** Only a Jain trust is offered the Tirthankars; anyone else gets free text. */
+  /** The trust's registered type. Anything not clearly non-Jain gets the list. */
   templeType?: string | null
 }) {
   const { t } = useTranslation()
-  const jain = !templeType || templeType === 'jain'
+  /* Fails OPEN, deliberately. An earlier version asked `templeType === 'jain'`,
+     so a value that was merely cased differently, padded, or absent from the
+     payload silently dropped a Jain temple back to a free-text box — the very
+     thing this replaced, and invisible unless you knew to look. This is
+     JainERP: show the twenty-four unless the trust is registered as something
+     that plainly has none. "Other" covers the rest either way. */
+  const jain = !NON_JAIN.has(String(templeType ?? '').trim().toLowerCase())
   const matched = matchTirthankar(value)
   const [other, setOther] = useState(!!value && !matched)
 
