@@ -65,6 +65,8 @@ function isFilterActive(s: ColumnFilterState | undefined): boolean {
 
 /* ── Column-header filter dropdown ────────────────────────────────────────── */
 
+const FILTER_WIDTH = 240
+
 function FilterDropdown({
   filter, state, onApply,
 }: {
@@ -77,17 +79,52 @@ function FilterDropdown({
   const [draft, setDraft] = useState<ColumnFilterState>(state ?? {})
   // Narrows a long option list (cities, states) inside the filter popover.
   const [optQuery, setOptQuery] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
   const active = isFilterActive(state)
 
   useEffect(() => { setDraft(state ?? {}) }, [state, open])
 
+  /* Portalled for the same reason RowMenu is: `position:absolute` put this
+     inside the table's `card overflow-hidden` > `overflow-x-auto` wrappers, so
+     the popover was clipped at the card's left edge — the checkboxes and the
+     first characters of every option were cut off, and on a narrow column the
+     Apply button sat outside the visible area. Fixed coordinates on <body>
+     escape both clips. */
+  const place = useCallback(() => {
+    const b = btnRef.current?.getBoundingClientRect()
+    if (!b) return
+    const h = popRef.current?.offsetHeight ?? 0
+    const below = b.bottom + 4
+    const top = h && below + h > window.innerHeight - 8 ? Math.max(8, b.top - h - 4) : below
+    // Right-aligned to the button, but never off either edge of the viewport.
+    const left = Math.max(8, Math.min(b.right - FILTER_WIDTH, window.innerWidth - FILTER_WIDTH - 8))
+    setPos({ top, left })
+  }, [])
+
+  useLayoutEffect(() => { if (open) place() }, [open, place])
+
   useEffect(() => {
+    if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (btnRef.current?.contains(target) || popRef.current?.contains(target)) return
+      setOpen(false)
     }
-    if (open) document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    // A fixed popover would be stranded away from its header on scroll/resize.
+    function onReflow() { setOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onReflow, true)
+    window.addEventListener('resize', onReflow)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onReflow, true)
+      window.removeEventListener('resize', onReflow)
+    }
   }, [open])
 
   function apply(next: ColumnFilterState | null) {
@@ -96,8 +133,9 @@ function FilterDropdown({
   }
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <span className="inline-block" onClick={e => e.stopPropagation()}>
       <button
+        ref={btnRef}
         type="button"
         onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
         className={`p-0.5 rounded align-middle transition-colors ${
@@ -105,12 +143,22 @@ function FilterDropdown({
         }`}
         aria-label={t('kit.filterColumn')}
         title={t('kit.filterColumn')}
+        aria-haspopup="dialog"
+        aria-expanded={open}
       >
         <Filter size={11} fill={active ? 'currentColor' : 'none'} />
       </button>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2.5 min-w-[210px] max-w-[260px] text-left font-normal normal-case tracking-normal"
+          ref={popRef}
+          style={{
+            position: 'fixed',
+            top: pos?.top ?? -9999,
+            left: pos?.left ?? -9999,
+            width: FILTER_WIDTH,
+            visibility: pos ? 'visible' : 'hidden',
+          }}
+          className="z-[60] bg-white border border-slate-200 rounded-lg shadow-lg p-2.5 text-left font-normal normal-case tracking-normal text-slate-700"
           onClick={e => e.stopPropagation()}
         >
           {filter.kind === 'enum' && (
@@ -188,9 +236,10 @@ function FilterDropdown({
               {t('kit.apply')}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </span>
   )
 }
 
