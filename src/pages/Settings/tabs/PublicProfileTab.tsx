@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { BookOpen, ImagePlus, Link2, Plus, Save, Trash2, X } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { compressImage } from '../../../lib/imageCompress'
+import { DarshanTimings } from '../../../components/DarshanTimings'
 
 interface ProfileLink { id: string; kind: string; label?: string | null; url: string }
 interface Publication {
@@ -196,15 +197,15 @@ export function PublicProfileTab() {
             </div>
           </div>
 
-          <div>
-            <label className="form-label">{t('settings.publicProfile.timings', 'Darshan timings')}</label>
-            <input className="form-input" value={form.darshan_timings}
-              placeholder="5:30–11:00, 16:00–20:30"
-              onChange={e => setForm(f => ({ ...f, darshan_timings: e.target.value }))} />
-            <p className="mt-1 text-xs text-slate-400">
-              Plain text, so festival exceptions can be written the way you would say them.
-            </p>
-          </div>
+          {/* Picked, not typed — but a value that does not parse stays exactly
+              as written, so festival exceptions phrased in the trust's own words
+              are never rewritten. */}
+          <DarshanTimings
+            label={t('settings.publicProfile.timings', 'Darshan timings')}
+            value={form.darshan_timings}
+            onChange={v => setForm(f => ({ ...f, darshan_timings: v }))}
+            hint={t('settings.publicProfile.timingsHint', 'Most mandirs close midday — set both sessions.')}
+          />
 
           <div>
             <label className="form-label">{t('settings.publicProfile.languages', 'Languages spoken')}</label>

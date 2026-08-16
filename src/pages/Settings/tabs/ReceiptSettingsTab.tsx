@@ -429,6 +429,12 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     e.preventDefault()
     setSaving(true)
     try {
+      // Only what this tab actually edits. The UPI and bank values are loaded
+      // for the preview and shown read-only above ("Manage in Donor Payments"),
+      // and sending them back made this form unsaveable once the mandir was
+      // verified: `upi_id` is a SENSITIVE field, the API rejects a payload that
+      // merely CONTAINS one, and so the whole save — logo, colour, footer,
+      // template — failed with SENSITIVE_LOCKED on a value nobody had touched.
       await api.patch('/tenants/me', {
         logo_cdn_url: form.logo_cdn_url,
         logo_base64: form.logo_base64,
@@ -437,11 +443,6 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         primary_color: form.primary_color,
         show_gstin_on_header: form.show_gstin_on_header,
         show_80g_on_receipt: form.show_80g_on_receipt,
-        upi_id: form.upi_id,
-        bank_account_name: form.bank_account_name,
-        bank_account_no: form.bank_account_no,
-        bank_ifsc: form.bank_ifsc,
-        bank_name: form.bank_name,
         custom_receipt_footer: form.custom_receipt_footer,
         receipt_copies: form.receipt_copies,
         receipt_paper: form.receipt_paper,

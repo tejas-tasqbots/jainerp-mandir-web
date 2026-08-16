@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ArrowLeft, Check, ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { api } from '../../lib/api'
 import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
+import { DarshanTimings } from '../../components/DarshanTimings'
+import { COMMON_DONATION_CATEGORIES, COMMON_EXPENSE_HEADS, SuggestedListPicker } from '../../components/SuggestedListPicker'
 
 /**
  * First-login setup — the same step-by-step shape as the registration wizard,
@@ -96,6 +98,7 @@ export function SetupWizard() {
   const [newCategories, setNewCategories] = useState('')
   const [newHeads, setNewHeads] = useState('')
   const [existing, setExisting] = useState<{ categories: number; heads: number }>({ categories: 0, heads: 0 })
+  const [existingNames, setExistingNames] = useState<{ categories: string[]; heads: string[] }>({ categories: [], heads: [] })
   const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; name: string; bank_name: string; account_no: string; ifsc: string }>>([])
   const [pickedAccount, setPickedAccount] = useState('')
   const [accountLocked, setAccountLocked] = useState(false)
@@ -147,15 +150,19 @@ export function SetupWizard() {
       setPickedAccount(nominated?.id ?? '')
       setAccountLocked(!!nominated?.is_verified)
       setNeedsAccount(banks.length === 0)
-      // Counts, not contents: the step only needs to know whether to ask.
+      // Names as well as counts: the step offers the common ones as chips, and
+      // it can only grey out the ones already present if it knows them.
       const [cats, heads] = await Promise.all([
-        api.get('/donation-categories', { params: { limit: 1 } }).catch(() => null),
-        api.get('/expense-categories', { params: { limit: 1 } }).catch(() => null),
+        api.get('/donation-categories', { params: { limit: 200 } }).catch(() => null),
+        api.get('/expense-categories', { params: { limit: 200 } }).catch(() => null),
       ])
+      const names = (r: any): string[] =>
+        (r?.data?.data ?? []).map((c: any) => String(c?.name ?? '')).filter(Boolean)
       setExisting({
         categories: cats?.data?.meta?.total ?? (cats?.data?.data?.length ?? 0),
         heads: heads?.data?.meta?.total ?? (heads?.data?.data?.length ?? 0),
       })
+      setExistingNames({ categories: names(cats), heads: names(heads) })
     } catch (e: any) {
       setError(e?.response?.data?.error?.message ?? t('setupWizard.loadFailed'))
     } finally {
@@ -471,39 +478,26 @@ export function SetupWizard() {
 
           {step === 'categories' && (
             <Section title={t('setupWizard.categories.title')} hint={t('setupWizard.categories.hint')}>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  {t('setup.items.categories.label')}
-                </label>
-                <input
-                  className="form-input w-full"
-                  placeholder={t('setupWizard.categories.donationPlaceholder')}
-                  value={newCategories}
-                  onChange={e => setNewCategories(e.target.value)}
-                />
-                <p className="mt-1 text-xs text-slate-400">
-                  {existing.categories > 0
-                    ? t('setupWizard.categories.alreadyHave', { count: existing.categories })
-                    : t('setup.items.categories.why')}
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">
-                  {t('setup.items.expense_heads.label')}
-                </label>
-                <input
-                  className="form-input w-full"
-                  placeholder={t('setupWizard.categories.expensePlaceholder')}
-                  value={newHeads}
-                  onChange={e => setNewHeads(e.target.value)}
-                />
-                <p className="mt-1 text-xs text-slate-400">
-                  {existing.heads > 0
-                    ? t('setupWizard.categories.alreadyHave', { count: existing.heads })
-                    : t('setup.items.expense_heads.why')}
-                </p>
-              </div>
-              <p className="text-xs text-slate-400">{t('setupWizard.categories.commaHint')}</p>
+              <SuggestedListPicker
+                label={t('setup.items.categories.label')}
+                suggestions={COMMON_DONATION_CATEGORIES}
+                existing={existingNames.categories}
+                value={newCategories}
+                onChange={setNewCategories}
+                hint={existing.categories > 0
+                  ? t('setupWizard.categories.alreadyHave', { count: existing.categories })
+                  : t('setup.items.categories.why')}
+              />
+              <SuggestedListPicker
+                label={t('setup.items.expense_heads.label')}
+                suggestions={COMMON_EXPENSE_HEADS}
+                existing={existingNames.heads}
+                value={newHeads}
+                onChange={setNewHeads}
+                hint={existing.heads > 0
+                  ? t('setupWizard.categories.alreadyHave', { count: existing.heads })
+                  : t('setup.items.expense_heads.why')}
+              />
             </Section>
           )}
 
@@ -539,8 +533,12 @@ export function SetupWizard() {
               <Row>
                 <Field label={t('setup.items.main_deity.label')} value={form.main_deity}
                   onChange={v => set({ main_deity: v })} />
-                <Field label={t('setup.items.darshan_timings.label')} value={form.darshan_timings}
-                  onChange={v => set({ darshan_timings: v })} hint={t('setup.items.darshan_timings.why')} />
+                <DarshanTimings
+                  label={t('setup.items.darshan_timings.label')}
+                  value={form.darshan_timings}
+                  onChange={v => set({ darshan_timings: v })}
+                  hint={t('setup.items.darshan_timings.why')}
+                />
               </Row>
             </Section>
           )}
