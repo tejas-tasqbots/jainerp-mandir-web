@@ -14,7 +14,7 @@ import axios from 'axios'
  *  1. `VITE_ONBOARDING_API_URL` when the build sets it;
  *  2. under `vite dev` only, the relative `/api/onboarding` path that
  *     vite.config.ts proxies to :3105;
- *  3. otherwise the deployed superadmin-api host.
+ *  3. otherwise the deployed PROD superadmin-api host.
  *
  * Step 3 is not a nicety. The relative path in step 2 exists ONLY inside the
  * vite dev server — nothing serves it in a built bundle. Falling back to it in
@@ -28,7 +28,13 @@ const BASE_URL = (() => {
   const configured = (import.meta.env.VITE_ONBOARDING_API_URL as string | undefined)?.replace(/\/+$/, '')
   if (configured) return `${configured}/api/v1/public/onboarding`
   if (import.meta.env.DEV) return '/api/onboarding/api/v1/public/onboarding'
-  return 'https://dev-api-admin.jainerp.org/api/v1/public/onboarding'
+  // PROD superadmin-api. Was dev-api-admin.jainerp.org, which meant the
+  // registration wizard served from app.jainerp.org fetched the DEV plan
+  // catalogue - visible in the network tab as a request to
+  // 44.202.190.208, the EC2 box. So a price changed in the prod console never
+  // reached an actual applicant, and worse, a registration begun on prod was
+  // priced against dev's catalogue. Corrected 2026-08-17.
+  return 'https://admin-api.jainerp.org/api/v1/public/onboarding'
 })()
 
 export const onboardingApi = axios.create({
