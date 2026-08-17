@@ -72,9 +72,12 @@ export function DayBook() {
   const totalDebit = filtered.reduce((s, e) => s + e.debit_paise, 0)
   const totalCredit = filtered.reduce((s, e) => s + e.credit_paise, 0)
 
+  // Receipts sit in the debit column and payments in the credit column, so
+  // income is the debit total. These two tiles kept the pre-2026-08 inverted
+  // convention and showed each other's figure.
   const stats: SummaryStat[] = [
-    { label: t('accounts.totalCreditsIncome'), value: `₹${fmtPaise(totalCredit)}`, tone: 'income' },
-    { label: t('accounts.totalDebitsExpense'), value: `₹${fmtPaise(totalDebit)}`, tone: 'expense' },
+    { label: t('accounts.totalReceiptsIncome'), value: `₹${fmtPaise(totalDebit)}`, tone: 'income' },
+    { label: t('accounts.totalPaymentsExpense'), value: `₹${fmtPaise(totalCredit)}`, tone: 'expense' },
   ]
 
   async function exportExcel() {
