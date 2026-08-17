@@ -256,11 +256,12 @@ export function LoginPage() {
             clickable, it just landed on top of the artwork. Giving it a row of
             its own makes all three portal logins read the same way. */}
         <div className="flex justify-end -mt-2 mb-1 relative z-50"><LanguageSwitcher variant="pill" /></div>
-        {/* Header */}
+        {/* Header — wordmark over the portal label, and nothing else. The mark is
+            text and colour only (tools/brand/generate-brand-assets.py: "There is
+            no icon, badge or illustration in the mark"), which is why the
+            Building2 glyph in a red plate that used to sit here is gone. The
+            sidebar, the favicon and every app icon already read this way. */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-brand-red flex items-center justify-center mx-auto mb-4">
-            <Building2 size={32} className="text-white" />
-          </div>
           <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
           </h1>

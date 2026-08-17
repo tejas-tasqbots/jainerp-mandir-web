@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Building2, ChevronLeft, ChevronRight, Check, CreditCard, Loader2,
+  ChevronLeft, ChevronRight, Check, CreditCard, Loader2,
   ShieldCheck, Sparkles, AlertTriangle, Database, FileText, LogIn, RotateCw,
 } from 'lucide-react'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
@@ -453,10 +453,8 @@ export function RegisterPage() {
     <div className="h-full overflow-y-auto bg-slate-100">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          {/* Wordmark only — see the note in LoginPage: the mark carries no badge. */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-red flex items-center justify-center">
-              <Building2 size={20} className="text-white" />
-            </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight leading-none">
                 <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
