@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ArrowLeft, Check, ChevronRight, Image as ImageIcon, Loader2, Sparkles, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
+import { QuickAdd, isQuickAddable } from './QuickAdd'
 import { useAuthStore } from '../../store/authStore'
 import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
 import { DarshanTimings } from '../../components/DarshanTimings'
@@ -139,6 +140,8 @@ export function SetupWizard() {
   const [trustees, setTrustees] = useState<Array<{ id: string; name: string; designation?: string | null; mobile?: string | null }>>([])
   const [addingTrustee, setAddingTrustee] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
+  // Which Still-to-do row is expanded on the summary. One at a time.
+  const [openItem, setOpenItem] = useState<string | null>(null)
   // Comma-separated on purpose: a trust listing its heads types them faster
   // than it adds them one row at a time, and this is the one chance to catch
   // them while they are thinking about it.
@@ -767,19 +770,37 @@ export function SetupWizard() {
                 <>
                   <p className="text-xs font-semibold text-slate-500 mt-5 mb-2">{t('setupWizard.done.stillToDo')}</p>
                   <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                    {remaining.map(item => (
-                      <li key={item.key}>
-                        <button onClick={() => navigate(item.route)}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left">
-                          <span className="flex-1 min-w-0">
-                            <span className="block text-sm text-slate-700">
-                              {t(`setup.items.${item.key}.label`, { defaultValue: item.label })}
+                    {remaining.map(item => {
+                      const inline = isQuickAddable(item.key)
+                      const open = openItem === item.key
+                      return (
+                        <li key={item.key}>
+                          {/* Items that CAN be finished here expand in place.
+                              The rest still navigate - `comms_templates` is a
+                              review, not a record, and a form would tick a box
+                              nobody had read. */}
+                          <button
+                            onClick={() => inline ? setOpenItem(open ? null : item.key) : navigate(item.route)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left">
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-sm text-slate-700">
+                                {t(`setup.items.${item.key}.label`, { defaultValue: item.label })}
+                              </span>
                             </span>
-                          </span>
-                          <ChevronRight size={15} className="text-slate-300 shrink-0" />
-                        </button>
-                      </li>
-                    ))}
+                            <ChevronRight size={15}
+                              className={`text-slate-300 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+                          </button>
+                          {open && (
+                            <QuickAdd itemKey={item.key} onDone={async () => {
+                              // Re-read progress so the item disappears and the
+                              // percentage moves without a reload.
+                              setOpenItem(null)
+                              setSetup(await fetchSetup())
+                            }} />
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </>
               )}

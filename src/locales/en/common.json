@@ -2676,6 +2676,19 @@
       "expensePlaceholder": "Electricity, Salaries, Repairs, Puja Samagri",
       "commaHint": "Separate with commas. You can add more any time in Settings → Categories & Dropdowns.",
       "alreadyHave": "You already have {{count}}. Anything you type here is added to them."
+    },
+    "quick": {
+      "openingHint": "Balance as at the start of {{fy}}. You can refine it later in Accounts.",
+      "noAccounts": "No accounts yet",
+      "roomHint": "One room is enough to start taking bookings.",
+      "roomNumber": "Room number",
+      "tariff": "Tariff per night",
+      "prasadHint": "One item is enough to open the counter.",
+      "prasadName": "Item name",
+      "price": "Price",
+      "cattleHint": "One entry starts the gaushala register.",
+      "tagNumber": "Tag number",
+      "cattleName": "Name (optional)"
     }
   }
 }
