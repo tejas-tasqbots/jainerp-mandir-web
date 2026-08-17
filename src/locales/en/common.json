@@ -289,7 +289,10 @@
       "upiQrNeedsId": "Add a UPI ID above for the QR to appear on receipts.",
       "thermalNote": "The thermal layout is a compact text-only receipt; the design templates below apply to A4 only.",
       "managePaymentDetails": "Manage in Donor Payments →",
-      "paymentDetailsOwnedElsewhere": "These are the details devotees pay into, set once in Settings → Donor Payments. They are printed on receipts exactly as shown here, so the account a donor pays and the account on their receipt can never differ."
+      "paymentDetailsOwnedElsewhere": "These are the details devotees pay into, set once in Settings → Donor Payments. They are printed on receipts exactly as shown here, so the account a donor pays and the account on their receipt can never differ.",
+      "logo": "Logo",
+      "copySingle": "Single",
+      "copyDuplicate": "Duplicate"
     },
     "accounting": {
       "saved": "Accounting rules saved!",
@@ -391,7 +394,11 @@
       "addPhoto": "Add Photo",
       "noPhotos": "No photos yet.",
       "urlRequired": "Image URL is required",
-      "addFailed": "Could not add photo"
+      "addFailed": "Could not add photo",
+      "or": "or",
+      "uploadPhoto": "Upload from device",
+      "imageOnly": "Choose an image file (JPG, PNG or WebP).",
+      "uploadHint": "JPG, PNG or WebP. Large photos are resized automatically."
     },
     "users": {
       "heading": "User Management",
@@ -2624,7 +2631,10 @@
       "title": "Your receipts",
       "hint": "How the document your donor receives looks.",
       "templateHint": "You can change this later and see a preview in Settings → Receipt Settings.",
-      "logoHint": "Upload your logo in Settings → Receipt Settings — it needs a file, so it is not part of this flow."
+      "logoHint": "Upload your logo in Settings → Receipt Settings — it needs a file, so it is not part of this flow.",
+      "chooseLogo": "Choose logo",
+      "logoFailed": "Could not read that image.",
+      "moreHint": "Colour and a live preview are in Settings → Receipt Settings."
     },
     "public": {
       "title": "What devotees see",
@@ -2633,7 +2643,8 @@
     "team": {
       "title": "Your trustees",
       "hint": "Add one now; the rest, and your staff logins, are in Settings.",
-      "moreHint": "Add more trustees and invite staff in Settings → Trustees and Users."
+      "moreHint": "Add more trustees and invite staff in Settings → Trustees and Users.",
+      "add": "Add trustee"
     },
     "done": {
       "title": "That is the essentials done",

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, ArrowLeft, Check, ChevronRight, Loader2, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Check, ChevronRight, Image as ImageIcon, Loader2, Sparkles, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
+import { compressImage } from '../../lib/imageCompress'
+import { useAuthStore } from '../../store/authStore'
 import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
 import { DarshanTimings } from '../../components/DarshanTimings'
 import { MulnayakPicker } from '../../components/MulnayakPicker'
@@ -51,6 +53,26 @@ const TEMPLATES = ['classic', 'minimal', 'modern', 'traditional', 'elegant']
 /** Only ever true once — the wizard offers itself, it does not chase. */
 const SEEN_KEY = 'jainerp_setup_wizard_offered'
 
+/**
+ * Where the user got to, per tenant.
+ *
+ * "Finish setup" used to drop you back on step 1 every time, because `step`
+ * was seeded with a constant. On an eight-step wizard that meant clicking Next
+ * past everything you had already answered to reach the one you had not - so
+ * the button that exists to resume was the one thing that would not resume.
+ */
+const STEP_KEY = 'jainerp_setup_wizard_step'
+
+function readStep(tenantId: string): StepKey | null {
+  try {
+    const v = localStorage.getItem(`${STEP_KEY}:${tenantId}`)
+    return v && STEPS.some(s => s.key === v) ? (v as StepKey) : null
+  } catch { return null }
+}
+function writeStep(tenantId: string, step: StepKey) {
+  try { localStorage.setItem(`${STEP_KEY}:${tenantId}`, step) } catch { /* private mode */ }
+}
+
 export function hasBeenOfferedWizard(tenantId: string): boolean {
   try { return localStorage.getItem(`${SEEN_KEY}:${tenantId}`) === '1' } catch { return true }
 }
@@ -65,6 +87,14 @@ interface Form {
   is_gst_registered: boolean; gstin: string
   upi_id: string; bank_name: string
   donation_receipt_template: string; custom_receipt_footer: string
+  // Brought over from Receipt Settings. The wizard offered only a template and
+  // a footer line, so the receipt a donor actually receives could not be
+  // finished here - no logo, no 80G line, no paper size - and the step said as
+  // much ("upload your logo in Settings"). These are the same field names the
+  // settings tab patches, through the same PATCH /tenants/me.
+  logo_base64: string; show_logo_on_receipts: boolean
+  show_80g_on_receipt: boolean; show_gstin_on_header: boolean
+  receipt_copies: string; receipt_paper: string
   about: string; main_deity: string; darshan_timings: string
 }
 
@@ -75,14 +105,24 @@ const BLANK: Form = {
   is_gst_registered: false, gstin: '',
   upi_id: '', bank_name: '',
   donation_receipt_template: '', custom_receipt_footer: '',
+  logo_base64: '', show_logo_on_receipts: true,
+  show_80g_on_receipt: false, show_gstin_on_header: true,
+  receipt_copies: 'single', receipt_paper: 'a4',
   about: '', main_deity: '', darshan_timings: '',
 }
 
 export function SetupWizard() {
   const { t } = useTranslation()
+  const tenantId = useAuthStore(st => st.tenant?.id ?? 'anon')
   const navigate = useNavigate()
-  const [step, setStep] = useState<StepKey>('identity')
+  // Resume where they left off. See STEP_KEY above - "Finish setup" used to
+  // restart at step 1 every time.
+  const [step, setStep] = useState<StepKey>(() => readStep(tenantId) ?? 'identity')
   const [form, setForm] = useState<Form>(BLANK)
+
+  // Persist the position so a reload, or a trip out to Settings and back via
+  // "Finish setup", returns here rather than to the beginning.
+  useEffect(() => { writeStep(tenantId, step) }, [tenantId, step])
   const [setup, setSetup] = useState<SetupProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -93,6 +133,12 @@ export function SetupWizard() {
   const [needsAccount, setNeedsAccount] = useState(false)
   const [account, setAccount] = useState({ name: '', bank_name: '', account_no: '', ifsc: '' })
   const [trustee, setTrustee] = useState({ name: '', designation: '', mobile: '' })
+  // The team step showed input fields and nothing else, so a trust that had
+  // already added its board had no way to know. The obvious response is to type
+  // it again - which is exactly what happened, producing a duplicate row.
+  const [trustees, setTrustees] = useState<Array<{ id: string; name: string; designation?: string | null; mobile?: string | null }>>([])
+  const [addingTrustee, setAddingTrustee] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
   // Comma-separated on purpose: a trust listing its heads types them faster
   // than it adds them one row at a time, and this is the one chance to catch
   // them while they are thinking about it.
@@ -240,7 +286,12 @@ export function SetupWizard() {
           break
         }
         case 'receipts':
-          await patchProfile(['donation_receipt_template', 'custom_receipt_footer'])
+          await patchProfile([
+            'donation_receipt_template', 'custom_receipt_footer',
+            'logo_base64', 'show_logo_on_receipts',
+            'show_80g_on_receipt', 'show_gstin_on_header',
+            'receipt_copies', 'receipt_paper',
+          ])
           break
         case 'public': {
           const body: Record<string, unknown> = {}
@@ -275,6 +326,37 @@ export function SetupWizard() {
     const i = STEPS.findIndex(s => s.key === step)
     setStep(STEPS[Math.min(i + 1, STEPS.length - 1)].key)
     window.scrollTo({ top: 0 })
+  }
+
+  const loadTrustees = async () => {
+    try { const { data } = await api.get('/tenants/me/trustees'); setTrustees(data.data ?? []) } catch { /* non-fatal */ }
+  }
+  useEffect(() => { if (step === 'team') void loadTrustees() }, [step])
+
+  /** Add one and stay put, so a board of five is five clicks, not five passes
+      through the wizard. Clearing the form afterwards is also what stops Next
+      from posting the same person a second time. */
+  async function addTrustee() {
+    if (!trustee.name.trim() || addingTrustee) return
+    setAddingTrustee(true)
+    setError('')
+    try {
+      await api.post('/tenants/me/trustees', {
+        name: trustee.name.trim(),
+        designation: trustee.designation.trim() || null,
+        mobile: trustee.mobile.trim() || null,
+      })
+      setTrustee({ name: '', designation: '', mobile: '' })
+      await loadTrustees()
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message ?? t('setupWizard.saveFailed'))
+    } finally {
+      setAddingTrustee(false)
+    }
+  }
+
+  async function removeTrustee(id: string) {
+    try { await api.delete(`/tenants/me/trustees/${id}`); await loadTrustees() } catch { /* non-fatal */ }
   }
 
   // Refresh on ARRIVAL at the summary, not on the transition into it.
@@ -525,7 +607,79 @@ export function SetupWizard() {
               </div>
               <Field label={t('setup.items.receipt_footer.label')} value={form.custom_receipt_footer}
                 onChange={v => set({ custom_receipt_footer: v })} hint={t('setup.items.receipt_footer.why')} multiline />
-              <p className="text-xs text-slate-400">{t('setupWizard.receipts.logoHint')}</p>
+
+              {/* LOGO. The step used to say "upload your logo in Settings - it
+                  needs a file, so it is not part of this flow". It can be:
+                  compressImage() turns the file into a base64 data URI, which
+                  is what Receipt Settings already stores in logo_base64. */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">{t('settings.receipts.logo')}</label>
+                <div className="flex items-center gap-3">
+                  {form.logo_base64
+                    ? <img src={form.logo_base64} alt="" className="h-12 w-12 rounded-lg object-contain border border-slate-200 bg-white" />
+                    : <div className="h-12 w-12 rounded-lg border border-dashed border-slate-300 grid place-items-center text-slate-300"><ImageIcon size={16} /></div>}
+                  <button type="button" onClick={() => logoInputRef.current?.click()} className="btn-secondary text-sm">
+                    <Upload size={13} /> {t('setupWizard.receipts.chooseLogo')}
+                  </button>
+                  {form.logo_base64 && (
+                    <button type="button" onClick={() => set({ logo_base64: '' })} className="text-xs text-slate-400 hover:text-brand-red">
+                      {t('common.delete')}
+                    </button>
+                  )}
+                </div>
+                <input ref={logoInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
+                  onChange={async e => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    // Smaller budget than a gallery photo: a logo is reprinted
+                    // on every receipt, so it should not carry a page of bytes.
+                    try { set({ logo_base64: await compressImage(f, { maxDim: 600, maxBytes: 120_000 }) }) }
+                    catch { setError(t('setupWizard.receipts.logoFailed')) }
+                    if (logoInputRef.current) logoInputRef.current.value = ''
+                  }} />
+              </div>
+
+              <Row>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">{t('settings.receipts.copies')}</label>
+                  <select className="form-select w-full" value={form.receipt_copies}
+                    onChange={e => set({ receipt_copies: e.target.value })}>
+                    <option value="single">{t('settings.receipts.copySingle')}</option>
+                    <option value="duplicate">{t('settings.receipts.copyDuplicate')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">{t('settings.receipts.paper')}</label>
+                  <select className="form-select w-full" value={form.receipt_paper}
+                    onChange={e => set({ receipt_paper: e.target.value })}>
+                    <option value="a4">A4</option>
+                    <option value="a5">A5</option>
+                    <option value="thermal">{t('settings.receipts.paperThermal')}</option>
+                  </select>
+                </div>
+              </Row>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_logo_on_receipts}
+                    onChange={e => set({ show_logo_on_receipts: e.target.checked })} />
+                  {t('settings.receipts.showLogo')}
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_80g_on_receipt}
+                    onChange={e => set({ show_80g_on_receipt: e.target.checked })} />
+                  {t('settings.receipts.show80g')}
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_gstin_on_header}
+                    onChange={e => set({ show_gstin_on_header: e.target.checked })} />
+                  {t('settings.receipts.showGstin')}
+                </label>
+              </div>
+
+              {/* Colour and the live preview stay in Receipt Settings - a
+                  preview iframe does not belong in a "few short steps" flow. */}
+              <p className="text-xs text-slate-400">{t('setupWizard.receipts.moreHint')}</p>
             </Section>
           )}
 
@@ -560,6 +714,35 @@ export function SetupWizard() {
               </Row>
               <Field label={t('setupWizard.f.mobile')} value={trustee.mobile} inputMode="tel"
                 onChange={v => setTrustee(x => ({ ...x, mobile: v }))} />
+
+              <button type="button" onClick={addTrustee}
+                disabled={!trustee.name.trim() || addingTrustee}
+                className="btn-secondary w-full sm:w-auto disabled:opacity-50">
+                {addingTrustee ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                {t('setupWizard.team.add')}
+              </button>
+
+              {/* The board as it actually stands. Without this the step looked
+                  empty however many trustees were already saved. */}
+              {trustees.length > 0 && (
+                <div className="mt-4 rounded-xl border border-slate-200 overflow-hidden">
+                  {trustees.map(tr => (
+                    <div key={tr.id} className="flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 last:border-0">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-navy-900 truncate">{tr.name}</div>
+                        <div className="text-xs text-slate-500 truncate">
+                          {[tr.designation, tr.mobile].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => removeTrustee(tr.id)}
+                        className="text-xs text-slate-400 hover:text-brand-red shrink-0">
+                        {t('common.delete')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <p className="text-xs text-slate-400">{t('setupWizard.team.moreHint')}</p>
             </Section>
           )}
