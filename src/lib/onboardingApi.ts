@@ -14,27 +14,39 @@ import axios from 'axios'
  *  1. `VITE_ONBOARDING_API_URL` when the build sets it;
  *  2. under `vite dev` only, the relative `/api/onboarding` path that
  *     vite.config.ts proxies to :3105;
- *  3. otherwise the deployed PROD superadmin-api host.
+ *  3. otherwise **the superadmin-api that matches the host this page is served
+ *     from** — dev portal to dev API, prod portal to prod API.
  *
- * Step 3 is not a nicety. The relative path in step 2 exists ONLY inside the
- * vite dev server — nothing serves it in a built bundle. Falling back to it in
- * production made every request hit mandir-web's own origin and 404
- * ("Cannot GET /api/onboarding/api/v1/public/onboarding/plans"), so the wizard
- * opened on "Could not load our plans just now" and could go no further. The
- * deploy workflow does not pass VITE_ONBOARDING_API_URL, so the default has to
- * be a real host — exactly as the marketing site's `plansApi.ts` already does.
+ * Step 3 has now been wrong in both directions, which is why it is derived
+ * rather than hardcoded:
+ *
+ *  - It was once the relative path from step 2, which nothing serves in a built
+ *    bundle: every request hit mandir-web's own origin and 404'd, so the wizard
+ *    opened on "Could not load our plans just now".
+ *  - Then it was hardcoded to dev, so the wizard on app.jainerp.org priced real
+ *    registrations against the DEV catalogue.
+ *  - Then it was hardcoded to prod, which fixed prod and broke dev: a dev
+ *    deployment is still a *production* Vite build, so `import.meta.env.DEV` is
+ *    false there too and dev-mandir.jainerp.org fetched plans from
+ *    admin-api.jainerp.org — visible in the network tab as 8.232.105.22.
+ *
+ * A constant cannot be right for both, and the deploy workflow passes no
+ * VITE_ONBOARDING_API_URL. The hostname already says which side we are on: dev
+ * portals are `dev-*.jainerp.org`, production portals are not. See
+ * jainerp-deploy/ENVIRONMENTS.md.
  */
+export function onboardingOriginFor(hostname: string): string {
+  return hostname.startsWith('dev-')
+    ? 'https://dev-api-admin.jainerp.org'
+    : 'https://admin-api.jainerp.org'
+}
+
 const BASE_URL = (() => {
   const configured = (import.meta.env.VITE_ONBOARDING_API_URL as string | undefined)?.replace(/\/+$/, '')
   if (configured) return `${configured}/api/v1/public/onboarding`
   if (import.meta.env.DEV) return '/api/onboarding/api/v1/public/onboarding'
-  // PROD superadmin-api. Was dev-api-admin.jainerp.org, which meant the
-  // registration wizard served from app.jainerp.org fetched the DEV plan
-  // catalogue - visible in the network tab as a request to
-  // 44.202.190.208, the EC2 box. So a price changed in the prod console never
-  // reached an actual applicant, and worse, a registration begun on prod was
-  // priced against dev's catalogue. Corrected 2026-08-17.
-  return 'https://admin-api.jainerp.org/api/v1/public/onboarding'
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  return `${onboardingOriginFor(host)}/api/v1/public/onboarding`
 })()
 
 export const onboardingApi = axios.create({
