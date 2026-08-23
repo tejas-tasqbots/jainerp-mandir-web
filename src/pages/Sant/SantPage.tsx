@@ -5,7 +5,19 @@ import { api } from '../../lib/api'
 import { LocationPicker } from '../../components/LocationPicker'
 import { StateSelect, CitySelect } from '../../components/GeoSelect'
 
-interface Maharaj { id: string; name: string; type: string; samuday?: string; city?: string; state?: string; current_city?: string; photo_url?: string; note?: string; maharaj_id?: string }
+interface Maharaj {
+  id: string; name: string; type: string; samuday?: string;
+  city?: string; state?: string;
+  /**
+   * Where they are NOW. `current_state` is its pair and `state` is the HOME
+   * state — rendering current_city beside `state` produced places that do not
+   * exist, which is what migration 046 was written to stop.
+   */
+  current_city?: string; current_state?: string;
+  /** The sangh they travel with (migration 047). */
+  sangh_name?: string;
+  photo_url?: string; note?: string; maharaj_id?: string;
+}
 interface Proposal { id: string; maharaj_name: string; place: string; city?: string; status: string; created_at: string; decision_note?: string }
 
 export function SantPage() {
@@ -84,7 +96,20 @@ export function SantPage() {
                   <Avatar m={m} />
                   <div className="flex-1">
                     <p className="font-semibold text-slate-800 text-sm">{m.name}</p>
-                    <p className="text-xs text-slate-400">{m.samuday} {m.current_city && t('maharaj.atCity', { city: m.current_city })}</p>
+                    <p className="text-xs text-slate-400">
+                      {[
+                        m.samuday,
+                        // The city with its OWN state, never the home one.
+                        m.current_city
+                          ? t('maharaj.atCity', {
+                              city: [m.current_city, m.current_state].filter(Boolean).join(', '),
+                            })
+                          : null,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                    {m.sangh_name && (
+                      <p className="text-[11px] text-slate-400 truncate">{m.sangh_name}</p>
+                    )}
                   </div>
                   <button disabled={already} onClick={() => link(m)} className={`btn-sm ${already ? 'btn-secondary opacity-50' : 'btn-primary'}`}>
                     <Link2 size={13} /> {already ? t('maharaj.linked') : t('maharaj.link')}
