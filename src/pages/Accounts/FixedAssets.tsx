@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, Calculator } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, parsePaise, currentFY } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
@@ -206,7 +207,7 @@ export function FixedAssets() {
         onSearchChange={v => { setSearch(v); setPage(1) }}
         searchPlaceholder={t('accounts.searchAssets')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { FySelect } from '../../../components/FySelect'
@@ -187,7 +188,7 @@ export function DepreciationScheduleReport() {
         }}
         onClearFilters={() => { setFilterState({}); setSearch('') }}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         page={1}
         limit={visible.length || 1}
         total={visible.length}

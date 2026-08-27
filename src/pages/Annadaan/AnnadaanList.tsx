@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, RefreshCw, Receipt } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import { PhoneInput } from '../../components/PhoneInput'
 import { printDonationReceipt } from '../../lib/printReceipt'
@@ -327,7 +328,7 @@ export function AnnadaanList() {
         onSearchChange={setSearch}
         searchPlaceholder={t('bhojanshala.searchBuyer')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

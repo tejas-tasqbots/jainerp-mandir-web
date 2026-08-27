@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -330,7 +331,7 @@ export function EventsList() {
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('events.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

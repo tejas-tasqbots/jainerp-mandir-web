@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { trendByDay } from '../../../lib/chartData'
@@ -151,7 +152,7 @@ export function AllTransactionsReport() {
         searchPlaceholder={t('reports.searchTransactions')}
         graphData={trendByDay(visible.filter(r => r.direction === 'in'), 'date', 'amount_paise')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Receipt, Ban } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
@@ -285,7 +285,7 @@ export function SevaBookingsList() {
         searchPlaceholder={t('seva.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

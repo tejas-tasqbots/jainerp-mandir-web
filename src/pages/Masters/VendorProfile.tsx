@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Building2, Phone, Mail, FileText, Landmark, Sheet, Printer } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
@@ -127,7 +128,7 @@ export function VendorProfile() {
         </button>
         <div className="flex gap-2">
           <button type="button" onClick={exportExcel} className="btn-secondary btn-sm"><Sheet size={14} /> {t('kit.exportExcel')}</button>
-          <button type="button" onClick={() => window.print()} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
+          <button type="button" onClick={() => printCurrentView()} className="btn-secondary btn-sm"><Printer size={14} /> {t('donors.print')}</button>
         </div>
       </div>
 

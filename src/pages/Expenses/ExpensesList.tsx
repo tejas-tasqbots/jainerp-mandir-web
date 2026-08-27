@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, Landmark, Paperclip } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -389,7 +389,7 @@ export function ExpensesList() {
         searchPlaceholder={t('expenses.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         graphData={graphData}
         filterState={filterState}
         onFilterChange={(key, s) => {

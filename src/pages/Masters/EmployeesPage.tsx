@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X, Users } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -190,7 +191,7 @@ export function EmployeesPage() {
         onSearchChange={setSearch}
         searchPlaceholder={t('employees.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, st) => {
           setFilterState(prev => {

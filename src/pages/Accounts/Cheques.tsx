@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Landmark, CheckCircle2, XCircle as BounceIcon } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -273,7 +274,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('cheques.searchReceived')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
@@ -480,7 +481,7 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('cheques.searchIssued')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })

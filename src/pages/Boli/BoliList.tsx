@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, AlertTriangle, Bell } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printBoliIntimation } from '../../lib/printBoliIntimation'
-import { downloadReport } from '../../lib/downloadReport'
+import { downloadReport, printCurrentView } from '../../lib/downloadReport'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { trendByDay } from '../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -309,7 +309,7 @@ export function BoliList() {
         searchPlaceholder={t('pledges.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onExportPdf={() => downloadReport('boli-register', {}, 'pdf')}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

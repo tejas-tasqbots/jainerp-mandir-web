@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef } from '../../../components/kit/DataTable'
@@ -126,7 +127,7 @@ export function GstSummaryReport() {
         rowKey={r => r.head}
         loading={loading}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}

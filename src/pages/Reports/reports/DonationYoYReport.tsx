@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef } from '../../../components/kit/DataTable'
@@ -134,7 +135,7 @@ export function DonationYoYReport() {
         rowKey={r => r.month}
         loading={loading}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}

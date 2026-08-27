@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, X, Upload } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSelect'
@@ -233,7 +234,7 @@ export function DonorList() {
         onSearchChange={v => { setSearch(v); setPage(1) }}
         searchPlaceholder={t('donors.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

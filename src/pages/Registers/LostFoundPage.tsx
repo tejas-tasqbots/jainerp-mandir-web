@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, PackageCheck } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -207,7 +208,7 @@ export function LostFoundPage() {
         onSearchChange={setSearch}
         searchPlaceholder={t('registers.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, st) => {
           setFilterState(prev => {

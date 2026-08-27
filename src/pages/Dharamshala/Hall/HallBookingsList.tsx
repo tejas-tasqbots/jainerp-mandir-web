@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Ban, FileText, IndianRupee, Plus, Receipt, X } from 'lucide-react'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
@@ -372,7 +373,7 @@ export function HallBookingsList() {
         onSearchChange={resetPageAnd(setSearch)}
         searchPlaceholder={t('dharamshala.hallSearchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

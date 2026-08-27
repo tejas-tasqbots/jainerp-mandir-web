@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, fmtPaise } from '../../lib/api'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -140,7 +140,7 @@ export function DayBook() {
         searchPlaceholder={t('accounts.searchDescRef')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })

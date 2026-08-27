@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Save, Users } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, istDate, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
@@ -168,7 +169,7 @@ export function VisitorCountPage() {
         rowKey={c => c.id}
         loading={loading}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         graphData={counts.slice().reverse().map(c => ({
           label: new Date(c.count_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
           value: totalOf(c),

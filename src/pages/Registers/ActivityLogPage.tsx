@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { History } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api } from '../../lib/api'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
@@ -117,7 +118,7 @@ export function ActivityLogPage() {
         searchValue={search}
         onSearchChange={v => { setSearch(v); setPage(1) }}
         searchPlaceholder={t('activityLog.search')}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

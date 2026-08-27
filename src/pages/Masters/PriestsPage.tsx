@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -170,7 +171,7 @@ export function PriestsPage() {
         onSearchChange={setSearch}
         searchPlaceholder={t('priests.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, st) => {
           setFilterState(prev => {

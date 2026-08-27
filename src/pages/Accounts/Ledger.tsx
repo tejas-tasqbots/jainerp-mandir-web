@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api, fmtPaise } from '../../lib/api'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -161,7 +161,7 @@ export function Ledger() {
             searchPlaceholder={t('accounts.searchDescRef')}
             onExportXlsx={exportExcel}
             onExportPdf={exportPdf}
-            onPrint={() => window.print()}
+            onPrint={() => printCurrentView()}
             filterState={{}}
             onFilterChange={() => {}}
             page={1}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { FySelect } from '../../../components/FySelect'
@@ -124,7 +125,7 @@ export function CashFlowReport() {
         rowKey={m => m.month}
         loading={loading}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}

@@ -5,7 +5,7 @@ import { Plus, Upload, Receipt, Ban, Award, Pencil, FileDown, XCircle } from 'lu
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
-import { downloadReport } from '../../lib/downloadReport'
+import { downloadReport, printCurrentView } from '../../lib/downloadReport'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
@@ -319,7 +319,7 @@ export function DonationsList() {
         searchPlaceholder={t('donations.searchPlaceholder')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         graphData={graphData}
         filterState={filterState}
         onFilterChange={(key, s) => {

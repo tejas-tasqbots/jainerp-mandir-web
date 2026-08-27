@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileSpreadsheet, FileDown, Printer } from 'lucide-react'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadSectionsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { api, fmtPaise, currentFY } from '../../lib/api'
@@ -109,7 +109,7 @@ export function ReceiptsPayments() {
         <div className="flex gap-2">
           <button type="button" onClick={exportExcel} className="btn-icon !text-green-700 hover:!bg-green-50" title={t('kit.exportExcel')} aria-label={t('kit.exportExcel')}><FileSpreadsheet size={16} /></button>
           <button type="button" onClick={exportPdf} className="btn-icon !text-red-700 hover:!bg-red-50" title={t('kit.exportPdf')} aria-label={t('kit.exportPdf')}><FileDown size={16} /></button>
-          <button type="button" onClick={() => window.print()} className="btn-icon" title={t('kit.print')} aria-label={t('kit.print')}><Printer size={16} /></button>
+          <button type="button" onClick={() => printCurrentView()} className="btn-icon" title={t('kit.print')} aria-label={t('kit.print')}><Printer size={16} /></button>
         </div>
       </div>
 

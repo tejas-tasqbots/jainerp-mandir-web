@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Landmark, Wallet, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
@@ -257,7 +258,7 @@ export function CashBank() {
               onSearchChange={setSearch}
               searchPlaceholder={t('accounts.searchDescRef')}
               onExportXlsx={exportExcel}
-              onPrint={() => window.print()}
+              onPrint={() => printCurrentView()}
               filterState={{}}
               onFilterChange={() => {}}
               page={1}

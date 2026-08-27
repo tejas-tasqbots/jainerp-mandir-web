@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api, fmtPaise, currentFY } from '../../lib/api'
-import { rsFmt } from '../../lib/downloadReport'
+import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { FySelect } from '../../components/FySelect'
@@ -119,7 +119,7 @@ export function TrialBalance() {
         searchPlaceholder={t('accounts.searchAccounts')}
         onExportXlsx={exportExcel}
         onExportPdf={exportPdf}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={{}}
         onFilterChange={() => {}}
         page={1}

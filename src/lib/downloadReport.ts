@@ -26,12 +26,50 @@ export function toCsv(headers: string[], rows: (string | number | null | undefin
 const rs = (paise: number | string | null | undefined) =>
   (Number(paise ?? 0) / 100).toFixed(2)
 
+/** The desktop shell's print bridge, when running inside Electron. */
+interface DesktopPagePrint {
+  printPage?: (opts?: { silent?: boolean }) => Promise<{
+    success: boolean
+    reason?: string
+    error?: string
+    filePath?: string
+  }>
+  openPath?: (filePath: string) => Promise<string>
+}
+
 /**
- * Print the current page (browser → "Save as PDF"). Used by the accounting
- * statement screens which already render the full statement on screen — far
- * more reliable than a non-existent server-side PDF endpoint.
+ * Print the current page (browser → "Save as PDF"). Used by the print button on
+ * every list, register and accounting statement — they already render the whole
+ * thing on screen, which beats a server-side PDF endpoint that does not exist.
+ *
+ * ── ON THE DESKTOP BUILD THIS GOES THROUGH ELECTRON ─────────────────────────
+ * `window.print()` never returns inside the shell: the call blocks, no dialog
+ * appears, and nothing prints. Every print button in the app was dead there,
+ * silently. The shell prints the window itself — not a copy of its HTML, so the
+ * `@media print` rules and the letterhead survive — and writes a PDF and opens
+ * it when the machine has no printer. The browser build is untouched.
+ *
+ * Call this instead of `window.print()`; a bare `window.print()` anywhere in
+ * this app is a bug on the desktop edition.
  */
 export function printCurrentView() {
+  const bridge =
+    typeof window === 'undefined'
+      ? undefined
+      : (window as unknown as { electronAPI?: DesktopPagePrint }).electronAPI
+
+  if (bridge?.printPage) {
+    void bridge
+      .printPage()
+      .then((res) => {
+        // A cancelled print and an absent printer look the same from here, and
+        // in both cases the PDF is the useful outcome rather than an error.
+        if (!res?.success && res?.filePath) void bridge.openPath?.(res.filePath)
+      })
+      .catch(() => { /* the shell reports its own failures */ })
+    return
+  }
+
   window.print()
 }
 

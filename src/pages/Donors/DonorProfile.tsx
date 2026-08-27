@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw } from 'lucide-react'
+import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
 import { downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
@@ -482,7 +483,7 @@ export function DonorProfile() {
           searchPlaceholder={t('donors.searchTransactions')}
           onExportXlsx={exportExcel}
           onExportPdf={exportPdf}
-          onPrint={() => window.print()}
+          onPrint={() => printCurrentView()}
           filterState={filterState}
           onFilterChange={(key, s) => {
             setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })

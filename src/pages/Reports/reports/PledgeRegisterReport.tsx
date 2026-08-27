@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise, currentFY } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../../components/kit/DataTable'
@@ -142,7 +143,7 @@ export function PledgeRegisterReport() {
         onSearchChange={setSearch}
         searchPlaceholder={t('pledges.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {

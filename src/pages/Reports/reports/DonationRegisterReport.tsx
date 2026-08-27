@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
@@ -142,7 +143,7 @@ export function DonationRegisterReport() {
         onSearchChange={setSearch}
         searchPlaceholder={t('donations.searchPlaceholder')}
         onExportXlsx={exportExcel}
-        onPrint={() => window.print()}
+        onPrint={() => printCurrentView()}
         filterState={filterState}
         onFilterChange={(key, s) => {
           setFilterState(prev => {
