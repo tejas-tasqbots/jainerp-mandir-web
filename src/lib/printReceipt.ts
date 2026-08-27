@@ -1227,12 +1227,51 @@ export function buildReceiptHtml(input: ReceiptData): string {
 </head><body>${copies}<script>window.onload=()=>{window.print()}</script></body></html>`
 }
 
+/** The desktop shell's bridge, when this is running inside Electron. */
+interface DesktopPrintBridge {
+  printHtml?: (html: string, opts?: { silent?: boolean }) => Promise<{
+    success: boolean
+    reason?: string
+    error?: string
+    filePath?: string
+  }>
+  openPath?: (filePath: string) => Promise<string>
+}
+
+function desktopBridge(): DesktopPrintBridge | undefined {
+  if (typeof window === 'undefined') return undefined
+  return (window as unknown as { electronAPI?: DesktopPrintBridge }).electronAPI
+}
+
 /**
  * Render the receipt HTML and trigger print. Uses a hidden iframe (no popup,
  * so it is not blocked by popup blockers); falls back to a new tab if the
  * iframe approach is unavailable.
+ *
+ * ── ON THE DESKTOP BUILD THIS GOES THROUGH ELECTRON ─────────────────────────
+ * `window.print()` never returns inside the Electron shell. The call blocks,
+ * no print dialog ever appears, the cleanup below never runs and the iframe is
+ * left in the DOM — so somebody at the counter saves a donation, sees nothing
+ * happen, and the donor leaves without a receipt. There is no error to notice.
+ * Confirmed against the unmodified shell: the donation was written to the
+ * database correctly and the print simply went nowhere.
+ *
+ * The shell renders the document in its own window and prints it there, and
+ * writes a PDF and opens it when there is no printer — a counter machine
+ * frequently has none configured. The browser build is untouched.
  */
 export function printReceiptHtml(html: string): void {
+  const bridge = desktopBridge()
+  if (bridge?.printHtml) {
+    void bridge.printHtml(html).then((res) => {
+      // Not an error worth interrupting anyone over: a cancelled print and an
+      // absent printer look the same from here, and in both cases the PDF is
+      // the useful outcome rather than a dialog saying something went wrong.
+      if (!res?.success && res?.filePath) void bridge.openPath?.(res.filePath)
+    }).catch(() => { /* the shell reports its own failures */ })
+    return
+  }
+
   const iframe = document.createElement('iframe')
   iframe.style.position = 'fixed'
   iframe.style.right = '0'
