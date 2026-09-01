@@ -5,7 +5,7 @@ THE LOGO IS TEXT AND COLOUR, NOTHING ELSE
 -----------------------------------------
 "JainERP" set in Noto Sans Bold — the same family the portals load — with
 "Jain" in brand navy (#0D1B2E) and "ERP" in brand red (#D62828), on one line.
-Under it, each app prints its own portal label ("Temple/Trust", "Devotee",
+Under it, each app prints its own portal label ("Temple/Trust", "Bhakt",
 "Sant"), in slate. There is no icon, badge or illustration in the mark.
 
 Because it is only text, this script builds it from the font's own outlines
@@ -72,14 +72,14 @@ FONT_CANDIDATES = (
 # not one of the portals.
 WEBS = (
     ("mandir-web", "Temple/Trust"),
-    ("devotee-web", "Devotee"),
+    ("devotee-web", "Bhakt"),
     ("sant-web", "Sant"),
     ("superadmin-web", "Super Admin"),
     ("website", None),
 )
 MOBILES = (
     ("mandir-mobile", "Temple/Trust"),
-    ("devotee-mobile", "Devotee"),
+    ("devotee-mobile", "Bhakt"),
     ("sant-mobile", "Sant"),
 )
 DESKTOP = ("mandir-desktop", "Temple/Trust")
