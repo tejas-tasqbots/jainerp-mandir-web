@@ -289,6 +289,11 @@ const BLANK = {
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
   // Print settings (tenant-migration 011)
   receipt_copies: 'single', receipt_paper: 'a4', receipt_language: 'en', receipt_show_upi_qr: false,
+  // Counter slips (tenant-migration 032) — prasad, seva and bhojanshala print
+  // through these instead of the receipt settings above. Separate because the
+  // choices genuinely differ: a trust that prints donation receipts on A4
+  // letterhead still wants meal tokens on an 80 mm roll.
+  slip_template: 'token', slip_paper: 'thermal80', slip_copies: 'single', slip_auto_print: false,
   // profile fields for preview (read-only here; edited in Temple Profile)
   name: '', address: '', mobile: '', email: '',
   gstin: '', pan: '', tan: '',
@@ -296,6 +301,14 @@ const BLANK = {
 }
 
 function buildPreviewData(form: typeof BLANK): ReceiptData {
+  // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact. Kept as
+  // three lines here rather than imported because mandir-api is a separate
+  // deployable with no shared package — if that rule changes, change it in
+  // both (mandiradmin-api/src/common/domain/statutory-visibility.ts).
+  const gstin = form.gstin.trim()
+  const gstEnabled = gstin.length > 0
+  const has80g = form.reg_80g_number.trim().length > 0
+
   return {
     receipt_number: 'DON/2025-26/000001',
     date: new Date().toISOString(),
@@ -309,19 +322,36 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
     category: 'General Donation',
     amount_paise: 150000,
     payment_mode: 'cash',
-    is_80g_eligible: true,
+    // The sample donation is 80G-eligible only if this trust could actually
+    // issue one. Previewing a "80G Eligible: Yes" row on a trust with no
+    // registration shows an admin a receipt they can never produce.
+    is_80g_eligible: has80g,
     mandir: {
       name: form.name || 'Shree Jain Mandir',
       address: form.address || '123, Temple Road, Ahmedabad, Gujarat 380001',
       mobile: form.mobile || '+91 98765 43210',
       email: form.email || 'info@jainmandir.org',
-      gstin: form.gstin || '24XXXXX1234A1Z5',
+      // ── NO PLACEHOLDER STATUTORY NUMBERS ──────────────────────────────
+      // These read `form.gstin || '24XXXXX1234A1Z5'` and
+      // `form.reg_80g_number || 'AAAAB1234CF20214'`, so a trust with neither
+      // saw a preview receipt printing both — a GSTIN beside a panel that said
+      // "GSTIN: Not set" two inches to its left.
+      //
+      // The placeholders were there so the layout would not collapse while
+      // previewing, and for a name or an address that is a fair trade. For a
+      // tax registration it is not: this screen exists precisely so an admin
+      // can confirm WHAT PRINTS, and it was the one screen answering wrongly.
+      // A trust with no GSTIN now previews a receipt with no GSTIN, which is
+      // what its donors will receive.
+      gstin: gstin || null,
       pan: form.pan || 'AAAAB1234C',
       tan: form.tan || null,
-      is_gst_registered: Boolean(form.gstin),
-      reg_80g_number: form.reg_80g_number || 'AAAAB1234CF20214',
-      reg_80g_urn: form.reg_80g_urn || 'AAAAB1234CF20214',
-      reg_80g_valid_upto: form.reg_80g_valid_upto || '2027-03-31',
+      is_gst_registered: gstEnabled,
+      gst_enabled: gstEnabled,
+      eighty_g_enabled: has80g,
+      reg_80g_number: form.reg_80g_number.trim() || null,
+      reg_80g_urn: form.reg_80g_urn || null,
+      reg_80g_valid_upto: form.reg_80g_valid_upto || null,
       reg_12a_number: form.reg_12a_number || null,
       reg_12ab_number: form.reg_12ab_number || null,
       upi_id: form.upi_id || 'temple@upi',
@@ -332,13 +362,17 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
       logo_cdn_url: form.logo_cdn_url || null,
       logo_base64: form.logo_base64 || null,
       show_logo: form.show_logo_on_receipts,
-      show_80g: form.show_80g_on_receipt,
-      show_gstin: form.show_gstin_on_header,
+      // Both toggles can only ever HIDE. A trust cannot tick a checkbox into
+      // holding a registration — the same rule the server applies in
+      // common/domain/statutory-visibility.ts, and the reason the preview and
+      // the printed receipt now agree.
+      show_80g: has80g && form.show_80g_on_receipt,
+      show_gstin: gstEnabled && form.show_gstin_on_header,
       footer: form.custom_receipt_footer || 'Jai Jinendra! Thank you for your generous donation.',
       template: form.receipt_template,
       primary_color: form.primary_color,
       receipt_copies: form.receipt_copies as 'single' | 'both',
-      receipt_paper: form.receipt_paper as 'a4' | 'thermal80',
+      receipt_paper: form.receipt_paper as 'a4' | 'a5' | 'thermal58' | 'thermal80',
       receipt_language: form.receipt_language,
       receipt_show_upi_qr: form.receipt_show_upi_qr,
     },
@@ -377,6 +411,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         receipt_paper: (p.receipt_paper as string) || 'a4',
         receipt_language: (p.receipt_language as string) || 'en',
         receipt_show_upi_qr: Boolean(p.receipt_show_upi_qr),
+        slip_template: (p.slip_template as string) || 'token',
+        slip_paper: (p.slip_paper as string) || 'thermal80',
+        slip_copies: (p.slip_copies as string) || 'single',
+        slip_auto_print: Boolean(p.slip_auto_print),
         name: (p.name as string) || '',
         address: [p.address_line1, p.city, p.state, p.pincode].filter(Boolean).join(', '),
         mobile: (p.mobile as string) || '',
@@ -448,6 +486,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         receipt_paper: form.receipt_paper,
         receipt_language: form.receipt_language,
         receipt_show_upi_qr: form.receipt_show_upi_qr,
+        slip_template: form.slip_template,
+        slip_paper: form.slip_paper,
+        slip_copies: form.slip_copies,
+        slip_auto_print: form.slip_auto_print,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -617,6 +659,66 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             {form.receipt_paper === 'thermal80' && (
               <p className="text-xs text-slate-500">{t('settings.receipts.thermalNote')}</p>
             )}
+          </div>
+        </div>
+
+        {/* ── COUNTER SLIPS ───────────────────────────────────────────────
+            Prasad, Seva and Bhojanshala used to print through the settings
+            above: the same nine A4 templates, the same paper. So a ₹20 prasad
+            packet produced a full A4 donation receipt with an 80G block and a
+            signature line, and the counter threw it away. What those three
+            counters hand over is a TOKEN — the thing a devotee shows at the
+            window — and it wants a slip, not a certificate. */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-sm">{t('settings.slips.heading')}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{t('settings.slips.subheading')}</p>
+          </div>
+          <div className="card-body space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="form-label">{t('settings.slips.layout')}</label>
+                <select className="form-select" value={form.slip_template}
+                  onChange={e => set('slip_template', e.target.value)}>
+                  <option value="token">{t('settings.slips.layoutToken')}</option>
+                  <option value="compact">{t('settings.slips.layoutCompact')}</option>
+                  <option value="receipt">{t('settings.slips.layoutReceipt')}</option>
+                </select>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  {form.slip_template === 'token' && t('settings.slips.layoutTokenHelp')}
+                  {form.slip_template === 'compact' && t('settings.slips.layoutCompactHelp')}
+                  {form.slip_template === 'receipt' && t('settings.slips.layoutReceiptHelp')}
+                </p>
+              </div>
+              <div>
+                <label className="form-label">{t('settings.receipts.paper')}</label>
+                {/* Disabled on 'receipt', where the receipt settings above own
+                    the paper too — a paper picker that silently does nothing is
+                    worse than one that says why. */}
+                <select className="form-select" value={form.slip_paper}
+                  disabled={form.slip_template === 'receipt'}
+                  onChange={e => set('slip_paper', e.target.value)}>
+                  <option value="thermal58">{t('settings.slips.paper58')}</option>
+                  <option value="thermal80">{t('settings.slips.paper80')}</option>
+                  <option value="a5">{t('settings.slips.paperA5')}</option>
+                  <option value="a4">{t('settings.receipts.paperA4')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">{t('settings.receipts.copies')}</label>
+                <select className="form-select" value={form.slip_copies}
+                  onChange={e => set('slip_copies', e.target.value)}>
+                  <option value="single">{t('settings.slips.copiesSingle')}</option>
+                  <option value="both">{t('settings.slips.copiesBoth')}</option>
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.slip_auto_print}
+                onChange={e => set('slip_auto_print', e.target.checked)} />
+              {t('settings.slips.autoPrint')}
+            </label>
+            <p className="text-xs text-slate-500">{t('settings.slips.note')}</p>
           </div>
         </div>
 

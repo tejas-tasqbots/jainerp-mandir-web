@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { autoPrintSlip } from '../../lib/printReceipt'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
@@ -82,7 +83,12 @@ export function AddSevaBooking() {
         payload.payments = toPayload(payRows)
         payload.payment_mode = payRows[0]?.payment_mode ?? form.payment_mode
       }
-      await api.post('/seva-bookings', payload)
+      const { data } = await api.post('/seva-bookings', payload)
+      // Auto-print the seva slip, when the trust has asked for it. Fired before
+      // navigating and not awaited: the booking is saved, and a printer that
+      // does not answer must not hold the operator on this form (see
+      // autoPrintSlip, which swallows its own errors for the same reason).
+      if (data?.data?.id) void autoPrintSlip(data.data.id, '/seva-bookings')
       navigate('/seva')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }

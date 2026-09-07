@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, Minus, Plus, ShoppingCart, Trash2, Receipt } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
-import { printDonationReceipt } from '../../lib/printReceipt'
+import { autoPrintSlip, printDonationReceipt } from '../../lib/printReceipt'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { PrasadItem, DevoteeSelection } from '../../types'
 import { useToast } from '../../components/kit/Toast'
@@ -65,6 +65,12 @@ export function PrasadCounter() {
 
       const { data } = await api.post('/prasad/sales', payload)
       setLastSale({ id: data.data.id, total_paise: data.data.total_paise, invoice: data.data.invoice_no })
+      // Auto-print, when the trust has asked for it (Settings -> Receipts ->
+      // Counter slips). Not awaited: the counter must be ready for the next
+      // devotee whether or not a printer answers, and autoPrintSlip swallows
+      // its own errors precisely so a print problem can never read as a failed
+      // sale. The Print button below stays for a reprint.
+      void autoPrintSlip(data.data.id, '/prasad/sales')
       setCart([])
       setReference('')
       setBuyer(null)

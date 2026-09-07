@@ -2128,6 +2128,24 @@
       "transferToStepDown": "Transfer the role to step down",
       "transferredDefault": "Temple Admin transferred.",
       "you": "You"
+    },
+    "slips": {
+      "autoPrint": "Print automatically as soon as a sale is recorded",
+      "copiesBoth": "Devotee's slip + counter stub",
+      "copiesSingle": "Devotee's slip only",
+      "heading": "Counter slips",
+      "layout": "Slip layout",
+      "layoutCompact": "Compact receipt",
+      "layoutCompactHelp": "Adds who paid and the payment mode.",
+      "layoutReceipt": "Full receipt",
+      "layoutReceiptHelp": "Uses the donation receipt design and paper chosen above.",
+      "layoutToken": "Token (smallest)",
+      "layoutTokenHelp": "Number, items and total only — what the collection window reads.",
+      "note": "GST is printed on a slip only when your trust has a GSTIN and tax was actually charged. 80G never appears on a counter slip — a purchase is not a donation.",
+      "paper58": "58 mm roll",
+      "paper80": "80 mm roll",
+      "paperA5": "A5 (half sheet)",
+      "subheading": "Prasad, Seva and Bhojanshala tokens — printed separately from donation receipts."
     }
   },
   "setup": {

@@ -4,7 +4,7 @@ import { Plus, Save, RefreshCw, Receipt } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import { PhoneInput } from '../../components/PhoneInput'
-import { printDonationReceipt } from '../../lib/printReceipt'
+import { autoPrintSlip, printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { splitBy } from '../../lib/chartData'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
@@ -177,7 +177,7 @@ export function AnnadaanList() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/bhojanshala/sales', {
+      const { data } = await api.post('/bhojanshala/sales', {
         meal_type: form.meal_type,
         tokens: parseInt(form.tokens),
         rate_paise: parsePaise(form.rate),
@@ -187,6 +187,10 @@ export function AnnadaanList() {
         buyer_name: form.buyer_name || undefined,
         sale_date: dateFilter,
       })
+      // Auto-print the token, when the trust has asked for it. Not awaited and
+      // never fatal: the tokens are already sold, and a print failure must not
+      // read as a failed sale (see autoPrintSlip).
+      if (data?.data?.id) void autoPrintSlip(data.data.id, '/bhojanshala/sales')
       setForm({ meal_type: 'lunch', tokens: '', rate: '20', payment_mode: 'cash', reference_no: '', devotee_mobile: '', buyer_name: '' })
       setShowForm(false)
       toast.success(t('bhojanshala.saleRecorded'))

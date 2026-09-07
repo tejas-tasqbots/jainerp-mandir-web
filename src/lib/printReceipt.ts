@@ -66,11 +66,31 @@ export interface ReceiptData {
     footer?: string | null
     template?: string
     primary_color?: string
-    // Print settings (tenant-migration 011).
+    // Print settings (tenant-migration 011, widened by 032).
+    //
+    // A COUNTER SLIP arrives in these same fields — mandir-api substitutes the
+    // Counter-slip settings into `template` / `receipt_paper` / `receipt_copies`
+    // before sending (see receipt-mandir.ts). That is deliberate: this renderer
+    // needs to know what to draw and on what paper, not which module asked.
     receipt_copies?: 'single' | 'both'
-    receipt_paper?: 'a4' | 'thermal80'
+    receipt_paper?: 'a4' | 'a5' | 'thermal58' | 'thermal80'
     receipt_language?: string
     receipt_show_upi_qr?: boolean
+    /** 'receipt' for a document, 'slip' for a prasad/seva/bhojanshala token. */
+    surface?: 'receipt' | 'slip'
+    /** Open the print dialog without being asked. Counter screens read this. */
+    slip_auto_print?: boolean
+    /**
+     * Whether this trust may show GST / 80G at ALL.
+     *
+     * Distinct from `show_gstin` / `show_80g`, which are the trust's
+     * preference: these say whether the registration exists. A trust with no
+     * GSTIN gets `gst_enabled: false` and the API also sends `gstin: null`, so
+     * a template that forgets one of the two still cannot print a registration
+     * number the trust does not hold.
+     */
+    gst_enabled?: boolean
+    eighty_g_enabled?: boolean
   } | null
   /**
    * UPI pay QR as a data URI. Not part of the API payload — the caller
@@ -95,6 +115,24 @@ export interface ReceiptData {
   payment_mode: string
   is_80g_eligible: boolean
   is_voided: boolean
+  /**
+   * The itemised breakdown, when the module has one.
+   *
+   * Sent by the shared ReceiptService (rooms, halls, gaushala) and, since the
+   * counter-slip work, by prasad — a prasad slip IS its lines, because the
+   * devotee collects against them rather than against a total.
+   */
+  lines?: Array<{ label: string; qty?: string; amount_paise: number }> | null
+  /**
+   * The GST split, when tax was actually charged.
+   *
+   * Null on every document from a trust with no GSTIN: mandir-api's
+   * GstRateService returns 0% for an unregistered trust, and the receipt
+   * builders send `tax: null` rather than a row of zeroes.
+   */
+  tax?: { cgst_paise?: number; sgst_paise?: number; igst_paise?: number } | null
+  /** Module-specific extras a template may render — token counts, meal, dates. */
+  meta?: Record<string, unknown> | null
 }
 
 function fmtRs(paise: number): string {
@@ -1174,6 +1212,89 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   </div>`
 }
 
+/**
+ * The counter slip — prasad, seva, bhojanshala.
+ *
+ * ── WHY THESE ARE NOT JUST A NARROW RECEIPT ─────────────────────────────────
+ * The nine A4 templates are DOCUMENTS: a donor block, a signature line, an 80G
+ * certification, a footer. What a prasad counter hands over is a claim check
+ * for a ₹20 packet. Printing a certificate for it wastes the paper and buries
+ * the one thing the window actually reads — what, how many, and the number.
+ *
+ * ── WHAT A TOKEN SHOWS, IN ORDER OF WHAT THE WINDOW NEEDS ───────────────────
+ * The number, big enough to read at arm's length across a counter; the items
+ * and their quantities; the total. The buyer's name appears only on `compact`,
+ * because a token is bearer-presented — whoever holds it collects.
+ *
+ * GST prints only when the trust HAS a GSTIN and tax was actually charged. Both
+ * conditions, not either: a zero tax row on an unregistered trust is a claim to
+ * be collecting a tax it cannot collect.
+ */
+function buildSlip(
+  r: ReceiptData,
+  dateStr: string,
+  mandir: NonNullable<ReceiptData['mandir']>,
+  compact: boolean,
+): string {
+  const width = mandir.receipt_paper === 'thermal58' ? '48mm' : '72mm';
+  const page = mandir.receipt_paper === 'thermal58' ? '58mm auto' : '80mm auto';
+  const lines = r.lines ?? [];
+  const tax = r.tax ?? null;
+  const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0);
+  const meta = (r.meta ?? {}) as Record<string, unknown>;
+  const tokens = Number(meta.tokens ?? 0);
+
+  const row = (k: string, v: string) =>
+    `<div class="sr"><span>${k}</span><span>${v}</span></div>`;
+
+  return `
+  <style>
+    @page { size: ${page}; margin: 0; }
+    body { background:#fff; font-family:'Arial',sans-serif; }
+    .slip { width:${width}; margin:0 auto; padding:5mm 2mm; color:#000; font-size:11px; line-height:1.45; }
+    .slip .name { text-align:center; font-size:13px; font-weight:800; }
+    .slip .addr { text-align:center; font-size:9.5px; margin-bottom:5px; }
+    .slip .kind { text-align:center; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+                  border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3px 0; margin-bottom:5px; }
+    /* The number is the point of the whole slip. */
+    .slip .no { text-align:center; font-size:17px; font-weight:800; letter-spacing:1px; margin:2px 0 5px; }
+    .sr { display:flex; justify-content:space-between; gap:8px; }
+    .sr span:last-child { font-weight:600; text-align:right; }
+    .items { border-top:1px dashed #000; margin-top:4px; padding-top:4px; }
+    .it { display:flex; justify-content:space-between; gap:6px; font-size:10.5px; }
+    .it .q { flex:0 0 auto; color:#333; }
+    .tot { text-align:center; font-size:15px; font-weight:800;
+           border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin:5px 0; }
+    .big { text-align:center; font-size:22px; font-weight:800; letter-spacing:2px; margin:4px 0; }
+    .note { font-size:9px; text-align:center; margin-top:5px; }
+    .void { text-align:center; font-weight:800; border:1px solid #000; padding:3px; margin-bottom:5px; }
+    .copy-banner { text-align:center; font-size:9.5px; font-weight:700; letter-spacing:1px; margin-bottom:3px; }
+    @media print { .print-hint { display:none; } }
+  </style>
+  <div class="slip">
+    <div class="name">${mandir.name}</div>
+    <div class="addr">${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</div>
+    <div class="kind">${docTitle(r, L.donationReceipt)}</div>
+    ${r.is_voided ? `<div class="void">VOID</div>` : ''}
+    <div class="no">${r.receipt_number ?? '—'}</div>
+    ${row(L.date, dateStr)}
+    ${compact && r.donor?.name ? row(L.receivedFrom, r.donor.name) : ''}
+    ${compact && r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
+    ${tokens > 0 ? `<div class="big">${tokens}</div>` : ''}
+    ${lines.length
+      ? `<div class="items">${lines.map((l) => `
+          <div class="it">
+            <span>${l.label}</span>
+            <span class="q">${l.qty ? '×' + l.qty + '  ' : ''}${fmtRs(l.amount_paise)}</span>
+          </div>`).join('')}</div>`
+      : row(L.category, r.category || '—')}
+    ${taxTotal > 0 && mandir.gst_enabled ? row('GST', fmtRs(taxTotal)) : ''}
+    <div class="tot">₹ ${fmtRs(r.amount_paise)}</div>
+    ${compact ? row(L.paymentMode, paymentModeText(r)) : ''}
+    <div class="note">${mandir.footer || L.thankYou}</div>
+  </div>`;
+}
+
 export function buildReceiptHtml(input: ReceiptData): string {
   // A document that has not been numbered yet arrives with receipt_number:
   // null; every template interpolates it directly, so the guest's copy read
@@ -1185,15 +1306,32 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // The 80G template makes a statutory tax-exemption claim, so it must never be
   // used for a donation that isn't 80G-eligible — fall back to Classic instead.
   let template = mandir.template || 'classic'
-  if (template === '80g' && !r.is_80g_eligible) template = 'classic'
+  // The 80G template makes a statutory tax-exemption claim, so it must never be
+  // used for a donation that is not 80G-eligible — NOR for a trust that holds
+  // no 80G registration at all. The second condition is new: a trust could
+  // previously select the 80G template in Settings and print a certificate
+  // shaped document with an empty registration line on it.
+  if (template === '80g' && (!r.is_80g_eligible || mandir.eighty_g_enabled === false)) {
+    template = 'classic'
+  }
   const color = mandir.primary_color || '#0D1B2E'
-  const thermal = mandir.receipt_paper === 'thermal80'
+  const thermal = mandir.receipt_paper === 'thermal80' || mandir.receipt_paper === 'thermal58'
+  // A counter slip is chosen by TEMPLATE, not by paper: a trust may print a
+  // token on A5 (a half-sheet cut in two at the window is common) and still
+  // want the token layout, while another prints full receipts on an 80 mm roll.
+  const slip = template === 'token' || template === 'compact'
 
   const one = (copyLabel?: string) => {
-    const body = thermal ? buildThermal(r, dateStr, mandir) : renderBody(r, dateStr, mandir, template, color)
+    const body = slip
+      ? buildSlip(r, dateStr, mandir, template === 'compact')
+      : thermal
+        ? buildThermal(r, dateStr, mandir)
+        : renderBody(r, dateStr, mandir, template, color)
     const banner = copyLabel ? copyBanner(copyLabel) : ''
-    // The QR is appended after the body for A4 (thermal already embeds it).
-    const qr = thermal ? '' : upiQrBlock(r)
+    // The QR is appended after the body for A4 (thermal already embeds it, and
+    // a token has no room for one — it is collected at the counter that just
+    // took the money).
+    const qr = thermal || slip ? '' : upiQrBlock(r)
     return `<div class="receipt-copy">${banner}${body}${qr}</div>`
   }
 
@@ -1313,11 +1451,46 @@ export function printReceiptHtml(html: string): void {
  * resources whose `/:id/receipt` returns a shape-compatible payload.
  */
 export async function printDonationReceipt(id: string, basePath = '/donations'): Promise<void> {
+  const receipt = await fetchReceipt(id, basePath)
+  printReceiptHtml(buildReceiptHtml(receipt))
+}
+
+/** The fetch every print/download/share path shares, QR included. */
+async function fetchReceipt(id: string, basePath: string): Promise<ReceiptData> {
   const { data } = await api.get(`${basePath}/${id}/receipt`)
   const receipt: ReceiptData = data.data
   receipt.upi_qr_data_uri = await buildUpiQr(receipt)
-  const html = buildReceiptHtml(receipt)
-  printReceiptHtml(html)
+  return receipt
+}
+
+/**
+ * Print a counter slip immediately, but only if the trust asked for that.
+ *
+ * ── WHY THE DECISION IS MADE HERE AND NOT AT THE COUNTER ────────────────────
+ * `slip_auto_print` is a trust-level setting (Settings → Receipts → Counter
+ * slips, tenant migration 032). The prasad, seva and bhojanshala screens should
+ * not each fetch the profile to find out whether to print — that is three
+ * copies of one rule, and the receipt payload already carries the answer.
+ *
+ * So this fetches the slip once, prints it if the flag is set, and otherwise
+ * does nothing at all. The manual Print button stays on every screen: a
+ * counter whose printer is out of paper still needs to be able to reprint.
+ *
+ * ── AND WHY IT SWALLOWS ITS ERRORS ──────────────────────────────────────────
+ * The SALE is already recorded by the time this runs. A print failure must not
+ * surface as a failed sale — the operator would void a good transaction and
+ * take the money again. Returns false so the caller can mention it quietly if
+ * it wants to.
+ */
+export async function autoPrintSlip(id: string, basePath: string): Promise<boolean> {
+  try {
+    const receipt = await fetchReceipt(id, basePath)
+    if (!receipt.mandir?.slip_auto_print) return false
+    printReceiptHtml(buildReceiptHtml(receipt))
+    return true
+  } catch {
+    return false
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
