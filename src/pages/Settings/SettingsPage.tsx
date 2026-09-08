@@ -423,8 +423,8 @@ export function SettingsPage() {
               </div>
               <div><label className="form-label">{t('settings.profile.pincode')}</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
             </div>
-            {/* Locality in the words people use. Devotees searching for a
-                dharamshala type "Ghatkopar West" or "near Palitana taluka" —
+            {/* Locality in the words people use. Devotees searching for
+                accommodation type "Ghatkopar West" or "near Palitana taluka" —
                 which no pincode captures — so this is what makes the trust
                 findable in the devotee app's stay search. Mirrored to
                 public.tenants.area on save (migration 033). */}

@@ -52,7 +52,7 @@ const topics = [
   {
     title: 'Room Booking',
     steps: [
-      'Go to Dharamshala → Rooms → New Booking',
+      'Go to Accommodation → Rooms → New Booking',
       'Select available room and enter guest details and dates',
       'Enter advance amount if applicable',
       'Booking appears in the list with "Booked" status',

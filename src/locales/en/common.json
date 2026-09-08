@@ -623,7 +623,7 @@
     "room": "Room",
     "roomLabel": "Room *",
     "roomOccupied": "This room is currently occupied",
-    "roomsTitle": "Dharamshala — Rooms",
+    "roomsTitle": "Accommodation — Rooms",
     "searchPlaceholder": "Search guest, mobile or invoice…",
     "searchRoom": "Search room number or type…",
     "selectAvailableRoom": "Select available room...",
@@ -1249,7 +1249,7 @@
     "creditors": "Creditors (Udhaar)",
     "dashboard": "Dashboard",
     "dayBook": "Day Book",
-    "dharamshala": "Dharamshala",
+    "dharamshala": "Accommodation",
     "donations": "Donations",
     "donors": "Donors / Guests",
     "employees": "Employees & Volunteers",
@@ -1786,7 +1786,7 @@
       "gstRates": "GST Rates",
       "gstRatesDesc": "GST % applied to taxable services (CGST + SGST for intra-state). Editing a rate here applies it to future Hall, Room and Prasad bookings — Room (Taxable) is used only above the ₹1,000/night threshold. Past records keep their original GST.",
       "halls": "Halls",
-      "hallsDesc": "Dharamshala halls available for booking. Tariffs are the default prices — editable per booking.",
+      "hallsDesc": "Halls available for booking. Tariffs are the default prices — editable per booking.",
       "helpText": "Configure the dropdown options used across the app. Items are mandir-specific. Deactivating an item hides it from new entries while keeping it on past records.",
       "loadFailed": "Failed to load",
       "noEntries": "No entries yet. Click \"Add\" to create one.",
@@ -1795,7 +1795,7 @@
       "prasadItems": "Prasad Items",
       "prasadItemsDesc": "Items sold at the Prasad counter (POS). Go to Prasad → Manage Items to adjust stock levels.",
       "rooms": "Rooms",
-      "roomsDesc": "Dharamshala rooms available for check-in. Tariff is the default per-night price — editable at checkout.",
+      "roomsDesc": "Rooms available for check-in. Tariff is the default per-night price — editable at checkout.",
       "saveFailed": "Failed to save",
       "sevas": "Sevas / Services",
       "sevasDesc": "Seva options and their default amounts.",
@@ -2211,7 +2211,7 @@
       },
       "area": {
         "label": "Locality / area",
-        "why": "What devotees search a dharamshala by — “Palitana”, not just the city."
+        "why": "What devotees search accommodation by — “Palitana”, not just the city."
       },
       "bank_account_name": {
         "label": "Account holder name",
@@ -2600,7 +2600,7 @@
     "daanPeti": "Daan Peti (Box)",
     "defaultAccount": "Default account",
     "desktopMode": "Desktop Mode",
-    "dharamshalaDesc": "How devotees searching for a dharamshala describe where you are.",
+    "dharamshalaDesc": "How devotees searching for accommodation describe where you are.",
     "dismiss": "Dismiss",
     "donatesHere": "Donates here",
     "emailOpt": "Email (optional)",
