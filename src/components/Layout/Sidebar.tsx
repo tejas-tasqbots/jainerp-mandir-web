@@ -46,12 +46,21 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    labelKey: 'nav.staff', icon: <Users size={18} />,
+    children: [
+      { labelKey: 'nav.staffDirectory', to: '/staff' },
+      { labelKey: 'nav.attendance', to: '/staff/attendance' },
+      { labelKey: 'nav.payroll', to: '/staff/payroll' },
+      // The create/edit forms stay where they are — a priest carries seva
+      // fields an employee does not, so one shared form would serve neither.
+      { labelKey: 'nav.employees', to: '/masters/employees' },
+      { labelKey: 'nav.priests', to: '/masters/priests' },
+    ],
+  },
+  {
     labelKey: 'nav.masters', icon: <UserCheck size={18} />,
     children: [
       { labelKey: 'nav.vendors', to: '/masters/vendors' },
-      { labelKey: 'nav.priests', to: '/masters/priests' },
-      { labelKey: 'nav.employees', to: '/masters/employees' },
-      { labelKey: 'nav.payroll', to: '/payroll' },
       { labelKey: 'nav.inventory', to: '/masters/inventory' },
     ],
   },

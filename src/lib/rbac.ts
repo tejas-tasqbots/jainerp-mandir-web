@@ -46,6 +46,11 @@ const MODULE_ROLES: Record<string, Role[]> = {
   // Salary and advances are money, so they follow the accountant gate the
   // rest of payables use — not the cashier gate on the employee master.
   '/payroll': ['accountant'],
+  // The directory is who works here — front-desk information. Attendance is
+  // marked by whoever is at the counter. Only the money is accountant-only.
+  '/staff': ['cashier', 'accountant', 'viewer'],
+  '/staff/attendance': ['cashier', 'accountant'],
+  '/staff/payroll': ['accountant'],
   '/masters/inventory': ['cashier', 'accountant'],
   '/accounts': ['accountant'],
   // Depositing/clearing a received cheque, or moving cash to/from the bank, is
@@ -82,6 +87,10 @@ const PATH_MODULE: Record<string, string> = {
   '/sant': 'sant',
   '/creditors': 'creditors',
   '/payroll': 'payroll',
+  // The directory itself is core — a trust without the payroll module still
+  // has priests and volunteers to look up. Only attendance and pay are gated.
+  '/staff/attendance': 'payroll',
+  '/staff/payroll': 'payroll',
   '/certificates': 'certificates',
   '/gaushala': 'gaushala',
   '/masters/priests': 'seva',

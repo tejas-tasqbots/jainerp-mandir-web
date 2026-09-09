@@ -34,6 +34,7 @@ import { VendorProfile } from './pages/Masters/VendorProfile'
 import { PriestsPage } from './pages/Masters/PriestsPage'
 import { EmployeesPage } from './pages/Masters/EmployeesPage'
 import { PayrollPage } from './pages/Payroll/PayrollPage'
+import { StaffPage, StaffProfile } from './pages/Staff/StaffPage'
 import { InventoryPage } from './pages/Masters/InventoryPage'
 import { ConnectedDevoteesPage } from './pages/Devotees/ConnectedDevoteesPage'
 import { ContraEntries } from './pages/Accounts/ContraEntries'
@@ -177,6 +178,10 @@ export default function App() {
             <Route path="/masters/vendors/:id" element={<VendorProfile />} />
             <Route path="/masters/priests" element={<PriestsPage />} />
             <Route path="/masters/employees" element={<EmployeesPage />} />
+            <Route path="/staff" element={<StaffPage />} />
+            <Route path="/staff/attendance" element={<StaffPage initialTab="attendance" />} />
+            <Route path="/staff/payroll" element={<StaffPage initialTab="payroll" />} />
+            <Route path="/staff/:id" element={<StaffProfile />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/masters/inventory" element={<InventoryPage />} />
 
