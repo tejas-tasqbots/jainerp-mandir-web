@@ -32,6 +32,7 @@ export function AddDonation() {
   const [donorPan, setDonorPan] = useState('')
   const [showPanField, setShowPanField] = useState(false)
 
+  const [funds, setFunds] = useState<{ id: string; name: string; fund_type: string }[]>([])
   const [form, setForm] = useState({
     category_id: '',
     amount: '',
@@ -41,6 +42,7 @@ export function AddDonation() {
     cheque_number: '',
     is_80g_eligible: true,
     fund_type: 'general',
+    fund_id: '',
     // Opt-in, never pre-ticked. A donation is not agreement to be added to a
     // temple's mailing list — the counter has to ask, and the default is no.
     wants_event_updates: false,
@@ -49,7 +51,9 @@ export function AddDonation() {
 
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } }).then(r => setCategories(r.data.data || []))
-  }, [])
+    api.get('/funds', { params: { is_active: 'true', limit: '100' } })
+    .then(r => setFunds(r.data.data ?? [])).catch(() => setFunds([]))
+}, [])
 
   // Load existing donation when editing
   useEffect(() => {
@@ -65,6 +69,7 @@ export function AddDonation() {
         cheque_number: d.cheque_number ?? '',
         is_80g_eligible: d.is_80g_eligible ?? true,
         fund_type: d.fund_type ?? 'general',
+        fund_id: d.fund_id ?? '',
         wants_event_updates: d.wants_event_updates ?? false,
         note: d.notes ?? '',
       })
@@ -125,6 +130,7 @@ export function AddDonation() {
         payment_mode: form.payment_mode,
         is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked,
         fund_type: form.fund_type,
+        fund_id: form.fund_id || null,
       }
 
       // The inline-added PAN rides along so the API saves it onto the donor record.
@@ -211,6 +217,31 @@ export function AddDonation() {
               ))}
             </select>
           </div>
+
+          {/* Named fund (tenant-migration 036). Optional: a trust that keeps no
+              earmarked funds never has to pick one. Choosing one SETS the
+              statutory bucket below, because the fund itself declares which
+              bucket it belongs to — letting them disagree would put a corpus
+              gift in the wrong half of Form 10BD. */}
+          {funds.length > 0 && (
+            <div>
+              <label htmlFor="fund-id" className="form-label">{t('donations.fund')}</label>
+              <select
+                id="fund-id" className="form-select" value={form.fund_id}
+                onChange={e => {
+                  const picked = funds.find(f => f.id === e.target.value)
+                  setForm(f => ({
+                    ...f,
+                    fund_id: e.target.value,
+                    fund_type: picked ? picked.fund_type : f.fund_type,
+                  }))
+                }}
+              >
+                <option value="">{t('donations.fundNone')}</option>
+                {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Fund type — corpus gifts are exempt under s.11(1)(d) and must be
               kept out of income, and this drives Form 10BD's "Type of

@@ -8,7 +8,9 @@ export interface MasterField {
   /** Column name sent to / read from the API. */
   key: string
   label: string
-  type?: 'text' | 'number' | 'money' | 'checkbox'
+  type?: 'text' | 'number' | 'money' | 'checkbox' | 'select'
+  /** Options for a `select` field. Ignored for every other type. */
+  options?: { value: string; label: string }[]
   /** Optional placeholder for inputs. */
   placeholder?: string
   /** Field is required when creating. */
@@ -193,6 +195,20 @@ export function MasterEditor({ resource, title, description, fields, listParams,
           />
           {field.label}
         </label>
+      )
+    }
+    if (field.type === 'select') {
+      return (
+        <div>
+          <label className="form-label">{field.label}{field.required && ' *'}</label>
+          <select
+            className="form-select"
+            value={v as string}
+            onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
+          >
+            {(field.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
       )
     }
     return (

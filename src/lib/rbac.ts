@@ -43,6 +43,9 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/masters/vendors': ['accountant', 'cashier'],
   '/masters/priests': ['cashier'],
   '/masters/employees': ['cashier'],
+  // Salary and advances are money, so they follow the accountant gate the
+  // rest of payables use — not the cashier gate on the employee master.
+  '/payroll': ['accountant'],
   '/masters/inventory': ['cashier', 'accountant'],
   '/accounts': ['accountant'],
   // Depositing/clearing a received cheque, or moving cash to/from the bank, is
@@ -78,6 +81,7 @@ const PATH_MODULE: Record<string, string> = {
   '/events': 'events',
   '/sant': 'sant',
   '/creditors': 'creditors',
+  '/payroll': 'payroll',
   '/certificates': 'certificates',
   '/gaushala': 'gaushala',
   '/masters/priests': 'seva',

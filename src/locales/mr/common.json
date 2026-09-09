@@ -649,7 +649,26 @@
     "summaryOccupied": "व्यापलेले",
     "total": "एकूण",
     "totalRooms": "एकूण खोल्या",
-    "viewBill": "बिल पहा"
+    "viewBill": "बिल पहा",
+    "idType": "ओळखपत्र",
+    "idNumber": "ओळख क्रमांक",
+    "idAadhaar": "आधार",
+    "idPan": "पॅन",
+    "idPassport": "पासपोर्ट",
+    "idVoter": "मतदार ओळखपत्र",
+    "idDl": "वाहन परवाना",
+    "idStoredHint": "एन्क्रिप्ट करून जतन. पुन्हा फक्त शेवटचे 4 अंक दिसतील.",
+    "securityDeposit": "सुरक्षा ठेव",
+    "depositHint": "परतफेड करण्यायोग्य. खोलीच्या बिलात वजा होत नाही.",
+    "depositNotTaken": "बुकिंग झाली, पण ठेव घेता आली नाही. खोल्यांच्या यादीतून घ्या.",
+    "settleDeposit": "ठेव निकाली करा",
+    "depositHeld": "शिल्लक ठेव",
+    "forfeitAmount": "नुकसानीसाठी कपात",
+    "settleAndRefund": "निकाली करा आणि परत करा",
+    "refundPreview": "₹{{amount}} पाहुण्यास परत केली जाईल.",
+    "forfeitTooLarge": "या बुकिंगवर फक्त ₹{{held}} ठेव आहे.",
+    "depositSettled": "ठेव निकाली झाली.",
+    "depositSettleFailed": "ठेव निकाली करता आली नाही."
   },
   "donationRequests": {
     "addressLabel": "पत्ता:",
@@ -767,7 +786,9 @@
     "voidModalWarning": "पावती {{invoiceNo}} रद्द केली जाईल. हे पूर्ववत करता येणार नाही.",
     "voidSuccess": "पावती {{invoiceNo}} रद्द केली",
     "voided": "रद्द केले",
-    "voiding": "रद्द करत आहे..."
+    "voiding": "रद्द करत आहे...",
+    "fund": "निधी",
+    "fundNone": "निश्चित नाही"
   },
   "donationsHub": {
     "donations": "देणगी",
@@ -1050,7 +1071,10 @@
     "utrReference": "यूटीआर / संदर्भ",
     "vendor": "विक्रेता",
     "vendorPayee": "विक्रेता / देयक प्राप्तकर्ता",
-    "vendorPlaceholder": "विक्रेत्याचे नाव"
+    "vendorPlaceholder": "विक्रेत्याचे नाव",
+    "fund": "कोणत्या निधीतून",
+    "fundNone": "निश्चित नाही",
+    "fundHint": "हा खर्च कोणत्या निधीतून झाला. निधी वापर अहवालासाठी आवश्यक."
   },
   "inventory": {
     "actions": "क्रिया",
@@ -1281,7 +1305,8 @@
     "trialBalance": "रोख व बँक शिल्लक",
     "userGuide": "वापरकर्ता मार्गदर्शक",
     "vendors": "विक्रेते / पुरवठादार",
-    "visitorCount": "भेट देणाऱ्यांची संख्या"
+    "visitorCount": "भेट देणाऱ्यांची संख्या",
+    "payroll": "वेतन"
   },
   "palette": {
     "close": "बंद करा",
@@ -1618,7 +1643,17 @@
     "txnType_prasad": "प्रसाद",
     "txnType_room": "खोली",
     "txnType_seva": "सेवा",
-    "unsponsored": "मंदिराने उचलले"
+    "unsponsored": "मंदिराने उचलले",
+    "fundUtilisation": "निधी वापर",
+    "fund": "निधी",
+    "fundType": "प्रकार",
+    "received": "जमा",
+    "applied": "खर्च",
+    "fundBalance": "शिल्लक",
+    "restricted": "निर्बंधित",
+    "unallocatedHint": "निधी नोंदणीपूर्वी नोंदवलेले",
+    "overApplied": "निर्बंधित निधीतून जास्त खर्च झाला आहे",
+    "overAppliedHint": "या कालावधीत {{funds}} मधून जमा रकमेपेक्षा जास्त खर्च झाला आहे. निर्बंधित निधी फक्त तिच्याच उद्देशासाठी वापरता येते — संबंधित खर्च तपासा."
   },
   "sensitive": {
     "bannerVerified": "हे तपशील प्लॅटफॉर्मने पडताळले आहेत, त्यामुळे ते इथे बदलता येणार नाहीत. बदलाची विनंती पाठवा, आम्ही ती तपासू.",
@@ -1780,7 +1815,9 @@
         "sortOrder": "क्रम क्रमांक",
         "tariffPerNight": "दर / रात्र ₹",
         "unit": "एकक",
-        "unitPlaceholder": "नग, किलो, बॉक्स…"
+        "unitPlaceholder": "नग, किलो, बॉक्स…",
+        "fundType": "वैधानिक प्रकार",
+        "isRestricted": "निर्बंधित वापर"
       },
       "flags": "फ्लॅग्ज",
       "gstRates": "जीएसटी दर",
@@ -1800,7 +1837,9 @@
       "sevas": "सेवा",
       "sevasDesc": "सेवा पर्याय आणि त्यांच्या डिफॉल्ट रकमा.",
       "statusUpdateFailed": "स्थिती अद्ययावत करण्यात अयशस्वी",
-      "thisEntry": "ही नोंद"
+      "thisEntry": "ही नोंद",
+      "funds": "निधी",
+      "fundsDesc": "राखीव निधी — देव द्रव्य, जीवदया, साधारण. निधी सांगते की पैसा कोणाचा आणि कशावर खर्च करता येईल."
     },
     "messages": {
       "channel": "माध्यम",
@@ -2710,5 +2749,51 @@
     "totalBilled": "एकूण बिल",
     "transactionHistoryExpenses": "व्यवहार इतिहास (खर्च)",
     "type": "प्रकार"
+  },
+  "payroll": {
+    "salaryRun": "वेतन गणना",
+    "advances": "उचल",
+    "month": "महिना",
+    "compute": "गणना करा आणि जतन करा",
+    "computing": "गणना सुरू…",
+    "refresh": "रिफ्रेश",
+    "computeHint": "आधी पूर्वावलोकन पाहा. गणनेने वेतन नोंदी तयार होतात आणि देय उचल वजा होते. भरणा झालेल्या महिन्याची पुन्हा गणना होत नाही.",
+    "staff": "कर्मचारी",
+    "gross": "एकूण वेतन",
+    "net": "निव्वळ",
+    "netPayable": "देय रक्कम",
+    "advanceRecovered": "उचल वसुली",
+    "employee": "कर्मचारी",
+    "present": "हजर",
+    "half": "अर्धा दिवस",
+    "leave": "रजा",
+    "absent": "गैरहजर",
+    "noStaff": "या महिन्यात सक्रिय कर्मचारी नाहीत.",
+    "previewFailed": "वेतन पूर्वावलोकन लोड होऊ शकले नाही.",
+    "computeFailed": "वेतन गणना होऊ शकली नाही.",
+    "computed": "{{count}} कर्मचाऱ्यांची वेतन गणना पूर्ण — {{month}}.",
+    "giveAdvance": "उचल द्या",
+    "selectEmployee": "कर्मचारी निवडा",
+    "amount": "रक्कम",
+    "date": "दिनांक",
+    "reason": "कारण",
+    "instalment": "मासिक हप्ता",
+    "recoveryMode": "वसुली",
+    "paidFrom": "भरणा खाते",
+    "defaultCash": "डीफॉल्ट रोख खाते",
+    "modeInstalment": "हप्त्यांमध्ये",
+    "modeFullNext": "पुढील वेतनातून पूर्ण",
+    "modeManual": "फक्त मॅन्युअल",
+    "openAdvances": "शिल्लक उचल",
+    "outstanding": "शिल्लक",
+    "recovered": "वसूल",
+    "statusActive": "सक्रिय",
+    "statusClosed": "बंद",
+    "recordRepayment": "परतफेड नोंदवा",
+    "noAdvances": "कोणतीही उचल नोंदलेली नाही.",
+    "advanceGiven": "उचल नोंदली.",
+    "advanceFailed": "उचल नोंदवता आली नाही.",
+    "repaymentRecorded": "परतफेड नोंदली.",
+    "repaymentFailed": "परतफेड नोंदवता आली नाही."
   }
 }

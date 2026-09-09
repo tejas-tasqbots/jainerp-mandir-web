@@ -649,7 +649,26 @@
     "summaryOccupied": "Occupied",
     "total": "Total",
     "totalRooms": "Total rooms",
-    "viewBill": "View bill"
+    "viewBill": "View bill",
+    "idType": "ID document",
+    "idNumber": "ID number",
+    "idAadhaar": "Aadhaar",
+    "idPan": "PAN",
+    "idPassport": "Passport",
+    "idVoter": "Voter ID",
+    "idDl": "Driving licence",
+    "idStoredHint": "Stored encrypted. Only the last 4 digits are shown again.",
+    "securityDeposit": "Security deposit",
+    "depositHint": "Refundable. Does not pay the room bill.",
+    "depositNotTaken": "The booking was created, but the deposit was not taken. Collect it from the rooms list.",
+    "settleDeposit": "Settle deposit",
+    "depositHeld": "Deposit held",
+    "forfeitAmount": "Keep for damages",
+    "settleAndRefund": "Settle & refund",
+    "refundPreview": "₹{{amount}} will be refunded to the guest.",
+    "forfeitTooLarge": "Only ₹{{held}} is held against this booking.",
+    "depositSettled": "Deposit settled.",
+    "depositSettleFailed": "Could not settle the deposit."
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -767,7 +786,9 @@
     "voidModalWarning": "Invoice {{invoiceNo}} will be voided. This cannot be undone.",
     "voidSuccess": "Receipt {{invoiceNo}} voided",
     "voided": "Voided",
-    "voiding": "Voiding..."
+    "voiding": "Voiding...",
+    "fund": "Fund",
+    "fundNone": "Not allocated"
   },
   "donationsHub": {
     "donations": "Donations",
@@ -1050,7 +1071,10 @@
     "utrReference": "UTR / Reference",
     "vendor": "Vendor",
     "vendorPayee": "Vendor / Payee",
-    "vendorPlaceholder": "Vendor name"
+    "vendorPlaceholder": "Vendor name",
+    "fund": "Paid from fund",
+    "fundNone": "Not allocated",
+    "fundHint": "Which fund bore this cost. Needed for the fund utilisation report."
   },
   "inventory": {
     "actions": "Actions",
@@ -1281,7 +1305,8 @@
     "trialBalance": "Cash & Bank Balances",
     "userGuide": "User Guide",
     "vendors": "Vendors / Suppliers",
-    "visitorCount": "Visitor Count"
+    "visitorCount": "Visitor Count",
+    "payroll": "Payroll"
   },
   "palette": {
     "close": "Close",
@@ -1618,7 +1643,17 @@
     "txnType_prasad": "Prasad",
     "txnType_room": "Room",
     "txnType_seva": "Seva",
-    "unsponsored": "Borne by temple"
+    "unsponsored": "Borne by temple",
+    "fundUtilisation": "Fund utilisation",
+    "fund": "Fund",
+    "fundType": "Type",
+    "received": "Received",
+    "applied": "Applied",
+    "fundBalance": "Balance",
+    "restricted": "Restricted",
+    "unallocatedHint": "Recorded before funds were tracked",
+    "overApplied": "A restricted fund has been over-applied",
+    "overAppliedHint": "{{funds}} has paid out more than it received in this period. A restricted fund may only be spent on its own purpose — check the expenses tagged to it."
   },
   "sensitive": {
     "bannerVerified": "These details have been verified by the platform, so they can no longer be edited here. Raise a change request and we will review it.",
@@ -1780,7 +1815,9 @@
         "sortOrder": "Sort Order",
         "tariffPerNight": "Tariff / night ₹",
         "unit": "Unit",
-        "unitPlaceholder": "piece, kg, box…"
+        "unitPlaceholder": "piece, kg, box…",
+        "fundType": "Statutory type",
+        "isRestricted": "Restricted use"
       },
       "flags": "Flags",
       "gstRates": "GST Rates",
@@ -1800,7 +1837,9 @@
       "sevas": "Sevas / Services",
       "sevasDesc": "Seva options and their default amounts.",
       "statusUpdateFailed": "Failed to update status",
-      "thisEntry": "this entry"
+      "thisEntry": "this entry",
+      "funds": "Funds",
+      "fundsDesc": "Earmarked funds — Dev Dravya, Jivdaya, Sadharan. A fund says whose money it is and what it may be spent on."
     },
     "messages": {
       "channel": "Channel",
@@ -2710,5 +2749,51 @@
     "totalBilled": "Total Billed",
     "transactionHistoryExpenses": "Transaction History (Expenses)",
     "type": "Type"
+  },
+  "payroll": {
+    "salaryRun": "Salary run",
+    "advances": "Advances",
+    "month": "Month",
+    "compute": "Compute & save",
+    "computing": "Computing…",
+    "refresh": "Refresh",
+    "computeHint": "Preview first. Computing writes the salary records and recovers any advances due. A month already disbursed cannot be recomputed.",
+    "staff": "Staff",
+    "gross": "Gross",
+    "net": "Net",
+    "netPayable": "Net payable",
+    "advanceRecovered": "Advance recovered",
+    "employee": "Employee",
+    "present": "Present",
+    "half": "Half",
+    "leave": "Leave",
+    "absent": "Absent",
+    "noStaff": "No active staff for this month.",
+    "previewFailed": "Could not load the payroll preview.",
+    "computeFailed": "Could not compute payroll.",
+    "computed": "Payroll computed for {{count}} staff — {{month}}.",
+    "giveAdvance": "Give advance",
+    "selectEmployee": "Select an employee",
+    "amount": "Amount",
+    "date": "Date",
+    "reason": "Reason",
+    "instalment": "Monthly instalment",
+    "recoveryMode": "Recovery",
+    "paidFrom": "Paid from",
+    "defaultCash": "Default cash account",
+    "modeInstalment": "In instalments",
+    "modeFullNext": "Full, next salary",
+    "modeManual": "Manual only",
+    "openAdvances": "Open advances",
+    "outstanding": "Outstanding",
+    "recovered": "Recovered",
+    "statusActive": "Active",
+    "statusClosed": "Closed",
+    "recordRepayment": "Record repayment",
+    "noAdvances": "No advances recorded.",
+    "advanceGiven": "Advance recorded.",
+    "advanceFailed": "Could not record the advance.",
+    "repaymentRecorded": "Repayment recorded.",
+    "repaymentFailed": "Could not record the repayment."
   }
 }

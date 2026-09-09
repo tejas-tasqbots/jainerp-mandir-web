@@ -24,6 +24,8 @@ export function AddRoomCheckin() {
     persons_count: '1',
     advance: '',
     payment_mode: 'cash',
+    id_proof_number: '',
+    deposit: '',
   }))
 
   useEffect(() => {
@@ -56,13 +58,39 @@ export function AddRoomCheckin() {
         payment_mode: form.payment_mode,
       }
 
+      // The document is stored encrypted (tenant-migration 033); only the last
+      // four digits are ever shown again. Sent inside `guest` because that is
+      // where DharamshalaService.resolveGuest reads it from — the top-level
+      // `guest_id_type` this form used to send reached nothing.
+      const idFields = {
+        id_proof_type: form.guest_id_type,
+        id_proof_number: form.id_proof_number.trim() || null,
+      }
       if (guest?.global_user_id) {
-        payload.guest = { global_user_id: guest.global_user_id, name: guest.name, mobile: guest.mobile }
+        payload.guest = { global_user_id: guest.global_user_id, name: guest.name, mobile: guest.mobile, ...idFields }
       } else if (guest?.name) {
-        payload.guest = { name: guest.name, mobile: guest.mobile }
+        payload.guest = { name: guest.name, mobile: guest.mobile, ...idFields }
       }
 
-      await api.post('/room-bookings', payload)
+      const { data: created } = await api.post('/room-bookings', payload)
+      // A security deposit is not part of the bill, so it is a separate call.
+      // The booking already exists by this point: if the deposit fails the
+      // cashier is told, and can take it from the rooms list, rather than
+      // losing the booking they just made.
+      const bookingId = created?.data?.id ?? created?.id
+      const depositPaise = form.deposit ? parsePaise(form.deposit) : 0
+      if (bookingId && depositPaise > 0) {
+        try {
+          await api.post(`/room-bookings/${bookingId}/deposit`, {
+            amount_paise: depositPaise,
+            payment_mode: form.payment_mode,
+          })
+        } catch {
+          setError(t('dharamshala.depositNotTaken'))
+          setSaving(false)
+          return
+        }
+      }
       navigate('/rooms')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -94,6 +122,42 @@ export function AddRoomCheckin() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label" htmlFor="id-type">{t('dharamshala.idType')}</label>
+              <select
+                id="id-type" className="form-select" value={form.guest_id_type}
+                onChange={e => setForm(f => ({ ...f, guest_id_type: e.target.value }))}
+              >
+                <option value="aadhaar">{t('dharamshala.idAadhaar')}</option>
+                <option value="pan">{t('dharamshala.idPan')}</option>
+                <option value="passport">{t('dharamshala.idPassport')}</option>
+                <option value="voter_id">{t('dharamshala.idVoter')}</option>
+                <option value="driving_license">{t('dharamshala.idDl')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="id-number">{t('dharamshala.idNumber')}</label>
+              <input
+                id="id-number" className="form-input" value={form.id_proof_number}
+                onChange={e => setForm(f => ({ ...f, id_proof_number: e.target.value }))}
+                placeholder={form.guest_id_type === 'aadhaar' ? '1234 5678 9012' : ''}
+                inputMode={form.guest_id_type === 'aadhaar' ? 'numeric' : 'text'}
+                autoComplete="off"
+              />
+              <p className="text-xs text-slate-500 mt-1">{t('dharamshala.idStoredHint')}</p>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
+              <input
+                id="deposit" className="form-input" inputMode="decimal" value={form.deposit}
+                onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))}
+                placeholder="0"
+              />
+              <p className="text-xs text-slate-500 mt-1">{t('dharamshala.depositHint')}</p>
+            </div>
           </div>
 
           <DevoteePicker

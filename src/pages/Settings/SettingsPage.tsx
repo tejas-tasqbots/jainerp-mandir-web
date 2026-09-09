@@ -542,6 +542,30 @@ export function SettingsPage() {
             ]}
           />
 
+          {/* Named funds (tenant-migration 036). Separate from the donation
+              CATEGORY, which says what a gift was for; a fund says whose money
+              it is and what it may be spent on. Dev Dravya, Jivdaya and
+              Sadharan are added here — they are not seeded, because they would
+              be wrong for a trust outside the Jain tradition. */}
+          <MasterEditor
+            resource="funds"
+            title={t('settings.masters.funds')}
+            description={t('settings.masters.fundsDesc')}
+            fields={[
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: 'Dev Dravya' },
+              {
+                key: 'fund_type', label: t('settings.masters.fields.fundType'), type: 'select', default: 'general',
+                options: [
+                  { value: 'general', label: t('donations.fundGeneral') },
+                  { value: 'specific', label: t('donations.fundSpecific') },
+                  { value: 'corpus', label: t('donations.fundCorpus') },
+                ],
+              },
+              { key: 'is_restricted', label: t('settings.masters.fields.isRestricted'), type: 'checkbox', default: true },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+            ]}
+          />
+
           <MasterEditor
             resource="expense-categories"
             title={t('settings.masters.expenseCategories')}

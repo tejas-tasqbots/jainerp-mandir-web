@@ -22,12 +22,13 @@ import { GstSummaryReport } from './reports/GstSummaryReport'
 import { DepreciationScheduleReport } from './reports/DepreciationScheduleReport'
 import { LoanScheduleReport } from './reports/LoanScheduleReport'
 import { ServiceRegisterReport } from './reports/ServiceRegisterReport'
+import { FundUtilisationReport } from './reports/FundUtilisationReport'
 
 type ReportKey =
   | 'daily-collection' | 'collection-summary' | 'all-transactions' | 'donation-register' | 'donation-by-category'
   | 'expense-register' | 'expense-by-category' | 'pledge-register' | 'creditor-aging'
   | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'cash-flow' | 'event-collection' | 'gst-summary'
-  | 'depreciation-schedule' | 'loan-schedule' | 'service-register'
+  | 'depreciation-schedule' | 'loan-schedule' | 'service-register' | 'fund-utilisation'
 
 /**
  * `modules` names the entitlements a report needs — ANY one of them is enough,
@@ -84,6 +85,7 @@ const RAIL: RailGroup[] = [
       { key: 'gst-summary', labelKey: 'reports.gstSummary' },
       { key: 'depreciation-schedule', labelKey: 'reports.depreciationSchedule', modules: ['fixed_assets'] },
       { key: 'loan-schedule', labelKey: 'reports.loanSchedule' },
+      { key: 'fund-utilisation', labelKey: 'reports.fundUtilisation' },
     ],
   },
 ]
@@ -107,6 +109,7 @@ const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
   'depreciation-schedule': DepreciationScheduleReport,
   'loan-schedule': LoanScheduleReport,
   'service-register': ServiceRegisterReport,
+  'fund-utilisation': FundUtilisationReport,
 }
 
 export function ReportsHome() {

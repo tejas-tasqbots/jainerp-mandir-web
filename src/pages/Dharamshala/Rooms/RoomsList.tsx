@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
+import { FileText, IndianRupee, Plus, Receipt, Trash2, X, ShieldCheck } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise } from '../../../lib/api'
+import { api, fmtPaise, parsePaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printBillDoc } from '../../../lib/printBill'
@@ -56,6 +56,13 @@ export function RoomsList() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
   const [collectModal, setCollectModal] = useState<{ booking: RoomBooking; bill: Record<string, any> } | null>(null)
+  // Settling a deposit is its own action, not part of checkout: a guest can
+  // leave before the room has been inspected, and the deposit is returned
+  // afterwards. Held = taken - refunded - forfeited.
+  const [depositModal, setDepositModal] = useState<RoomBooking | null>(null)
+  const [forfeitAmt, setForfeitAmt] = useState('')
+  const [settling, setSettling] = useState(false)
+  const [settleError, setSettleError] = useState('')
   const [collectRows, setCollectRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [collecting, setCollecting] = useState(false)
   const { profile } = useProfileStore()
@@ -175,6 +182,15 @@ export function RoomsList() {
               to be settled. Without this the balance was simply stranded: the
               row showed ₹1,300 due and offered no way to take it. Available on
               any live booking with a balance, checked out or not. */}
+          {b.status !== 'cancelled' && depositHeld(b) > 0 && (
+            <button
+              onClick={() => { setDepositModal(b); setForfeitAmt(''); setSettleError('') }}
+              className="p-1 text-slate-400 hover:text-amber-600 rounded"
+              title={t('dharamshala.settleDeposit')} aria-label={t('dharamshala.settleDeposit')}
+            >
+              <ShieldCheck size={14} />
+            </button>
+          )}
           {b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0 && (
             <button
               onClick={() => openCollect(b)}
@@ -339,6 +355,39 @@ export function RoomsList() {
   }
 
   /** Take the outstanding balance on a booking, including after checkout. */
+  /** What is still held against a booking, in paise. */
+  function depositHeld(b: RoomBooking): number {
+    const anyB = b as unknown as Record<string, unknown>
+    return Number(anyB.deposit_paise ?? 0)
+      - Number(anyB.deposit_refunded_paise ?? 0)
+      - Number(anyB.deposit_forfeited_paise ?? 0)
+  }
+
+  async function settleDeposit() {
+    if (!depositModal) return
+    const held = depositHeld(depositModal)
+    const forfeit = forfeitAmt ? parsePaise(forfeitAmt) : 0
+    if (forfeit > held) {
+      setSettleError(t('dharamshala.forfeitTooLarge', { held: fmtPaise(held) }))
+      return
+    }
+    setSettling(true)
+    setSettleError('')
+    try {
+      // refund_paise is omitted on purpose: the server returns everything not
+      // forfeited, so the two can never disagree about what is left.
+      await api.post(`/room-bookings/${depositModal.id}/deposit/settle`, { forfeit_paise: forfeit })
+      toast.success(t('dharamshala.depositSettled'))
+      setDepositModal(null)
+      load()
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: { message?: string } } } }
+      setSettleError(err.response?.data?.error?.message || t('dharamshala.depositSettleFailed'))
+    } finally {
+      setSettling(false)
+    }
+  }
+
   async function openCollect(b: RoomBooking) {
     try {
       const { data } = await api.get(`/room-bookings/${b.id}/bill`)
@@ -544,6 +593,53 @@ export function RoomsList() {
       )}
 
       {/* Collect an outstanding balance, including on a checked-out stay. */}
+      {depositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-navy-900">{t('dharamshala.settleDeposit')}</h3>
+                <p className="text-sm text-slate-500">
+                  {depositModal.guest_name} · {t('dharamshala.room')} {depositModal.room_number}
+                </p>
+              </div>
+              <button onClick={() => setDepositModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-1 text-sm border-y border-slate-100 py-3 mb-4">
+              <div className="flex justify-between">
+                <span>{t('dharamshala.depositHeld')}</span>
+                <span className="font-semibold">₹{fmtPaise(depositHeld(depositModal))}</span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label" htmlFor="forfeit">{t('dharamshala.forfeitAmount')}</label>
+              <input
+                id="forfeit" className="form-input" inputMode="decimal" autoFocus
+                value={forfeitAmt} onChange={e => setForfeitAmt(e.target.value)} placeholder="0"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {t('dharamshala.refundPreview', {
+                  amount: fmtPaise(Math.max(0, depositHeld(depositModal) - (forfeitAmt ? parsePaise(forfeitAmt) : 0))),
+                })}
+              </p>
+            </div>
+
+            {settleError && <p className="text-sm text-red-600 mb-3">{settleError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setDepositModal(null)}>{t('common.cancel')}</button>
+              <button className="btn-primary" onClick={settleDeposit} disabled={settling}>
+                {settling ? t('common.saving') : t('dharamshala.settleAndRefund')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {collectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">

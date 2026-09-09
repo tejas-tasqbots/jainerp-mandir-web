@@ -12,6 +12,7 @@ export function AddExpense() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [funds, setFunds] = useState<{ id: string; name: string }[]>([])
   const [form, setForm] = useState({
     vendor_name: '',
     category: '',
@@ -19,6 +20,7 @@ export function AddExpense() {
     amount: '',
     payment_mode: 'cash',
     payment_account_id: '',
+    fund_id: '',
     bill_number: '',
     bill_date: new Date().toISOString().slice(0, 10),
     utr_number: '',
@@ -49,7 +51,9 @@ export function AddExpense() {
   const [billName, setBillName] = useState('')
   useEffect(() => {
     api.get('/vendors?limit=500').then(r => setVendors(r.data.data || [])).catch(() => {})
-  }, [])
+    api.get('/funds', { params: { is_active: 'true', limit: '100' } })
+    .then(r => setFunds(r.data.data ?? [])).catch(() => setFunds([]))
+}, [])
 
   const expenseCategories = useResourceNames('expense-categories', [
     'Electricity', 'Water', 'Salary', 'Maintenance', 'Food & Supplies',
@@ -82,6 +86,9 @@ export function AddExpense() {
         if (matched) payload.vendor_id = matched.id
       }
       if (form.category) payload.category = form.category
+      // Which fund paid for this. Without it the fund utilisation report
+      // can only ever show what a fund received (tenant-migration 036).
+      if (form.fund_id) payload.fund_id = form.fund_id
       if (form.bill_number) payload.bill_number = form.bill_number
       if (form.utr_number) payload.utr_number = form.utr_number
       if (form.payment_mode === 'cheque') {
@@ -134,6 +141,18 @@ export function AddExpense() {
                 <option value="">{t('expenses.selectCategory')}</option>
                 {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+
+            <div>
+              <label className="form-label" htmlFor="expense-fund">{t('expenses.fund')}</label>
+              <select
+                id="expense-fund" className="form-select" value={form.fund_id}
+                onChange={e => setForm(f => ({ ...f, fund_id: e.target.value }))}
+              >
+                <option value="">{t('expenses.fundNone')}</option>
+                {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">{t('expenses.fundHint')}</p>
             </div>
           </div>
 

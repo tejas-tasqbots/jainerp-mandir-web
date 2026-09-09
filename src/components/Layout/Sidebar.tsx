@@ -51,6 +51,7 @@ const navItems: NavItem[] = [
       { labelKey: 'nav.vendors', to: '/masters/vendors' },
       { labelKey: 'nav.priests', to: '/masters/priests' },
       { labelKey: 'nav.employees', to: '/masters/employees' },
+      { labelKey: 'nav.payroll', to: '/payroll' },
       { labelKey: 'nav.inventory', to: '/masters/inventory' },
     ],
   },
