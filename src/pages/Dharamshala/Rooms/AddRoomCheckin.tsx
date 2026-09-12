@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
-import { api, fmtPaise, parsePaise, roomTypeLabel } from '../../../lib/api'
+import { api, fmtPaise, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import type { Room, DevoteeSelection } from '../../../types'
 
@@ -116,9 +116,11 @@ export function AddRoomCheckin() {
             <select className="form-select" value={form.room_id}
               onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}>
               <option value="">{t('dharamshala.selectAvailableRoom')}</option>
+              {/* The room's name, not `room_type`: no screen writes that
+                  column, so it is `non_ac` for every room (RoomAvailability). */}
               {rooms.map(r => (
                 <option key={r.id} value={r.id}>
-                  {r.room_number} — {roomTypeLabel(r.room_type)} (sleeps {r.capacity_persons}) — ₹{fmtPaise(r.tariff_paise)}/night
+                  {r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''} (sleeps {r.capacity_persons}) — ₹{fmtPaise(r.tariff_paise)}/night
                 </option>
               ))}
             </select>

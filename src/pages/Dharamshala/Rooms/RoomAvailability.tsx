@@ -15,24 +15,21 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
  * the check-in form with the room pre-selected; occupied ones say so.
  */
 
+/**
+ * The card describes a room by its `name` — the Rooms master's "Name / Type"
+ * field — and never by `rooms.room_type`. No screen writes `room_type`, so
+ * every room carries the column default `non_ac`, and the board read "non ac"
+ * under an AC Deluxe and an AC Suite alike.
+ */
 interface RoomRow {
   id: string
   room_number: string
   name: string | null
   floor: number | null
-  room_type: string | null
   capacity_persons: number | null
   tariff_paise: number
   available: boolean
 }
-
-const TYPE_LABELS: Record<string, string> = {
-  ac_single: 'AC Single', ac_double: 'AC Double', ac_family: 'AC Family',
-  non_ac_single: 'Non-AC Single', non_ac_double: 'Non-AC Double',
-  non_ac_family: 'Non-AC Family', dorm: 'Dormitory', hall: 'Hall',
-}
-const typeLabel = (t?: string | null) =>
-  !t ? '—' : (TYPE_LABELS[t] ?? t.replace(/_/g, ' '))
 
 export function RoomAvailability() {
   const { t } = useTranslation()
@@ -70,7 +67,6 @@ export function RoomAvailability() {
     if (!term) return true
     return r.room_number.toLowerCase().includes(term)
       || (r.name ?? '').toLowerCase().includes(term)
-      || typeLabel(r.room_type).toLowerCase().includes(term)
   }), [rooms, q, only, floor])
 
   const free = rooms.filter(r => r.available).length
@@ -157,7 +153,7 @@ export function RoomAvailability() {
                   r.available ? 'bg-brand-green' : 'bg-brand-red'
                 }`} />
               </div>
-              <p className="text-[11px] text-slate-500 truncate">{typeLabel(r.room_type)}</p>
+              <p className="text-[11px] text-slate-500 truncate">{r.name?.trim() || '—'}</p>
               <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
                 {r.capacity_persons != null && (
                   <span className="inline-flex items-center gap-0.5"><Users size={10} /> {r.capacity_persons}</span>
