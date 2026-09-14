@@ -3,7 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, RefreshCw, TrendingUp, CreditCard, ClipboardList } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
-import { useSensitiveFields, LockedField, VerifiedBanner } from '../../components/SensitiveFields'
+import { useSensitiveFields, LockedField } from '../../components/SensitiveFields'
+import { ComplianceSection } from './ComplianceSection'
+import {
+  COMPLIANCE_FIELDS, complianceIssues, type ComplianceField, type ComplianceValues,
+} from './complianceFields'
 import { useToast } from '../../components/kit/Toast'
 import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
@@ -115,10 +119,16 @@ export function SettingsPage() {
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
     name: '', address_line1: '', city: '', state: '', pincode: '', area: '', mobile: '', email: '', website: '',
-    gstin: '', pan: '', reg_80g_number: '', reg_12ab_number: '', upi_id: '', custom_receipt_footer: '',
+    upi_id: '', custom_receipt_footer: '',
     show_80g_on_receipt: false, global_sync_enabled: false,
     lat: null as number | null, lng: null as number | null,
   })
+  // Registration numbers, and what they were when loaded — only a value that
+  // CHANGES is checked, the same rule the API applies.
+  const blankCompliance = Object.fromEntries(COMPLIANCE_FIELDS.map(f => [f, ''])) as ComplianceValues
+  const [compliance, setCompliance] = useState<ComplianceValues>(blankCompliance)
+  const [loadedCompliance, setLoadedCompliance] = useState<ComplianceValues>(blankCompliance)
+  const issues = complianceIssues(compliance, loadedCompliance, sens.pendingFor('pan')?.requested_value)
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [history, setHistory] = useState<BillingHistoryData | null>(null)
   const [usage, setUsage] = useState<UsageData | null>(null)
@@ -187,10 +197,6 @@ export function SettingsPage() {
         mobile: profile.phone || (p.mobile as string) || '',
         email: profile.email || '',
         website: profile.website || '',
-        gstin: (p.gstin as string) || '',
-        pan: (p.pan as string) || '',
-        reg_80g_number: (p.reg_80g_number as string) || '',
-        reg_12ab_number: (p.reg_12ab_number as string) || '',
         upi_id: (p.upi_id as string) || '',
         custom_receipt_footer: (p.custom_receipt_footer as string) || '',
         show_80g_on_receipt: Boolean(p.show_80g_on_receipt),
@@ -198,6 +204,14 @@ export function SettingsPage() {
         lat: p.lat != null ? Number(p.lat) : null,
         lng: p.lng != null ? Number(p.lng) : null,
       })
+      const loaded = Object.fromEntries(COMPLIANCE_FIELDS.map(f => [
+        f,
+        // The API sends the validity as YYYY-MM-DD; an older build sent a
+        // timestamp, and a date input shows nothing for one.
+        f === 'reg_80g_valid_upto' ? String(p[f] ?? '').slice(0, 10) : String(p[f] ?? ''),
+      ])) as ComplianceValues
+      setCompliance(loaded)
+      setLoadedCompliance(loaded)
     }
   }, [profile])
 
@@ -304,16 +318,24 @@ export function SettingsPage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
+    // The API refuses the same things; catching them here keeps the address
+    // and contact edits beside them from being lost to a round trip.
+    if (Object.keys(issues).length) {
+      toast.error(t('settings.profile.fixHighlighted'))
+      document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+      return
+    }
     setSaving(true)
     try {
       const payload: Record<string, unknown> = {
         name: form.name, address_line1: form.address_line1, city: form.city, state: form.state,
         pincode: form.pincode, area: form.area, mobile: form.mobile, email: form.email, website: form.website,
-        gstin: form.gstin, pan: form.pan, reg_80g_number: form.reg_80g_number,
-        reg_12ab_number: form.reg_12ab_number, upi_id: form.upi_id,
+        upi_id: form.upi_id,
         custom_receipt_footer: form.custom_receipt_footer,
         show_80g_on_receipt: form.show_80g_on_receipt,
         lat: form.lat, lng: form.lng,
+        // Blank goes as null: "no GSTIN" is an absence, and the API stores it so.
+        ...Object.fromEntries(COMPLIANCE_FIELDS.map(f => [f, compliance[f].trim() || null])),
       }
       // Verified fields are rejected by the API, and it rejects the whole
       // payload — leaving an unchanged locked value in here would block the
@@ -443,32 +465,13 @@ export function SettingsPage() {
               <div><label className="form-label">{t('settings.profile.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               <div><label className="form-label">{t('settings.profile.website')}</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
             </div>
-            <div className="border-t border-slate-100 pt-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{t('settings.profile.registrationCompliance')}</p>
-              {sens.locked && (
-                <div className="mb-3">
-                  <VerifiedBanner verifiedAt={sens.state?.verified_at ?? null} />
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>{sens.isLocked('pan') ? (
-                  <LockedField label={t('settings.profile.pan') as string} value={form.pan}
-                    field="pan" pending={sens.pendingFor('pan')} onRequest={sens.openRequest} />
-                ) : (<><label className="form-label">{t('settings.profile.pan')}</label><input className="form-input uppercase" value={form.pan} onChange={e => setForm(f => ({ ...f, pan: e.target.value.toUpperCase() }))} /></>)}</div>
-                <div>{sens.isLocked('gstin') ? (
-                  <LockedField label={t('settings.profile.gstin') as string} value={form.gstin}
-                    field="gstin" pending={sens.pendingFor('gstin')} onRequest={sens.openRequest} />
-                ) : (<><label className="form-label">{t('settings.profile.gstin')}</label><input className="form-input uppercase" value={form.gstin} onChange={e => setForm(f => ({ ...f, gstin: e.target.value.toUpperCase() }))} /></>)}</div>
-                <div>{sens.isLocked('reg_80g_number') ? (
-                  <LockedField label={t('settings.profile.reg80g') as string} value={form.reg_80g_number}
-                    field="reg_80g_number" pending={sens.pendingFor('reg_80g_number')} onRequest={sens.openRequest} />
-                ) : (<><label className="form-label">{t('settings.profile.reg80g')}</label><input className="form-input" value={form.reg_80g_number} onChange={e => setForm(f => ({ ...f, reg_80g_number: e.target.value }))} /></>)}</div>
-                <div>{sens.isLocked('reg_12ab_number') ? (
-                  <LockedField label={t('settings.profile.reg12ab') as string} value={form.reg_12ab_number}
-                    field="reg_12ab_number" pending={sens.pendingFor('reg_12ab_number')} onRequest={sens.openRequest} />
-                ) : (<><label className="form-label">{t('settings.profile.reg12ab')}</label><input className="form-input" value={form.reg_12ab_number} onChange={e => setForm(f => ({ ...f, reg_12ab_number: e.target.value }))} /></>)}</div>
-              </div>
-            </div>
+            <ComplianceSection
+              values={compliance}
+              loaded={loadedCompliance}
+              onChange={(f: ComplianceField, v: string) => setCompliance(c => ({ ...c, [f]: v }))}
+              sens={sens}
+              issues={issues}
+            />
             {/* The receipt block that used to sit here is gone.
                 It edited upi_id, show_80g_on_receipt and custom_receipt_footer
                 — all three of which Receipt Settings already owns, and upi_id

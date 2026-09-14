@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ArrowLeft, Check, ChevronRight, Image as ImageIcon, Loader2, Sparkles, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
+import {
+  issueKey, normaliseStatutory, sameStatutoryValue, STATUTORY_EXAMPLE, statutoryIssue, type StatutoryIssue,
+} from '../../lib/statutoryIds'
 import { QuickAdd, isQuickAddable } from './QuickAdd'
 import { useAuthStore } from '../../store/authStore'
 import { fetchSetup, type SetupProgress } from '../../components/SetupChecklist'
@@ -50,6 +53,10 @@ const STEPS: Array<{ key: StepKey; labelKey: string }> = [
 ]
 
 const TEMPLATES = ['classic', 'minimal', 'modern', 'traditional', 'elegant']
+
+/** The registration numbers the tax step checks as they are typed. */
+const TAX_FIELDS = ['pan', 'reg_80g_number', 'reg_12ab_number', 'gstin'] as const
+type TaxField = (typeof TAX_FIELDS)[number]
 
 /** Only ever true once — the wizard offers itself, it does not chase. */
 const SEEN_KEY = 'jainerp_setup_wizard_offered'
@@ -157,6 +164,27 @@ export function SetupWizard() {
   const set = (patch: Partial<Form>) => setForm(f => ({ ...f, ...patch }))
   const stepIndex = STEPS.findIndex(s => s.key === step)
 
+  // What was saved when the wizard opened. The tax numbers are judged only
+  // where they CHANGE — the API's rule — so a verified value the trust cannot
+  // edit never blocks Next.
+  const [saved, setSaved] = useState<Form>(BLANK)
+  const taxIssues = useMemo(() => {
+    const out: Partial<Record<TaxField, StatutoryIssue>> = {}
+    const pans = [normaliseStatutory('pan', form.pan) ?? saved.pan]
+    for (const f of TAX_FIELDS) {
+      if (f === 'gstin' && !form.is_gst_registered) continue
+      const next = normaliseStatutory(f, form[f])
+      if (!next || sameStatutoryValue(f, next, saved[f])) continue
+      const found = statutoryIssue(f, next, f === 'pan' ? [] : pans)
+      if (found) out[f] = found
+    }
+    return out
+  }, [form, saved])
+  const taxError = (f: TaxField) => {
+    const issue = taxIssues[f]
+    return issue ? t(issueKey(issue), issue.params) : undefined
+  }
+
   useEffect(() => { load() }, [])
 
   async function load() {
@@ -172,7 +200,7 @@ export function SetupWizard() {
       setSetup(progress)
       // Pre-fill from what is already saved. A step that opens blank when the
       // answer is already on file invites somebody to retype it differently.
-      setForm({
+      const onFile = {
         ...BLANK,
         ...Object.fromEntries(
           Object.keys(BLANK)
@@ -182,7 +210,9 @@ export function SetupWizard() {
         about: String(pub.about ?? ''),
         main_deity: String(pub.main_deity ?? ''),
         darshan_timings: String(pub.darshan_timings ?? ''),
-      } as Form)
+      } as Form
+      setSaved(onFile)
+      setForm(onFile)
       setTempleType((pub.temple_type as string) ?? null)
       // Which bank accounts could receive a devotee transfer, and which one is
       // already nominated. `needsAccount` is about whether we have to CREATE
@@ -222,9 +252,12 @@ export function SetupWizard() {
     }
   }
 
-  /** Trims, drops blanks, and PATCHes only what this step owns. */
-  async function patchProfile(keys: (keyof Form)[]) {
-    const body: Record<string, unknown> = {}
+  /**
+   * Trims, drops blanks, and PATCHes only what this step owns. `extra` is for
+   * the rare value that must be sent even when blank — a deliberate clear.
+   */
+  async function patchProfile(keys: (keyof Form)[], extra: Record<string, unknown> = {}) {
+    const body: Record<string, unknown> = { ...extra }
     for (const k of keys) {
       const v = form[k]
       if (typeof v === 'boolean') body[k] = v
@@ -241,7 +274,20 @@ export function SetupWizard() {
           await patchProfile(['name', 'address_line1', 'city', 'state', 'pincode', 'area', 'mobile', 'email', 'website'])
           break
         case 'tax':
-          await patchProfile(['pan', 'reg_80g_number', 'reg_12ab_number', 'is_gst_registered', 'gstin'])
+          if (Object.keys(taxIssues).length) {
+            setError(t('settings.profile.fixHighlighted'))
+            return false
+          }
+          // Unticking "registered for GST" hid the GSTIN box but kept what was
+          // in it, and this step posted it anyway — so a trust that said "not
+          // registered" still held a GSTIN, and the GSTIN is what switches GST
+          // on. Not registered now clears it.
+          await patchProfile(
+            form.is_gst_registered
+              ? ['pan', 'reg_80g_number', 'reg_12ab_number', 'is_gst_registered', 'gstin']
+              : ['pan', 'reg_80g_number', 'reg_12ab_number', 'is_gst_registered'],
+            form.is_gst_registered ? {} : { gstin: null },
+          )
           break
         case 'money': {
           // Create the account AND nominate it as the one devotees pay into.
@@ -482,11 +528,14 @@ export function SetupWizard() {
           {step === 'tax' && (
             <Section title={t('setupWizard.tax.title')} hint={t('setupWizard.tax.hint')}>
               <Field label={t('setup.items.pan.label')} value={form.pan} maxLength={10} uppercase
+                placeholder={STATUTORY_EXAMPLE.pan} error={taxError('pan')}
                 onChange={v => set({ pan: v.toUpperCase() })} hint={t('setup.items.pan.why')} />
-              <Field label={t('setup.items.reg_80g.label')} value={form.reg_80g_number}
-                onChange={v => set({ reg_80g_number: v })} hint={t('setup.items.reg_80g.why')} />
-              <Field label={t('setup.items.reg_12a.label')} value={form.reg_12ab_number}
-                onChange={v => set({ reg_12ab_number: v })} hint={t('setup.items.reg_12a.why')} />
+              <Field label={t('setup.items.reg_80g.label')} value={form.reg_80g_number} maxLength={20} uppercase
+                placeholder={STATUTORY_EXAMPLE.reg_80g_number} error={taxError('reg_80g_number')}
+                onChange={v => set({ reg_80g_number: v.toUpperCase() })} hint={t('setup.items.reg_80g.why')} />
+              <Field label={t('setup.items.reg_12a.label')} value={form.reg_12ab_number} maxLength={20} uppercase
+                placeholder={STATUTORY_EXAMPLE.reg_12ab_number} error={taxError('reg_12ab_number')}
+                onChange={v => set({ reg_12ab_number: v.toUpperCase() })} hint={t('setup.items.reg_12a.why')} />
               <label className="flex items-center gap-2 text-sm text-slate-700 pt-1">
                 <input type="checkbox" checked={form.is_gst_registered}
                   onChange={e => set({ is_gst_registered: e.target.checked })} />
@@ -494,6 +543,7 @@ export function SetupWizard() {
               </label>
               {form.is_gst_registered && (
                 <Field label={t('setup.items.gstin.label')} value={form.gstin} maxLength={15} uppercase
+                  placeholder={STATUTORY_EXAMPLE.gstin} error={taxError('gstin')}
                   onChange={v => set({ gstin: v.toUpperCase() })} />
               )}
             </Section>
@@ -852,7 +902,7 @@ function Row({ children }: { children: React.ReactNode }) {
 }
 
 function Field({
-  label, value, onChange, hint, type = 'text', maxLength, inputMode, uppercase, multiline,
+  label, value, onChange, hint, type = 'text', maxLength, inputMode, uppercase, multiline, placeholder, error,
 }: {
   label: string
   value: string
@@ -863,6 +913,9 @@ function Field({
   inputMode?: 'text' | 'numeric' | 'tel'
   uppercase?: boolean
   multiline?: boolean
+  placeholder?: string
+  /** Shown instead of the hint, in red, while the value is wrong. */
+  error?: string
 }) {
   return (
     <div>
@@ -871,10 +924,13 @@ function Field({
         <textarea className="form-input w-full min-h-[80px]" value={value} maxLength={maxLength}
           onChange={e => onChange(e.target.value)} />
       ) : (
-        <input className={`form-input w-full ${uppercase ? 'uppercase' : ''}`} type={type} value={value}
-          maxLength={maxLength} inputMode={inputMode} onChange={e => onChange(e.target.value)} />
+        <input className={`form-input w-full ${uppercase ? 'uppercase' : ''} ${error ? 'border-red-400' : ''}`} type={type} value={value}
+          maxLength={maxLength} inputMode={inputMode} placeholder={placeholder} aria-invalid={!!error}
+          onChange={e => onChange(e.target.value)} />
       )}
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      {error
+        ? <p className="mt-1 text-xs text-red-600" role="alert">{error}</p>
+        : hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
     </div>
   )
 }

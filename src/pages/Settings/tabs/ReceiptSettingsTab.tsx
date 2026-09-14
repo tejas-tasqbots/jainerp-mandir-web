@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
 import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
+import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
 import { useToast } from '../../../components/kit/Toast'
 
 type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: string) => string }
@@ -301,12 +302,13 @@ const BLANK = {
 }
 
 function buildPreviewData(form: typeof BLANK): ReceiptData {
-  // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact. Kept as
-  // three lines here rather than imported because mandir-api is a separate
-  // deployable with no shared package — if that rule changes, change it in
-  // both (mandiradmin-api/src/common/domain/statutory-visibility.ts).
-  const gstin = form.gstin.trim()
-  const gstEnabled = gstin.length > 0
+  // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact — and it
+  // has to be shaped like a GSTIN, not merely non-empty ("0" used to switch GST
+  // on). mandir-api is a separate deployable with no shared package, so if that
+  // rule changes, change it in both
+  // (mandiradmin-api/src/common/domain/statutory-visibility.ts).
+  const gstEnabled = isWellFormedGstin(form.gstin)
+  const gstin = gstEnabled ? form.gstin.trim().toUpperCase() : ''
   const has80g = form.reg_80g_number.trim().length > 0
 
   return {
@@ -507,12 +509,18 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   }
 
   // Statutory identity that will print on receipts (managed in Temple Profile).
+  // What PRINTS, not what is stored: a GSTIN that is not shaped like one never
+  // reaches a receipt, so showing it here as "set" would contradict the preview.
   const statutory: { label: string; value: string; required?: boolean }[] = [
-    { label: 'GSTIN', value: form.gstin },
+    { label: 'GSTIN', value: isWellFormedGstin(form.gstin) ? form.gstin.trim().toUpperCase() : '' },
     { label: 'PAN', value: form.pan },
     { label: t('settings.receipts.statutory80gRegNo'), value: form.reg_80g_number, required: true },
-    { label: '80G URN', value: form.reg_80g_urn },
-    { label: t('settings.receipts.statutory80gValidUpto'), value: form.reg_80g_valid_upto ? new Date(form.reg_80g_valid_upto).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '' },
+    // Only when it differs from the registration number above — since 2021
+    // they are the same 16-character URN, and nothing edits this column.
+    ...(form.reg_80g_urn && form.reg_80g_urn !== form.reg_80g_number
+      ? [{ label: '80G URN', value: form.reg_80g_urn }]
+      : []),
+    { label: t('settings.receipts.statutory80gValidUpto'), value: form.reg_80g_valid_upto ? formatCalendarDate(form.reg_80g_valid_upto) : '' },
     { label: '12A / 12AB', value: form.reg_12ab_number || form.reg_12a_number },
   ]
   const missingRequired = statutory.filter(s => s.required && !s.value)

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronLeft, ChevronRight, Check, CreditCard, Loader2,
   ShieldCheck, Sparkles, AlertTriangle, Database, FileText, LogIn, RotateCw,
 } from 'lucide-react'
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
+import { issueKey, normaliseStatutory, STATUTORY_EXAMPLE, statutoryIssue } from '../../lib/statutoryIds'
 import { Catalogue, CataloguePlan, PlanLimits, Registration, apiError, clearDraft, inr, invoiceUrl, loadDraft, loadRazorpay, onboarding, saveDraft } from '../../lib/onboardingApi'
 import { CustomPlanForm } from './CustomPlanForm'
 import { LocationPicker } from '../../components/LocationPicker'
@@ -101,6 +103,7 @@ function planLimitLines(l: PlanLimits | undefined): string[] {
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
   const [step, setStep] = useState<Step>('details')
   const [form, setForm] = useState<DetailsForm>(EMPTY)
   const [reg, setReg] = useState<Registration | null>(null)
@@ -234,10 +237,10 @@ export function RegisterPage() {
       mandir_mobile: blank(form.mandir_mobile),
       mandir_email: blank(form.mandir_email),
       website: blank(form.website),
-      gstin: blank(form.gstin)?.toUpperCase(),
-      pan: blank(form.pan)?.toUpperCase(),
-      reg_80g_number: blank(form.reg_80g_number),
-      reg_12a_number: blank(form.reg_12a_number),
+      gstin: normaliseStatutory('gstin', form.gstin) ?? undefined,
+      pan: normaliseStatutory('pan', form.pan) ?? undefined,
+      reg_80g_number: normaliseStatutory('reg_80g_number', form.reg_80g_number) ?? undefined,
+      reg_12a_number: normaliseStatutory('reg_12a_number', form.reg_12a_number) ?? undefined,
       source: 'website' as const,
     }
   }
@@ -249,6 +252,15 @@ export function RegisterPage() {
     if (!form.trust_name.trim()) return setError('Enter your Trust/Temple name')
     if (!form.admin_name.trim()) return setError('Enter the administrator’s name')
     if (!isValidPhone(form.admin_mobile)) return setError('Enter a valid mobile number for the administrator')
+    // The same rules the API applies (and the trust's own Settings later), so
+    // "0" in GSTIN or a mistyped PAN is caught here rather than as a 400.
+    // English, like the rest of this page.
+    const tEn = i18n.getFixedT('en')
+    for (const [field, label] of [['pan', 'PAN'], ['gstin', 'GSTIN'], ['reg_80g_number', '80G registration number'], ['reg_12a_number', '12A registration number']] as const) {
+      const value = normaliseStatutory(field, form[field])
+      const issue = value ? statutoryIssue(field, value, field === 'pan' ? [] : [form.pan]) : null
+      if (issue) return setError(`${label}: ${tEn(issueKey(issue), issue.params)}`)
+    }
 
     setLoading(true)
     setError('')
@@ -731,9 +743,13 @@ function DetailsStep({
         subtitle="All optional — you can add these later from Settings. Filling them in now means your 80G receipts work from day one."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="PAN" value={form.pan} onChange={set('pan')} placeholder="AAAAA9999A" maxLength={10} />
-          <Field label="GSTIN" value={form.gstin} onChange={set('gstin')} maxLength={15} />
-          <Field label="80G registration number" value={form.reg_80g_number} onChange={set('reg_80g_number')} />
+          <Field label="PAN" value={form.pan} onChange={set('pan')} placeholder={STATUTORY_EXAMPLE.pan} maxLength={10}
+            hint="The trust's own PAN — the one printed on 80G receipts" />
+          <Field label="GSTIN" value={form.gstin} onChange={set('gstin')} placeholder={STATUTORY_EXAMPLE.gstin} maxLength={15}
+            hint="Only if the trust is registered for GST — leave empty otherwise" />
+          <Field label="80G registration number" value={form.reg_80g_number} onChange={set('reg_80g_number')}
+            placeholder={STATUTORY_EXAMPLE.reg_80g_number} maxLength={16}
+            hint="The 16-character URN on the Income Tax approval" />
           <Field label="12A registration number" value={form.reg_12a_number} onChange={set('reg_12a_number')} />
           <Field label="Mandir contact number" value={form.mandir_mobile} onChange={set('mandir_mobile')} hint="Shown on receipts. Defaults to the administrator's number." />
           <Field label="Mandir email" value={form.mandir_email} onChange={set('mandir_email')} type="email" />

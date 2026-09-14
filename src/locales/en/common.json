@@ -1672,6 +1672,7 @@
   },
   "sensitive": {
     "bannerVerified": "These details have been verified by the platform, so they can no longer be edited here. Raise a change request and we will review it.",
+    "bannerVerifiedCompliance": "PAN, 12AB and 80G details are verified by the platform, so changing them needs a request we review. GSTIN, TAN and FSSAI stay editable here.",
     "newValue": "New value",
     "pending": "Awaiting review",
     "pendingDetail": "Requested: {{value}} — awaiting platform review",
@@ -1682,6 +1683,7 @@
     "requestSent": "Request sent for review",
     "requestSubtitle": "The platform will check this against your documents before it takes effect. Nothing changes until it is approved.",
     "requestTitle": "Request a change",
+    "sameAsCurrent": "That is already the current value.",
     "sendRequest": "Send request"
   },
   "settings": {
@@ -1960,24 +1962,43 @@
       "area": "Area / locality",
       "city": "City",
       "customFooter": "Custom Receipt Footer",
+      "eightyGExpired": "This 80G approval expired on {{date}}. Renew it (Form 10AB), then update the number and date here.",
+      "eightyGExpiring": "This 80G approval expires on {{date}}. Apply for renewal (Form 10AB) at least six months before that.",
       "email": "Email",
+      "fixHighlighted": "Please correct the highlighted registration numbers first.",
       "footerPlaceholder": "Jai Jinendra! Thank you for your donation.",
+      "fssai": "FSSAI licence no.",
+      "fssaiHelp": "Only needed if the trust sells or serves food (prasad, bhojanshala).",
       "gstin": "GSTIN",
+      "gstinHelp": "GST is charged on rooms, halls and prasad only while a valid GSTIN is entered. Leave it empty if the trust is not GST-registered.",
       "heading": "Temple / Mandir Profile",
       "mobile": "Mobile",
       "movedNote": "Receipt layout, the 80G line and your footer are in Receipt Settings. UPI and bank details for donors are under Bank & Cash Accounts.",
+      "optionalHeading": "Other registrations (optional)",
+      "optionalHelp": "Fill in only the ones your trust holds and leave the rest empty. You can edit or clear these at any time.",
       "pan": "PAN",
+      "panHintHuf": "The 4th letter is H, which marks a HUF's PAN, not a trust's. 80G receipts must carry the trust's PAN.",
+      "panHintIndividual": "The 4th letter is P, which marks an individual's PAN. A trust's own PAN normally has T there — 80G receipts must carry the trust's PAN.",
       "pincode": "Pincode",
       "receiptSettings": "Receipt Settings",
-      "reg12ab": "12AB Registration No.",
-      "reg80g": "80G Registration No.",
+      "reg12a": "12A registration (before 2021)",
+      "reg12ab": "12AB registration (URN)",
+      "reg80g": "80G registration (URN)",
+      "reg80gValidUpto": "80G valid up to",
       "registrationCompliance": "Registration & Compliance",
       "saveChanges": "Save Changes",
       "saved": "Settings saved successfully!",
       "show80gOnReceipt": "Show 80G details on receipts",
       "state": "State",
+      "storedInvalid": "The saved value has a problem: {{reason}}",
+      "tan": "TAN",
+      "tanHelp": "Only needed if the trust deducts TDS (salaries, contractors).",
       "templeName": "Temple / Mandir Name *",
       "upiId": "UPI ID",
+      "urnHelp": "16 characters starting with the trust's PAN, as printed on the Income Tax approval.",
+      "verifiedHeading": "Registrations for 80G receipts",
+      "verifiedHelp": "Printed on every 80G receipt. Check them against your certificates — once the platform verifies them, a change needs a request we review.",
+      "verifiedHelpLocked": "Verified by the platform. To change one, use Request change — nothing changes until we approve it.",
       "website": "Website"
     },
     "receipts": {
@@ -2874,5 +2895,20 @@
     "computedNotPaid": "Computed",
     "statusActive": "Active",
     "statusClosed": "Closed"
+  },
+  "statutory": {
+    "issue": {
+      "FORMAT_pan": "PAN is 10 characters: five letters, four digits, one letter (e.g. AAATR1234C).",
+      "FORMAT_gstin": "GSTIN is 15 characters: state code, the PAN, an entity number, Z and a check character (e.g. 27AAATR1234C1Z0).",
+      "FORMAT_tan": "TAN is 10 characters: four letters, five digits, one letter (e.g. MUMT12345A).",
+      "FORMAT_fssai_license": "An FSSAI licence or registration number is 14 digits.",
+      "FORMAT_urn": "Enter the 16-character URN from the Income Tax approval (e.g. AAATR1234CF20214). It starts with the trust's PAN.",
+      "FORMAT_reg_12a_number": "At most 50 characters.",
+      "PLACEHOLDER": "\"{{value}}\" is not a registration number. Leave the box empty if the trust does not have one.",
+      "STATE_CODE": "A GSTIN starts with a state code (01–38); \"{{code}}\" is not one.",
+      "CHECKSUM": "This GSTIN fails its check character. Please look for a typo.",
+      "PAN_MISMATCH": "This number was issued to PAN {{inner}}, but the trust's PAN is {{pan}}. It must be the trust's own registration.",
+      "DATE": "Enter a real calendar date."
+    }
   }
 }
