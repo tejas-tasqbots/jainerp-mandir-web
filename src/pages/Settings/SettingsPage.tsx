@@ -184,6 +184,12 @@ export function SettingsPage() {
     max_users: number; max_receipts_per_month: number; max_sms_per_month: number
   }
 
+  // The profile is otherwise loaded once, at boot. A change request approved
+  // while this tab was open (the name, a PAN) stayed invisible here and in the
+  // header until a reload; opening Settings is when someone looks for it.
+  // fetchProfile is a store action, stable across renders: this runs once.
+  useEffect(() => { fetchProfile() }, [fetchProfile])
+
   useEffect(() => {
     if (profile) {
       const p = profile as unknown as Record<string, string | boolean | undefined>
@@ -540,6 +546,13 @@ export function SettingsPage() {
             description={t('settings.masters.donationCategoriesDesc')}
             fields={[
               { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderGeneral') as string },
+              // Which fund this head's gifts belong to (tenant-migration 038).
+              // Set once here, so the donation counter never asks; the fund
+              // carries the statutory bucket (corpus / specific / general).
+              {
+                key: 'fund_id', label: t('settings.masters.fields.fund'), type: 'select',
+                optionsFrom: { resource: 'funds' }, emptyLabel: t('settings.masters.fields.fundNone') as string,
+              },
               { key: 'is_80g_eligible', label: t('settings.masters.fields.is80gEligible'), type: 'checkbox', default: true },
               { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
             ]}

@@ -441,11 +441,9 @@
     "vendorPayeeName": "Vendor / Payee Name *"
   },
   "dashboard": {
-    "dailyCollectionTrend": "Daily Collection Trend",
     "day": "Day",
     "donationsMinusExpenses": "Donations minus expenses",
     "donationsSeries": "Donations",
-    "donationsVsExpenses": "Donations vs Expenses (Monthly)",
     "donorsTotal": "{{count}} donors total",
     "employees": "Employees",
     "entries": "{{count}} entries",
@@ -471,7 +469,22 @@
     "upcomingEvents": "Upcoming Events",
     "viewPledges": "View Pledges",
     "week": "Week",
-    "year": "Year"
+    "year": "Year",
+    "net": "Net",
+    "roomsOfTotal_one": "of {{count}} room, free today",
+    "roomsOfTotal": "of {{count}} rooms, free today",
+    "roomsFreeToday": "Free today",
+    "noTrendData": "No donations or expenses recorded in this period yet.",
+    "chartLoadFailed": "The chart could not be loaded. Refresh to try again.",
+    "trendTitle": {
+      "day": "Donations vs Expenses · last 14 days",
+      "week": "Donations vs Expenses · last 12 weeks",
+      "month": "Donations vs Expenses · last 12 months",
+      "year": "Donations vs Expenses · last 5 financial years"
+    },
+    "entries_one": "{{count}} entry",
+    "transactions_one": "{{count}} transaction",
+    "pendingPledges_one": "{{count}} pending pledge"
   },
   "dateRange": {
     "all": "All dates",
@@ -738,7 +751,6 @@
     "fundCorpusHint": "Corpus gifts are exempt income and must be invested in a s.11(5) mode. Reported as \"Corpus\" in Form 10BD.",
     "fundGeneral": "General",
     "fundSpecific": "Specific grant",
-    "fundType": "Fund Type",
     "history": "History",
     "importOldRegister": "Import Old Register",
     "importRows": "Import Rows",
@@ -788,7 +800,8 @@
     "voided": "Voided",
     "voiding": "Voiding...",
     "fund": "Fund",
-    "fundNone": "Not allocated"
+    "goesToFund": "Goes to {{fund}} · {{type}}",
+    "filedAs": "Filed as {{type}}"
   },
   "donationsHub": {
     "donations": "Donations",
@@ -1793,7 +1806,7 @@
       "deleteMessage": "Delete \"{{name}}\"?\nPast records that reference it are kept.",
       "deleteTitle": "Delete entry",
       "donationCategories": "Donation Categories",
-      "donationCategoriesDesc": "Shown when recording a donation.",
+      "donationCategoriesDesc": "Shown when recording a donation. Link a category to its fund here once — the donation counter then never has to ask.",
       "expenseCategories": "Expense Categories",
       "expenseCategoriesDesc": "Shown when recording an expense.",
       "fieldRequired": "{{field}} is required",
@@ -1834,7 +1847,9 @@
         "unit": "Unit",
         "unitPlaceholder": "piece, kg, box…",
         "fundType": "Statutory type",
-        "isRestricted": "Restricted use"
+        "isRestricted": "Restricted use",
+        "fund": "Fund",
+        "fundNone": "No fund (General)"
       },
       "flags": "Flags",
       "gstRates": "GST Rates",
@@ -2728,7 +2743,14 @@
     "utrChequeNo": "UTR / cheque no.",
     "wantsUpdates": "Donor wants updates about this mandir’s events",
     "worksHelp": "Books, commentaries, articles and pravachan series published by this trust.",
-    "year": "Year"
+    "year": "Year",
+    "splitColMode": "Mode",
+    "splitColAmount": "Amount (₹)",
+    "splitColReference": "UTR / cheque no.",
+    "splitColAccount": "Received in",
+    "splitBalance": "Balance ₹{{amount}}",
+    "splitOver": "Over by ₹{{amount}}",
+    "splitSettled": "Fully settled"
   },
   "vendors": {
     "accountNoPlaceholder": "Account no",

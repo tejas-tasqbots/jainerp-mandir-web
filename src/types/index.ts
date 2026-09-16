@@ -42,8 +42,24 @@ export interface DashboardOverview {
   visitors?: number
   employees?: number
   rooms_available?: number
+  /** Rooms in service, so "0 available" can say "of 5". */
+  rooms_total?: number
   bolis?: { open: number; outstanding_paise: number }
   events?: { upcoming: Event[]; past: Event[] }
+}
+
+/** GET /dashboard/trend — the chart under the tiles. `to` is exclusive. */
+export interface DashboardTrend {
+  period: 'day' | 'week' | 'month' | 'year'
+  granularity: 'day' | 'week' | 'month' | 'fy'
+  buckets: {
+    from: string
+    to: string
+    donations_paise: number
+    donations_count: number
+    expenses_paise: number
+    expenses_count: number
+  }[]
 }
 
 // ─── Donations ───────────────────────────────────────────────────────────────
@@ -52,6 +68,8 @@ export interface DonationCategory {
   name: string
   is_80g_eligible: boolean
   is_active: boolean
+  /** The named fund this category's gifts are filed under (tenant-migration 038). */
+  fund_id?: string | null
 }
 
 export interface Donation {

@@ -44,6 +44,8 @@ interface AuthState {
   isLoggedIn: boolean
   setTokens: (access: string, refresh: string) => void
   setUser: (user: AuthedUser, tenant: TenantInfo) => void
+  /** The trust's current name, from its profile — see profileStore. */
+  setTenantName: (name: string) => void
   setModules: (modules: string[] | null) => void
   setLanguage: (language: Language) => void
   pinLanguage: () => void
@@ -73,6 +75,8 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (access, refresh) =>
         set({ accessToken: access, refreshToken: refresh, isLoggedIn: true }),
       setUser: (user, tenant) => set({ user, tenant }),
+      setTenantName: name =>
+        set(state => (state.tenant && state.tenant.name !== name ? { tenant: { ...state.tenant, name } } : {})),
       setModules: modules => set({ modules }),
       setLanguage: language => set({ language }),
       pinLanguage: () => set({ languagePinned: true }),

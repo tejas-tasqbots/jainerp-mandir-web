@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, X } from 'lucide-react'
+import { Save, X, Landmark } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
-import { emptyPaymentRow, toPayload, sumPaise, type PaymentRow } from '../../components/PaymentSplitInput'
+import { emptyPaymentRow, toPayload, sumPaise, cashPaise, type PaymentRow } from '../../components/PaymentSplitInput'
 import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { useProfileStore } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+
+/** s.80G(5D): a cash gift above ₹2,000 earns no deduction. */
+const CASH_80G_LIMIT_PAISE = 2000 * 100
+
+interface Fund { id: string; name: string; fund_type: string }
 
 export function AddDonation() {
   const { t } = useTranslation()
@@ -32,7 +37,15 @@ export function AddDonation() {
   const [donorPan, setDonorPan] = useState('')
   const [showPanField, setShowPanField] = useState(false)
 
-  const [funds, setFunds] = useState<{ id: string; name: string; fund_type: string }[]>([])
+  // Named funds, only to SAY where a gift goes. The counter no longer picks a
+  // fund or a fund type: a category names its fund once, in Settings → Masters
+  // (tenant-migration 038), and the API files the gift by it. Asking three
+  // overlapping questions on every receipt is how a corpus gift ended up
+  // counted as income because a dropdown was left on "General".
+  const [funds, setFunds] = useState<Fund[]>([])
+  // When correcting: what the original was filed under. The API keeps it
+  // unless the category changes.
+  const [original, setOriginal] = useState<{ category_id: string; fund_id: string | null; fund_type: string | null } | null>(null)
   const [form, setForm] = useState({
     category_id: '',
     amount: '',
@@ -41,8 +54,6 @@ export function AddDonation() {
     utr_number: '',
     cheque_number: '',
     is_80g_eligible: true,
-    fund_type: 'general',
-    fund_id: '',
     // Opt-in, never pre-ticked. A donation is not agreement to be added to a
     // temple's mailing list — the counter has to ask, and the default is no.
     wants_event_updates: false,
@@ -51,9 +62,11 @@ export function AddDonation() {
 
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } }).then(r => setCategories(r.data.data || []))
-    api.get('/funds', { params: { is_active: 'true', limit: '100' } })
-    .then(r => setFunds(r.data.data ?? [])).catch(() => setFunds([]))
-}, [])
+    // Every fund, active or not: a category may still point at one that was
+    // retired, and its name is what the hint below has to show.
+    api.get('/funds', { params: { limit: '200' } })
+      .then(r => setFunds(r.data.data ?? [])).catch(() => setFunds([]))
+  }, [])
 
   // Load existing donation when editing
   useEffect(() => {
@@ -68,11 +81,23 @@ export function AddDonation() {
         utr_number: d.utr_number ?? '',
         cheque_number: d.cheque_number ?? '',
         is_80g_eligible: d.is_80g_eligible ?? true,
-        fund_type: d.fund_type ?? 'general',
-        fund_id: d.fund_id ?? '',
         wants_event_updates: d.wants_event_updates ?? false,
         note: d.notes ?? '',
       })
+      setOriginal({ category_id: d.category_id ?? '', fund_id: d.fund_id ?? null, fund_type: d.fund_type ?? null })
+      // A receipt settled in several modes opens with its split. Re-issuing it
+      // from the single-mode fields turned 400 cash + 1,000 cheque into one
+      // 1,400 cheque, and the cash book lost the 400.
+      const tenders = Array.isArray(d.payments) ? d.payments : []
+      if (tenders.length > 1) {
+        setSplitMode(true)
+        setPayRows(tenders.map((p: { payment_mode: string; amount_paise: number; reference_no?: string | null; payment_account_id?: string | null }) => ({
+          payment_mode: p.payment_mode,
+          amount: String(Number(p.amount_paise) / 100),
+          reference_no: p.reference_no ?? '',
+          payment_account_id: p.payment_account_id ?? '',
+        })))
+      }
       if (d.is_anonymous) {
         setDevotee({ is_anonymous: true, anonymous_category: d.anonymous_category })
       } else if (d.donor_id) {
@@ -85,13 +110,6 @@ export function AddDonation() {
     const id = autoSelectAccount(accounts, form.payment_mode)
     if (id) setForm(f => ({ ...f, payment_account_id: id }))
   }, [form.payment_mode, accounts])
-
-  useEffect(() => {
-    const amt = parseFloat(form.amount)
-    if (form.payment_mode === 'cash' && amt > 2000) {
-      setForm(f => ({ ...f, is_80g_eligible: false }))
-    }
-  }, [form.amount, form.payment_mode])
 
   // A PAN typed for one donor must not carry over to the next selection
   useEffect(() => {
@@ -108,6 +126,21 @@ export function AddDonation() {
   // (server enforces via EIGHTY_G_NOT_CONFIGURED; this just explains it up front).
   const profile = useProfileStore(s => s.profile)
   const temple80gBlocked = !!profile && !profile.reg_80g_number
+  // Only the CASH part counts against the ₹2,000 limit — the API decides it
+  // that way, so ₹1,000 cash + ₹9,000 UPI stays eligible. Derived, not written
+  // into the form: switching the mode back to UPI brings the tick back.
+  const cashPartPaise = splitMode
+    ? cashPaise(payRows)
+    : form.payment_mode === 'cash' ? parsePaise(form.amount || '0') : 0
+  const cashOver80gLimit = cashPartPaise > CASH_80G_LIMIT_PAISE
+
+  const selectedCategory = categories.find(c => c.id === form.category_id)
+  // Where this gift will be filed. Correcting under the same category keeps
+  // the original's fund; a new or changed category takes the category's.
+  const keepsOriginalFund = !!original && form.category_id === original.category_id
+  const fundId = keepsOriginalFund ? original!.fund_id : (selectedCategory?.fund_id ?? null)
+  const fund = fundId ? funds.find(f => f.id === fundId) : undefined
+  const fundType = keepsOriginalFund ? (original!.fund_type ?? 'general') : (fund?.fund_type ?? 'general')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -128,9 +161,9 @@ export function AddDonation() {
         category_id: form.category_id,
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
-        is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked,
-        fund_type: form.fund_type,
-        fund_id: form.fund_id || null,
+        is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked && !cashOver80gLimit,
+        // No fund_id / fund_type: the API takes them from the category (a new
+        // gift) or from the original (a correction under the same category).
       }
 
       // The inline-added PAN rides along so the API saves it onto the donor record.
@@ -145,14 +178,17 @@ export function AddDonation() {
       }
 
       if (splitMode) {
-        // The API validates that the tenders sum to amount_paise; payment_mode
-        // above stays as the primary/first mode for legacy reports.
+        // Each row carries its own mode, account and reference. The single-mode
+        // fields are hidden in this state and none of them is sent: the
+        // account in particular used to ride along and the API gave it to
+        // every row left on "Default account" — UPI money in Cash in Hand.
         payload.payments = toPayload(payRows)
         payload.payment_mode = payRows[0]?.payment_mode ?? form.payment_mode
+      } else {
+        if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
+        if (form.utr_number) payload.utr_number = form.utr_number
+        if (form.cheque_number) payload.cheque_number = form.cheque_number
       }
-      if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
-      if (!splitMode && form.utr_number) payload.utr_number = form.utr_number
-      if (!splitMode && form.cheque_number) payload.cheque_number = form.cheque_number
       if (form.note) payload.notes = form.note
       // Only sent when the donor actually said yes, and never for an anonymous
       // donation — there is no one to link.
@@ -180,7 +216,11 @@ export function AddDonation() {
     }
   }
 
-  const selectedCategory = categories.find(c => c.id === form.category_id)
+  const isCash = form.payment_mode === 'cash'
+  const relevantAccounts = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
+  const fundTypeLabel = fundType === 'corpus'
+    ? t('donations.fundCorpus')
+    : fundType === 'specific' ? t('donations.fundSpecific') : t('donations.fundGeneral')
 
   return (
     <div className="max-w-2xl">
@@ -203,7 +243,7 @@ export function AddDonation() {
             showDanPeti
           />
 
-          {/* Category */}
+          {/* Category — the only classification the counter makes. */}
           <div>
             <label htmlFor="donation-category" className="form-label">{t('donations.donationCategory')}</label>
             <select id="donation-category" className="form-select" value={form.category_id}
@@ -216,90 +256,59 @@ export function AddDonation() {
                 <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
               ))}
             </select>
-          </div>
-
-          {/* Named fund (tenant-migration 036). Optional: a trust that keeps no
-              earmarked funds never has to pick one. Choosing one SETS the
-              statutory bucket below, because the fund itself declares which
-              bucket it belongs to — letting them disagree would put a corpus
-              gift in the wrong half of Form 10BD. */}
-          {funds.length > 0 && (
-            <div>
-              <label htmlFor="fund-id" className="form-label">{t('donations.fund')}</label>
-              <select
-                id="fund-id" className="form-select" value={form.fund_id}
-                onChange={e => {
-                  const picked = funds.find(f => f.id === e.target.value)
-                  setForm(f => ({
-                    ...f,
-                    fund_id: e.target.value,
-                    fund_type: picked ? picked.fund_type : f.fund_type,
-                  }))
-                }}
-              >
-                <option value="">{t('donations.fundNone')}</option>
-                {funds.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Fund type — corpus gifts are exempt under s.11(1)(d) and must be
-              kept out of income, and this drives Form 10BD's "Type of
-              donation". Defaulting to General means nothing changes for a
-              temple that never takes corpus gifts. */}
-          <div>
-            <label htmlFor="fund-type" className="form-label">{t('donations.fundType')}</label>
-            <select id="fund-type" className="form-select" value={form.fund_type}
-              onChange={e => setForm(f => ({ ...f, fund_type: e.target.value }))}>
-              <option value="general">{t('donations.fundGeneral')}</option>
-              <option value="corpus">{t('donations.fundCorpus')}</option>
-              <option value="specific">{t('donations.fundSpecific')}</option>
-            </select>
-            {form.fund_type === 'corpus' && (
-              <p className="mt-1 text-xs text-slate-500">{t('donations.fundCorpusHint')}</p>
+            {/* Said, not asked. Only when the gift goes somewhere other than
+                general income — that is the case a cashier should notice. */}
+            {form.category_id && (fund || fundType !== 'general') && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500" data-testid="donation-fund-hint">
+                <Landmark size={13} className="mt-px shrink-0 text-slate-400" />
+                <span>
+                  {fund
+                    ? t('donations.goesToFund', { fund: fund.name, type: fundTypeLabel })
+                    : t('donations.filedAs', { type: fundTypeLabel })}
+                  {fundType === 'corpus' && <span className="block text-slate-400">{t('donations.fundCorpusHint')}</span>}
+                </span>
+              </p>
             )}
           </div>
 
-          {/* Amount + Payment */}
-          {(() => {
-            const isCash = form.payment_mode === 'cash'
-            const relevantAccounts = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
-            return (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">{t('donations.amountLabel')}</label>
-                  <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
-                    value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-                </div>
-                <div>
-                  <label htmlFor="payment-mode" className="form-label">{t('donations.paymentModeLabel')}</label>
-                  <select id="payment-mode" className="form-select" value={form.payment_mode}
-                    onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
-                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
-                  </select>
-                </div>
-                {relevantAccounts.length > 0 && (
-                  <div className="col-span-2">
-                    <label htmlFor="payment-account" className="form-label">{t('donations.receivedInAccount')}</label>
-                    <select id="payment-account" className="form-select" value={form.payment_account_id}
-                      onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
-                      <option value="">{t('donations.selectAccount')}</option>
-                      {relevantAccounts.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+          {/* Amount + payment. With split on, the rows below ARE the payment:
+              the single mode / account boxes go away rather than sitting there
+              meaning nothing. */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="donation-amount" className="form-label">{t('donations.amountLabel')}</label>
+              <input id="donation-amount" type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
+                value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            </div>
+            {!splitMode && (
+              <div>
+                <label htmlFor="payment-mode" className="form-label">{t('donations.paymentModeLabel')}</label>
+                <select id="payment-mode" className="form-select" value={form.payment_mode}
+                  onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
+                  {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                </select>
               </div>
-            )
-          })()}
+            )}
+            {!splitMode && relevantAccounts.length > 0 && (
+              <div className="col-span-2">
+                <label htmlFor="payment-account" className="form-label">{t('donations.receivedInAccount')}</label>
+                <select id="payment-account" className="form-select" value={form.payment_account_id}
+                  onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
+                  <option value="">{t('donations.selectAccount')}</option>
+                  {relevantAccounts.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <SplitPaymentToggle
             enabled={splitMode} onEnabledChange={setSplitMode}
             rows={payRows} onRowsChange={setPayRows}
-            totalPaise={Math.round(Number(form.amount || 0) * 100)}
+            totalPaise={parsePaise(form.amount || '0')}
             seedMode={form.payment_mode} seedAmount={form.amount}
             seedRef={form.utr_number || form.cheque_number}
             seedAccountId={form.payment_account_id}
@@ -337,9 +346,9 @@ export function AddDonation() {
           {/* 80G toggle */}
           <div className="space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous && !panBlocked && !temple80gBlocked}
+              <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous && !panBlocked && !temple80gBlocked && !cashOver80gLimit}
                 onChange={e => setForm(f => ({ ...f, is_80g_eligible: e.target.checked }))}
-                disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || (form.payment_mode === 'cash' && parseFloat(form.amount) > 2000) || panBlocked || temple80gBlocked}
+                disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || cashOver80gLimit || panBlocked || temple80gBlocked}
                 className="w-4 h-4 accent-green-600" />
               <label htmlFor="is_80g" className="text-sm text-slate-700">
                 {t('donations.eightyGEligible')}
@@ -349,8 +358,8 @@ export function AddDonation() {
                 {devotee?.is_anonymous && (
                   <span className="text-orange-500 ml-2 text-xs">{t('donations.anonymousNo80g')}</span>
                 )}
-                {!devotee?.is_anonymous && form.payment_mode === 'cash' && parseFloat(form.amount) > 2000 && (
-                  <span className="text-orange-500 ml-2 text-xs">{t('donations.cashLimitNo80g')}</span>
+                {!devotee?.is_anonymous && cashOver80gLimit && (
+                  <span className="text-orange-500 ml-2 text-xs" data-testid="cash-80g-warning">{t('donations.cashLimitNo80g')}</span>
                 )}
                 {panBlocked && (
                   <span className="text-orange-500 ml-2 text-xs">{t('donations.panBlockedWarning')}</span>

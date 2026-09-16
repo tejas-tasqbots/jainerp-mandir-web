@@ -11,6 +11,17 @@ export interface MasterField {
   type?: 'text' | 'number' | 'money' | 'checkbox' | 'select'
   /** Options for a `select` field. Ignored for every other type. */
   options?: { value: string; label: string }[]
+  /**
+   * Load a `select`'s options from another master instead — e.g. the funds a
+   * donation category can point at. Re-read whenever the editor opens, so a
+   * fund added in the card below is offered without a reload.
+   */
+  optionsFrom?: { resource: string; labelKey?: string }
+  /**
+   * A first, empty choice for a `select` ("No fund"). Choosing it saves NULL,
+   * so a link can be removed again — an omitted key would leave it unchanged.
+   */
+  emptyLabel?: string
   /** Optional placeholder for inputs. */
   placeholder?: string
   /** Field is required when creating. */
@@ -63,7 +74,30 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   const [form, setForm] = useState(emptyForm(fields))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Options for fields declared with `optionsFrom`, keyed by field.
+  const [remoteOptions, setRemoteOptions] = useState<Record<string, { value: string; label: string }[]>>({})
   const confirm = useConfirm()
+
+  async function loadRemoteOptions() {
+    const remote = fields.filter(f => f.optionsFrom)
+    if (!remote.length) return
+    const entries = await Promise.all(remote.map(async f => {
+      try {
+        const { data } = await api.get(`/${f.optionsFrom!.resource}`, { params: { limit: 200 } })
+        const rows: Row[] = data.data || data || []
+        const labelKey = f.optionsFrom!.labelKey ?? 'name'
+        return [f.key, rows.map(r => ({
+          value: r.id,
+          label: `${String(r[labelKey] ?? r.id)}${r.is_active === false ? ` (${t('common.inactive')})` : ''}`,
+        }))] as const
+      } catch {
+        return [f.key, []] as const
+      }
+    }))
+    setRemoteOptions(Object.fromEntries(entries))
+  }
+
+  const optionsOf = (field: MasterField) => field.optionsFrom ? (remoteOptions[field.key] ?? []) : (field.options ?? [])
 
   async function load() {
     setLoading(true)
@@ -89,7 +123,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     }
   }
 
-  useEffect(() => { load() }, [resource])
+  useEffect(() => { load(); loadRemoteOptions() }, [resource])
 
   function buildPayload(values: Record<string, string | number | boolean>): Record<string, unknown> {
     const payload: Record<string, unknown> = {}
@@ -101,6 +135,8 @@ export function MasterEditor({ resource, title, description, fields, listParams,
         if (v !== '' && v != null) payload[field.key] = toPaise(v as string)
       } else if (field.type === 'number') {
         if (v !== '' && v != null) payload[field.key] = Number(v)
+      } else if (field.type === 'select' && field.emptyLabel !== undefined && (v === '' || v == null)) {
+        payload[field.key] = null
       } else {
         if (v !== '' && v != null) payload[field.key] = v
       }
@@ -119,6 +155,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     setEditingId(row.id)
     setShowAdd(false)
     setError('')
+    loadRemoteOptions()
   }
 
   function startAdd() {
@@ -126,6 +163,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     setShowAdd(true)
     setEditingId(null)
     setError('')
+    loadRemoteOptions()
   }
 
   function cancel() {
@@ -203,10 +241,12 @@ export function MasterEditor({ resource, title, description, fields, listParams,
           <label className="form-label">{field.label}{field.required && ' *'}</label>
           <select
             className="form-select"
-            value={v as string}
+            value={(v as string) ?? ''}
+            aria-label={field.label}
             onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
           >
-            {(field.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {field.emptyLabel !== undefined && <option value="">{field.emptyLabel}</option>}
+            {optionsOf(field).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
       )
@@ -293,7 +333,13 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                         <td key={f.key} className="text-sm">
                           {f.type === 'money'
                             ? `₹${Number(fromPaise(row[f.key])).toLocaleString('en-IN')}`
-                            : String(row[f.key] ?? '—')}
+                            : f.type === 'select'
+                              // The option's label, not its stored value: a fund
+                              // link would otherwise print as a UUID, and a
+                              // fund type as "specific" rather than "Specific grant".
+                              ? (optionsOf(f).find(o => o.value === row[f.key])?.label
+                                  ?? (row[f.key] ? String(row[f.key]) : (f.emptyLabel ?? '—')))
+                              : String(row[f.key] ?? '—')}
                         </td>
                       ))}
                       {fields.some(f => f.type === 'checkbox') && (

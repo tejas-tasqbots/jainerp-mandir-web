@@ -68,7 +68,9 @@ export function AddSevaBooking() {
         slot_time: form.slot_time || undefined,
         amount_paise: parsePaise(form.amount),
         payment_mode: form.payment_mode,
-        payment_account_id: form.payment_account_id || undefined,
+        // Single mode only: with a split, each row names its own account, and
+        // a top-level one would be the hidden single-mode box's.
+        payment_account_id: splitMode ? undefined : (form.payment_account_id || undefined),
       }
 
       if (devotee?.is_anonymous) {
@@ -163,14 +165,17 @@ export function AddSevaBooking() {
                   <input type="number" min="1" step="0.01" className="form-input" value={form.amount}
                     onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>
-                <div>
-                  <label className="form-label">{t('seva.paymentMode')}</label>
-                  <select className="form-select" value={form.payment_mode}
-                    onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
-                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
-                  </select>
-                </div>
-                {relevantAccounts.length > 0 && (
+                {/* With split on, the rows below are the payment. */}
+                {!splitMode && (
+                  <div>
+                    <label className="form-label">{t('seva.paymentMode')}</label>
+                    <select className="form-select" value={form.payment_mode}
+                      onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
+                      {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                {!splitMode && relevantAccounts.length > 0 && (
                   <div className="col-span-2">
                     <label className="form-label">{t('seva.receivedInAccount')}</label>
                     <select className="form-select" value={form.payment_account_id}

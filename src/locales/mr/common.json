@@ -441,11 +441,9 @@
     "vendorPayeeName": "विक्रेता / देयक प्राप्तकर्त्याचे नाव *"
   },
   "dashboard": {
-    "dailyCollectionTrend": "दैनिक संकलन कल",
     "day": "दिवस",
     "donationsMinusExpenses": "देणगी वजा खर्च",
     "donationsSeries": "देणगी",
-    "donationsVsExpenses": "देणगी विरुद्ध खर्च (मासिक)",
     "donorsTotal": "एकूण {{count}} देणगीदार",
     "employees": "कर्मचारी",
     "entries": "{{count}} नोंदी",
@@ -471,7 +469,19 @@
     "upcomingEvents": "आगामी कार्यक्रम",
     "viewPledges": "संकल्प पहा",
     "week": "आठवडा",
-    "year": "वर्ष"
+    "year": "वर्ष",
+    "net": "निव्वळ",
+    "roomsOfTotal": "{{count}} खोल्यांपैकी, आज रिकाम्या",
+    "roomsFreeToday": "आज रिकाम्या",
+    "noTrendData": "या कालावधीत अद्याप कोणतीही देणगी किंवा खर्च नोंदवलेला नाही.",
+    "chartLoadFailed": "चार्ट लोड होऊ शकला नाही. पुन्हा प्रयत्न करण्यासाठी पेज रिफ्रेश करा.",
+    "trendTitle": {
+      "day": "देणगी विरुद्ध खर्च · मागील 14 दिवस",
+      "week": "देणगी विरुद्ध खर्च · मागील 12 आठवडे",
+      "month": "देणगी विरुद्ध खर्च · मागील 12 महिने",
+      "year": "देणगी विरुद्ध खर्च · मागील 5 आर्थिक वर्षे"
+    },
+    "entries_one": "{{count}} नोंद"
   },
   "dateRange": {
     "all": "सर्व तारखा",
@@ -738,7 +748,6 @@
     "fundCorpusHint": "कॉर्पस देणग्या करमुक्त उत्पन्न आहेत आणि कलम 11(5) नुसार गुंतवाव्या लागतात. फॉर्म 10BD मध्ये \"कॉर्पस\" म्हणून नोंदवले जाईल.",
     "fundGeneral": "सर्वसाधारण",
     "fundSpecific": "विशिष्ट अनुदान",
-    "fundType": "निधी प्रकार",
     "history": "इतिहास",
     "importOldRegister": "जुनी नोंदवही आयात करा",
     "importRows": "पंक्ती आयात करा",
@@ -788,7 +797,8 @@
     "voided": "रद्द केले",
     "voiding": "रद्द करत आहे...",
     "fund": "निधी",
-    "fundNone": "निश्चित नाही"
+    "goesToFund": "{{fund}} मध्ये जमा होईल · {{type}}",
+    "filedAs": "{{type}} म्हणून नोंदवले जाईल"
   },
   "donationsHub": {
     "donations": "देणगी",
@@ -1793,7 +1803,7 @@
       "deleteMessage": "\"{{name}}\" हटवायचे का?\nयाचा संदर्भ देणाऱ्या मागील नोंदी कायम राहतील.",
       "deleteTitle": "नोंद हटवा",
       "donationCategories": "देणगी श्रेणी",
-      "donationCategoriesDesc": "देणगी नोंदवताना दाखवले जाते.",
+      "donationCategoriesDesc": "देणगी नोंदवताना दाखवले जाते. एखादी श्रेणी येथे एकदाच तिच्या निधीशी जोडा — देणगी काउंटरवर पुन्हा विचारावे लागणार नाही.",
       "expenseCategories": "खर्च श्रेणी",
       "expenseCategoriesDesc": "खर्च नोंदवताना दाखवले जाते.",
       "fieldRequired": "{{field}} आवश्यक आहे",
@@ -1834,7 +1844,9 @@
         "unit": "एकक",
         "unitPlaceholder": "नग, किलो, बॉक्स…",
         "fundType": "वैधानिक प्रकार",
-        "isRestricted": "निर्बंधित वापर"
+        "isRestricted": "निर्बंधित वापर",
+        "fund": "निधी",
+        "fundNone": "निधी नाही (सर्वसाधारण)"
       },
       "flags": "फ्लॅग्ज",
       "gstRates": "जीएसटी दर",
@@ -2728,7 +2740,14 @@
     "utrChequeNo": "UTR / धनादेश क्र.",
     "wantsUpdates": "दात्याला या मंदिराच्या कार्यक्रमांची माहिती हवी आहे",
     "worksHelp": "या ट्रस्टने प्रकाशित केलेली पुस्तके, टीका, लेख आणि प्रवचन मालिका.",
-    "year": "वर्ष"
+    "year": "वर्ष",
+    "splitColMode": "पद्धत",
+    "splitColAmount": "रक्कम (₹)",
+    "splitColReference": "UTR / धनादेश क्र.",
+    "splitColAccount": "कोणत्या खात्यात",
+    "splitBalance": "बाकी ₹{{amount}}",
+    "splitOver": "₹{{amount}} जास्त",
+    "splitSettled": "पूर्ण भरणा झाला"
   },
   "vendors": {
     "accountNoPlaceholder": "खाते क्रमांक",

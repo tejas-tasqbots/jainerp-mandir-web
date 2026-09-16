@@ -126,15 +126,18 @@ export function AddHallBooking() {
               <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
-            <div>
-              <label className="form-label">{t('dharamshala.paymentMode')}</label>
-              <select className="form-select" value={form.payment_mode}
-                onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">{t('common.cash')}</option>
-                <option value="upi">{t('common.upi')}</option>
-                <option value="cheque">{t('common.cheque')}</option>
-              </select>
-            </div>
+            {/* With split on, the rows below are the payment. */}
+            {!splitMode && (
+              <div>
+                <label className="form-label">{t('dharamshala.paymentMode')}</label>
+                <select className="form-select" value={form.payment_mode}
+                  onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
+                  <option value="cash">{t('common.cash')}</option>
+                  <option value="upi">{t('common.upi')}</option>
+                  <option value="cheque">{t('common.cheque')}</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <SplitPaymentToggle

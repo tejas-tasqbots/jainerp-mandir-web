@@ -45,6 +45,12 @@ export const useProfileStore = create<ProfileState>(set => ({
       if (Array.isArray(profile?.effective_modules)) {
         useAuthStore.getState().setModules(profile.effective_modules)
       }
+      // The header (and My Account) print the name the session was opened
+      // with, which is persisted — so an approved rename, or one made in the
+      // console, never reached them until the user signed out and back in.
+      // The profile is the trust's own current record; follow it.
+      const name = profile?.name?.trim()
+      if (name) useAuthStore.getState().setTenantName(name)
     } catch {
       // ignore
     } finally {

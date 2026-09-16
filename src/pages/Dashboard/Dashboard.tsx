@@ -7,15 +7,15 @@ import { fetchSetup } from '../../components/SetupChecklist'
 import { hasBeenOfferedWizard, markWizardOffered } from '../Setup/SetupWizard'
 import {
   IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
-  Users, ShoppingBag, Bell, Lock
+  Users, ShoppingBag, Bell, Lock, Footprints, Briefcase
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend
+  PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts'
 import { api, fmtPaise } from '../../lib/api'
 import { useAuthStore } from '../../store/authStore'
-import type { DashboardOverview } from '../../types'
+import type { DashboardOverview, DashboardTrend } from '../../types'
 
 const COLORS = ['#2176AE', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
@@ -114,7 +114,11 @@ export function Dashboard() {
       ? [{
           label: t('dashboard.roomsAvailable'),
           value: String(overview.rooms_available ?? 0),
-          sub: t('dashboard.donorsTotal', { count: overview.donors }),
+          // This said "3 donors total" — the donors count, under a rooms
+          // figure. "0 available" means nothing without "of how many".
+          sub: overview.rooms_total != null
+            ? t('dashboard.roomsOfTotal', { count: overview.rooms_total })
+            : t('dashboard.roomsFreeToday'),
           icon: <Hotel size={20} />,
           color: 'purple',
         }]
@@ -274,7 +278,9 @@ export function Dashboard() {
       {/* Charts placeholder */}
       <DashboardCharts period={period} />
 
-      {/* Quick stats footer */}
+      {/* Quick stats footer. Visitors and Employees come only with their
+          tiles: the Employees card used to render with no number at all for a
+          trust with no staff on record, because the API omits a zero. */}
       {overview && (
         <div className="grid grid-cols-3 gap-4">
           <div className="card">
@@ -286,122 +292,195 @@ export function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="card">
-            <div className="card-body py-3 flex items-center gap-3">
-              <div className="p-2 bg-green-50 rounded-lg"><IndianRupee size={18} className="text-green-600" /></div>
-              <div>
-                <p className="text-xs text-slate-400">{t('dashboard.totalVisitors')}</p>
-                <p className="font-bold text-lg">{overview.visitors}</p>
+          {showsTile('visitors') && overview.visitors != null && (
+            <div className="card">
+              <div className="card-body py-3 flex items-center gap-3">
+                <div className="p-2 bg-green-50 rounded-lg"><Footprints size={18} className="text-green-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-400">{t('dashboard.totalVisitors')}</p>
+                  <p className="font-bold text-lg">{overview.visitors}</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="card">
-            <div className="card-body py-3 flex items-center gap-3">
-              <div className="p-2 bg-purple-50 rounded-lg"><Hotel size={18} className="text-purple-600" /></div>
-              <div>
-                <p className="text-xs text-slate-400">{t('dashboard.employees')}</p>
-                <p className="font-bold text-lg">{overview.employees}</p>
+          )}
+          {showsTile('employees') && overview.employees != null && (
+            <div className="card">
+              <div className="card-body py-3 flex items-center gap-3">
+                <div className="p-2 bg-purple-50 rounded-lg"><Briefcase size={18} className="text-purple-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-400">{t('dashboard.employees')}</p>
+                  <p className="font-bold text-lg">{overview.employees}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function DashboardCharts({ period }: { period: Period }) {
-  const { t } = useTranslation()
-  const [barData, setBarData] = useState<{ month: string; donations: number; expenses: number }[]>([])
-  const [pieData, setPieData] = useState<{ name: string; value: number }[]>([])
-  const [lineData, setLineData] = useState<{ date: string; amount: number }[]>([])
-  const [loading, setLoading] = useState(true)
+/**
+ * ₹ for an axis tick, in the Indian units a committee reads: ₹300, ₹7.6k,
+ * ₹4.5L, ₹1.2Cr. The old formatter divided everything by 1,000 and rounded,
+ * so a ₹300 expense sat on an axis labelled ₹0k.
+ */
+function inrCompact(rupees: number): string {
+  const abs = Math.abs(rupees)
+  const trim = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, ''))
+  if (abs >= 1e7) return `₹${trim(rupees / 1e7)}Cr`
+  if (abs >= 1e5) return `₹${trim(rupees / 1e5)}L`
+  if (abs >= 1e3) return `₹${trim(rupees / 1e3)}k`
+  return `₹${Math.round(rupees)}`
+}
 
+const inrFull = (rupees: number) =>
+  `₹${rupees.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+
+/** A bucket's x-axis label, in the reader's language. */
+function bucketLabel(from: string, granularity: DashboardTrend['granularity'], locale: string): string {
+  const [y, m, d] = from.split('-').map(Number)
+  // Built from the parts, not parsed: `new Date('2026-09-01')` is UTC
+  // midnight, which is still 31 August for anyone west of Greenwich.
+  const date = new Date(y, m - 1, d)
+  switch (granularity) {
+    case 'fy': return `${y}-${String((y + 1) % 100).padStart(2, '0')}`
+    case 'month': return date.toLocaleDateString(locale, { month: 'short', year: '2-digit' })
+    default: return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+  }
+}
+
+const LOCALE: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' }
+
+interface TrendPoint {
+  label: string
+  donations: number
+  expenses: number
+  donationsCount: number
+  expensesCount: number
+}
+
+function TrendTooltip({ active, payload }: { active?: boolean; payload?: { payload: TrendPoint }[] }) {
+  const { t } = useTranslation()
+  if (!active || !payload?.length) return null
+  const p = payload[0].payload
+  const net = p.donations - p.expenses
+  return (
+    <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+      <p className="mb-1 font-semibold text-navy-900">{p.label}</p>
+      <p className="flex justify-between gap-4">
+        <span className="text-[#2176AE]">{t('dashboard.donationsSeries')} ({p.donationsCount})</span>
+        <span className="font-medium">{inrFull(p.donations)}</span>
+      </p>
+      <p className="flex justify-between gap-4">
+        <span className="text-[#dc2626]">{t('dashboard.expensesSeries')} ({p.expensesCount})</span>
+        <span className="font-medium">{inrFull(p.expenses)}</span>
+      </p>
+      <p className="mt-1 flex justify-between gap-4 border-t border-slate-100 pt-1">
+        <span className="text-slate-500">{t('dashboard.net')}</span>
+        <span className={`font-semibold ${net < 0 ? 'text-red-600' : 'text-green-700'}`}>{inrFull(net)}</span>
+      </p>
+    </div>
+  )
+}
+
+function DashboardCharts({ period }: { period: Period }) {
+  const { t, i18n } = useTranslation()
+  const [trend, setTrend] = useState<DashboardTrend | null>(null)
+  const [trendFailed, setTrendFailed] = useState(false)
+  const [pieData, setPieData] = useState<{ name: string; value: number }[]>([])
+
+  // Donations AND expenses, per bucket, from one endpoint that zero-fills the
+  // buckets and follows the period buttons. The chart this replaces drew from
+  // a donations-only report: its Expenses series read a field that report
+  // never sent, so expenses were always zero, and it plotted only months that
+  // had donations — one lonely bar for a trust's first month.
   useEffect(() => {
-    loadCharts()
+    let cancelled = false
+    setTrendFailed(false)
+    api.get(`/dashboard/trend?period=${period}`)
+      .then(r => { if (!cancelled) setTrend(r.data.data) })
+      .catch(() => { if (!cancelled) setTrendFailed(true) })
+    return () => { cancelled = true }
   }, [period])
 
-  async function loadCharts() {
-    setLoading(true)
-    try {
-      const fy = getCurrentFY()
-      const [trends, topDonors, dailyResp] = await Promise.allSettled([
-        api.get(`/reports/analytics/donation-trends?granularity=monthly&fy=${fy}`),
-        api.get(`/reports/analytics/top-donors?fy=${fy}&limit=5`),
-        api.get(`/reports/daily-collection?date=${new Date().toISOString().slice(0,10)}`),
-      ])
-
-      if (trends.status === 'fulfilled') {
-        // API returns { fy, granularity, points: [{ bucket, amount_paise, receipts }] }
-        const d = trends.value.data.data
-        const points = Array.isArray(d) ? d : (d?.points ?? [])
-        if (Array.isArray(points) && points.length) {
-          setBarData(points.map((m: { bucket?: string; month?: string; amount_paise?: number; total_paise?: number; expense_paise?: number }) => ({
-            month: m.month ?? (m.bucket ? new Date(m.bucket).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }) : ''),
-            donations: Math.round((m.amount_paise ?? m.total_paise ?? 0) / 100),
-            expenses: Math.round((m.expense_paise || 0) / 100),
-          })))
-        }
-      }
-
-      if (topDonors.status === 'fulfilled') {
-        const d = topDonors.value.data.data
+  // Top donors are this FY's whatever the period, so they load once.
+  useEffect(() => {
+    const now = new Date()
+    const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+    const fy = `${year}-${String(year + 1).slice(-2)}`
+    api.get(`/reports/analytics/top-donors?fy=${fy}&limit=5`)
+      .then(r => {
+        const d = r.data.data
         if (Array.isArray(d)) {
           // API returns amount_paise (older builds used total_paise)
-          setPieData(d.slice(0,5).map((td: { name: string; amount_paise?: number; total_paise?: number }) => ({
+          setPieData(d.slice(0, 5).map((td: { name: string; amount_paise?: number; total_paise?: number }) => ({
             name: td.name,
             value: Math.round((td.amount_paise ?? td.total_paise ?? 0) / 100),
           })))
         }
-      }
+      })
+      .catch(() => { /* the card says "No donor data" */ })
+  }, [])
 
-      if (dailyResp.status === 'fulfilled') {
-        const d = dailyResp.value.data.data
-        if (d?.daily_breakdown) {
-          setLineData(d.daily_breakdown.map((e: { date: string; total_paise: number }) => ({
-            date: e.date.slice(5),
-            amount: Math.round(e.total_paise / 100),
-          })))
-        }
-      }
-    } catch {
-      // ignore chart errors
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function getCurrentFY() {
-    const now = new Date()
-    const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
-    return `${year}-${String(year + 1).slice(-2)}`
-  }
-
-  if (loading && barData.length === 0) return null
+  const locale = LOCALE[i18n.language] ?? 'en-IN'
+  const points: TrendPoint[] = (trend?.buckets ?? []).map(b => ({
+    label: bucketLabel(b.from, trend!.granularity, locale),
+    donations: b.donations_paise / 100,
+    expenses: b.expenses_paise / 100,
+    donationsCount: b.donations_count,
+    expensesCount: b.expenses_count,
+  }))
+  const totals = points.reduce(
+    (s, p) => ({ donations: s.donations + p.donations, expenses: s.expenses + p.expenses }),
+    { donations: 0, expenses: 0 },
+  )
+  const empty = points.length > 0 && totals.donations === 0 && totals.expenses === 0
+  // A small, non-zero bar next to a big one — ₹300 of expenses beside ₹7,664
+  // of donations — rounds down to nothing on the axis. Keep it visible without
+  // drawing a sliver for a real zero.
+  const minBar = (v: number | null | undefined) => (v && v > 0 ? 3 : 0)
 
   return (
     <>
       <div className="grid grid-cols-3 gap-4">
         {/* Bar chart */}
-        <div className="card col-span-2">
-          <div className="card-header">
-            <h3 className="font-semibold text-sm text-navy-900">{t('dashboard.donationsVsExpenses')}</h3>
+        <div className="card col-span-2" data-testid="trend-card">
+          <div className="card-header flex-wrap gap-2">
+            <h3 className="font-semibold text-sm text-navy-900">{t(`dashboard.trendTitle.${period}`)}</h3>
+            {points.length > 0 && !empty && (
+              <p className="text-xs text-slate-500" data-testid="trend-totals">
+                <span className="text-[#2176AE] font-medium">{inrFull(totals.donations)}</span>
+                {' − '}
+                <span className="text-[#dc2626] font-medium">{inrFull(totals.expenses)}</span>
+                {' = '}
+                <span className={`font-semibold ${totals.donations - totals.expenses < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                  {inrFull(totals.donations - totals.expenses)}
+                </span>
+              </p>
+            )}
           </div>
           <div className="card-body">
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={barData} barSize={16}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
-                  <Legend />
-                  <Bar dataKey="donations" name={t('dashboard.donationsSeries')} fill="#2176AE" radius={[3,3,0,0]} />
-                  <Bar dataKey="expenses" name={t('dashboard.expensesSeries')} fill="#f87171" radius={[3,3,0,0]} />
+            {trendFailed ? (
+              <p className="text-slate-400 text-sm text-center py-16">{t('dashboard.chartLoadFailed')}</p>
+            ) : !trend ? (
+              <div className="h-[220px] animate-pulse rounded-md bg-slate-50" />
+            ) : empty ? (
+              <p className="text-slate-400 text-sm text-center py-16" data-testid="trend-empty">{t('dashboard.noTrendData')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={points} barGap={2} barCategoryGap="22%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={inrCompact} width={52} tickLine={false} axisLine={false} />
+                  <Tooltip content={<TrendTooltip />} cursor={{ fill: '#f8fafc' }} />
+                  <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="donations" name={t('dashboard.donationsSeries')} fill="#2176AE" radius={[3, 3, 0, 0]}
+                    maxBarSize={28} minPointSize={minBar} />
+                  <Bar dataKey="expenses" name={t('dashboard.expensesSeries')} fill="#f87171" radius={[3, 3, 0, 0]}
+                    maxBarSize={28} minPointSize={minBar} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <p className="text-slate-400 text-sm text-center py-8">{t('dashboard.noChartData')}</p>
             )}
           </div>
         </div>
@@ -425,12 +504,14 @@ function DashboardCharts({ period }: { period: Period }) {
                 </ResponsiveContainer>
                 <div className="w-full space-y-1 mt-1">
                   {pieData.map((d, i) => (
-                    <div key={`${d.name}-${i}`} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
-                        <span className="text-slate-600 truncate max-w-[80px]">{d.name}</span>
+                    <div key={`${d.name}-${i}`} className="flex items-center justify-between gap-2 text-xs">
+                      {/* The name takes the room there is; it was cut at 80px
+                          ("Srushti Kast…") with half the card empty. */}
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 shrink-0 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                        <span className="text-slate-600 truncate" title={d.name}>{d.name}</span>
                       </div>
-                      <span className="font-medium">₹{d.value.toLocaleString('en-IN')}</span>
+                      <span className="shrink-0 font-medium">₹{d.value.toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
@@ -442,25 +523,9 @@ function DashboardCharts({ period }: { period: Period }) {
         </div>
       </div>
 
-      {/* Line chart */}
-      {lineData.length > 0 && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-sm text-navy-900">{t('dashboard.dailyCollectionTrend')}</h3>
-          </div>
-          <div className="card-body">
-            <ResponsiveContainer width="100%" height={140}>
-              <LineChart data={lineData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => `₹${v.toLocaleString('en-IN')}`} />
-                <Line type="monotone" dataKey="amount" stroke="#2176AE" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      {/* The "Daily Collection Trend" line chart that sat here read a
+          `daily_breakdown` no endpoint returns, so it never drew. Day on the
+          period buttons above now shows the last 14 days, per day. */}
     </>
   )
 }

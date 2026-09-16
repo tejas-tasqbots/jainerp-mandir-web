@@ -441,11 +441,9 @@
     "vendorPayeeName": "विक्रेता / भुगतान प्राप्तकर्ता का नाम *"
   },
   "dashboard": {
-    "dailyCollectionTrend": "दैनिक संग्रह प्रवृत्ति",
     "day": "दिन",
     "donationsMinusExpenses": "दान घटा व्यय",
     "donationsSeries": "दान",
-    "donationsVsExpenses": "दान बनाम व्यय (मासिक)",
     "donorsTotal": "कुल {{count}} दानदाता",
     "employees": "कर्मचारी",
     "entries": "{{count}} प्रविष्टियां",
@@ -471,7 +469,19 @@
     "upcomingEvents": "आगामी कार्यक्रम",
     "viewPledges": "संकल्प देखें",
     "week": "सप्ताह",
-    "year": "वर्ष"
+    "year": "वर्ष",
+    "net": "शुद्ध",
+    "roomsOfTotal": "{{count}} कक्षों में से, आज खाली",
+    "roomsFreeToday": "आज खाली",
+    "noTrendData": "इस अवधि में अभी तक कोई दान या व्यय दर्ज नहीं हुआ।",
+    "chartLoadFailed": "चार्ट लोड नहीं हो सका। दोबारा कोशिश करने के लिए पेज रीफ़्रेश करें।",
+    "trendTitle": {
+      "day": "दान बनाम व्यय · पिछले 14 दिन",
+      "week": "दान बनाम व्यय · पिछले 12 सप्ताह",
+      "month": "दान बनाम व्यय · पिछले 12 महीने",
+      "year": "दान बनाम व्यय · पिछले 5 वित्त वर्ष"
+    },
+    "entries_one": "{{count}} प्रविष्टि"
   },
   "dateRange": {
     "all": "सभी तिथियाँ",
@@ -738,7 +748,6 @@
     "fundCorpusHint": "कॉर्पस दान कर-मुक्त आय है और इसे धारा 11(5) के अनुसार निवेश करना आवश्यक है। फॉर्म 10BD में \"कॉर्पस\" के रूप में दर्ज होगा।",
     "fundGeneral": "सामान्य",
     "fundSpecific": "विशिष्ट अनुदान",
-    "fundType": "निधि प्रकार",
     "history": "इतिहास",
     "importOldRegister": "पुराना रजिस्टर आयात करें",
     "importRows": "पंक्तियाँ आयात करें",
@@ -788,7 +797,8 @@
     "voided": "रद्द",
     "voiding": "रद्द किया जा रहा है...",
     "fund": "निधि",
-    "fundNone": "निर्धारित नहीं"
+    "goesToFund": "{{fund}} में जमा होगा · {{type}}",
+    "filedAs": "{{type}} के रूप में दर्ज होगा"
   },
   "donationsHub": {
     "donations": "दान",
@@ -1793,7 +1803,7 @@
       "deleteMessage": "\"{{name}}\" हटाएं?\nइसे संदर्भित करने वाले पिछले रिकॉर्ड बने रहेंगे।",
       "deleteTitle": "प्रविष्टि हटाएं",
       "donationCategories": "दान श्रेणियां",
-      "donationCategoriesDesc": "दान दर्ज करते समय दिखाया जाता है।",
+      "donationCategoriesDesc": "दान दर्ज करते समय दिखाया जाता है। किसी श्रेणी को यहीं एक बार उसकी निधि से जोड़ दें — दान काउंटर पर फिर पूछना नहीं पड़ेगा।",
       "expenseCategories": "व्यय श्रेणियां",
       "expenseCategoriesDesc": "व्यय दर्ज करते समय दिखाया जाता है।",
       "fieldRequired": "{{field}} आवश्यक है",
@@ -1834,7 +1844,9 @@
         "unit": "इकाई",
         "unitPlaceholder": "पीस, किग्रा, बॉक्स…",
         "fundType": "सांविधिक प्रकार",
-        "isRestricted": "प्रतिबंधित उपयोग"
+        "isRestricted": "प्रतिबंधित उपयोग",
+        "fund": "निधि",
+        "fundNone": "कोई निधि नहीं (सामान्य)"
       },
       "flags": "फ्लैग्स",
       "gstRates": "जीएसटी दरें",
@@ -2728,7 +2740,14 @@
     "utrChequeNo": "UTR / चेक सं.",
     "wantsUpdates": "दानदाता इस मंदिर के आयोजनों की जानकारी चाहते हैं",
     "worksHelp": "इस ट्रस्ट द्वारा प्रकाशित पुस्तकें, टीकाएँ, लेख और प्रवचन शृंखलाएँ।",
-    "year": "वर्ष"
+    "year": "वर्ष",
+    "splitColMode": "माध्यम",
+    "splitColAmount": "राशि (₹)",
+    "splitColReference": "UTR / चेक सं.",
+    "splitColAccount": "किस खाते में",
+    "splitBalance": "शेष ₹{{amount}}",
+    "splitOver": "₹{{amount}} अधिक",
+    "splitSettled": "पूरा भुगतान हो गया"
   },
   "vendors": {
     "accountNoPlaceholder": "खाता संख्या",
