@@ -107,6 +107,19 @@ const PATH_MODULE: Record<string, string> = {
   '/registers/visitor-count': 'frontdesk',
 }
 
+/**
+ * Screens switched off for EVERY trust and role, for now (founder request,
+ * 2026-09-17): Sant, and People → Connected Devotees. Nothing else changed —
+ * the pages, routes and API endpoints are intact, and the sidebar, command
+ * palette, shortcuts and route guard all read this list. Delete a line to bring
+ * that screen back. The mandir phone app has the same list (modules_screen.dart).
+ */
+const HIDDEN_FOR_NOW = ['/sant', '/devotees']
+
+export function isHiddenForNow(path: string): boolean {
+  return HIDDEN_FOR_NOW.some(h => path === h || path.startsWith(h + '/'))
+}
+
 /** The module owning `path`, or null when it is core (always visible). */
 export function moduleForPath(path: string): string | null {
   const key = Object.keys(PATH_MODULE)
@@ -135,6 +148,7 @@ export function canSee(
   roles: string[] | undefined | null,
   modules?: string[] | null,
 ): boolean {
+  if (isHiddenForNow(path)) return false
   // The module gate runs FIRST and applies to temple_admin too — an entitlement
   // is not a permission, so there is nobody it can be waived for.
   const needed = moduleForPath(path)

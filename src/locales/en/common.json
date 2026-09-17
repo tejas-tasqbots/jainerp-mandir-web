@@ -1901,7 +1901,7 @@
         "sent": "Sent",
         "skipped": "Not sent"
       },
-      "subheading": "Choose which WhatsApp and SMS notifications go out, and see what was sent.",
+      "subheading": "Choose the language and which WhatsApp notifications go out, and see what was sent.",
       "tpl": {
         "bhojanshala_receipt": "Bhojanshala receipt",
         "boli_pledge": "Boli pledge recorded",
@@ -1928,7 +1928,23 @@
         "temple_link_rejected": "Temple link declined",
         "temple_link_removed": "Temple link removed"
       },
-      "whatWeSend": "What we send"
+      "whatWeSend": "What we send",
+      "language": {
+        "heading": "Message language",
+        "help": "Donors, devotees and your staff receive WhatsApp messages in this language — receipts, bookings, boli and every other notification. Each message opens with \"Jai Jinendra\" and is written for a Jain trust.",
+        "label": "Send messages in",
+        "save": "Save language",
+        "saved": "Message language saved",
+        "currently": "Currently sending in {{language}}",
+        "allApproved": "All messages in {{language}} are approved by WhatsApp and go out in {{language}}.",
+        "partlyApproved": "{{approved}} of {{total}} messages in {{language}} are approved by WhatsApp so far. Until each one is approved it goes out in English — nothing is ever held back.",
+        "sendsIn": "Sends in {{language}}",
+        "englishUntil": "Sends in English until WhatsApp approves {{language}}",
+        "oldUntil": "Sends the current English message until the new one is approved",
+        "notSendable": "Waiting for WhatsApp approval",
+        "rejected": "WhatsApp rejected this wording: {{reason}}",
+        "sampleNote": "Preview with sample details. The real message carries the donor’s name, amount and receipt number."
+      }
     },
     "myAccount": "My Account",
     "numbering": {

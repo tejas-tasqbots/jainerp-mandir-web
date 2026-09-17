@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { canSee, moduleForPath, ROLE_LABELS } from '../lib/rbac'
+import { canSee, isHiddenForNow, moduleForPath, ROLE_LABELS } from '../lib/rbac'
 
 /**
  * Route-level gate for BOTH questions: may this role do it, and did this trust
@@ -19,6 +19,12 @@ export function RouteGuard({ children }: { children: ReactNode }) {
 
   if (canSee(location.pathname, roles, modules)) {
     return <>{children}</>
+  }
+
+  // A screen switched off for everyone is neither a role nor a module problem,
+  // so the dashboard shows no "cannot open" notice for it.
+  if (isHiddenForNow(location.pathname)) {
+    return <Navigate to="/dashboard" replace />
   }
 
   // A module the trust never bought is not a permission problem. Saying "your

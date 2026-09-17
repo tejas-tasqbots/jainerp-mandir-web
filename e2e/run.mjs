@@ -8,7 +8,7 @@
  *   node e2e/run.mjs
  *
  * Covers the global-devotee feature set: OTP login → tenant select → dashboard →
- * Connected Devotees page (3 tabs + invite modal) → Donation form DevoteePicker
+ * Connected Devotees (hidden for now: redirects) → Donation form DevoteePicker
  * (search, anonymous/Gupt Dan, Dan Peti) → Boli form DevoteePicker.
  */
 import { mkdirSync } from 'fs';
@@ -54,23 +54,11 @@ try {
   pass('OTP verified → dashboard');
 
   // ---------- Connected Devotees page ----------
+  // Switched off for now (src/lib/rbac.ts HIDDEN_FOR_NOW): the route goes back
+  // to the dashboard. Restore the tab/invite checks when it comes back.
   await page.goto(`${WEB}/devotees`);
-  await page.waitForSelector('h1:has-text("Connected Devotees")');
-  pass('Connected Devotees page loads');
-
-  for (const tab of ['Connected', 'Pending Requests', 'Pending Invites']) {
-    await page.click(`button:has-text("${tab}")`);
-    await page.waitForTimeout(400);
-  }
-  pass('all 3 tabs switch without error');
-
-  await page.click('button:has-text("Invite Devotee")');
-  await page.waitForSelector('h2:has-text("Invite a Devotee")');
-  await page.fill('.fixed input[type=tel]', '9800022211');
-  await page.screenshot({ path: SHOTS + '01-invite-modal.png' });
-  // cancel (don't actually send — keep DB clean)
-  await page.click('.fixed button:has-text("Cancel")');
-  pass('Invite Devotee modal opens and accepts a mobile');
+  await page.waitForURL('**/dashboard', { timeout: 10000 });
+  pass('Connected Devotees is hidden for now: /devotees returns to the dashboard');
 
   // ---------- Seed a known devotee via the API (using the page's auth token) ----------
   const seedMobile = '9' + Date.now().toString().slice(-9);

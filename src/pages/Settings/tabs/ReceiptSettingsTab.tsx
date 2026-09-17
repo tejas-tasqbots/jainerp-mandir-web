@@ -10,6 +10,28 @@ type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: s
 
 const TEMPLATES: TemplateDef[] = [
   {
+    // The receipt donors are sent on WhatsApp (devotee-api renders the same
+    // builder, lib/receiptDocument.ts) — first, so a trust sees it before the
+    // older designs.
+    id: 'anumodana',
+    label: 'Anumodana',
+    badge: 'New',
+    thumb: (color: string) => `
+      <div style="font-family:Georgia,serif;font-size:6px;background:#FFFDF8;border:3px double ${color};padding:2px">
+        <div style="border:1px solid #B8862B;padding:5px 6px;text-align:center">
+          <div style="color:#B8862B;font-size:5px">॥ जय जिनेन्द्र ॥</div>
+          <div style="font-weight:700;font-size:7.5px;color:${color};margin-top:2px">Mandir Name</div>
+          <div style="display:inline-block;background:${color};color:#fff;font-size:4.5px;font-family:sans-serif;letter-spacing:.5px;padding:1px 5px;border-radius:4px;margin-top:3px">DONATION RECEIPT</div>
+          <div style="text-align:left;margin-top:4px;font-weight:700;font-size:7px">Donor Name</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:${color}12;border-left:2px solid #B8862B;padding:2px 3px;margin-top:3px">
+            <span style="font-size:4.5px;color:#8A7560;font-family:sans-serif">AMOUNT</span>
+            <span style="font-size:9px;font-weight:800;color:${color};font-family:sans-serif">₹1,500</span>
+          </div>
+          <div style="color:${color};font-style:italic;font-size:4.5px;margin-top:4px">Heartfelt anumodana for your daan</div>
+        </div>
+      </div>`,
+  },
+  {
     id: 'classic',
     label: 'Classic',
 
@@ -651,6 +673,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   <option value="en">English</option>
                   <option value="hi">हिंदी</option>
                   <option value="mr">मराठी</option>
+                  <option value="gu">ગુજરાતી</option>
+                  <option value="kn">ಕನ್ನಡ</option>
+                  <option value="ta">தமிழ்</option>
+                  <option value="te">తెలుగు</option>
                 </select>
               </div>
             </div>

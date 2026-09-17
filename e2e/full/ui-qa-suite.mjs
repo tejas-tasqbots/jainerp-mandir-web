@@ -193,7 +193,8 @@ try {
 
   // ============ 3. PEOPLE tabs render + Creditors pay modal has account selector ============
   await page.goto(`${WEB}/devotees`, { waitUntil: 'networkidle' }); await page.waitForTimeout(600);
-  record('people-connected-devotees', !/Something went wrong|TypeError/i.test(await page.textContent('body')));
+  // Connected Devotees is switched off for now (src/lib/rbac.ts HIDDEN_FOR_NOW).
+  record('people-connected-devotees-hidden', /\/dashboard$/.test(new URL(page.url()).pathname), page.url());
   await page.goto(`${WEB}/donors`, { waitUntil: 'networkidle' }); await page.waitForTimeout(600);
   record('people-donors', /Donor/i.test(await page.textContent('body')));
   await page.goto(`${WEB}/creditors`, { waitUntil: 'networkidle' }); await page.waitForTimeout(800);

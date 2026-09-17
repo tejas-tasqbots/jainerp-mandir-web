@@ -122,9 +122,10 @@ export function LoginPage() {
     try {
       const { data } = await api.post('/auth/send-otp', { mobile, purpose: 'login' })
       if (data.data?.dev_otp) setMockOtp(data.data.dev_otp)
-      setResentNote(data.data?.channel
-        ? t('login.otpResentVia', { channel: data.data.channel })
-        : t('login.otpResent'))
+      // "WhatsApp"/"SMS", not the API's lower-case code; the mock and review
+      // channels name nothing a user would recognise.
+      const via = ({ whatsapp: 'WhatsApp', sms: 'SMS' } as Record<string, string>)[data.data?.channel ?? '']
+      setResentNote(via ? t('login.otpResentVia', { channel: via }) : t('login.otpResent'))
       setOtp('')
       setResendIn(30)
     } catch (e: unknown) {

@@ -1,5 +1,6 @@
 import { api } from './api'
 import { receiptLabels, type ReceiptLabels } from './receiptLabels'
+import { receiptParts } from './receiptDocument'
 
 /**
  * Labels for the receipt currently being built. Module-level rather than a
@@ -1149,7 +1150,46 @@ function copyBanner(label: string): string {
   return `<div class="copy-banner">${label}</div>`
 }
 
+/**
+ * TEMPLATE 11: Anumodana — the receipt donors receive.
+ *
+ * The same builder devotee-api renders the WhatsApp "Download receipt (PDF)"
+ * from (lib/receiptDocument.ts is a byte-identical copy), so a trust that
+ * picks this template prints exactly the document its donors are sent: the
+ * "॥ जय जिनेन्द्र ॥" invocation, a double frame in the trust's colour, the
+ * amount in figures and words, 80G certification where it applies, and an
+ * anumodana line for a gift.
+ */
+function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir']>): string {
+  const lines = r.lines ?? []
+  const detail = lines.length
+    ? lines.map(l => `${l.label}${l.qty ? ` × ${l.qty}` : ''}`).join(', ')
+    : r.category
+  const { css, body } = receiptParts({
+    // Anything the API titles (a room bill, a prasad sale) is not a gift.
+    kind: r.doc_title ? 'sale' : 'donation',
+    title: r.doc_title ?? null,
+    receipt_number: r.receipt_number ?? '—',
+    date: r.date,
+    is_voided: r.is_voided,
+    donor: {
+      name: r.donor?.name,
+      mobile: r.donor?.mobile,
+      pan: donorPan(r) || null,
+      address: [r.donor?.address, r.donor?.city, r.donor?.state, r.donor?.pincode].filter(Boolean).join(', ') || null,
+    },
+    amount_paise: r.amount_paise,
+    detail_label: lines.length ? L.description : null,
+    category: detail,
+    payment_mode: paymentModeText(r),
+    is_80g_eligible: r.is_80g_eligible,
+    mandir: { ...mandir, receipt_language: mandir.receipt_language },
+  })
+  return `<style>${css}</style>${body}`
+}
+
 function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, template: string, color: string): string {
+  if (template === 'anumodana') return buildAnumodana(r, mandir)
   if (template === 'minimal') return buildMinimal(r, dateStr, mandir, color)
   if (template === 'modern') return buildModern(r, dateStr, mandir, color)
   if (template === 'traditional') return buildTraditional(r, dateStr, mandir)
@@ -1541,7 +1581,8 @@ async function renderHtmlToCanvas(html: string): Promise<HTMLCanvasElement> {
     await (doc as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready?.catch(() => {})
     await new Promise((r) => setTimeout(r, 350))
 
-    const target = (doc.querySelector('.page') as HTMLElement) || doc.body
+    // .sheet is the Anumodana template's page; every other template uses .page.
+    const target = (doc.querySelector('.page, .sheet') as HTMLElement) || doc.body
     return await html2canvas(target, {
       scale: 2, // crisp text at print resolution
       useCORS: true,

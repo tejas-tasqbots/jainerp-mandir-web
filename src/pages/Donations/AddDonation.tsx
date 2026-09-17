@@ -18,6 +18,11 @@ const CASH_80G_LIMIT_PAISE = 2000 * 100
 
 interface Fund { id: string; name: string; fund_type: string }
 
+// The "Donor wants updates about this mandir's events" tick is switched off
+// for now (founder request, 2026-09-17). Nothing new is recorded as consent
+// while it is off.
+const SHOW_EVENT_UPDATES_CONSENT = false as boolean
+
 export function AddDonation() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -332,8 +337,11 @@ export function AddDonation() {
 
           {/* Event-updates consent. Deliberately unticked by default and hidden
               for anonymous donations: donating is not consent to be contacted,
-              and the donor has to be asked out loud at the counter. */}
-          {!devotee?.is_anonymous && (
+              and the donor has to be asked out loud at the counter.
+              Switched off for now (founder request, 2026-09-17): set
+              SHOW_EVENT_UPDATES_CONSENT back to true to restore it. An edited
+              donation that already has consent still sends it (see submit). */}
+          {SHOW_EVENT_UPDATES_CONSENT && !devotee?.is_anonymous && (
             <div className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
               <input type="checkbox" id="wants_updates" checked={form.wants_event_updates}
                 onChange={e => setForm(f => ({ ...f, wants_event_updates: e.target.checked }))}

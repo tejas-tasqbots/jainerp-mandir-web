@@ -91,6 +91,8 @@ const topics = [
   },
   {
     title: 'Connected Devotees',
+    // The screen is switched off for now (lib/rbac HIDDEN_FOR_NOW).
+    hiddenForNow: true,
     steps: [
       'Go to People → Connected Devotees to manage every devotee linked to your temple',
       'Three tabs: Connected (approved), Pending Requests (devotees who asked to join), Pending Invites (you invited)',
@@ -155,7 +157,7 @@ export function HelpPage() {
         </div>
         <div className="card-body">
           <div className="grid grid-cols-2 gap-5">
-            {topics.map(topic => (
+            {topics.filter(topic => !('hiddenForNow' in topic)).map(topic => (
               <div key={topic.title} className="border border-slate-100 rounded-lg p-4">
                 <h4 className="font-semibold text-sm text-navy-900 mb-3 flex items-center gap-2">
                   <BookOpen size={13} className="text-brand-red flex-shrink-0" /> {topic.title}
