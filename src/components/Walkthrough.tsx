@@ -72,7 +72,10 @@ export function Walkthrough({
   const visible = useMemo(
     () => steps.filter(s => {
       if (s.module && !(modules ?? []).includes(s.module)) return false
-      if (s.anchor && !document.querySelector(`[data-tour="${s.anchor}"]`)) return false
+      // In the DOM is not enough: below lg the sidebar is hidden (a drawer),
+      // and a spotlight on a display:none item lands on nothing at 0,0.
+      const el = s.anchor ? document.querySelector<HTMLElement>(`[data-tour="${s.anchor}"]`) : null
+      if (s.anchor && (!el || el.getClientRects().length === 0)) return false
       return true
     }),
     [steps, modules, open],

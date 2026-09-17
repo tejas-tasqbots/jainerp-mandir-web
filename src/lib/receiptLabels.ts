@@ -50,6 +50,15 @@ export interface ReceiptLabels {
   officeCopy: string
   scanToPay: string
   printHint: string
+  // Counter slips: the title per module, and the per-plate Bhojanshala token.
+  bhojanshalaToken: string
+  prasadSlip: string
+  sevaReceipt: string
+  token: string
+  onePlate: string
+  breakfast: string
+  lunch: string
+  dinner: string
 }
 
 const en: ReceiptLabels = {
@@ -92,6 +101,14 @@ const en: ReceiptLabels = {
   officeCopy: 'Office Copy',
   scanToPay: 'Scan to pay',
   printHint: 'Ctrl+P to print or save as PDF',
+  bhojanshalaToken: 'Bhojanshala Token',
+  prasadSlip: 'Prasad Slip',
+  sevaReceipt: 'Seva Receipt',
+  token: 'Token',
+  onePlate: '1 plate',
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
 }
 
 const hi: ReceiptLabels = {
@@ -134,6 +151,14 @@ const hi: ReceiptLabels = {
   officeCopy: 'कार्यालय प्रति',
   scanToPay: 'भुगतान हेतु स्कैन करें',
   printHint: 'प्रिंट या PDF के लिए Ctrl+P दबाएँ',
+  bhojanshalaToken: 'भोजनशाला टोकन',
+  prasadSlip: 'प्रसाद पर्ची',
+  sevaReceipt: 'सेवा रसीद',
+  token: 'टोकन',
+  onePlate: '1 थाली',
+  breakfast: 'नाश्ता',
+  lunch: 'दोपहर का भोजन',
+  dinner: 'रात्रि भोजन',
 }
 
 const mr: ReceiptLabels = {
@@ -176,6 +201,14 @@ const mr: ReceiptLabels = {
   officeCopy: 'कार्यालय प्रत',
   scanToPay: 'भरण्यासाठी स्कॅन करा',
   printHint: 'प्रिंट किंवा PDF साठी Ctrl+P दाबा',
+  bhojanshalaToken: 'भोजनशाळा टोकन',
+  prasadSlip: 'प्रसाद पावती',
+  sevaReceipt: 'सेवा पावती',
+  token: 'टोकन',
+  onePlate: '1 थाळी',
+  breakfast: 'न्याहारी',
+  lunch: 'दुपारचे जेवण',
+  dinner: 'रात्रीचे जेवण',
 }
 
 const gu: ReceiptLabels = {
@@ -218,6 +251,14 @@ const gu: ReceiptLabels = {
   officeCopy: 'કાર્યાલય નકલ',
   scanToPay: 'ચુકવણી માટે સ્કેન કરો',
   printHint: 'પ્રિન્ટ અથવા PDF માટે Ctrl+P દબાવો',
+  bhojanshalaToken: 'ભોજનશાળા ટોકન',
+  prasadSlip: 'પ્રસાદ સ્લિપ',
+  sevaReceipt: 'સેવા રસીદ',
+  token: 'ટોકન',
+  onePlate: '1 થાળી',
+  breakfast: 'નાસ્તો',
+  lunch: 'બપોરનું ભોજન',
+  dinner: 'રાત્રિ ભોજન',
 }
 
 const kn: ReceiptLabels = {
@@ -260,6 +301,14 @@ const kn: ReceiptLabels = {
   officeCopy: 'ಕಚೇರಿ ಪ್ರತಿ',
   scanToPay: 'ಪಾವತಿಸಲು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
   printHint: 'ಮುದ್ರಿಸಲು ಅಥವಾ PDF ಗಾಗಿ Ctrl+P ಒತ್ತಿರಿ',
+  bhojanshalaToken: 'ಭೋಜನಶಾಲೆ ಟೋಕನ್',
+  prasadSlip: 'ಪ್ರಸಾದ ಚೀಟಿ',
+  sevaReceipt: 'ಸೇವಾ ರಸೀದಿ',
+  token: 'ಟೋಕನ್',
+  onePlate: '1 ತಟ್ಟೆ',
+  breakfast: 'ಉಪಾಹಾರ',
+  lunch: 'ಮಧ್ಯಾಹ್ನದ ಊಟ',
+  dinner: 'ರಾತ್ರಿ ಊಟ',
 }
 
 const ta: ReceiptLabels = {
@@ -302,6 +351,14 @@ const ta: ReceiptLabels = {
   officeCopy: 'அலுவலக நகல்',
   scanToPay: 'செலுத்த ஸ்கேன் செய்யவும்',
   printHint: 'அச்சிட அல்லது PDF க்கு Ctrl+P அழுத்தவும்',
+  bhojanshalaToken: 'போஜனசாலை டோக்கன்',
+  prasadSlip: 'பிரசாத சீட்டு',
+  sevaReceipt: 'சேவை ரசீது',
+  token: 'டோக்கன்',
+  onePlate: '1 தட்டு',
+  breakfast: 'காலை உணவு',
+  lunch: 'மதிய உணவு',
+  dinner: 'இரவு உணவு',
 }
 
 const te: ReceiptLabels = {
@@ -344,6 +401,14 @@ const te: ReceiptLabels = {
   officeCopy: 'కార్యాలయ ప్రతి',
   scanToPay: 'చెల్లించడానికి స్కాన్ చేయండి',
   printHint: 'ముద్రించడానికి లేదా PDF కోసం Ctrl+P నొక్కండి',
+  bhojanshalaToken: 'భోజనశాల టోకెన్',
+  prasadSlip: 'ప్రసాద చీటీ',
+  sevaReceipt: 'సేవా రసీదు',
+  token: 'టోకెన్',
+  onePlate: '1 ప్లేట్',
+  breakfast: 'అల్పాహారం',
+  lunch: 'మధ్యాహ్న భోజనం',
+  dinner: 'రాత్రి భోజనం',
 }
 
 export const RECEIPT_LABELS: Record<ReceiptLang, ReceiptLabels> = { en, hi, mr, gu, kn, ta, te }

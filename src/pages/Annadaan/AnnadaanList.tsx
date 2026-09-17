@@ -234,7 +234,7 @@ export function AnnadaanList() {
     <div className="space-y-4">
       <PrintLetterhead title={t('bhojanshala.title')} subtitle={new Date(dateFilter).toLocaleDateString('en-IN')} />
 
-      <div className="flex items-center justify-between no-print">
+      <div className="flex flex-wrap items-center justify-between gap-2 no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('bhojanshala.title')}</h1>
         <div className="flex gap-2">
           <input type="date" title={t('common.date')} className="form-input w-44" value={dateFilter}

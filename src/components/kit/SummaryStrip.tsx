@@ -32,7 +32,13 @@ export function SummaryStrip({ stats }: { stats: SummaryStat[] }) {
   const { t } = useTranslation()
   if (!stats.length) return null
   return (
-    <div className="grid gap-3 no-print" style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, minmax(150px, 1fr))` }}>
+    // auto-fit, not a fixed count: the strip is 4 across on a desktop, 2 on a
+    // phone and never wider than the page it sits on.
+    <div
+      className="grid gap-3 no-print"
+      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(150px, 100%), 1fr))`, gridTemplateRows: 'auto' }}
+      data-stats={Math.min(stats.length, 4)}
+    >
       {stats.map(stat => {
         const d = stat.deltaPct
         const good = d != null && (stat.invert ? d <= 0 : d >= 0)

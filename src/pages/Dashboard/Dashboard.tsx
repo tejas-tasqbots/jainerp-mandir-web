@@ -173,9 +173,9 @@ export function Dashboard() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold text-navy-900">{t('dashboard.title')}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['day','week','month','year'] as Period[]).map(p => (
             <button
               key={p}
@@ -210,7 +210,7 @@ export function Dashboard() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {statCards.map(card => (
           <div key={card.label} className={`card border-l-4 ${colorMap[card.color]}`}>
             <div className="card-body flex items-start justify-between py-4 px-5">

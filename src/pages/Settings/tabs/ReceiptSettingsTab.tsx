@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
-import { buildReceiptHtml, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
+import { buildReceiptHtml, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
 import { useToast } from '../../../components/kit/Toast'
 
@@ -317,6 +317,8 @@ const BLANK = {
   // choices genuinely differ: a trust that prints donation receipts on A4
   // letterhead still wants meal tokens on an 80 mm roll.
   slip_template: 'token', slip_paper: 'thermal80', slip_copies: 'single', slip_auto_print: false,
+  // Bhojanshala: N plates print N tokens (tenant-migration 039).
+  slip_token_per_plate: false,
   // profile fields for preview (read-only here; edited in Temple Profile)
   name: '', address: '', mobile: '', email: '',
   gstin: '', pan: '', tan: '',
@@ -439,6 +441,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         slip_paper: (p.slip_paper as string) || 'thermal80',
         slip_copies: (p.slip_copies as string) || 'single',
         slip_auto_print: Boolean(p.slip_auto_print),
+        slip_token_per_plate: Boolean(p.slip_token_per_plate),
         name: (p.name as string) || '',
         address: [p.address_line1, p.city, p.state, p.pincode].filter(Boolean).join(', '),
         mobile: (p.mobile as string) || '',
@@ -514,6 +517,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         slip_paper: form.slip_paper,
         slip_copies: form.slip_copies,
         slip_auto_print: form.slip_auto_print,
+        slip_token_per_plate: form.slip_token_per_plate,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -549,7 +553,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const selected = TEMPLATES.find(t => t.id === form.receipt_template)
 
   return (
-    <div className="flex gap-6 items-start">
+    // Side by side from xl only: the preview is 420 px, and below that it sat
+    // on top of the form (a 390 px phone saw the preview and no settings).
+    <div className="flex flex-col xl:flex-row gap-6 xl:items-start">
       {/* ── Left: Settings panel ── */}
       <form onSubmit={save} className="flex-1 min-w-0 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -752,6 +758,21 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 onChange={e => set('slip_auto_print', e.target.checked)} />
               {t('settings.slips.autoPrint')}
             </label>
+            {/* A family of ten should not have to walk to the dining hall
+                together on one token. Bhojanshala only; the hall collects one
+                token per thali. Disabled where no token is printed at all. */}
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" data-testid="slip-token-per-plate"
+                  checked={form.slip_token_per_plate}
+                  disabled={form.slip_template === 'receipt'}
+                  onChange={e => set('slip_token_per_plate', e.target.checked)} />
+                {t('settings.slips.tokenPerPlate')}
+              </label>
+              <p className="mt-1 pl-6 text-[11px] leading-relaxed text-slate-500">
+                {t('settings.slips.tokenPerPlateHelp', { max: MAX_PLATE_TOKENS })}
+              </p>
+            </div>
             <p className="text-xs text-slate-500">{t('settings.slips.note')}</p>
           </div>
         </div>
@@ -875,7 +896,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
       </form>
 
       {/* ── Right: Live preview panel ── */}
-      <div className="w-[420px] flex-shrink-0 sticky top-4">
+      <div className="w-full max-w-[420px] xl:w-[420px] flex-shrink-0 xl:sticky xl:top-4">
         <div className="card overflow-hidden">
           <div className="card-header flex items-center gap-2">
             <Eye size={14} className="text-slate-500" />

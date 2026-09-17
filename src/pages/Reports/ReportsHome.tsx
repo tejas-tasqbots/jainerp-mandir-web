@@ -143,7 +143,7 @@ export function ReportsHome() {
   }
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex flex-col xl:flex-row gap-6 xl:items-start">
       {/* Rail */}
       <nav className="w-56 flex-shrink-0 space-y-5 no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('reports.title')}</h1>

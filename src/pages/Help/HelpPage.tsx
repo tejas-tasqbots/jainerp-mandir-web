@@ -138,7 +138,7 @@ export function HelpPage() {
           </h3>
         </div>
         <div className="card-body">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
             {SHORTCUTS.map(s => (
               <div key={s.keys} className="flex items-center justify-between text-sm py-1">
                 <span className="text-slate-600">{t(s.labelKey)}</span>
@@ -156,7 +156,7 @@ export function HelpPage() {
             <HelpCircle size={15} />{t('ui.stepByStep')}</h3>
         </div>
         <div className="card-body">
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid sm:grid-cols-2 gap-5">
             {topics.filter(topic => !('hiddenForNow' in topic)).map(topic => (
               <div key={topic.title} className="border border-slate-100 rounded-lg p-4">
                 <h4 className="font-semibold text-sm text-navy-900 mb-3 flex items-center gap-2">
@@ -180,7 +180,7 @@ export function HelpPage() {
       <div className="card">
         <div className="card-header"><h3 className="font-semibold text-sm">{t('ui.supportFeedback')}</h3></div>
         <div className="card-body">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <a href={`tel:${SUPPORT_PHONE_E164}`} className="flex items-center gap-3 p-4 border border-slate-200 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-colors group">
               <div className="p-2 bg-green-100 rounded-lg"><Phone size={16} className="text-green-600" /></div>
               <div>

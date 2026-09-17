@@ -186,7 +186,7 @@ export function CashBank() {
   }
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex flex-col xl:flex-row gap-6 xl:items-start">
       {/* Rail — accounts with live balance */}
       <nav className="w-64 flex-shrink-0 space-y-3 no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('accounts.cashBankTitle')}</h1>

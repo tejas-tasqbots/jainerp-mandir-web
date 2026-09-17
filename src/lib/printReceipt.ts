@@ -21,6 +21,13 @@ export interface ReceiptData {
    */
   doc_title?: string | null
   /**
+   * Which counter printed this slip. The API also sends an English
+   * `doc_title`; this lets a slip print its title in the trust's receipt
+   * language instead, and tells the renderer which slips may be split into
+   * one token per plate (Bhojanshala only).
+   */
+  slip_kind?: 'bhojanshala' | 'prasad' | 'seva' | null
+  /**
    * Every tender that settled this receipt. When there is more than one the
    * templates print the split instead of a single mode: a 2800 room bill
    * settled 1500 cash + 1300 UPI used to print "Payment Mode: Cash", naming
@@ -81,6 +88,11 @@ export interface ReceiptData {
     surface?: 'receipt' | 'slip'
     /** Open the print dialog without being asked. Counter screens read this. */
     slip_auto_print?: boolean
+    /**
+     * Print a Bhojanshala sale of N plates as N separate tokens (tenant
+     * migration 039). Only ever true on a slip.
+     */
+    slip_token_per_plate?: boolean
     /**
      * Whether this trust may show GST / 80G at ALL.
      *
@@ -171,7 +183,53 @@ function paymentModeText(r: ReceiptData): string {
 }
 
 function docTitle(r: ReceiptData, fallback: string): string {
-  return r.doc_title || fallback
+  // A counter slip names itself in the receipt language. Without this every
+  // prasad packet and meal token printed "Donation Receipt".
+  const kind = r.slip_kind === 'bhojanshala' ? L.bhojanshalaToken
+    : r.slip_kind === 'prasad' ? L.prasadSlip
+      : r.slip_kind === 'seva' ? L.sevaReceipt
+        : null
+  return kind || r.doc_title || fallback
+}
+
+/** A meal type as the receipt language says it; anything unknown as typed. */
+function mealName(meal: unknown): string {
+  const m = String(meal ?? '').trim()
+  if (m === 'breakfast') return L.breakfast
+  if (m === 'lunch') return L.lunch
+  if (m === 'dinner') return L.dinner
+  return m ? m.charAt(0).toUpperCase() + m.slice(1) : ''
+}
+
+/**
+ * HTML-escape every string in the payload, once, before any template sees it.
+ *
+ * The templates interpolate names, addresses and item labels straight into
+ * markup, and the result is written into a SAME-ORIGIN iframe. A donor or
+ * buyer name such as `<img src=x onerror=…>` — which a devotee can set on their
+ * own profile — therefore ran as script inside the admin's session the moment
+ * a receipt was printed or downloaded. Escaping at this single entry point
+ * covers all eleven layouts, including ones added later.
+ *
+ * Data URIs (logo, UPI QR) pass through unchanged in practice: base64 has no
+ * characters this touches.
+ */
+function escapeDeep<T>(v: T): T {
+  if (typeof v === 'string') {
+    return v
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;') as unknown as T
+  }
+  if (Array.isArray(v)) return v.map(escapeDeep) as unknown as T
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) out[k] = escapeDeep(x)
+    return out as T
+  }
+  return v
 }
 
 function amountInWords(paise: number): string {
@@ -1270,23 +1328,12 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
  * conditions, not either: a zero tax row on an unregistered trust is a claim to
  * be collecting a tax it cannot collect.
  */
-function buildSlip(
-  r: ReceiptData,
-  dateStr: string,
-  mandir: NonNullable<ReceiptData['mandir']>,
-  compact: boolean,
-): string {
+const slipRow = (k: string, v: string) =>
+  `<div class="sr"><span>${k}</span><span>${v}</span></div>`;
+
+function slipStyles(mandir: NonNullable<ReceiptData['mandir']>): string {
   const width = mandir.receipt_paper === 'thermal58' ? '48mm' : '72mm';
   const page = mandir.receipt_paper === 'thermal58' ? '58mm auto' : '80mm auto';
-  const lines = r.lines ?? [];
-  const tax = r.tax ?? null;
-  const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0);
-  const meta = (r.meta ?? {}) as Record<string, unknown>;
-  const tokens = Number(meta.tokens ?? 0);
-
-  const row = (k: string, v: string) =>
-    `<div class="sr"><span>${k}</span><span>${v}</span></div>`;
-
   return `
   <style>
     @page { size: ${page}; margin: 0; }
@@ -1309,8 +1356,28 @@ function buildSlip(
     .note { font-size:9px; text-align:center; margin-top:5px; }
     .void { text-align:center; font-weight:800; border:1px solid #000; padding:3px; margin-bottom:5px; }
     .copy-banner { text-align:center; font-size:9.5px; font-weight:700; letter-spacing:1px; margin-bottom:3px; }
+    /* One-token-per-plate (tenant migration 039). */
+    .slip .of { text-align:center; font-size:28px; font-weight:800; letter-spacing:1px; margin:4px 0 0; }
+    .slip .meal { text-align:center; font-size:15px; font-weight:800; text-transform:uppercase; margin:0 0 2px; }
+    .slip .plate { text-align:center; font-size:11px; margin-bottom:5px; }
     @media print { .print-hint { display:none; } }
-  </style>
+  </style>`;
+}
+
+function buildSlip(
+  r: ReceiptData,
+  dateStr: string,
+  mandir: NonNullable<ReceiptData['mandir']>,
+  compact: boolean,
+): string {
+  const lines = r.lines ?? [];
+  const tax = r.tax ?? null;
+  const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0);
+  const meta = (r.meta ?? {}) as Record<string, unknown>;
+  const tokens = Number(meta.tokens ?? 0);
+  const row = slipRow;
+
+  return `${slipStyles(mandir)}
   <div class="slip">
     <div class="name">${mandir.name}</div>
     <div class="addr">${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</div>
@@ -1335,11 +1402,65 @@ function buildSlip(
   </div>`;
 }
 
+/**
+ * The most tokens one sale may print separately. A sponsored bhandara of 500
+ * plates is a different job — nobody hands out 500 slips across a counter —
+ * so above this the sale prints as the single combined slip.
+ */
+export const MAX_PLATE_TOKENS = 100;
+
+/**
+ * Whether this receipt prints as one token per plate (tenant migration 039).
+ *
+ * Only a Bhojanshala slip with more than one plate, from a trust that turned
+ * the setting on, and never a voided sale: N valid-looking tokens for a
+ * cancelled sale are N free meals.
+ */
+export function printsTokenPerPlate(r: ReceiptData): boolean {
+  const mandir = r.mandir;
+  const template = mandir?.template;
+  const tokens = Number((r.meta as Record<string, unknown> | null | undefined)?.tokens ?? 0);
+  return !!mandir?.slip_token_per_plate
+    && (template === 'token' || template === 'compact')
+    && r.slip_kind === 'bhojanshala'
+    && !r.is_voided
+    && Number.isInteger(tokens) && tokens > 1 && tokens <= MAX_PLATE_TOKENS;
+}
+
+/**
+ * One plate's token: the meal, "3 / 10", the sale it belongs to. The dining
+ * hall collects one per thali, so each token has to stand on its own — the
+ * sale number ties it back to the counter's record, and "3 / 10" is what stops
+ * a torn-off token being mistaken for the whole sale.
+ */
+function buildPlateToken(
+  r: ReceiptData,
+  dateStr: string,
+  mandir: NonNullable<ReceiptData['mandir']>,
+  index: number,
+  of: number,
+): string {
+  const meta = (r.meta ?? {}) as Record<string, unknown>;
+  const rate = Number(meta.rate_paise ?? 0);
+  const meal = mealName(meta.meal_type);
+  return `
+  <div class="slip">
+    <div class="name">${mandir.name}</div>
+    <div class="kind">${docTitle(r, L.bhojanshalaToken)}</div>
+    <div class="of">${index} / ${of}</div>
+    ${meal ? `<div class="meal">${meal}</div>` : ''}
+    <div class="plate">${L.onePlate}${rate > 0 ? ` · ₹ ${fmtRs(rate)}` : ''}</div>
+    ${slipRow(L.receiptNo, r.receipt_number ?? '—')}
+    ${slipRow(L.date, dateStr)}
+    <div class="note">${mandir.footer || L.thankYou}</div>
+  </div>`;
+}
+
 export function buildReceiptHtml(input: ReceiptData): string {
   // A document that has not been numbered yet arrives with receipt_number:
   // null; every template interpolates it directly, so the guest's copy read
   // "Receipt null". Substitute once here rather than at all 13 sites.
-  const r: ReceiptData = { ...input, receipt_number: input.receipt_number || '—' }
+  const r: ReceiptData = escapeDeep({ ...input, receipt_number: input.receipt_number || '—' })
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
   L = receiptLabels(mandir.receipt_language)
@@ -1377,9 +1498,36 @@ export function buildReceiptHtml(input: ReceiptData): string {
 
   // "Both" prints the donor's copy and the office's file copy on one job, so
   // the counter doesn't have to run the print twice and risk a mismatch.
-  const copies = mandir.receipt_copies === 'both'
+  let copies = mandir.receipt_copies === 'both'
     ? one(L.donorCopy) + `<div class="copy-sep"></div>` + one(L.officeCopy)
     : one()
+
+  // One token per plate (tenant migration 039). The devotee gets N tokens; the
+  // office copy, when the trust keeps one, is still the single combined slip —
+  // the counter reconciles the SALE, not the plates. On a roll every token is
+  // its own page, so a cutter separates them; on A4/A5 they tile, to be cut
+  // along the dashed lines.
+  if (printsTokenPerPlate(r)) {
+    const n = Number((r.meta as Record<string, unknown>).tokens)
+    const tokens = Array.from({ length: n }, (_, i) =>
+      `<div class="plate-token">${buildPlateToken(r, dateStr, mandir, i + 1, n)}</div>`).join('')
+    const office = mandir.receipt_copies === 'both'
+      ? `<div class="plate-office">${one(L.officeCopy)}</div>`
+      : ''
+    // Last in the document on purpose: the office copy carries the slip
+    // styles again, and its roll-sized @page must not win on A4/A5.
+    const layout = `<style>
+  .plate-token { page-break-inside:avoid; break-inside:avoid; }
+  ${thermal
+    // Block layout: Chromium ignores page breaks between flex items.
+    ? `.plate-token + .plate-token, .plate-office { page-break-before:always; break-before:page; }`
+    : `@page { size: ${mandir.receipt_paper === 'a5' ? 'A5' : 'A4'}; margin: 8mm; }
+  .plate-sheet { display:flex; flex-wrap:wrap; justify-content:center; }
+  .plate-sheet .plate-token { border:1px dashed #666; }
+  .plate-office { page-break-before:always; break-before:page; }`}
+</style>`
+    copies = `${slipStyles(mandir)}<div class="plate-sheet" data-plate-tokens="${n}">${tokens}</div>${office}${layout}`
+  }
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>
 <style>

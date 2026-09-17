@@ -92,7 +92,7 @@ export function NumberingTab() {
               {[0, 1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-100 rounded animate-pulse" />)}
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-slate-400 border-b border-slate-200">
                   <th className="px-4 py-2.5 font-semibold">{t('settings.numbering.series')}</th>
@@ -142,7 +142,7 @@ export function NumberingTab() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>
