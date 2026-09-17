@@ -59,6 +59,12 @@ export interface ReceiptLabels {
   breakfast: string
   lunch: string
   dinner: string
+  // The itemised table every receipt with lines now prints.
+  subtotal: string
+  total: string
+  // The signature block at the foot of every A4 design.
+  forTrust: string
+  computerGenerated: string
 }
 
 const en: ReceiptLabels = {
@@ -109,6 +115,10 @@ const en: ReceiptLabels = {
   breakfast: 'Breakfast',
   lunch: 'Lunch',
   dinner: 'Dinner',
+  subtotal: 'Subtotal',
+  total: 'Total',
+  forTrust: 'For {name}',
+  computerGenerated: 'This is a computer-generated receipt and does not need a physical signature.',
 }
 
 const hi: ReceiptLabels = {
@@ -159,6 +169,10 @@ const hi: ReceiptLabels = {
   breakfast: 'नाश्ता',
   lunch: 'दोपहर का भोजन',
   dinner: 'रात्रि भोजन',
+  subtotal: 'उप-योग',
+  total: 'कुल',
+  forTrust: '{name} हेतु',
+  computerGenerated: 'यह कंप्यूटर द्वारा बनाई गई रसीद है; भौतिक हस्ताक्षर आवश्यक नहीं।',
 }
 
 const mr: ReceiptLabels = {
@@ -209,6 +223,10 @@ const mr: ReceiptLabels = {
   breakfast: 'न्याहारी',
   lunch: 'दुपारचे जेवण',
   dinner: 'रात्रीचे जेवण',
+  subtotal: 'उप-बेरीज',
+  total: 'एकूण',
+  forTrust: '{name} करिता',
+  computerGenerated: 'ही संगणकाद्वारे तयार केलेली पावती आहे; प्रत्यक्ष स्वाक्षरीची आवश्यकता नाही.',
 }
 
 const gu: ReceiptLabels = {
@@ -259,6 +277,10 @@ const gu: ReceiptLabels = {
   breakfast: 'નાસ્તો',
   lunch: 'બપોરનું ભોજન',
   dinner: 'રાત્રિ ભોજન',
+  subtotal: 'પેટા સરવાળો',
+  total: 'કુલ',
+  forTrust: '{name} વતી',
+  computerGenerated: 'આ કમ્પ્યુટર દ્વારા બનાવેલી પાવતી છે; ભૌતિક સહીની જરૂર નથી.',
 }
 
 const kn: ReceiptLabels = {
@@ -309,6 +331,10 @@ const kn: ReceiptLabels = {
   breakfast: 'ಉಪಾಹಾರ',
   lunch: 'ಮಧ್ಯಾಹ್ನದ ಊಟ',
   dinner: 'ರಾತ್ರಿ ಊಟ',
+  subtotal: 'ಉಪಮೊತ್ತ',
+  total: 'ಒಟ್ಟು',
+  forTrust: '{name} ಪರವಾಗಿ',
+  computerGenerated: 'ಇದು ಗಣಕದಿಂದ ರಚಿತವಾದ ರಸೀದಿ; ಸಹಿ ಅಗತ್ಯವಿಲ್ಲ.',
 }
 
 const ta: ReceiptLabels = {
@@ -359,6 +385,10 @@ const ta: ReceiptLabels = {
   breakfast: 'காலை உணவு',
   lunch: 'மதிய உணவு',
   dinner: 'இரவு உணவு',
+  subtotal: 'துணைத் தொகை',
+  total: 'மொத்தம்',
+  forTrust: '{name} சார்பாக',
+  computerGenerated: 'இது கணினியில் உருவாக்கப்பட்ட ரசீது; கையொப்பம் தேவையில்லை.',
 }
 
 const te: ReceiptLabels = {
@@ -409,6 +439,10 @@ const te: ReceiptLabels = {
   breakfast: 'అల్పాహారం',
   lunch: 'మధ్యాహ్న భోజనం',
   dinner: 'రాత్రి భోజనం',
+  subtotal: 'ఉప మొత్తం',
+  total: 'మొత్తం',
+  forTrust: '{name} తరఫున',
+  computerGenerated: 'ఇది కంప్యూటర్ రూపొందించిన రసీదు; సంతకం అవసరం లేదు.',
 }
 
 export const RECEIPT_LABELS: Record<ReceiptLang, ReceiptLabels> = { en, hi, mr, gu, kn, ta, te }

@@ -274,8 +274,10 @@ export function receiptParts(r: ReceiptDocument): { lang: ReceiptLanguage; title
 
   const regs: string[] = [];
   if (m.pan) regs.push(`PAN ${esc(m.pan)}`);
-  if (m.show_80g && m.reg_80g_number) regs.push(`80G ${esc(m.reg_80g_number)}`);
-  if (m.show_80g && (m.reg_12ab_number || m.reg_12a_number)) regs.push(`12A ${esc(m.reg_12ab_number || m.reg_12a_number)}`);
+  // Only on a gift: a sale (prasad, a meal, a room) that carried "80G <no.>"
+  // in its header is a tax-exemption claim for money that bought something.
+  if (donation && m.show_80g && m.reg_80g_number) regs.push(`80G ${esc(m.reg_80g_number)}`);
+  if (donation && m.show_80g && (m.reg_12ab_number || m.reg_12a_number)) regs.push(`12A ${esc(m.reg_12ab_number || m.reg_12a_number)}`);
   if (m.show_gstin && m.gstin) regs.push(`GSTIN ${esc(m.gstin)}`);
 
   const contact = [m.mobile, m.email].filter(Boolean).map(esc).join(' · ');

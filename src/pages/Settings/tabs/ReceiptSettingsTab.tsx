@@ -302,6 +302,53 @@ const TEMPLATES: TemplateDef[] = [
         </div>
       </div>`,
   },
+  {
+    // What a trust BILLS for — a room, a hall, a bhojanshala account: party
+    // block, itemised lines, and the total where an accountant looks.
+    id: 'statement',
+    label: 'Statement',
+    badge: 'New',
+    thumb: (color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1px solid #e5e7eb;padding:6px 7px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid ${color};padding-bottom:4px">
+          <div><div style="font-weight:800;font-size:7px">Mandir Name</div><div style="font-size:4px;color:#6b7280">Address, City · GSTIN</div></div>
+          <div style="text-align:right"><div style="background:${color};color:#fff;font-size:4px;letter-spacing:1px;padding:1px 5px;border-radius:2px">ROOM RECEIPT</div><div style="font-family:monospace;font-size:5.5px;margin-top:2px">ROOM/000001</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <div style="flex:1"><div style="font-size:3.5px;color:#9ca3af;letter-spacing:1px">RECEIVED FROM</div><div style="font-weight:700;font-size:5.5px">Ayush Kasliwal</div></div>
+          <div style="flex:1"><div style="font-size:3.5px;color:#9ca3af;letter-spacing:1px">CATEGORY</div><div style="font-size:5px">Room 101 · 2 nights</div></div>
+        </div>
+        <div style="margin-top:4px;border:1px solid #e5e7eb">
+          <div style="display:flex;background:${color};color:#fff;font-size:3.5px;padding:1.5px 3px"><span style="flex:1">DESCRIPTION</span><span>AMOUNT</span></div>
+          <div style="display:flex;padding:2px 3px;border-bottom:1px solid #f1f5f9;font-size:4.5px"><span style="flex:1">Room 101 · 2 nights</span><span>₹1,500.00</span></div>
+          <div style="display:flex;padding:2px 3px;font-size:4.5px;font-weight:700"><span style="flex:1">Total</span><span>₹1,500.00</span></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:5px"><div style="text-align:center"><div style="width:34px;border-top:1px solid #9ca3af;margin:0 auto 1px"></div><div style="font-size:3.5px;color:#6b7280">Authorised Signatory</div></div></div>
+      </div>`,
+  },
+  {
+    // For a trust that wants the receipt to look like the mandir: double rule,
+    // gold hairline, the amount as the centrepiece.
+    id: 'heritage',
+    label: 'Heritage',
+    badge: 'New',
+    thumb: (color: string) => `
+      <div style="font-family:Georgia,serif;font-size:6px;background:#FFFDF8;border:3px double #B8862B;padding:3px">
+        <div style="border:1px solid #B8862B55;padding:5px 6px">
+          <div style="text-align:center;color:#B8862B;font-size:4.5px;letter-spacing:2px">॥ जय जिनेन्द्र ॥</div>
+          <div style="text-align:center;font-weight:700;font-size:8px;color:${color};margin-top:2px">Mandir Name</div>
+          <div style="text-align:center;font-size:4px;color:#6B5A44">Address, City · Phone</div>
+          <div style="text-align:center;margin:4px 0"><span style="border-top:1px solid #B8862B;border-bottom:1px solid #B8862B;padding:1px 8px;font-size:4px;letter-spacing:2px;color:${color}">DONATION RECEIPT</span></div>
+          <div style="font-size:3.5px;letter-spacing:1px;color:#8A7560">RECEIVED WITH THANKS FROM</div>
+          <div style="font-weight:700;font-size:6.5px">Ayush Kasliwal</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #B8862B66;background:#B8862B0f;padding:3px 5px;margin-top:3px">
+            <div><div style="font-size:3.5px;letter-spacing:1px;color:#8A7560">DONATION AMOUNT</div><div style="font-size:3.5px;font-style:italic;color:#6B5A44">Twenty Five Thousand Only</div></div>
+            <div style="font-size:9px;font-weight:700;color:${color}">₹25,000</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:5px"><div style="text-align:center"><div style="width:34px;border-top:1px solid #9ca3af;margin:0 auto 1px"></div><div style="font-size:3.5px;color:#6B5A44">Authorised Signatory</div></div></div>
+        </div>
+      </div>`,
+  },
 ]
 
 const BLANK = {
@@ -325,7 +372,18 @@ const BLANK = {
   reg_80g_number: '', reg_80g_urn: '', reg_80g_valid_upto: '', reg_12a_number: '', reg_12ab_number: '',
 }
 
-function buildPreviewData(form: typeof BLANK): ReceiptData {
+/**
+ * What the preview is showing.
+ *
+ * The panel only ever rendered the donation receipt, so the two documents an
+ * admin most wants to check before printing a hundred of them — the 80G
+ * certificate and the counter slip — could not be seen at all. Each mode feeds
+ * the SAME builder the same shape the API sends for that document, so what is
+ * previewed is what prints.
+ */
+export type PreviewMode = 'receipt' | '80g' | 'slip'
+
+function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): ReceiptData {
   // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact — and it
   // has to be shaped like a GSTIN, not merely non-empty ("0" used to switch GST
   // on). mandir-api is a separate deployable with no shared package, so if that
@@ -345,13 +403,23 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
       pan_masked: 'ABXXXXX34C',
       address: '12 Sample Street', city: 'Surat', state: 'Gujarat', pincode: '395001',
     },
-    category: 'General Donation',
-    amount_paise: 150000,
+    category: mode === 'slip' ? 'Bhojanshala — lunch (10 plates)' : 'General Donation',
+    amount_paise: mode === 'slip' ? 20000 : 150000,
     payment_mode: 'cash',
+    // A slip is a purchase, a receipt is a gift: the wording, the 80G row and
+    // the registration numbers follow this.
+    kind: mode === 'slip' ? 'service' : 'donation',
+    ...(mode === 'slip'
+      ? {
+        slip_kind: 'bhojanshala' as const,
+        doc_title: 'Bhojanshala Token',
+        meta: { tokens: 10, meal_type: 'lunch', rate_paise: 2000, tokens_redeemed: 0 },
+      }
+      : {}),
     // The sample donation is 80G-eligible only if this trust could actually
     // issue one. Previewing a "80G Eligible: Yes" row on a trust with no
     // registration shows an admin a receipt they can never produce.
-    is_80g_eligible: has80g,
+    is_80g_eligible: mode === 'slip' ? false : has80g,
     mandir: {
       name: form.name || 'Shree Jain Mandir',
       address: form.address || '123, Temple Road, Ahmedabad, Gujarat 380001',
@@ -395,12 +463,19 @@ function buildPreviewData(form: typeof BLANK): ReceiptData {
       show_80g: has80g && form.show_80g_on_receipt,
       show_gstin: gstEnabled && form.show_gstin_on_header,
       footer: form.custom_receipt_footer || 'Jai Jinendra! Thank you for your generous donation.',
-      template: form.receipt_template,
+      template: mode === 'slip'
+        ? (form.slip_template === 'receipt' ? form.receipt_template : form.slip_template)
+        : mode === '80g' ? '80g' : form.receipt_template,
       primary_color: form.primary_color,
-      receipt_copies: form.receipt_copies as 'single' | 'both',
-      receipt_paper: form.receipt_paper as 'a4' | 'a5' | 'thermal58' | 'thermal80',
+      receipt_copies: (mode === 'slip' ? form.slip_copies : form.receipt_copies) as 'single' | 'both',
+      receipt_paper: (mode === 'slip'
+        ? (form.slip_template === 'receipt' ? form.receipt_paper : form.slip_paper)
+        : form.receipt_paper) as 'a4' | 'a5' | 'thermal58' | 'thermal80',
       receipt_language: form.receipt_language,
       receipt_show_upi_qr: form.receipt_show_upi_qr,
+      ...(mode === 'slip'
+        ? { surface: 'slip' as const, slip_token_per_plate: form.slip_token_per_plate }
+        : {}),
     },
   }
 }
@@ -414,6 +489,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const [logoUploading, setLogoUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('receipt')
 
   useEffect(() => {
     api.get('/tenants/me').then(r => {
@@ -460,7 +536,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
 
   // Update preview iframe whenever form changes
   useEffect(() => {
-    const html = buildReceiptHtml(buildPreviewData(form))
+    const html = buildReceiptHtml(buildPreviewData(form, previewMode))
     // Remove the auto-print script for preview
     const previewHtml = html.replace('<script>window.onload=()=>{window.print()}</script>', '')
     if (iframeRef.current) {
@@ -471,7 +547,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         doc.close()
       }
     }
-  }, [form])
+  }, [form, previewMode])
 
   function set<K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -531,7 +607,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const logoSrc = form.logo_base64 || form.logo_cdn_url
 
   function printSample() {
-    printReceiptHtml(buildReceiptHtml(buildPreviewData(form)))
+    printReceiptHtml(buildReceiptHtml(buildPreviewData(form, previewMode)))
   }
 
   // Statutory identity that will print on receipts (managed in Temple Profile).
@@ -898,13 +974,27 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
       {/* ── Right: Live preview panel ── */}
       <div className="w-full max-w-[420px] xl:w-[420px] flex-shrink-0 xl:sticky xl:top-4">
         <div className="card overflow-hidden">
-          <div className="card-header flex items-center gap-2">
+          <div className="card-header flex flex-wrap items-center gap-2">
             <Eye size={14} className="text-slate-500" />
             <h3 className="font-semibold text-sm">{t('settings.receipts.livePreview')}</h3>
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-              {selected?.label || 'Classic'}
-              {selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
+              {previewMode === 'receipt' ? (selected?.label || 'Classic') : previewMode === '80g' ? '80G' : t('settings.slips.heading')}
+              {previewMode === 'receipt' && selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
             </span>
+            {/* Three documents print from this screen; all three are previewable. */}
+            <div className="w-full flex gap-1">
+              {([
+                ['receipt', t('settings.receipts.previewReceipt')],
+                ['80g', t('settings.receipts.preview80g')],
+                ['slip', t('settings.receipts.previewSlip')],
+              ] as [PreviewMode, string][]).map(([m, label]) => (
+                <button
+                  key={m} type="button" data-testid={`preview-mode-${m}`}
+                  onClick={() => setPreviewMode(m)}
+                  className={`flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${previewMode === m ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >{label}</button>
+              ))}
+            </div>
           </div>
           <div className="bg-slate-100 p-3">
             <div className="bg-white rounded shadow-sm overflow-hidden ring-1 ring-slate-200" style={{ height: '560px' }}>
@@ -917,6 +1007,11 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               />
             </div>
           </div>
+          {previewMode === '80g' && !form.reg_80g_number.trim() && (
+            <p className="px-3 pb-2 text-[11px] leading-relaxed text-amber-700" data-testid="preview-80g-note">
+              {t('settings.receipts.preview80gUnavailable')}
+            </p>
+          )}
           <div className="px-3 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
             <p className="text-xs text-slate-400 flex-1">{t('settings.receipts.previewUpdates')}</p>
             <button type="button" onClick={printSample} className="btn-secondary btn-sm">
