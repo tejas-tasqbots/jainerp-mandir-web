@@ -169,7 +169,9 @@
     "search": "Search actor, entity, record id...",
     "subtitle": "Who did what, when — every create, edit, delete, void and restore across the account.",
     "system": "System",
-    "title": "Activity Log"
+    "title": "Activity Log",
+    "details": "What was done",
+    "moreChanges": "+{{count}} more changes"
   },
   "assets": {
     "assetName": "Asset",
@@ -392,7 +394,8 @@
     "status": "Status",
     "type": "Type",
     "upi": "UPI",
-    "yes": "Yes"
+    "yes": "Yes",
+    "showLess": "Show less"
   },
   "creditors": {
     "actions": "Actions",
@@ -1759,10 +1762,11 @@
       "downloadButton": "Download Backup (JSON)",
       "exportFailed": "Export failed. Please try again.",
       "exportHeading": "Manual Data Export",
-      "exportHelp": "Download a complete JSON backup of this mandir's data — donations, expenses, donors, accounts, bookings and master records. Keep this file safe; it can be used to restore data with help from support.",
+      "exportHelp": "Downloads every record this mandir holds — donations, donors, expenses, accounts, bookings, staff, counters and master lists — as one JSON file. Keep it somewhere safe. It is a copy for safekeeping, not a one-click restore.",
       "preparingExport": "Preparing export…",
       "restoreHeading": "Restore",
-      "restoreHelp": "To restore data from a backup or an older export file, please contact Tasqbots support. Restores are performed by the support team to protect your existing data."
+      "restoreHelp": "Restores are done by Tasqbots support, not from this screen, so an import can never quietly overwrite data you still need. Send us the backup file and we will rebuild from it.",
+      "panNote": "Donor PAN numbers are stored encrypted and stay encrypted in this file. They can only be read back on a server holding the same encryption key."
     },
     "donorPayments": {
       "acceptRequests": "Accept UPI / bank-transfer donation requests",
@@ -1849,7 +1853,9 @@
         "fundType": "Statutory type",
         "isRestricted": "Restricted use",
         "fund": "Fund",
-        "fundNone": "No fund (General)"
+        "fundNone": "No fund (General)",
+        "roomPhotos": "Room photos",
+        "hallPhotos": "Hall photos"
       },
       "flags": "Flags",
       "gstRates": "GST Rates",
@@ -1871,7 +1877,17 @@
       "statusUpdateFailed": "Failed to update status",
       "thisEntry": "this entry",
       "funds": "Funds",
-      "fundsDesc": "Earmarked funds — Dev Dravya, Jivdaya, Sadharan. A fund says whose money it is and what it may be spent on."
+      "fundsDesc": "Earmarked funds — Dev Dravya, Jivdaya, Sadharan. A fund says whose money it is and what it may be spent on.",
+      "imagesAdd": "Add photos",
+      "imagesAdding": "Adding…",
+      "imagesCount": "({{count}} of {{max}})",
+      "imagesHelp": "Up to {{max}} photos. Devotees see these when choosing where to stay. Large photos are shrunk automatically.",
+      "imagesMax": "Only {{max}} photos can be kept — the extra ones were not added.",
+      "imagesMore": "+{{count}} more",
+      "imagesOnly": "Only image files can be added.",
+      "imageReadFailed": "Could not read {{name}}.",
+      "imageRemove": "Remove photo {{n}}",
+      "imageCover": "Cover"
     },
     "messages": {
       "channel": "Channel",

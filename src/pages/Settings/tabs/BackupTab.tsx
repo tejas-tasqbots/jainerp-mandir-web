@@ -53,6 +53,11 @@ export function BackupTab() {
           <p className="text-sm text-slate-500">
             {t('settings.backup.restoreHelp')}
           </p>
+          {/* The one fact that decides whether a restore can succeed. It lives
+              in the exported file too, but whoever downloads it is here. */}
+          <p className="mt-2 text-xs text-slate-400">
+            {t('settings.backup.panNote')}
+          </p>
         </div>
       </div>
     </div>

@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Save, X, Pencil, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, Save, X, Pencil, Trash2, RefreshCw, ImagePlus } from 'lucide-react'
 import { api } from '../../lib/api'
+import { compressImage } from '../../lib/imageCompress'
 import { useConfirm } from '../../components/ConfirmDialog'
+
+/**
+ * Photos per record. The API refuses a sixth (common/domain/images.ts), so this
+ * is the same number said twice — deliberately, because the picker must stop
+ * the trustee BEFORE the upload rather than reject five minutes of choosing.
+ */
+const MAX_IMAGES = 5
 
 export interface MasterField {
   /** Column name sent to / read from the API. */
   key: string
   label: string
-  type?: 'text' | 'number' | 'money' | 'checkbox' | 'select'
+  type?: 'text' | 'number' | 'money' | 'checkbox' | 'select' | 'images'
   /** Options for a `select` field. Ignored for every other type. */
   options?: { value: string; label: string }[]
   /**
@@ -44,12 +52,23 @@ export interface MasterEditorProps {
 
 type Row = Record<string, unknown> & { id: string }
 
-function emptyForm(fields: MasterField[]): Record<string, string | number | boolean> {
-  const f: Record<string, string | number | boolean> = {}
+type FormValue = string | number | boolean | string[]
+
+function emptyForm(fields: MasterField[]): Record<string, FormValue> {
+  const f: Record<string, FormValue> = {}
   for (const field of fields) {
-    f[field.key] = field.default ?? (field.type === 'checkbox' ? false : '')
+    f[field.key] = field.type === 'images'
+      ? []
+      : field.default ?? (field.type === 'checkbox' ? false : '')
   }
   return f
+}
+
+/** Whatever the API gave back for an images column, as an array of strings. */
+function toImageList(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  if (typeof v === 'string' && v.trim()) return [v]
+  return []
 }
 
 /** Money fields are stored in paise on the backend but edited in rupees. */
@@ -125,11 +144,15 @@ export function MasterEditor({ resource, title, description, fields, listParams,
 
   useEffect(() => { load(); loadRemoteOptions() }, [resource])
 
-  function buildPayload(values: Record<string, string | number | boolean>): Record<string, unknown> {
+  function buildPayload(values: Record<string, FormValue>): Record<string, unknown> {
     const payload: Record<string, unknown> = {}
     for (const field of fields) {
       const v = values[field.key]
-      if (field.type === 'checkbox') {
+      if (field.type === 'images') {
+        // Always sent, including empty: removing the last photo has to reach
+        // the database, and an omitted key would leave the old ones in place.
+        payload[field.key] = toImageList(v)
+      } else if (field.type === 'checkbox') {
         payload[field.key] = Boolean(v)
       } else if (field.type === 'money') {
         if (v !== '' && v != null) payload[field.key] = toPaise(v as string)
@@ -149,6 +172,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     for (const field of fields) {
       if (field.type === 'money') values[field.key] = fromPaise(row[field.key])
       else if (field.type === 'checkbox') values[field.key] = Boolean(row[field.key])
+      else if (field.type === 'images') values[field.key] = toImageList(row[field.key])
       else values[field.key] = (row[field.key] as string | number) ?? ''
     }
     setForm(values)
@@ -222,6 +246,10 @@ export function MasterEditor({ resource, title, description, fields, listParams,
 
   function renderField(field: MasterField) {
     const v = form[field.key]
+    if (field.type === 'images') {
+      return <ImagesField field={field} value={toImageList(v)}
+        onChange={next => setForm(f => ({ ...f, [field.key]: next }))} />
+    }
     if (field.type === 'checkbox') {
       return (
         <label className="flex items-center gap-2 text-sm">
@@ -271,7 +299,12 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     <div className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {fields.map(field => (
-          <div key={field.key} className={field.type === 'checkbox' ? 'flex items-end pb-2' : ''}>
+          <div key={field.key} className={
+            field.type === 'checkbox' ? 'flex items-end pb-2'
+              // A row of thumbnails needs the full width, not half of it.
+              : field.type === 'images' ? 'col-span-2'
+                : ''
+          }>
             {renderField(field)}
           </div>
         ))}
@@ -331,7 +364,9 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                     <tr key={row.id} className={active ? '' : 'opacity-50'}>
                       {fields.filter(f => f.type !== 'checkbox').map(f => (
                         <td key={f.key} className="text-sm">
-                          {f.type === 'money'
+                          {f.type === 'images'
+                            ? <ImageCell images={toImageList(row[f.key])} />
+                            : f.type === 'money'
                             ? `₹${Number(fromPaise(row[f.key])).toLocaleString('en-IN')}`
                             : f.type === 'select'
                               // The option's label, not its stored value: a fund
@@ -371,6 +406,131 @@ export function MasterEditor({ resource, title, description, fields, listParams,
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The photos on one record, in the row of a list: a strip of thumbnails, so a
+ * trustee can see at a glance which rooms still have none.
+ */
+function ImageCell({ images }: { images: string[] }) {
+  const { t } = useTranslation()
+  if (!images.length) return <span className="text-slate-300">—</span>
+  return (
+    <div className="flex items-center gap-1">
+      {images.slice(0, 3).map((src, i) => (
+        <img key={i} src={src} alt="" loading="lazy"
+          className="w-8 h-8 rounded object-cover border border-slate-200" />
+      ))}
+      {images.length > 3 && (
+        <span className="text-[11px] text-slate-400">
+          {t('settings.masters.imagesMore', { count: images.length - 3 })}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Pick up to five photos off the device for one record.
+ *
+ * Every picked file is downscaled to 1600px / ~300KB before it ever leaves the
+ * browser (lib/imageCompress.ts). A phone photo is 4-12MP; stored raw as base64
+ * it would be several MB on the row and on every screen that reads the row, and
+ * the API would refuse it anyway. Compressing here means the trustee picks the
+ * photo they actually took and it just works.
+ *
+ * The count is enforced in three places on purpose: the input is hidden once
+ * five are held, a sixth picked in the same multi-select is dropped with a
+ * message, and the API refuses a sixth regardless of what any client does.
+ */
+function ImagesField({ field, value, onChange }: {
+  field: MasterField
+  value: string[]
+  onChange: (next: string[]) => void
+}) {
+  const { t } = useTranslation()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const room = MAX_IMAGES - value.length
+
+  async function pick(files: FileList | null) {
+    if (!files?.length) return
+    setErr('')
+    const picked = Array.from(files)
+    const images = picked.filter(f => f.type.startsWith('image/'))
+    if (images.length !== picked.length) setErr(t('settings.masters.imagesOnly'))
+
+    const take = images.slice(0, room)
+    if (images.length > room) {
+      setErr(t('settings.masters.imagesMax', { max: MAX_IMAGES }))
+    }
+    if (!take.length) { if (inputRef.current) inputRef.current.value = ''; return }
+
+    setBusy(true)
+    try {
+      const out: string[] = []
+      for (const file of take) {
+        try { out.push(await compressImage(file)) }
+        catch { setErr(t('settings.masters.imageReadFailed', { name: file.name })) }
+      }
+      if (out.length) onChange([...value, ...out])
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div>
+      <label className="form-label">
+        {field.label}
+        <span className="ml-1 font-normal text-slate-400">
+          {t('settings.masters.imagesCount', { count: value.length, max: MAX_IMAGES })}
+        </span>
+      </label>
+
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {value.map((src, i) => (
+            <div key={i} className="relative group">
+              <img src={src} alt="" className="w-20 h-20 rounded-md object-cover border border-slate-200" />
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((_, j) => j !== i))}
+                title={t('common.delete') as string}
+                aria-label={t('settings.masters.imageRemove', { n: i + 1 }) as string}
+                className="absolute -top-1.5 -right-1.5 bg-white border border-slate-300 rounded-full p-0.5 text-slate-500 hover:text-brand-red shadow-sm"
+              >
+                <X size={12} />
+              </button>
+              {/* The first photo is the one a search result card shows. */}
+              {i === 0 && (
+                <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[9px] text-center rounded-b-md py-px">
+                  {t('settings.masters.imageCover')}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {room > 0 && (
+        <>
+          <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+            id={`images-${field.key}`} onChange={e => pick(e.target.files)} />
+          <label htmlFor={`images-${field.key}`}
+            className="btn-secondary btn-sm cursor-pointer inline-flex w-auto">
+            {busy ? <RefreshCw size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+            {busy ? t('settings.masters.imagesAdding') : t('settings.masters.imagesAdd')}
+          </label>
+        </>
+      )}
+
+      <p className="mt-1 text-[11px] text-slate-400">{t('settings.masters.imagesHelp', { max: MAX_IMAGES })}</p>
+      {err && <p className="mt-1 text-xs text-brand-red">{err}</p>}
     </div>
   )
 }

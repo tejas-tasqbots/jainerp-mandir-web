@@ -640,6 +640,9 @@ export function SettingsPage() {
               { key: 'session_tariff_paise', label: t('settings.masters.fields.sessionTariff'), type: 'money', placeholder: '0' },
               { key: 'hourly_tariff_paise', label: t('settings.masters.fields.hourlyTariff'), type: 'money', placeholder: '0' },
               { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
+              // Shown to devotees deciding where to hold a function
+              // (tenant-migration 040). The first is the one a listing uses.
+              { key: 'images', label: t('settings.masters.fields.hallPhotos'), type: 'images' },
             ]}
           />
 
@@ -654,6 +657,10 @@ export function SettingsPage() {
               { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
               { key: 'tariff_paise', label: t('settings.masters.fields.tariffPerNight'), type: 'money', placeholder: '0' },
               { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
+              // Shown to a devotee choosing a room in the Bhakt app and portal
+              // (tenant-migration 040), who previously saw only a number, a
+              // type and a price. The first photo is the one a search card uses.
+              { key: 'images', label: t('settings.masters.fields.roomPhotos'), type: 'images' },
             ]}
           />
 
