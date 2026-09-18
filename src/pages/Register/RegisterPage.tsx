@@ -760,10 +760,10 @@ function DetailsStep({
             hint="The 16-character URN on the Income Tax approval" />
           <Field label="12A registration number" value={form.reg_12a_number} onChange={set('reg_12a_number')} />
           <Field label="Registration No." value={form.registration_number} onChange={set('registration_number')}
-            placeholder="COOP/2021/UDAIPUR/201746" maxLength={60}
+            placeholder="SOC/2015/CITY/000123" maxLength={60}
             hint="From the trust, society or co-operative registration certificate" />
           <Field label="Darpan Registration No." value={form.darpan_number} onChange={set('darpan_number')}
-            placeholder="RJ/2024/2187120" maxLength={40}
+            placeholder="XX/2015/0123456" maxLength={40}
             hint="NITI Aayog NGO-Darpan ID — leave empty if the trust has none" />
           <Field label="Mandir contact number" value={form.mandir_mobile} onChange={set('mandir_mobile')} hint="Shown on receipts. Defaults to the administrator's number." />
           <Field label="Mandir email" value={form.mandir_email} onChange={set('mandir_email')} type="email" />

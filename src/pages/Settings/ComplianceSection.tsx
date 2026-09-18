@@ -167,8 +167,8 @@ export function ComplianceSection({ values, loaded, onChange, identity, onIdenti
   // Real spellings rather than invented ones, so a trustee recognises the
   // shape of their own certificate.
   const identityPlaceholder: Record<IdentityField, string> = {
-    registration_number: 'COOP/2021/UDAIPUR/201746',
-    darpan_number: 'RJ/2024/2187120',
+    registration_number: 'SOC/2015/CITY/000123',
+    darpan_number: 'XX/2015/0123456',
   }
   const identityHint: Record<IdentityField, string> = {
     registration_number: t('settings.profile.registrationNumberHint'),
