@@ -493,7 +493,10 @@
       "month": "दान बनाम व्यय · पिछले 12 महीने",
       "year": "दान बनाम व्यय · पिछले 5 वित्त वर्ष"
     },
-    "entries_one": "{{count}} प्रविष्टि"
+    "entries_one": "{{count}} प्रविष्टि",
+    "roomsOfTotal_one": "{{count}} कक्ष में से, आज खाली",
+    "transactions_one": "{{count}} लेनदेन",
+    "pendingPledges_one": "{{count}} लंबित संकल्प"
   },
   "dateRange": {
     "all": "सभी तिथियाँ",

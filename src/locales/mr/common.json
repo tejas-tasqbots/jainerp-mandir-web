@@ -493,7 +493,10 @@
       "month": "देणगी विरुद्ध खर्च · मागील 12 महिने",
       "year": "देणगी विरुद्ध खर्च · मागील 5 आर्थिक वर्षे"
     },
-    "entries_one": "{{count}} नोंद"
+    "entries_one": "{{count}} नोंद",
+    "roomsOfTotal_one": "{{count}} खोलीपैकी, आज रिकामी",
+    "transactions_one": "{{count}} व्यवहार",
+    "pendingPledges_one": "{{count}} प्रलंबित संकल्प"
   },
   "dateRange": {
     "all": "सर्व तारखा",
