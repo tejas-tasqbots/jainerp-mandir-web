@@ -285,21 +285,41 @@ function logoTag(mandir: ReceiptData['mandir']): string {
   return `<img class="logo" src="${src}" alt="Logo" />`
 }
 
+/**
+ * WHO the trust is: PAN, the registrar's registration number, the NGO-Darpan
+ * ID. Never gated on anything.
+ *
+ * These are identity, not a claim. `show_80g` is a switch for whether the
+ * trust's TAX-EXEMPTION details appear, and it used to sit at the top of
+ * regBlock as an early return — so a trust that turned 80G display off lost
+ * its PAN from every receipt too, and would have lost its registration number
+ * the same way. Splitting them is the point: a document always says who
+ * issued it, and separately may or may not make an 80G claim.
+ */
+function identityParts(mandir: NonNullable<ReceiptData['mandir']>): string[] {
+  const parts: string[] = []
+  if (mandir.pan) parts.push(`PAN: <b>${mandir.pan}</b>`)
+  if (mandir.registration_number) parts.push(`${L.registrationNo}: <b>${mandir.registration_number}</b>`)
+  if (mandir.darpan_number) parts.push(`${L.darpanNo}: <b>${mandir.darpan_number}</b>`)
+  return parts
+}
+
+/** The same, as one plain line — for designs that lay out their own header. */
+function identityLine(mandir: ReceiptData['mandir'], sep = ' &nbsp;|&nbsp; '): string {
+  if (!mandir) return ''
+  return identityParts(mandir).join(sep)
+}
+
 function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
-  if (!mandir?.show_80g) return ''
+  if (!mandir) return ''
   // A room or hall bill is not a donation: printing the trust's 80G and 12AB
   // numbers on it reads as a tax-exemption claim for money that buys a service.
   const donation = !r || isDonationDoc(r)
   const parts: string[] = []
-  if (donation && mandir.reg_80g_number) parts.push(`80G: <b>${mandir.reg_80g_number}</b>`)
-  if (donation && mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
-  if (donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
-  if (mandir.pan) parts.push(`PAN: <b>${mandir.pan}</b>`)
-  // NOT gated on `donation`: the registrar's number and the NGO-Darpan ID say
-  // who issued the document, not what may be deducted from tax. A room bill is
-  // issued by the same registered body as a donation receipt.
-  if (mandir.registration_number) parts.push(`${L.registrationNo}: <b>${mandir.registration_number}</b>`)
-  if (mandir.darpan_number) parts.push(`${L.darpanNo}: <b>${mandir.darpan_number}</b>`)
+  if (mandir.show_80g && donation && mandir.reg_80g_number) parts.push(`80G: <b>${mandir.reg_80g_number}</b>`)
+  if (mandir.show_80g && donation && mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
+  if (mandir.show_80g && donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
+  parts.push(...identityParts(mandir))
   if (!parts.length) return ''
   return `<div class="reg-block">${parts.join(' &nbsp;|&nbsp; ')}</div>`
 }
@@ -726,7 +746,10 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
 // ── TEMPLATE 6: Temple (Shri Ram style — two-column, orange bar) ────────────
 function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
   const hasBank = mandir.bank_account_no || mandir.upi_id
-  const hasReg = mandir.show_80g && (mandir.reg_80g_number || mandir.pan)
+  // The registration numbers keep this footer alive for a trust that shows no
+  // 80G at all — they identify the issuer and are not part of the 80G claim.
+  const hasReg = (mandir.show_80g && (mandir.reg_80g_number || mandir.pan))
+    || !!mandir.pan || !!mandir.registration_number || !!mandir.darpan_number
   return `
   <style>
     body { font-family: Arial, sans-serif; background:#f5f5f5; font-size:12px; }
@@ -776,6 +799,8 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     ${hasReg ? `<div class="tax-row">
       <span>Income Tax Exemption (80-G) Number: <b>${mandir.reg_80g_number || '—'}</b></span>
       ${mandir.pan ? `<span>PAN: <b>${mandir.pan}</b></span>` : ''}
+      ${mandir.registration_number ? `<span>${L.registrationNo}: <b>${mandir.registration_number}</b></span>` : ''}
+      ${mandir.darpan_number ? `<span>${L.darpanNo}: <b>${mandir.darpan_number}</b></span>` : ''}
     </div>` : ''}
     <div class="receipt-meta">
       <span><span class="label">${L.receiptNo}: </span><span class="val">${r.receipt_number}</span></span>
@@ -858,7 +883,13 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="header">
       ${mandir.show_logo ? logoTag(mandir) : ''}
       <h1>${mandir.name}</h1>
-      ${(isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number) || mandir.pan ? `<div class="ftr-no">${[isDonationDoc(r) && mandir.reg_80g_number ? 'FTR No / 80G: '+mandir.reg_80g_number : '', mandir.pan ? 'PAN: '+mandir.pan : ''].filter(Boolean).join(' &nbsp;|&nbsp; ')}</div>` : ''}
+      ${(() => {
+        const bits = [
+          isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number ? 'FTR No / 80G: ' + mandir.reg_80g_number : '',
+          identityLine(mandir),
+        ].filter(Boolean)
+        return bits.length ? `<div class="ftr-no">${bits.join(' &nbsp;|&nbsp; ')}</div>` : ''
+      })()}
       <div class="addr">${mandir.address}${mandir.mobile ? ' &nbsp;|&nbsp; Ph: '+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? ' &nbsp;|&nbsp; GSTIN: '+mandir.gstin : ''}</div>
     </div>
     <div class="dup-banner">${docTitle(r, L.donationReceipt).toUpperCase()}</div>
@@ -980,6 +1011,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
         </div>
       </div>
     </div>
+    ${identityLine(mandir) ? `<div class="footer-note" style="font-style:normal">${identityLine(mandir)}</div>` : ''}
     <div class="footer-note">PLEASE SEE OVERLEAF FOR PARTICULARS OF THE TRUST</div>
     <div class="print-hint">${L.printHint}</div>
   </div>`
@@ -1030,8 +1062,10 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
       </div>
       <div class="reg-bar">
         ${isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number ? `Reg. No: <b>${mandir.reg_80g_number}</b><br>` : ''}
-        ${mandir.pan ? `PAN No: <b>${mandir.pan}</b>` : ''}
-        <br>${L.date}: <b>${dateStr}</b>
+        ${mandir.pan ? `PAN No: <b>${mandir.pan}</b><br>` : ''}
+        ${mandir.registration_number ? `${L.registrationNo}: <b>${mandir.registration_number}</b><br>` : ''}
+        ${mandir.darpan_number ? `${L.darpanNo}: <b>${mandir.darpan_number}</b><br>` : ''}
+        ${L.date}: <b>${dateStr}</b>
       </div>
     </div>
     <div class="title-bar">TRUST RECEIPT</div>
@@ -1165,6 +1199,8 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
       ${mandir.reg_80g_urn && mandir.reg_80g_urn !== mandir.reg_80g_number ? `<div class="cell"><div class="k">80G URN</div><div class="v">${mandir.reg_80g_urn}</div></div>` : ''}
       ${validUpto ? `<div class="cell"><div class="k">Valid Upto</div><div class="v">${validUpto}</div></div>` : ''}
       ${mandir.pan ? `<div class="cell"><div class="k">${L.panOfTrust}</div><div class="v">${mandir.pan}</div></div>` : ''}
+      ${mandir.registration_number ? `<div class="cell"><div class="k">${L.registrationNo}</div><div class="v">${mandir.registration_number}</div></div>` : ''}
+      ${mandir.darpan_number ? `<div class="cell"><div class="k">${L.darpanNo}</div><div class="v">${mandir.darpan_number}</div></div>` : ''}
     </div>
     ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="title">
@@ -1564,6 +1600,8 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     ${r.is_80g_eligible && mandir.show_80g ? `<div class="note">${L.valid80g}</div>` : ''}
+    ${mandir.registration_number ? row(L.registrationNo, mandir.registration_number) : ''}
+    ${mandir.darpan_number ? row(L.darpanNo, mandir.darpan_number) : ''}
     ${upiQrBlock(r)}
     <div class="note">${mandir.footer || L.thankYou}</div>
   </div>`
