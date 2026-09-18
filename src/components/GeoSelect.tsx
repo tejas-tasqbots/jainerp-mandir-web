@@ -24,19 +24,81 @@ export function StateSelect({ value, onChange, className = 'form-select' }: {
   )
 }
 
+/**
+ * City, with a way out.
+ *
+ * This was a bare <select> over a bundled list, and the list held the ten
+ * biggest cities of each state. A trust in Rajsamand or Beawar opened it, did
+ * not find its town, and could not finish onboarding — there was no other way
+ * to enter a city. The list is much longer now, and that is still not the fix:
+ * India has ~800 districts and far more towns, and districts get reorganised.
+ * Any list will miss somebody.
+ *
+ * So the last option is always "My city is not listed", which swaps in a text
+ * box. A typed city is saved exactly as typed and is offered back as the
+ * selected option next time, so nothing is lost on a later edit.
+ *
+ * Still a <select> rather than `<input list=datalist>`: the datalist version
+ * collided with the browser's own autofill overlay, which is why native
+ * selects were chosen here in the first place.
+ */
+const OTHER = '__other__'
+
 export function CitySelect({ state, value, onChange, className = 'form-select' }: {
   state: string; value: string; onChange: (city: string) => void; className?: string
 }) {
+  const { t } = useTranslation()
   const [cities, setCities] = useState<string[]>([])
+  const [typing, setTyping] = useState(false)
   useEffect(() => {
     if (!state) { setCities([]); return }
     api.get(`/geo/states/${encodeURIComponent(state)}/cities`).then(r => setCities(r.data.data ?? r.data ?? [])).catch(() => setCities([]))
   }, [state])
-  const opts = value && !cities.includes(value) ? [value, ...cities] : cities
+
+  // Changing state invalidates the town that was typed for the previous one.
+  useEffect(() => { setTyping(false) }, [state])
+
+  const known = value && cities.includes(value)
+  // A value already saved that is not in the list (typed here before, or from
+  // an older build) keeps its place at the top rather than silently blanking.
+  const opts = value && !known ? [value, ...cities] : cities
+
+  if (typing) {
+    return (
+      <div className="flex gap-2">
+        <input
+          className="form-input"
+          autoFocus
+          value={value}
+          placeholder={t('ui.typeCity')}
+          maxLength={100}
+          onChange={e => onChange(e.target.value)}
+        />
+        <button
+          type="button"
+          className="btn-secondary btn-sm whitespace-nowrap"
+          onClick={() => { setTyping(false); onChange('') }}
+        >
+          {t('ui.pickFromList')}
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <select className={className} value={value} autoComplete="off" disabled={!state} onChange={e => onChange(e.target.value)}>
-      <option value="">{state ? 'Select city…' : 'Pick a state first'}</option>
+    <select
+      className={className}
+      value={value}
+      autoComplete="off"
+      disabled={!state}
+      onChange={e => {
+        if (e.target.value === OTHER) { setTyping(true); onChange('') ; return }
+        onChange(e.target.value)
+      }}
+    >
+      <option value="">{state ? t('ui.selectCity') : t('ui.pickStateFirst')}</option>
       {opts.map(c => <option key={c} value={c}>{c}</option>)}
+      <option value={OTHER}>{t('ui.cityNotListed')}</option>
     </select>
   )
 }

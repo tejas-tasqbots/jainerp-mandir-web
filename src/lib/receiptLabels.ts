@@ -24,6 +24,9 @@ export interface ReceiptLabels {
   mode: string
   date: string
   receiptNo: string
+  /** The registrar's own registration number, and the NGO-Darpan ID. */
+  registrationNo: string
+  darpanNo: string
   pan: string
   donorPan: string
   panOfTrust: string
@@ -81,6 +84,8 @@ const en: ReceiptLabels = {
   mode: 'Mode',
   date: 'Date',
   receiptNo: 'Receipt No',
+  registrationNo: 'Registration No.',
+  darpanNo: 'Darpan Registration No.',
   pan: 'PAN',
   donorPan: 'Donor PAN',
   panOfTrust: 'PAN of Trust',
@@ -135,6 +140,8 @@ const hi: ReceiptLabels = {
   mode: 'माध्यम',
   date: 'दिनांक',
   receiptNo: 'रसीद क्रमांक',
+  registrationNo: 'पंजीकरण क्रमांक',
+  darpanNo: 'दर्पण पंजीकरण क्रमांक',
   pan: 'पैन',
   donorPan: 'दाता का पैन',
   panOfTrust: 'ट्रस्ट का पैन',
@@ -189,6 +196,8 @@ const mr: ReceiptLabels = {
   mode: 'पद्धत',
   date: 'दिनांक',
   receiptNo: 'पावती क्रमांक',
+  registrationNo: 'नोंदणी क्रमांक',
+  darpanNo: 'दर्पण नोंदणी क्रमांक',
   pan: 'पॅन',
   donorPan: 'देणगीदाराचा पॅन',
   panOfTrust: 'ट्रस्टचा पॅन',
@@ -243,6 +252,8 @@ const gu: ReceiptLabels = {
   mode: 'પદ્ધતિ',
   date: 'તારીખ',
   receiptNo: 'પાવતી નંબર',
+  registrationNo: 'નોંધણી નંબર',
+  darpanNo: 'દર્પણ નોંધણી નંબર',
   pan: 'પાન',
   donorPan: 'દાતાનો પાન',
   panOfTrust: 'ટ્રસ્ટનો પાન',
@@ -297,6 +308,8 @@ const kn: ReceiptLabels = {
   mode: 'ವಿಧಾನ',
   date: 'ದಿನಾಂಕ',
   receiptNo: 'ರಶೀದಿ ಸಂಖ್ಯೆ',
+  registrationNo: 'ನೋಂದಣಿ ಸಂಖ್ಯೆ',
+  darpanNo: 'ದರ್ಪಣ ನೋಂದಣಿ ಸಂಖ್ಯೆ',
   pan: 'ಪ್ಯಾನ್',
   donorPan: 'ದಾನಿಯ ಪ್ಯಾನ್',
   panOfTrust: 'ಟ್ರಸ್ಟ್‌ನ ಪ್ಯಾನ್',
@@ -351,6 +364,8 @@ const ta: ReceiptLabels = {
   mode: 'முறை',
   date: 'தேதி',
   receiptNo: 'ரசீது எண்',
+  registrationNo: 'பதிவு எண்',
+  darpanNo: 'தர்பண் பதிவு எண்',
   pan: 'பான்',
   donorPan: 'நன்கொடையாளரின் பான்',
   panOfTrust: 'அறக்கட்டளையின் பான்',
@@ -405,6 +420,8 @@ const te: ReceiptLabels = {
   mode: 'విధానం',
   date: 'తేదీ',
   receiptNo: 'రసీదు సంఖ్య',
+  registrationNo: 'నమోదు సంఖ్య',
+  darpanNo: 'దర్పణ్ నమోదు సంఖ్య',
   pan: 'పాన్',
   donorPan: 'దాత పాన్',
   panOfTrust: 'ట్రస్ట్ పాన్',

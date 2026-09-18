@@ -14,7 +14,10 @@ import {
   statutoryIssue,
   type StatutoryIssue,
 } from '../../lib/statutoryIds'
-import { COMPLIANCE_FIELDS, type ComplianceField, type ComplianceValues } from './complianceFields'
+import {
+  COMPLIANCE_FIELDS, IDENTITY_FIELDS, IDENTITY_MAX_LENGTH,
+  type ComplianceField, type ComplianceValues, type IdentityField, type IdentityValues,
+} from './complianceFields'
 
 /**
  * Settings → Temple Profile → Registration & Compliance.
@@ -26,6 +29,11 @@ import { COMPLIANCE_FIELDS, type ComplianceField, type ComplianceValues } from '
  *     reviewed change request.
  *   OPTIONAL — GSTIN, TAN, FSSAI. Registrations only some trusts hold (most
  *     temples are not GST-registered). Always editable and clearable.
+ *   IDENTITY — the registrar's own registration number and the NGO-Darpan ID.
+ *     Who the body IS rather than what it may claim, so they print on every
+ *     document and not only on donations. Free text: their shape varies by
+ *     state and registrar, and a rule invented here would reject valid
+ *     numbers.
  *
  * Before this, all four visible fields were locked alike, so a trust that had
  * typed "0" into GSTIN during onboarding could neither clear it nor request an
@@ -41,12 +49,15 @@ interface Props {
   values: ComplianceValues
   loaded: ComplianceValues
   onChange: (field: ComplianceField, value: string) => void
+  /** The free-text identity registrations, and their setter. */
+  identity: IdentityValues
+  onIdentityChange: (field: IdentityField, value: string) => void
   sens: ReturnType<typeof useSensitiveFields>
   /** From `complianceIssues` — one per changed field that fails its rule. */
   issues: Partial<Record<ComplianceField, StatutoryIssue>>
 }
 
-export function ComplianceSection({ values, loaded, onChange, sens, issues }: Props) {
+export function ComplianceSection({ values, loaded, onChange, identity, onIdentityChange, sens, issues }: Props) {
   const { t } = useTranslation()
 
   const label: Record<ComplianceField, string> = {
@@ -149,6 +160,21 @@ export function ComplianceSection({ values, loaded, onChange, sens, issues }: Pr
     ...(loaded.reg_12a_number ? ['reg_12a_number' as const] : [])]
   const optional: ComplianceField[] = ['gstin', 'tan', 'fssai_license']
 
+  const identityLabel: Record<IdentityField, string> = {
+    registration_number: t('settings.profile.registrationNumber'),
+    darpan_number: t('settings.profile.darpanNumber'),
+  }
+  // Real spellings rather than invented ones, so a trustee recognises the
+  // shape of their own certificate.
+  const identityPlaceholder: Record<IdentityField, string> = {
+    registration_number: 'COOP/2021/UDAIPUR/201746',
+    darpan_number: 'RJ/2024/2187120',
+  }
+  const identityHint: Record<IdentityField, string> = {
+    registration_number: t('settings.profile.registrationNumberHint'),
+    darpan_number: t('settings.profile.darpanNumberHint'),
+  }
+
   return (
     <div className="border-t border-slate-100 pt-4 space-y-5">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('settings.profile.registrationCompliance')}</p>
@@ -166,6 +192,27 @@ export function ComplianceSection({ values, loaded, onChange, sens, issues }: Pr
         <h4 id="compliance-optional" className="text-sm font-semibold text-slate-700">{t('settings.profile.optionalHeading')}</h4>
         <p className="text-xs text-slate-500 mb-3">{t('settings.profile.optionalHelp')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{optional.map(field)}</div>
+      </section>
+
+      <section aria-labelledby="compliance-identity">
+        <h4 id="compliance-identity" className="text-sm font-semibold text-slate-700">{t('settings.profile.identityHeading')}</h4>
+        <p className="text-xs text-slate-500 mb-3">{t('settings.profile.identityHelp')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {IDENTITY_FIELDS.map((f) => (
+            <div key={f} data-field={f}>
+              <label className="form-label" htmlFor={`identity-${f}`}>{identityLabel[f]}</label>
+              <input
+                id={`identity-${f}`}
+                className="form-input"
+                value={identity[f] ?? ''}
+                placeholder={identityPlaceholder[f]}
+                maxLength={IDENTITY_MAX_LENGTH[f]}
+                onChange={e => onIdentityChange(f, e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-slate-400">{identityHint[f]}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   )

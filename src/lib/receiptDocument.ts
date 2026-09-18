@@ -56,6 +56,9 @@ export interface ReceiptDocument {
     reg_80g_valid_upto?: string | Date | null;
     reg_12a_number?: string | null;
     reg_12ab_number?: string | null;
+    /** The registrar's own number, and the NGO-Darpan ID (migration 041). */
+    registration_number?: string | null;
+    darpan_number?: string | null;
     show_80g?: boolean;
     upi_id?: string | null;
     bank_account_name?: string | null;
@@ -74,6 +77,9 @@ export interface ReceiptDocument {
 interface Labels {
   donationReceipt: string;
   receiptNo: string;
+  /** The registrar's own registration number, and the NGO-Darpan ID. */
+  registrationNo: string;
+  darpanNo: string;
   date: string;
   receivedFrom: string;
   soldTo: string;
@@ -101,7 +107,7 @@ interface Labels {
 
 const LABELS: Record<ReceiptLanguage, Labels> = {
   en: {
-    donationReceipt: 'Donation Receipt', receiptNo: 'Receipt No.', date: 'Date',
+    donationReceipt: 'Donation Receipt', receiptNo: 'Receipt No.', registrationNo: 'Registration No.', darpanNo: 'Darpan Registration No.', date: 'Date',
     receivedFrom: 'Received with gratitude from', soldTo: 'Received from', amount: 'Amount',
     amountInWords: 'In words', purpose: 'Purpose', paymentMode: 'Payment mode',
     eligible80g: '80G eligible', yes: 'Yes', no: 'No', mobile: 'Mobile', pan: 'PAN',
@@ -114,7 +120,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'This receipt has been cancelled',
   },
   hi: {
-    donationReceipt: 'दान रसीद', receiptNo: 'रसीद क्रमांक', date: 'दिनांक',
+    donationReceipt: 'दान रसीद', receiptNo: 'रसीद क्रमांक', registrationNo: 'पंजीकरण क्रमांक', darpanNo: 'दर्पण पंजीकरण क्रमांक', date: 'दिनांक',
     receivedFrom: 'सादर प्राप्त', soldTo: 'प्राप्त', amount: 'राशि',
     amountInWords: 'शब्दों में', purpose: 'उद्देश्य', paymentMode: 'भुगतान माध्यम',
     eligible80g: '80G पात्र', yes: 'हाँ', no: 'नहीं', mobile: 'मोबाइल', pan: 'PAN',
@@ -127,7 +133,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'यह रसीद निरस्त कर दी गई है',
   },
   mr: {
-    donationReceipt: 'दान पावती', receiptNo: 'पावती क्रमांक', date: 'दिनांक',
+    donationReceipt: 'दान पावती', receiptNo: 'पावती क्रमांक', registrationNo: 'नोंदणी क्रमांक', darpanNo: 'दर्पण नोंदणी क्रमांक', date: 'दिनांक',
     receivedFrom: 'सादर प्राप्त', soldTo: 'प्राप्त', amount: 'रक्कम',
     amountInWords: 'अक्षरी', purpose: 'उद्देश', paymentMode: 'भरणा प्रकार',
     eligible80g: '80G पात्र', yes: 'होय', no: 'नाही', mobile: 'मोबाइल', pan: 'PAN',
@@ -140,7 +146,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'ही पावती रद्द करण्यात आली आहे',
   },
   gu: {
-    donationReceipt: 'દાન પાવતી', receiptNo: 'પાવતી નંબર', date: 'તારીખ',
+    donationReceipt: 'દાન પાવતી', receiptNo: 'પાવતી નંબર', registrationNo: 'નોંધણી નંબર', darpanNo: 'દર્પણ નોંધણી નંબર', date: 'તારીખ',
     receivedFrom: 'સાદર પ્રાપ્ત', soldTo: 'પ્રાપ્ત', amount: 'રકમ',
     amountInWords: 'શબ્દોમાં', purpose: 'હેતુ', paymentMode: 'ચુકવણી પદ્ધતિ',
     eligible80g: '80G પાત્ર', yes: 'હા', no: 'ના', mobile: 'મોબાઇલ', pan: 'PAN',
@@ -153,7 +159,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'આ પાવતી રદ કરવામાં આવી છે',
   },
   kn: {
-    donationReceipt: 'ದಾನ ರಶೀದಿ', receiptNo: 'ರಶೀದಿ ಸಂಖ್ಯೆ', date: 'ದಿನಾಂಕ',
+    donationReceipt: 'ದಾನ ರಶೀದಿ', receiptNo: 'ರಶೀದಿ ಸಂಖ್ಯೆ', registrationNo: 'ನೋಂದಣಿ ಸಂಖ್ಯೆ', darpanNo: 'ದರ್ಪಣ ನೋಂದಣಿ ಸಂಖ್ಯೆ', date: 'ದಿನಾಂಕ',
     receivedFrom: 'ಕೃತಜ್ಞತೆಯಿಂದ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', soldTo: 'ಇವರಿಂದ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', amount: 'ಮೊತ್ತ',
     amountInWords: 'ಅಕ್ಷರಗಳಲ್ಲಿ', purpose: 'ಉದ್ದೇಶ', paymentMode: 'ಪಾವತಿ ವಿಧಾನ',
     eligible80g: '80G ಅರ್ಹ', yes: 'ಹೌದು', no: 'ಇಲ್ಲ', mobile: 'ಮೊಬೈಲ್', pan: 'PAN',
@@ -166,7 +172,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'ಈ ರಶೀದಿಯನ್ನು ರದ್ದುಪಡಿಸಲಾಗಿದೆ',
   },
   ta: {
-    donationReceipt: 'நன்கொடை ரசீது', receiptNo: 'ரசீது எண்', date: 'தேதி',
+    donationReceipt: 'நன்கொடை ரசீது', receiptNo: 'ரசீது எண்', registrationNo: 'பதிவு எண்', darpanNo: 'தர்பண் பதிவு எண்', date: 'தேதி',
     receivedFrom: 'நன்றியுடன் பெறப்பட்டது', soldTo: 'பெறப்பட்டது', amount: 'தொகை',
     amountInWords: 'எழுத்தில்', purpose: 'நோக்கம்', paymentMode: 'செலுத்தும் முறை',
     eligible80g: '80G தகுதி', yes: 'ஆம்', no: 'இல்லை', mobile: 'மொபைல்', pan: 'PAN',
@@ -179,7 +185,7 @@ const LABELS: Record<ReceiptLanguage, Labels> = {
     voided: 'இந்த ரசீது ரத்து செய்யப்பட்டது',
   },
   te: {
-    donationReceipt: 'విరాళ రసీదు', receiptNo: 'రసీదు సంఖ్య', date: 'తేదీ',
+    donationReceipt: 'విరాళ రసీదు', receiptNo: 'రసీదు సంఖ్య', registrationNo: 'నమోదు సంఖ్య', darpanNo: 'దర్పణ్ నమోదు సంఖ్య', date: 'తేదీ',
     receivedFrom: 'కృతజ్ఞతతో స్వీకరించబడింది', soldTo: 'స్వీకరించబడింది', amount: 'మొత్తం',
     amountInWords: 'అక్షరాలలో', purpose: 'ఉద్దేశ్యం', paymentMode: 'చెల్లింపు విధానం',
     eligible80g: '80G అర్హత', yes: 'అవును', no: 'కాదు', mobile: 'మొబైల్', pan: 'PAN',
@@ -279,6 +285,10 @@ export function receiptParts(r: ReceiptDocument): { lang: ReceiptLanguage; title
   if (donation && m.show_80g && m.reg_80g_number) regs.push(`80G ${esc(m.reg_80g_number)}`);
   if (donation && m.show_80g && (m.reg_12ab_number || m.reg_12a_number)) regs.push(`12A ${esc(m.reg_12ab_number || m.reg_12a_number)}`);
   if (m.show_gstin && m.gstin) regs.push(`GSTIN ${esc(m.gstin)}`);
+  // Not gated on `donation`: these say who ISSUED the document, not what may be
+  // deducted from tax, so a room bill carries them exactly as a receipt does.
+  if (m.registration_number) regs.push(`${L.registrationNo} ${esc(m.registration_number)}`);
+  if (m.darpan_number) regs.push(`${L.darpanNo} ${esc(m.darpan_number)}`);
 
   const contact = [m.mobile, m.email].filter(Boolean).map(esc).join(' · ');
   const donorBits = [

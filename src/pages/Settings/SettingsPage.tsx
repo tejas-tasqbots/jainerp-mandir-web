@@ -6,7 +6,8 @@ import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
 import { useSensitiveFields, LockedField } from '../../components/SensitiveFields'
 import { ComplianceSection } from './ComplianceSection'
 import {
-  COMPLIANCE_FIELDS, complianceIssues, type ComplianceField, type ComplianceValues,
+  COMPLIANCE_FIELDS, complianceIssues, IDENTITY_FIELDS,
+  type ComplianceField, type ComplianceValues, type IdentityField, type IdentityValues,
 } from './complianceFields'
 import { useToast } from '../../components/kit/Toast'
 import { openRazorpayCheckout } from '../../lib/razorpay'
@@ -128,6 +129,11 @@ export function SettingsPage() {
   const blankCompliance = Object.fromEntries(COMPLIANCE_FIELDS.map(f => [f, ''])) as ComplianceValues
   const [compliance, setCompliance] = useState<ComplianceValues>(blankCompliance)
   const [loadedCompliance, setLoadedCompliance] = useState<ComplianceValues>(blankCompliance)
+  // The free-text identity registrations. No `loaded` twin and no issues map:
+  // they have no format rule to break, so every value is saveable and an empty
+  // one simply clears the field.
+  const blankIdentity = Object.fromEntries(IDENTITY_FIELDS.map(f => [f, ''])) as IdentityValues
+  const [identity, setIdentity] = useState<IdentityValues>(blankIdentity)
   const issues = complianceIssues(compliance, loadedCompliance, sens.pendingFor('pan')?.requested_value)
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [history, setHistory] = useState<BillingHistoryData | null>(null)
@@ -218,6 +224,9 @@ export function SettingsPage() {
       ])) as ComplianceValues
       setCompliance(loaded)
       setLoadedCompliance(loaded)
+      setIdentity(Object.fromEntries(
+        IDENTITY_FIELDS.map(f => [f, String(p[f] ?? '')]),
+      ) as IdentityValues)
     }
   }, [profile])
 
@@ -342,6 +351,7 @@ export function SettingsPage() {
         lat: form.lat, lng: form.lng,
         // Blank goes as null: "no GSTIN" is an absence, and the API stores it so.
         ...Object.fromEntries(COMPLIANCE_FIELDS.map(f => [f, compliance[f].trim() || null])),
+        ...Object.fromEntries(IDENTITY_FIELDS.map(f => [f, identity[f].trim() || null])),
       }
       // Verified fields are rejected by the API, and it rejects the whole
       // payload — leaving an unchanged locked value in here would block the
@@ -475,6 +485,8 @@ export function SettingsPage() {
               values={compliance}
               loaded={loadedCompliance}
               onChange={(f: ComplianceField, v: string) => setCompliance(c => ({ ...c, [f]: v }))}
+              identity={identity}
+              onIdentityChange={(f: IdentityField, v: string) => setIdentity(i => ({ ...i, [f]: v }))}
               sens={sens}
               issues={issues}
             />

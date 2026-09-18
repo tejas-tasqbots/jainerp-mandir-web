@@ -2046,7 +2046,13 @@
       "verifiedHeading": "Registrations for 80G receipts",
       "verifiedHelp": "Printed on every 80G receipt. Check them against your certificates — once the platform verifies them, a change needs a request we review.",
       "verifiedHelpLocked": "Verified by the platform. To change one, use Request change — nothing changes until we approve it.",
-      "website": "Website"
+      "website": "Website",
+      "identityHeading": "Trust identity",
+      "identityHelp": "Who the trust is registered as. Printed on every receipt and bill.",
+      "registrationNumber": "Registration No.",
+      "registrationNumberHint": "From the trust, society or co-operative registration certificate",
+      "darpanNumber": "Darpan Registration No.",
+      "darpanNumberHint": "NITI Aayog NGO-Darpan ID — needed for CSR and government grants"
     },
     "receipts": {
       "accountNumber": "Account Number",
@@ -2790,7 +2796,12 @@
     "splitColAccount": "Received in",
     "splitBalance": "Balance ₹{{amount}}",
     "splitOver": "Over by ₹{{amount}}",
-    "splitSettled": "Fully settled"
+    "splitSettled": "Fully settled",
+    "selectCity": "Select city…",
+    "pickStateFirst": "Pick a state first",
+    "cityNotListed": "My city is not listed…",
+    "typeCity": "Type your city or town",
+    "pickFromList": "Pick from list"
   },
   "vendors": {
     "accountNoPlaceholder": "Account no",

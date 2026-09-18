@@ -2043,7 +2043,13 @@
       "verifiedHeading": "80G रसीदों के लिए पंजीकरण",
       "verifiedHelp": "ये हर 80G रसीद पर छपते हैं। इन्हें अपने प्रमाणपत्रों से मिला लें — प्लेटफ़ॉर्म द्वारा सत्यापन के बाद इन्हें बदलने के लिए अनुरोध भेजना होगा, जिसकी हम समीक्षा करेंगे।",
       "verifiedHelpLocked": "प्लेटफ़ॉर्म द्वारा सत्यापित। बदलने के लिए \"बदलाव का अनुरोध\" करें — हमारी स्वीकृति तक कुछ नहीं बदलेगा।",
-      "website": "वेबसाइट"
+      "website": "वेबसाइट",
+      "identityHeading": "ट्रस्ट की पहचान",
+      "identityHelp": "ट्रस्ट किस रूप में पंजीकृत है। हर रसीद और बिल पर छपता है।",
+      "registrationNumber": "पंजीकरण क्रमांक",
+      "registrationNumberHint": "ट्रस्ट, सोसायटी या सहकारी पंजीकरण प्रमाणपत्र से",
+      "darpanNumber": "दर्पण पंजीकरण क्रमांक",
+      "darpanNumberHint": "नीति आयोग NGO-दर्पण आईडी — CSR और सरकारी अनुदान के लिए ज़रूरी"
     },
     "receipts": {
       "accountNumber": "खाता संख्या",
@@ -2787,7 +2793,12 @@
     "splitColAccount": "किस खाते में",
     "splitBalance": "शेष ₹{{amount}}",
     "splitOver": "₹{{amount}} अधिक",
-    "splitSettled": "पूरा भुगतान हो गया"
+    "splitSettled": "पूरा भुगतान हो गया",
+    "selectCity": "शहर चुनें…",
+    "pickStateFirst": "पहले राज्य चुनें",
+    "cityNotListed": "मेरा शहर सूची में नहीं है…",
+    "typeCity": "अपना शहर या कस्बा लिखें",
+    "pickFromList": "सूची से चुनें"
   },
   "vendors": {
     "accountNoPlaceholder": "खाता संख्या",

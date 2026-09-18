@@ -68,6 +68,9 @@ export interface ReceiptData {
     reg_80g_urn?: string | null
     reg_80g_valid_upto?: string | null
     reg_12a_number?: string | null
+    /** The registrar's own number, and the NGO-Darpan ID (migration 041). */
+    registration_number?: string | null
+    darpan_number?: string | null
     reg_12ab_number?: string | null
     upi_id?: string | null
     bank_account_name?: string | null
@@ -292,6 +295,11 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   if (donation && mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
   if (donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
   if (mandir.pan) parts.push(`PAN: <b>${mandir.pan}</b>`)
+  // NOT gated on `donation`: the registrar's number and the NGO-Darpan ID say
+  // who issued the document, not what may be deducted from tax. A room bill is
+  // issued by the same registered body as a donation receipt.
+  if (mandir.registration_number) parts.push(`${L.registrationNo}: <b>${mandir.registration_number}</b>`)
+  if (mandir.darpan_number) parts.push(`${L.darpanNo}: <b>${mandir.darpan_number}</b>`)
   if (!parts.length) return ''
   return `<div class="reg-block">${parts.join(' &nbsp;|&nbsp; ')}</div>`
 }

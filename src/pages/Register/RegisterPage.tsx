@@ -64,6 +64,8 @@ interface DetailsForm {
   gstin: string
   pan: string
   reg_80g_number: string
+  registration_number: string
+  darpan_number: string
   reg_12a_number: string
 }
 
@@ -73,6 +75,7 @@ const EMPTY: DetailsForm = {
   admin_name: '', admin_mobile: '', admin_email: '',
   mandir_mobile: '', mandir_email: '', website: '',
   gstin: '', pan: '', reg_80g_number: '', reg_12a_number: '',
+  registration_number: '', darpan_number: '',
 }
 
 /** Statuses where the only sensible screen is "what is happening to my account". */
@@ -190,6 +193,8 @@ export function RegisterPage() {
       gstin: p.gstin ?? '',
       pan: p.pan ?? '',
       reg_80g_number: p.reg_80g_number ?? '',
+      registration_number: p.registration_number ?? '',
+      darpan_number: p.darpan_number ?? '',
       reg_12a_number: p.reg_12a_number ?? '',
     })
     if (r.billing_cycle) setCycle(r.billing_cycle)
@@ -241,6 +246,9 @@ export function RegisterPage() {
       pan: normaliseStatutory('pan', form.pan) ?? undefined,
       reg_80g_number: normaliseStatutory('reg_80g_number', form.reg_80g_number) ?? undefined,
       reg_12a_number: normaliseStatutory('reg_12a_number', form.reg_12a_number) ?? undefined,
+      // Free text: no national format to normalise against (migration 041).
+      registration_number: form.registration_number.trim() || undefined,
+      darpan_number: form.darpan_number.trim() || undefined,
       source: 'website' as const,
     }
   }
@@ -751,6 +759,12 @@ function DetailsStep({
             placeholder={STATUTORY_EXAMPLE.reg_80g_number} maxLength={16}
             hint="The 16-character URN on the Income Tax approval" />
           <Field label="12A registration number" value={form.reg_12a_number} onChange={set('reg_12a_number')} />
+          <Field label="Registration No." value={form.registration_number} onChange={set('registration_number')}
+            placeholder="COOP/2021/UDAIPUR/201746" maxLength={60}
+            hint="From the trust, society or co-operative registration certificate" />
+          <Field label="Darpan Registration No." value={form.darpan_number} onChange={set('darpan_number')}
+            placeholder="RJ/2024/2187120" maxLength={40}
+            hint="NITI Aayog NGO-Darpan ID — leave empty if the trust has none" />
           <Field label="Mandir contact number" value={form.mandir_mobile} onChange={set('mandir_mobile')} hint="Shown on receipts. Defaults to the administrator's number." />
           <Field label="Mandir email" value={form.mandir_email} onChange={set('mandir_email')} type="email" />
         </div>
