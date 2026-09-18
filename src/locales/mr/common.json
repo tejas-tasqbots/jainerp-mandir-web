@@ -2111,7 +2111,15 @@
       "upiId": "यूपीआय आयडी",
       "upiQrNeedsId": "QR पावतीवर दिसण्यासाठी वर UPI ID जोडा.",
       "uploadLogo": "लोगो अपलोड करा",
-      "uploadLogoHelp": "PNG, JPG, SVG · कमाल 2 MB · बेस64 म्हणून साठवलेले"
+      "uploadLogoHelp": "PNG, JPG, SVG · कमाल 2 MB · बेस64 म्हणून साठवलेले",
+      "groupDesign": "डिझाइन",
+      "groupDesignHint": "पावती कशी दिसेल",
+      "groupPrinting": "छपाई",
+      "groupPrintingHint": "प्रती, कागद आणि भाषा",
+      "groupSlips": "काउंटर पावत्या",
+      "groupSlipsHint": "प्रसाद, सेवा आणि भोजनशाळा टोकन",
+      "groupContent": "पावतीवर काय छापले जाईल",
+      "groupContentHint": "मंदिर प्रोफाइल आणि खात्यांमधून"
     },
     "save": "जतन करा",
     "saved": "जतन केले",

@@ -370,6 +370,9 @@ const BLANK = {
   name: '', address: '', mobile: '', email: '',
   gstin: '', pan: '', tan: '',
   reg_80g_number: '', reg_80g_urn: '', reg_80g_valid_upto: '', reg_12a_number: '', reg_12ab_number: '',
+  // Trust identity (tenant migration 041). Prints on EVERY document, so the
+  // preview is wrong without it — which is exactly how it was reported.
+  registration_number: '', darpan_number: '',
 }
 
 /**
@@ -448,6 +451,8 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
       reg_80g_valid_upto: form.reg_80g_valid_upto || null,
       reg_12a_number: form.reg_12a_number || null,
       reg_12ab_number: form.reg_12ab_number || null,
+      registration_number: form.registration_number || null,
+      darpan_number: form.darpan_number || null,
       upi_id: form.upi_id || 'temple@upi',
       bank_account_name: form.bank_account_name || null,
       bank_account_no: form.bank_account_no || null,
@@ -530,6 +535,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         reg_80g_valid_upto: (p.reg_80g_valid_upto as string) || '',
         reg_12a_number: (p.reg_12a_number as string) || '',
         reg_12ab_number: (p.reg_12ab_number as string) || '',
+        registration_number: (p.registration_number as string) || '',
+        darpan_number: (p.darpan_number as string) || '',
       }))
     }).catch(() => {})
   }, [])
@@ -624,6 +631,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
       : []),
     { label: t('settings.receipts.statutory80gValidUpto'), value: form.reg_80g_valid_upto ? formatCalendarDate(form.reg_80g_valid_upto) : '' },
     { label: '12A / 12AB', value: form.reg_12ab_number || form.reg_12a_number },
+    // Identity, not a tax claim — printed on every document including a room
+    // bill, so it belongs in this list of what a receipt will carry.
+    { label: t('settings.profile.registrationNumber'), value: form.registration_number },
+    { label: t('settings.profile.darpanNumber'), value: form.darpan_number },
   ]
   const missingRequired = statutory.filter(s => s.required && !s.value)
   const selected = TEMPLATES.find(t => t.id === form.receipt_template)
@@ -650,33 +661,62 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           </div>
         )}
 
-        {/* Statutory identity (read-only — edited in Temple Profile) */}
+        <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupDesign')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupDesignHint')}</p>
+          </div>
+
+        {/* Template */}
         <div className="card">
           <div className="card-header flex items-center gap-2">
-            <ShieldCheck size={15} className="text-navy-900" />
-            <h3 className="font-semibold text-sm">{t('settings.receipts.statutoryHeading')}</h3>
-            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.statutorySource')}</span>
+            <h3 className="font-semibold text-sm">{t('settings.receipts.templateHeading')}</h3>
+            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length })}</span>
           </div>
-          <div className="card-body">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {statutory.map(s => (
-                <div key={s.label} className="rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">{s.label}</div>
-                  {s.value ? (
-                    <div className="text-sm font-semibold text-slate-800 font-mono truncate" title={s.value}>{s.value}</div>
-                  ) : (
-                    <div className={`text-xs font-medium ${s.required ? 'text-amber-600' : 'text-slate-400'}`}>{s.required ? t('settings.receipts.notSetRequired') : t('settings.receipts.notSet')}</div>
+          <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {TEMPLATES.map(t => {
+              const active = form.receipt_template === t.id
+              return (
+                <button type="button" key={t.id} onClick={() => set('receipt_template', t.id)}
+                  className={`relative text-left border rounded-lg p-2.5 transition-all ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'}`}>
+                  {active && (
+                    <span className="absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-navy-900 text-white">
+                      <Check size={12} />
+                    </span>
                   )}
-                </div>
-              ))}
+                  <div className="rounded-md overflow-hidden bg-white" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <p className="font-semibold text-sm text-slate-800">{t.label}</p>
+                    {t.badge && (
+                      <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{t.badge}</span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Colour & Visibility */}
+        <div className="card">
+          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.colourHeading')}</h3></div>
+          <div className="card-body space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="form-label mb-0 w-28">{t('settings.receipts.primaryColour')}</label>
+              <input type="color" value={form.primary_color} onChange={e => set('primary_color', e.target.value)}
+                className="h-9 w-16 rounded border border-slate-200 cursor-pointer" />
+              <span className="text-xs font-mono text-slate-500">{form.primary_color}</span>
             </div>
-            {missingRequired.length > 0 && (
-              <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                <Trans i18nKey="settings.receipts.missingWarning" components={{ bold: <b />, bold2: <b /> }} />
-              </div>
-            )}
-            <p className="mt-2 text-[11px] text-slate-400"><Trans i18nKey="settings.receipts.statutoryHelp" components={{ bold: <b /> }} /></p>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_gstin_on_header}
+                onChange={e => set('show_gstin_on_header', e.target.checked)} />
+              {t('settings.receipts.showGstin')}
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_80g_on_receipt}
+                onChange={e => set('show_80g_on_receipt', e.target.checked)} />
+              {t('settings.receipts.show80g')}
+            </label>
           </div>
         </div>
 
@@ -724,7 +764,13 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             </label>
           </div>
         </div>
+        </section>
 
+        <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupPrinting')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupPrintingHint')}</p>
+          </div>
         {/* Printing — copies, paper, receipt language, UPI QR */}
         <div className="card">
           <div className="card-header">
@@ -777,6 +823,13 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             )}
           </div>
         </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupSlips')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupSlipsHint')}</p>
+          </div>
 
         {/* ── COUNTER SLIPS ───────────────────────────────────────────────
             Prasad, Seva and Bhojanshala used to print through the settings
@@ -852,57 +905,40 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <p className="text-xs text-slate-500">{t('settings.slips.note')}</p>
           </div>
         </div>
+        </section>
 
-        {/* Template */}
+        <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupContent')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupContentHint')}</p>
+          </div>
+        {/* Statutory identity (read-only — edited in Temple Profile) */}
         <div className="card">
           <div className="card-header flex items-center gap-2">
-            <h3 className="font-semibold text-sm">{t('settings.receipts.templateHeading')}</h3>
-            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length })}</span>
+            <ShieldCheck size={15} className="text-navy-900" />
+            <h3 className="font-semibold text-sm">{t('settings.receipts.statutoryHeading')}</h3>
+            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.statutorySource')}</span>
           </div>
-          <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {TEMPLATES.map(t => {
-              const active = form.receipt_template === t.id
-              return (
-                <button type="button" key={t.id} onClick={() => set('receipt_template', t.id)}
-                  className={`relative text-left border rounded-lg p-2.5 transition-all ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'}`}>
-                  {active && (
-                    <span className="absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-navy-900 text-white">
-                      <Check size={12} />
-                    </span>
+          <div className="card-body">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {statutory.map(s => (
+                <div key={s.label} className="rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">{s.label}</div>
+                  {s.value ? (
+                    <div className="text-sm font-semibold text-slate-800 font-mono truncate" title={s.value}>{s.value}</div>
+                  ) : (
+                    <div className={`text-xs font-medium ${s.required ? 'text-amber-600' : 'text-slate-400'}`}>{s.required ? t('settings.receipts.notSetRequired') : t('settings.receipts.notSet')}</div>
                   )}
-                  <div className="rounded-md overflow-hidden bg-white" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <p className="font-semibold text-sm text-slate-800">{t.label}</p>
-                    {t.badge && (
-                      <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{t.badge}</span>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Colour & Visibility */}
-        <div className="card">
-          <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.colourHeading')}</h3></div>
-          <div className="card-body space-y-3">
-            <div className="flex items-center gap-3">
-              <label className="form-label mb-0 w-28">{t('settings.receipts.primaryColour')}</label>
-              <input type="color" value={form.primary_color} onChange={e => set('primary_color', e.target.value)}
-                className="h-9 w-16 rounded border border-slate-200 cursor-pointer" />
-              <span className="text-xs font-mono text-slate-500">{form.primary_color}</span>
+                </div>
+              ))}
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_gstin_on_header}
-                onChange={e => set('show_gstin_on_header', e.target.checked)} />
-              {t('settings.receipts.showGstin')}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_80g_on_receipt}
-                onChange={e => set('show_80g_on_receipt', e.target.checked)} />
-              {t('settings.receipts.show80g')}
-            </label>
+            {missingRequired.length > 0 && (
+              <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <Trans i18nKey="settings.receipts.missingWarning" components={{ bold: <b />, bold2: <b /> }} />
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-slate-400"><Trans i18nKey="settings.receipts.statutoryHelp" components={{ bold: <b /> }} /></p>
           </div>
         </div>
 
@@ -964,11 +1000,18 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               placeholder={t('settings.receipts.footerPlaceholder') as string} />
           </div>
         </div>
+        </section>
 
-        <button type="submit" disabled={saving} className="btn-primary">
-          {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-          {saving ? t('settings.saving') : t('settings.receipts.saveButton')}
-        </button>
+
+        {/* Sticky, because this form is four sections long: the Save button
+            used to sit past the end of a very tall scroll, so a trust that
+            changed the template at the top had to find its way back down. */}
+        <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-3 pb-3 bg-gradient-to-t from-white via-white to-white/0">
+          <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto justify-center">
+            {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+            {saving ? t('settings.saving') : t('settings.receipts.saveButton')}
+          </button>
+        </div>
       </form>
 
       {/* ── Right: Live preview panel ── */}

@@ -2111,7 +2111,15 @@
       "upiId": "यूपीआई आईडी",
       "upiQrNeedsId": "QR रसीद पर दिखाने के लिए ऊपर UPI ID जोड़ें।",
       "uploadLogo": "लोगो अपलोड करें",
-      "uploadLogoHelp": "PNG, JPG, SVG · अधिकतम 2 MB · बेस64 के रूप में संग्रहीत"
+      "uploadLogoHelp": "PNG, JPG, SVG · अधिकतम 2 MB · बेस64 के रूप में संग्रहीत",
+      "groupDesign": "डिज़ाइन",
+      "groupDesignHint": "रसीद कैसी दिखेगी",
+      "groupPrinting": "छपाई",
+      "groupPrintingHint": "प्रतियाँ, कागज़ और भाषा",
+      "groupSlips": "काउंटर पर्चियाँ",
+      "groupSlipsHint": "प्रसाद, सेवा और भोजनशाला टोकन",
+      "groupContent": "रसीद पर क्या छपेगा",
+      "groupContentHint": "मंदिर प्रोफ़ाइल और खातों से लिया गया"
     },
     "save": "सहेजें",
     "saved": "सहेजा गया",

@@ -2114,7 +2114,15 @@
       "upiId": "UPI ID",
       "upiQrNeedsId": "Add a UPI ID above for the QR to appear on receipts.",
       "uploadLogo": "Upload logo",
-      "uploadLogoHelp": "PNG, JPG, SVG · max 2 MB · stored as base64"
+      "uploadLogoHelp": "PNG, JPG, SVG · max 2 MB · stored as base64",
+      "groupDesign": "Design",
+      "groupDesignHint": "How the receipt looks",
+      "groupPrinting": "Printing",
+      "groupPrintingHint": "Copies, paper and language",
+      "groupSlips": "Counter slips",
+      "groupSlipsHint": "Prasad, seva and bhojanshala tokens",
+      "groupContent": "What prints on it",
+      "groupContentHint": "Pulled from Temple Profile and Accounts"
     },
     "save": "Save",
     "saved": "Saved",
