@@ -15,6 +15,7 @@ import { useProfileStore } from '../../store/profileStore'
 import { LocationPicker } from '../../components/LocationPicker'
 import { StateSelect, CitySelect } from '../../components/GeoSelect'
 import { MasterEditor } from './MasterEditor'
+import { BhojanshalaRates } from './BhojanshalaRates'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
@@ -675,6 +676,13 @@ export function SettingsPage() {
               { key: 'images', label: t('settings.masters.fields.roomPhotos'), type: 'images' },
             ]}
           />
+
+          {/* What a plate costs at each sitting (tenant migration 042).
+              Here rather than at the counter because it is a property of the
+              trust, not of a sale — and because the counter has a queue in
+              front of it and must not stop to ask. The API prices from these,
+              so the counter showing them as fixed is true. */}
+          <BhojanshalaRates />
 
           {/* Vendors are managed on the dedicated master page (Masters → Vendors / Suppliers),
               not here, to avoid two places editing the same records. */}

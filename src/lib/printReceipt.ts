@@ -1563,11 +1563,15 @@ function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
  */
 function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
   const row = (k: string, v: string) => `<div class="tr"><span>${k}</span><span>${v}</span></div>`
+  // The 58 mm roll printed at 80 mm: this size was hardcoded while buildSlip
+  // computed it, so a trust that chose the narrow roll got a receipt too wide
+  // for its printer. Same rule in both places now.
+  const narrow = mandir.receipt_paper === 'thermal58'
   return `
   <style>
-    @page { size: 80mm auto; margin: 0; }
+    @page { size: ${narrow ? '58mm' : '80mm'} auto; margin: 0; }
     body { background:#fff; font-family:'Arial',sans-serif; }
-    .roll { width:72mm; margin:0 auto; padding:6mm 2mm; color:#000; font-size:11px; line-height:1.5; }
+    .roll { width:${narrow ? '48mm' : '72mm'}; margin:0 auto; padding:6mm 2mm; color:#000; font-size:11px; line-height:1.5; }
     .roll .name { text-align:center; font-size:14px; font-weight:800; }
     .roll .addr { text-align:center; font-size:10px; margin-bottom:6px; }
     .roll .title { text-align:center; font-weight:700; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
@@ -1844,6 +1848,7 @@ export function buildReceiptHtml(input: ReceiptData): string {
     .copy-sep{border-top:1px dashed #999;page-break-inside:avoid;}
     .receipt-copy{page-break-inside:avoid;}
   }
+  ${thermal || slip ? '' : `@page { size: ${mandir.receipt_paper === 'a5' ? 'A5' : 'A4'}; margin: 8mm; }`}
 </style>
 </head><body>${copies}<script>window.onload=()=>{window.print()}</script></body></html>`
 }

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Save, RefreshCw, Receipt } from 'lucide-react'
+import { RefreshCw, Receipt } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
-import { PhoneInput } from '../../components/PhoneInput'
-import { autoPrintSlip, printDonationReceipt } from '../../lib/printReceipt'
+import { api, fmtPaise } from '../../lib/api'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { splitBy } from '../../lib/chartData'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
@@ -12,6 +11,9 @@ import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStri
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { BhojanshalaSale } from '../../types'
+import {
+  BhojanshalaCounter, initialSession, type Session, type SessionRates,
+} from './BhojanshalaCounter'
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const
 
@@ -25,22 +27,27 @@ export function AnnadaanList() {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10))
   const [search, setSearch] = useState('')
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
-  const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [summary, setSummary] = useState<{ tokens: number; collection_paise: number } | null>(null)
   const [redeemId, setRedeemId] = useState<string | null>(null)
   const [redeemTokens, setRedeemTokens] = useState('')
   const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
 
-  const [form, setForm] = useState({
-    meal_type: 'lunch',
-    tokens: '',
-    rate: '20',
-    payment_mode: 'cash',
-    reference_no: '',
-    devotee_mobile: '',
-    buyer_name: '',
-  })
+  // The counter's session is a mode, not a per-sale field: picked once (or
+  // guessed from the clock the first time) and remembered.
+  const [session, setSession] = useState<Session>(initialSession)
+  const [sessionRates, setSessionRates] = useState<SessionRates>({ breakfast: 0, lunch: 0, dinner: 0 })
+
+  useEffect(() => {
+    api.get('/tenants/me').then(r => {
+      const p = r.data?.data ?? r.data ?? {}
+      setSessionRates({
+        breakfast: Number(p.bhojanshala_rate_breakfast_paise ?? 0),
+        lunch: Number(p.bhojanshala_rate_lunch_paise ?? 0),
+        dinner: Number(p.bhojanshala_rate_dinner_paise ?? 0),
+      })
+    }).catch(() => { /* the counter says "rate not set" and links to Settings */ })
+  }, [])
 
   const mealLabel: Record<string, string> = {
     breakfast: t('bhojanshala.breakfast'),
@@ -173,35 +180,6 @@ export function AnnadaanList() {
     }
   }
 
-  async function recordSale(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const { data } = await api.post('/bhojanshala/sales', {
-        meal_type: form.meal_type,
-        tokens: parseInt(form.tokens),
-        rate_paise: parsePaise(form.rate),
-        payment_mode: form.payment_mode,
-        reference_no: form.reference_no.trim() || undefined,
-        devotee_mobile: form.devotee_mobile || undefined,
-        buyer_name: form.buyer_name || undefined,
-        sale_date: dateFilter,
-      })
-      // Auto-print the token, when the trust has asked for it. Not awaited and
-      // never fatal: the tokens are already sold, and a print failure must not
-      // read as a failed sale (see autoPrintSlip).
-      if (data?.data?.id) void autoPrintSlip(data.data.id, '/bhojanshala/sales')
-      setForm({ meal_type: 'lunch', tokens: '', rate: '20', payment_mode: 'cash', reference_no: '', devotee_mobile: '', buyer_name: '' })
-      setShowForm(false)
-      toast.success(t('bhojanshala.saleRecorded'))
-      load()
-    } catch (e) {
-      toast.error(apiErrorMessage(e, t('common.saveFailed')))
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function openReceipt(id: string) {
     setReceiptLoading(id)
     try {
@@ -239,87 +217,32 @@ export function AnnadaanList() {
         <div className="flex gap-2">
           <input type="date" title={t('common.date')} className="form-input w-44" value={dateFilter}
             onChange={e => setDateFilter(e.target.value)} />
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary btn-sm">
-            <Plus size={14} /> {t('bhojanshala.recordSale')}
-          </button>
         </div>
       </div>
 
       <SummaryStrip stats={stats} />
 
-      {/* Add form */}
-      {showForm && (
-        <div className="card no-print">
-          <div className="card-header"><h3 className="font-semibold text-sm">{t('bhojanshala.recordSaleTitle')}</h3></div>
-          <form onSubmit={recordSale} className="card-body">
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              <div>
-                <label className="form-label">{t('bhojanshala.buyerName')}</label>
-                <input className="form-input" value={form.buyer_name}
-                  onChange={e => setForm(f => ({ ...f, buyer_name: e.target.value }))} placeholder={t('bhojanshala.optional')} />
-              </div>
-              <div>
-                <label className="form-label">{t('bhojanshala.mealType')}</label>
-                <select className="form-select" value={form.meal_type} onChange={e => setForm(f => ({ ...f, meal_type: e.target.value }))}>
-                  <option value="breakfast">{t('bhojanshala.breakfast')}</option>
-                  <option value="lunch">{t('bhojanshala.lunch')}</option>
-                  <option value="dinner">{t('bhojanshala.dinner')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">{t('bhojanshala.tokens')}</label>
-                <input type="number" min="1" className="form-input" value={form.tokens}
-                  onChange={e => setForm(f => ({ ...f, tokens: e.target.value }))} required />
-              </div>
-              <div>
-                <label className="form-label">{t('bhojanshala.ratePerToken')}</label>
-                <input type="number" min="0" step="0.01" className="form-input" value={form.rate}
-                  onChange={e => setForm(f => ({ ...f, rate: e.target.value }))} />
-              </div>
-              <div>
-                <label className="form-label">{t('bhojanshala.paymentMode')}</label>
-                <select className="form-select" value={form.payment_mode} onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                  <option value="cash">{t('common.cash')}</option>
-                  <option value="upi">{t('common.upi')}</option>
-                  <option value="free">{t('bhojanshala.free')}</option>
-                </select>
-              </div>
-              {/* A non-cash sale had nowhere to record its UTR/txn id, so an
-                  online collection could not be reconciled against the bank
-                  later. Sent as reference_no, which PaymentsService.normalize
-                  puts on the tender itself rather than a parallel scalar. */}
-              {form.payment_mode !== 'cash' && form.payment_mode !== 'free' && (
-                <div>
-                  <label className="form-label" htmlFor="annadaan-ref">
-                    {t('bhojanshala.reference', { defaultValue: 'Reference' })}
-                  </label>
-                  <input
-                    id="annadaan-ref" className="form-input"
-                    value={form.reference_no}
-                    onChange={e => setForm(f => ({ ...f, reference_no: e.target.value }))}
-                    placeholder={t('bhojanshala.referenceHint', { defaultValue: 'UPI / txn reference (optional)' })}
-                  />
-                </div>
-              )}
-              <div>
-                <label className="form-label">{t('bhojanshala.mobileOptional')}</label>
-                <PhoneInput value={form.devotee_mobile} onChange={v => setForm(f => ({ ...f, devotee_mobile: v }))} />
-              </div>
-            </div>
-            {form.tokens && form.rate && (
-              <p className="text-sm font-semibold text-green-700 mb-3">
-                {t('bhojanshala.totalAmount', { amount: fmtPaise(parseInt(form.tokens || '0') * parsePaise(form.rate)) })}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button type="submit" disabled={saving} className="btn-primary btn-sm">
-                <Save size={14} /> {saving ? t('common.saving') : t('bhojanshala.record')}
-              </button>
-              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary btn-sm">{t('common.cancel')}</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* ── THE COUNTER ────────────────────────────────────────────────────
+          A bhojanshala window has a queue in front of it. The form this
+          replaced asked, per sale, for: buyer name, session, token count,
+          RATE (pre-filled "20", which is a guess about someone else's trust),
+          payment mode and mobile — six fields and a Save, for a transaction
+          whose real content is "four plates, cash".
+
+          What actually varies per sale is the QUANTITY. The session changes
+          three times a day and the rate belongs to the trust, so neither is
+          asked here: the session is a mode the counter sits in, and the rate
+          comes from Settings. Name and mobile are behind a toggle because most
+          people buying a thali do not give them, and an input nobody fills is
+          a field everyone tabs through. */}
+      <BhojanshalaCounter
+        rates={sessionRates}
+        session={session}
+        onSession={setSession}
+        date={dateFilter}
+        onSold={load}
+      />
+
 
       <DataTable
         viewKey="annadaan-list"
@@ -347,7 +270,6 @@ export function AnnadaanList() {
         total={visible.length}
         onPageChange={() => {}}
         emptyMessage={t('bhojanshala.noSalesRecorded')}
-        emptyAction={{ label: t('bhojanshala.recordSale'), onClick: () => setShowForm(true) }}
         onClearFilters={() => setFilterState({})}
       />
     </div>

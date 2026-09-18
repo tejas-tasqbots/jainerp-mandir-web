@@ -790,8 +790,13 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 <label className="form-label">{t('settings.receipts.paper')}</label>
                 <select className="form-select" value={form.receipt_paper}
                   onChange={e => set('receipt_paper', e.target.value)}>
+                  {/* A5 and 58 mm were built into the renderer and never
+                      offered here, so a trust that wanted half-sheet receipts
+                      had no way to ask for them. */}
                   <option value="a4">{t('settings.receipts.paperA4')}</option>
+                  <option value="a5">{t('settings.receipts.paperA5')}</option>
                   <option value="thermal80">{t('settings.receipts.paperThermal')}</option>
+                  <option value="thermal58">{t('settings.receipts.paperThermal58')}</option>
                 </select>
               </div>
               <div>
