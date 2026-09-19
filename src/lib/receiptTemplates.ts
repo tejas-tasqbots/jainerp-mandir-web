@@ -506,7 +506,24 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   if (mandir.show_80g && donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
   parts.push(...identityParts(mandir))
   if (!parts.length) return ''
-  return `<div class="reg-block">${parts.join(' &nbsp;|&nbsp; ')}</div>`
+
+  // ── CHIPS, NOT A RUN OF PIPES ─────────────────────────────────────────────
+  // These were joined with ` | ` into one paragraph. Six numbers at 10.5px wrap
+  // to two or three lines and the break lands wherever it lands - so a line can
+  // begin with a separator, and a number can be split from its own label. That
+  // is the "nothing should look scattered" this design work started from.
+  //
+  // A chip is a bounded unit: it cannot split, the wrap leaves no orphan
+  // separator, and the height is the same two lines a column layout would have
+  // cost four to six of. The Anumodana sheet has drawn them this way from the
+  // start, so this is the other twelve agreeing with it rather than a new idea.
+  //
+  // Inline-styled for the same reason `remittanceBlock` is: it drops into
+  // thirteen different stylesheets without each of them growing a copy.
+  const chips = parts
+    .map((p) => `<span style="display:inline-block;border:1px solid currentColor;border-radius:3px;padding:1px 5px;opacity:.85;white-space:nowrap">${p}</span>`)
+    .join('')
+  return `<div class="reg-block" style="display:flex;flex-wrap:wrap;gap:3px 5px;align-items:center">${chips}</div>`
 }
 
 /**
@@ -663,8 +680,24 @@ function remittanceBlock(
   // decorative designs without pushing them onto a second sheet.
   const pad = opts.compact ? '5px 8px' : '7px 10px'
   const size = opts.compact ? '9px' : '9.5px'
+  // The label column has a WIDTH, which is the whole of the structure.
+  //
+  // Without it each value started wherever its own label ended, so the five
+  // fields sat at four or five different left edges and the block read as a
+  // flowed run rather than a table - measured across all thirteen designs, and
+  // twelve of them did it. The labels are five known short strings and the
+  // widest is about 52px at this size; giving them all that width starts every
+  // value at the same offset, and since the cells are equal-width grid tracks
+  // the values line up across the columns as well.
+  //
+  // Deliberately NOT an explicit multi-column grid of label/value pairs, which
+  // is the obvious way to align a table: five fields at two pairs per row is
+  // three rows where the auto-fit below gives two, and the page-fit harness has
+  // already caught one payment-block change pushing a design onto a second sheet
+  // today. Alignment is not worth a page.
+  const labelW = opts.compact ? '46px' : '52px'
   const cells = rows
-    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#6b7280;flex:none">${k}</span><b style="color:#111827;word-break:break-all">${v}</b></div>`)
+    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#6b7280;flex:none;min-width:${labelW}">${k}</span><b style="color:#111827;word-break:break-all;min-width:0">${v}</b></div>`)
     .join('')
 
   // Two columns only when there is a QR AND rows to sit beside it. A QR alone
@@ -2429,8 +2462,14 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .roll .addr { text-align:center; font-size:10px; margin-bottom:6px; }
     .roll .title { text-align:center; font-weight:700; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
     .tr { display:flex; justify-content:space-between; gap:8px; }
-    .tr span:first-child { color:#333; }
-    .tr span:last-child { font-weight:600; text-align:right; }
+    /* The label keeps its width and the VALUE wraps. Without min-width:0 a flex
+       item refuses to shrink below its content, so a long value ran off the
+       paper: on a 58mm roll a registration number like SOC/2015/BEAWAR/000123
+       measured 236px against 219px of paper and printed off the edge, on every
+       design. break-all rather than normal wrapping because these are
+       identifiers with no spaces to break at. */
+    .tr span:first-child { color:#333; flex:none; }
+    .tr span:last-child { font-weight:600; text-align:right; min-width:0; word-break:break-all; }
     .amt { text-align:center; font-size:16px; font-weight:800; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; margin:6px 0; }
     .words { font-size:10px; font-style:italic; text-align:center; margin-bottom:6px; }
     .note { font-size:9.5px; text-align:center; margin-top:6px; }
