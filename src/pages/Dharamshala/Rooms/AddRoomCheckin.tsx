@@ -6,6 +6,19 @@ import { api, fmtPaise, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import type { Room, DevoteeSelection } from '../../../types'
 
+/**
+ * Is housekeeping holding this room for the date being booked?
+ *
+ * Mirrors the API gate exactly (dharamshala.service.ts `availability`): a hold
+ * is about today. A room dirty this morning is fine for a stay next week.
+ */
+function heldByHousekeeping(room: Room, checkInDate: string): boolean {
+  const status = room.housekeeping_status
+  if (!status || status === 'ready') return false
+  const todayIst = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)
+  return String(checkInDate).slice(0, 10) <= todayIst
+}
+
 export function AddRoomCheckin() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -139,11 +152,21 @@ export function AddRoomCheckin() {
               <option value="">{t('dharamshala.selectAvailableRoom')}</option>
               {/* The room's name, not `room_type`: no screen writes that
                   column, so it is `non_ac` for every room (RoomAvailability). */}
-              {rooms.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''} (sleeps {r.capacity_persons}) — ₹{fmtPaise(r.tariff_paise)}/night
-                </option>
-              ))}
+              {/* A room housekeeping is holding is shown and disabled rather
+                  than hidden: the cashier looking for room 104 needs to be told
+                  it is being cleaned, not left wondering where it went. Dated
+                  like the API gate - the hold only blocks a stay starting
+                  today, so a booking for next week may still use it. */}
+              {rooms.map(r => {
+                const held = heldByHousekeeping(r, form.check_in_date)
+                return (
+                  <option key={r.id} value={r.id} disabled={held}>
+                    {r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''}
+                    {' '}{t('dharamshala.sleepsN', { n: r.capacity_persons })} — ₹{fmtPaise(r.tariff_paise)}{t('dharamshala.perNightSuffix')}
+                    {held ? ` — ${t(`housekeeping.status.${r.housekeeping_status}`)}` : ''}
+                  </option>
+                )
+              })}
             </select>
           </div>
 

@@ -18,7 +18,7 @@
  * `node qa/qa-comms-catalog.mjs` fails if the copies drift.
  */
 
-import { receiptLabels, type ReceiptLabels } from './receiptLabels'
+import { receiptLabels, receiptLabelsFor, type ReceiptLabels } from './receiptLabels'
 import {
   parseDefinition,
   type DefinitionBlock,
@@ -136,6 +136,12 @@ export interface ReceiptData {
      * `parseDefinition` before anything is drawn — see receiptDefinition.ts.
      */
     template_definition?: unknown
+    /**
+     * The trust's own wording, `{ <label key>: { <lang>: text } }`
+     * (tenant migration 046). Validated by the renderer before use - a stored
+     * row outlives the code that wrote it.
+     */
+    label_overrides?: unknown
     /** 'receipt' for a document, 'slip' for a prasad/seva/bhojanshala token. */
     surface?: 'receipt' | 'slip'
     /** Open the print dialog without being asked. Counter screens read this. */
@@ -383,11 +389,56 @@ function escapeDeep<T>(v: T): T {
   if (Array.isArray(v)) return v.map(escapeDeep) as unknown as T
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {}
-    for (const [k, x] of Object.entries(v as Record<string, unknown>)) out[k] = escapeDeep(x)
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      // The trust's wording is escaped by the label layer that owns it
+      // (`escapeLabel`), so it must not be escaped here as well. It used to be,
+      // and Anumodana printed `&amp;amp;lt;` - that design passes the already
+      // escaped block down into a renderer that escapes again, so an apostrophe
+      // came out as `&amp;#39;` on the one design a donor receives by WhatsApp.
+      // This function is for receipt DATA - names, addresses, categories typed
+      // by devotees. Wording is a different input with a different owner.
+      out[k] = k === 'label_overrides' ? x : escapeDeep(x)
+    }
     return out as T
   }
   return v
 }
+
+/**
+ * The affirmative palette, derived from the trust's own colour.
+ *
+ * "80G ELIGIBLE" used to print in a fixed leaf green (#15803d on #dcfce7) in
+ * five designs and in the WhatsApp PDF, whatever colour the trust had chosen:
+ * a bright green pill on a near-black receipt, which is what the client saw and
+ * called wrong. Green-for-yes is a good convention on a web page and a bad one
+ * on stationery.
+ *
+ * Alpha is appended as hex (#RRGGBBAA), which Chromium honours in print and
+ * which several designs already used for tints. A colour that is not 6-digit
+ * hex degrades to a neutral rather than emitting #zzzz14 and taking the whole
+ * declaration down with it - `primary_color` comes from an <input type=color>
+ * today, but it is a free-text column and outlives the screen that wrote it.
+ */
+const HEX6 = /^#[0-9a-fA-F]{6}$/
+
+function tint(color: string, alphaHex: string, fallback: string): string {
+  return HEX6.test(color) ? color + alphaHex : fallback
+}
+
+function affirm(color: string): { bg: string; border: string; text: string } {
+  return {
+    bg: tint(color, '12', '#f6f7f9'),
+    border: tint(color, '44', '#d1d5db'),
+    text: HEX6.test(color) ? color : '#374151',
+  }
+}
+
+/**
+ * The negative of an affirmative note. Deliberately grey and not red: a
+ * donation that is not 80G-eligible is the normal case, not an error, and
+ * printing it in alarm red on the donor's copy reads as a rejection.
+ */
+const DENY_TEXT = '#6b7280'
 
 function amountInWords(paise: number): string {
   // Guard against a missing/NaN amount — without this, convert(NaN) recurses
@@ -685,8 +736,8 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     td:first-child { color:#6b7280; font-weight:600; width:38%; }
     td:last-child { color:#111; font-weight:500; }
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-    .badge-green { background:#dcfce7; color:#15803d; }
-    .badge-red { background:#fee2e2; color:#991b1b; }
+    .badge-green { background:${affirm(color).bg}; color:${affirm(color).text}; }
+    .badge-red { background:#f6f7f9; color:${DENY_TEXT}; }
     .reg-block { font-size:10.5px; color:#374151; border-top:1px dashed #e2e8f0; padding-top:10px; margin-top:4px; line-height:1.9; }
     .payment-block { font-size:10.5px; color:#374151; padding-top:8px; line-height:1.9; }
     .pay-label { font-weight:700; color:${color}; }
@@ -725,7 +776,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <table>
         <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
         <tr><td>${L.paymentMode}</td><td>${paymentModeText(r)}</td></tr>
-        ${isDonationDoc(r) ? `<tr><td>${L.eligible80g}</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? 'Yes' : 'No'}</span></td></tr>` : ''}
+        ${isDonationDoc(r) ? `<tr><td>${L.eligible80g}</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? L.yes : L.no}</span></td></tr>` : ''}
       </table>
       ${itemsBlock(r, color)}
       ${regBlock(mandir, r)}
@@ -825,8 +876,8 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .detail-item .k { font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
     .detail-item .v { font-size:13px; font-weight:600; color:#0f172a; }
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-    .badge-yes { background:#dcfce7; color:#15803d; }
-    .badge-no { background:#fee2e2; color:#991b1b; }
+    .badge-yes { background:${affirm(color).bg}; color:${affirm(color).text}; }
+    .badge-no { background:#f6f7f9; color:${DENY_TEXT}; }
     .reg-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
     .payment-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
@@ -871,7 +922,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
       </div>
       <div class="details">
         <div class="detail-item"><div class="k">${L.paymentMode}</div><div class="v">${paymentModeText(r)}</div></div>
-        ${isDonationDoc(r) ? `<div class="detail-item"><div class="k">${L.eligible80g}</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? 'Yes ✓' : 'No'}</span></div></div>` : ''}
+        ${isDonationDoc(r) ? `<div class="detail-item"><div class="k">${L.eligible80g}</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? L.yes + ' ✓' : L.no}</span></div></div>` : ''}
       </div>
       ${itemsBlock(r, color)}
       ${regBlock(mandir, r)}
@@ -989,7 +1040,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .dl { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     .dt { font-size:10px; color:#9ca3af; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
     .dd { font-size:13px; color:#111; font-weight:600; }
-    .elig-yes { color:#15803d; } .elig-no { color:#b91c1c; }
+    .elig-yes { color:${affirm(color).text}; } .elig-no { color:${DENY_TEXT}; }
     .reg-block { font-size:10.5px; color:#374151; border-top:1px solid #f3f4f6; padding-top:9px; margin-top:6px; line-height:1.6; }
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:12px; font-style:italic; }
@@ -1033,7 +1084,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="dl">
           <div><div class="dt">${L.category}</div><div class="dd">${r.category || '—'}</div></div>
           <div><div class="dt">${L.paymentMode}</div><div class="dd">${paymentModeText(r)}</div></div>
-          ${isDonationDoc(r) ? `<div><div class="dt">${L.eligible80g}</div><div class="dd ${r.is_80g_eligible ? 'elig-yes' : 'elig-no'}">${r.is_80g_eligible ? '✓ Yes' : '✗ No'}</div></div>` : ''}
+          ${isDonationDoc(r) ? `<div><div class="dt">${L.eligible80g}</div><div class="dd ${r.is_80g_eligible ? 'elig-yes' : 'elig-no'}">${r.is_80g_eligible ? '✓ ' + L.yes : '✗ ' + L.no}</div></div>` : ''}
         </div>
       </div>
       ${itemsBlock(r, color)}
@@ -1283,8 +1334,8 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
       <div class="addr">${mandir.address}${mandir.mobile ? '<br>Phone: '+mandir.mobile : ''}${mandir.email ? '<br>Email: '+mandir.email : ''}</div>
     </div>
     <div class="txn-row">
-      <span><span class="lbl">Transaction ID: </span><span class="val">${r.receipt_number}</span></span>
-      <span><span class="lbl">Status: </span><span class="val" style="color:#15803d">Received</span></span>
+      <span><span class="lbl">${L.transactionId}: </span><span class="val">${r.receipt_number}</span></span>
+      <span><span class="lbl">${L.status}: </span><span class="val" style="color:${color}">${L.received}</span></span>
     </div>
     ${r.is_voided ? '<div class="voided">⚠ THIS RECEIPT HAS BEEN VOIDED</div>' : ''}
     <div class="ack-title">${docTitle(r, 'Acknowledgement Receipt')}</div>
@@ -1470,7 +1521,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     table.meta td:first-child { color:#64748b; font-weight:600; width:34%; }
     table.meta td:last-child { color:#0f172a; font-weight:600; }
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-    .badge-green { background:#dcfce7; color:#15803d; }
+    .badge-green { background:${affirm(color).bg}; color:${affirm(color).text}; }
     .declaration { font-size:11.5px; color:#374151; line-height:1.85; background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid ${color}; border-radius:5px; padding:13px 16px; }
     .declaration b { color:#0f172a; }
     .pay { font-size:10.5px; color:#475569; margin-top:12px; line-height:1.9; }
@@ -2191,6 +2242,9 @@ function buildCustom(
   }
 
   const accent = def.accent
+  // The affirmative palette follows the design's own accent, so a trust that
+  // picks maroon does not get a green 80G note inside a maroon frame.
+  const ok = affirm(accent)
   const gap = DENSITY_GAP[def.density]
   const serif = def.font === 'serif'
   const donation = isDonationDoc(r)
@@ -2283,7 +2337,7 @@ function buildCustom(
 
       case 'tax_note':
         return r.is_80g_eligible && mandir.show_80g && donation
-          ? `<div style="font-size:9.5px;color:#1E5B2E;background:#F1F8F2;border:1px solid #A9D5B2;border-radius:3px;padding:6px 9px;line-height:1.45">${L.valid80g}</div>`
+          ? `<div style="font-size:9.5px;color:${ok.text};background:${ok.bg};border:1px solid ${ok.border};border-radius:3px;padding:6px 9px;line-height:1.45">${L.valid80g}</div>`
           : ''
 
       case 'blessing':
@@ -2635,7 +2689,10 @@ export function buildReceiptHtml(input: ReceiptData): string {
   const r: ReceiptData = escapeDeep({ ...input, receipt_number: input.receipt_number || '—' })
   const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
-  L = receiptLabels(mandir.receipt_language)
+  // The trust's own words on top of ours. One line, because every design
+  // already reads every word it prints through `L` - so "Dan" becomes "Bhet"
+  // on all seventeen designs and both copies at once, with no per-design work.
+  L = receiptLabelsFor(mandir.receipt_language, mandir.label_overrides)
   let template = mandir.template || 'classic'
   // The 80G template makes a statutory tax-exemption claim, so it must never be
   // used for a donation that is not 80G-eligible — NOR for a trust that holds

@@ -10,6 +10,10 @@
  */
 export type ReceiptLang = 'en' | 'hi' | 'mr' | 'gu' | 'kn' | 'ta' | 'te'
 
+/** The same list as a value, for validating untrusted input against. */
+export const RECEIPT_LANGS: readonly ReceiptLang[] =
+  ['en', 'hi', 'mr', 'gu', 'kn', 'ta', 'te']
+
 export interface ReceiptLabels {
   donationReceipt: string
   receivedFrom: string
@@ -75,6 +79,9 @@ export interface ReceiptLabels {
   /** The "80G Eligible" row on a donation receipt. Six designs printed these
    * two English words regardless of the trust's receipt language. */
   eligible80g: string
+  transactionId: string
+  status: string
+  received: string
   paymentDetails: string
   bankLabel: string
   accountName: string
@@ -159,6 +166,9 @@ const en: ReceiptLabels = {
   forTrust: 'For {name}',
   computerGenerated: 'This is a computer-generated receipt and does not need a physical signature.',
   eligible80g: '80G Eligible',
+  transactionId: 'Transaction ID',
+  status: 'Status',
+  received: 'Received',
   paymentDetails: 'Payment Details',
   bankLabel: 'Bank',
   accountName: 'A/C Name',
@@ -242,6 +252,9 @@ const hi: ReceiptLabels = {
   forTrust: '{name} हेतु',
   computerGenerated: 'यह कंप्यूटर द्वारा बनाई गई रसीद है; भौतिक हस्ताक्षर आवश्यक नहीं।',
   eligible80g: '80G पात्र',
+  transactionId: 'लेनदेन आईडी',
+  status: 'स्थिति',
+  received: 'प्राप्त',
   paymentDetails: 'भुगतान विवरण',
   bankLabel: 'बैंक',
   accountName: 'खाताधारक का नाम',
@@ -325,6 +338,9 @@ const mr: ReceiptLabels = {
   forTrust: '{name} करिता',
   computerGenerated: 'ही संगणकाद्वारे तयार केलेली पावती आहे; प्रत्यक्ष स्वाक्षरीची आवश्यकता नाही.',
   eligible80g: '80G पात्र',
+  transactionId: 'व्यवहार आयडी',
+  status: 'स्थिती',
+  received: 'प्राप्त',
   paymentDetails: 'देयक तपशील',
   bankLabel: 'बँक',
   accountName: 'खातेदाराचे नाव',
@@ -408,6 +424,9 @@ const gu: ReceiptLabels = {
   forTrust: '{name} વતી',
   computerGenerated: 'આ કમ્પ્યુટર દ્વારા બનાવેલી પાવતી છે; ભૌતિક સહીની જરૂર નથી.',
   eligible80g: '80G પાત્ર',
+  transactionId: 'વ્યવહાર આઈડી',
+  status: 'સ્થિતિ',
+  received: 'મળ્યું',
   paymentDetails: 'ચુકવણી વિગત',
   bankLabel: 'બેંક',
   accountName: 'ખાતાધારકનું નામ',
@@ -491,6 +510,9 @@ const kn: ReceiptLabels = {
   forTrust: '{name} ಪರವಾಗಿ',
   computerGenerated: 'ಇದು ಗಣಕದಿಂದ ರಚಿತವಾದ ರಸೀದಿ; ಸಹಿ ಅಗತ್ಯವಿಲ್ಲ.',
   eligible80g: '80G ಅರ್ಹ',
+  transactionId: 'ವಹಿವಾಟು ಐಡಿ',
+  status: 'ಸ್ಥಿತಿ',
+  received: 'ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
   paymentDetails: 'ಪಾವತಿ ವಿವರ',
   bankLabel: 'ಬ್ಯಾಂಕ್',
   accountName: 'ಖಾತೆದಾರರ ಹೆಸರು',
@@ -574,6 +596,9 @@ const ta: ReceiptLabels = {
   forTrust: '{name} சார்பாக',
   computerGenerated: 'இது கணினியில் உருவாக்கப்பட்ட ரசீது; கையொப்பம் தேவையில்லை.',
   eligible80g: '80G தகுதி',
+  transactionId: 'பப்புவர் ஐடி',
+  status: 'நிலை',
+  received: 'பெறப்பட்டது',
   paymentDetails: 'கட்டண விவரம்',
   bankLabel: 'வங்கி',
   accountName: 'கணக்கு பெயர்',
@@ -657,6 +682,9 @@ const te: ReceiptLabels = {
   forTrust: '{name} తరఫున',
   computerGenerated: 'ఇది కంప్యూటర్ రూపొందించిన రసీదు; సంతకం అవసరం లేదు.',
   eligible80g: '80G అర్హత',
+  transactionId: 'లావాదేవీ ఐడి',
+  status: 'స్థితి',
+  received: 'అందింది',
   paymentDetails: 'చెల్లింపు వివరాలు',
   bankLabel: 'బ్యాంకు',
   accountName: 'ఖాతాదారు పేరు',
@@ -690,4 +718,147 @@ export const RECEIPT_LABELS: Record<ReceiptLang, ReceiptLabels> = { en, hi, mr, 
 export function receiptLabels(lang?: string | null): ReceiptLabels {
   // hasOwnProperty: a stray value like 'constructor' must not index the prototype.
   return lang && Object.prototype.hasOwnProperty.call(RECEIPT_LABELS, lang) ? RECEIPT_LABELS[lang as ReceiptLang] : en
+}
+
+// ---------------------------------------------------------------------------
+// A trust's own wording
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-trust label overrides: `{ <label key>: { <language>: text } }`.
+ *
+ * A trust asked to print "Bhet" (gift) where we print "Dan" (donation). Rather
+ * than fork a design per trust, the override lands here - on the layer every
+ * design already reads every printed word through - so one edit changes the word
+ * on all seventeen designs, on both copies, and on the WhatsApp PDF.
+ *
+ * Only stored per language, never per design: a trust that changes a word means
+ * it on its receipts, not on one of them.
+ */
+export type LabelOverrides = Partial<Record<keyof ReceiptLabels, Record<string, string>>>
+
+/** Long enough for a sentence label like `valid80g`, short enough to stay on the page. */
+export const MAX_LABEL_LEN = 160
+
+/**
+ * Words a trust may NOT rewrite.
+ *
+ * `valid80g` and `computerGenerated` are the two statements on a receipt that
+ * are about the law rather than about the trust: one asserts a tax exemption to
+ * the donor's assessing officer, the other tells them why there is no wet
+ * signature. Both are printed by us on the trust's behalf and a trust editing
+ * them is a compliance problem, not a preference. Everything else - every
+ * heading, every field name, every blessing - is theirs.
+ */
+export const LOCKED_LABELS: readonly string[] = ['valid80g', 'computerGenerated']
+
+/** The keys a trust may override, in the order the editor should show them. */
+export const OVERRIDABLE_LABELS: readonly (keyof ReceiptLabels)[] =
+  (Object.keys(en) as (keyof ReceiptLabels)[]).filter((k) => !LOCKED_LABELS.includes(k))
+
+/**
+ * Rebuild the override map from untrusted input.
+ *
+ * Rebuilt rather than filtered, for the same reason `parseDefinition` rebuilds:
+ * a filter leaves whatever it did not think to look for. Anything unrecognised,
+ * over-long, non-string or containing markup is DROPPED rather than throwing -
+ * a receipt must still print, and one bad word is not a reason to refuse the
+ * whole document. The API validates on save and reports; this is the renderer's
+ * own last line, because a stored row outlives the code that wrote it.
+ */
+export function parseLabelOverrides(raw: unknown): LabelOverrides {
+  const out: LabelOverrides = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  const allowed = new Set<string>(OVERRIDABLE_LABELS as readonly string[])
+  for (const [key, byLang] of Object.entries(raw as Record<string, unknown>)) {
+    if (!allowed.has(key)) continue
+    if (!byLang || typeof byLang !== 'object' || Array.isArray(byLang)) continue
+    const langs: Record<string, string> = {}
+    for (const [lang, text] of Object.entries(byLang as Record<string, unknown>)) {
+      if (!RECEIPT_LANGS.includes(lang as ReceiptLang)) continue
+      if (typeof text !== 'string') continue
+      const v = text.trim()
+      if (!v || v.length > MAX_LABEL_LEN) continue
+      // No markup, ever. The renderer escapes receipt DATA, not the label
+      // table - labels are template, and a label carrying a tag would be
+      // written into the document as one.
+      if (v.includes('<') || v.includes('>')) continue
+      langs[lang] = v
+    }
+    if (Object.keys(langs).length) out[key as keyof ReceiptLabels] = langs
+  }
+  return out
+}
+
+/**
+ * What a trust did wrong, for the save screen. Null when the map is clean.
+ *
+ * Separate from `parseLabelOverrides`, which silently drops: on save a trust
+ * must be TOLD that its 200-character heading will not print, rather than
+ * saving it and wondering later why the receipt still says "Donation Amount".
+ */
+export function labelOverrideIssue(raw: unknown): string | null {
+  if (raw == null) return null
+  if (typeof raw !== 'object' || Array.isArray(raw)) return 'Wording must be a set of label values.'
+  const allowed = new Set<string>(OVERRIDABLE_LABELS as readonly string[])
+  for (const [key, byLang] of Object.entries(raw as Record<string, unknown>)) {
+    if (LOCKED_LABELS.includes(key)) return `"${key}" is fixed by law and cannot be changed.`
+    if (!allowed.has(key)) return `"${key}" is not a label on a receipt.`
+    if (!byLang || typeof byLang !== 'object' || Array.isArray(byLang)) return `"${key}" must hold one wording per language.`
+    for (const [lang, text] of Object.entries(byLang as Record<string, unknown>)) {
+      if (!RECEIPT_LANGS.includes(lang as ReceiptLang)) return `"${lang}" is not a receipt language.`
+      if (typeof text !== 'string') return `The wording for "${key}" must be text.`
+      if (text.length > MAX_LABEL_LEN) return `The wording for "${key}" is longer than ${MAX_LABEL_LEN} characters.`
+      if (text.includes('<') || text.includes('>')) return 'Wording cannot contain < or >.'
+    }
+  }
+  return null
+}
+
+/**
+ * The label table a receipt actually prints from: ours, with the trust's words
+ * on top.
+ *
+ * Falls back per KEY and not per language: a trust that renamed one heading in
+ * Hindi keeps our Hindi for everything else, and a trust that renamed it only
+ * in English keeps our Hindi untouched. The alternative - an all-or-nothing
+ * language override - would make one edit blank out a hundred labels.
+ */
+export function receiptLabelsFor(lang?: string | null, overrides?: unknown): ReceiptLabels {
+  const base = receiptLabels(lang)
+  const map = parseLabelOverrides(overrides)
+  const keys = Object.keys(map) as (keyof ReceiptLabels)[]
+  if (!keys.length) return base
+  const l = lang && RECEIPT_LANGS.includes(lang as ReceiptLang) ? lang : 'en'
+  const out: ReceiptLabels = { ...base }
+  for (const k of keys) {
+    const text = map[k]?.[l]
+    if (text) out[k] = escapeLabel(text)
+  }
+  return out
+}
+
+/**
+ * Escape a trust's wording, HERE and nowhere else.
+ *
+ * Every label in this table is interpolated into a receipt as template - our own
+ * words are, which is why nothing escaped them before - and several designs
+ * interpolate one into an ATTRIBUTE, where a bare quote is enough on its own.
+ * So a trust's word is escaped, and escaped by the layer that owns it.
+ *
+ * Deliberately NOT done by `escapeDeep` in receiptTemplates.ts, which escapes
+ * receipt DATA on the way in. Having both do it produced `&amp;amp;lt;` on the
+ * Anumodana design - three escapes, because that design passes the already
+ * escaped block down into a renderer that escapes again. One owner, one escape.
+ *
+ * Escaping rather than refusing keeps "Donor's Copy" spellable: the entity
+ * prints as the apostrophe the trust typed.
+ */
+export function escapeLabel(v: string): string {
+  return v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }

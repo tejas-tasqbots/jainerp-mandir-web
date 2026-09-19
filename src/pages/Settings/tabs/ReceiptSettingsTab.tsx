@@ -1,10 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
 import { buildReceiptHtml, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
+import { parseLabelOverrides, type LabelOverrides } from '../../../lib/receiptLabels'
+import { ReceiptWordingCard } from './ReceiptWordingCard'
+import { ReceiptDesignerCard } from './ReceiptDesignerTab'
 import { useToast } from '../../../components/kit/Toast'
+
+/**
+ * The steps, in the order a trust works through them.
+ *
+ * A rail rather than one scroll. The form had five sections and about thirty
+ * controls stacked vertically beside the preview, and the client's words were "i
+ * am too much confuse what to do and how to do each things". Nothing was hidden;
+ * nothing was findable either. One step at a time answers that without removing
+ * anything.
+ *
+ *   design   - which design, ours or the trust's own (absorbs the second tab)
+ *   wording  - the trust's own word for any printed label
+ *   brand    - colour and logo
+ *   printing - paper, copies, receipt language, the pay QR
+ *   content  - the statutory lines, the payment block, the footer
+ *   stay     - the accommodation document and the trust's stay policy
+ *   slips    - the counter slip, which is a different document again
+ */
+const STEPS = ['design', 'wording', 'brand', 'printing', 'content', 'stay', 'slips'] as const
+type Step = (typeof STEPS)[number]
 
 type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: string) => string }
 
@@ -377,6 +400,11 @@ const BLANK = {
   // Trust identity (tenant migration 041). Prints on EVERY document, so the
   // preview is wrong without it — which is exactly how it was reported.
   registration_number: '', darpan_number: '',
+  // The trust's own word for any printed label (tenant migration 046). One map
+  // for every design and every document: the label layer all seventeen designs
+  // read through is where the override lands, so there is nothing per-design to
+  // keep in sync.
+  receipt_label_overrides: {} as LabelOverrides,
 }
 
 /**
@@ -483,7 +511,16 @@ const STAY_TEMPLATES: TemplateDef[] = [
 
 export type PreviewMode = 'receipt' | 'stay' | '80g' | 'slip'
 
-function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): ReceiptData {
+function buildPreviewData(
+  form: typeof BLANK,
+  mode: PreviewMode = 'receipt',
+  /**
+   * The language to preview in. Normally the trust's print language; while the
+   * Wording step is open it is the language being edited, or a Hindi rename
+   * would be previewed in English and look as though nothing had happened.
+   */
+  langOverride?: string,
+): ReceiptData {
   // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact — and it
   // has to be shaped like a GSTIN, not merely non-empty ("0" used to switch GST
   // on). mandir-api is a separate deployable with no shared package, so if that
@@ -606,7 +643,12 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
       receipt_paper: (mode === 'slip'
         ? (form.slip_template === 'receipt' ? form.receipt_paper : form.slip_paper)
         : form.receipt_paper) as 'a4' | 'a5' | 'thermal58' | 'thermal80',
-      receipt_language: form.receipt_language,
+      receipt_language: langOverride || form.receipt_language,
+      // What makes a rename visible in the pane beside the editor. Without it
+      // the preview renders our words and a trust typing "Bhet" watches nothing
+      // happen - which is exactly the "preview while updating is not updating"
+      // that was reported.
+      label_overrides: form.receipt_label_overrides,
       receipt_show_upi_qr: form.receipt_show_upi_qr,
       ...(mode === 'slip'
         ? { surface: 'slip' as const, slip_token_per_plate: form.slip_token_per_plate }
@@ -671,6 +713,17 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('receipt')
+  const [step, setStep] = useState<Step>('design')
+  /**
+   * The language the WORDING step is editing, which is also the language the
+   * preview renders in while that step is open.
+   *
+   * Separate from `form.receipt_language`, the trust's print language: someone
+   * whose receipts print in English may still want to prepare the Hindi words
+   * before switching. A Hindi rename previewed in English would simply look as
+   * though it had not applied.
+   */
+  const [wordingLang, setWordingLang] = useState('en')
   /**
    * Whether the previewed design fits the paper it is set to print on.
    *
@@ -727,25 +780,46 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         reg_12ab_number: (p.reg_12ab_number as string) || '',
         registration_number: (p.registration_number as string) || '',
         darpan_number: (p.darpan_number as string) || '',
+        // Parsed on the way in as well as on the way out: a row written by an
+        // older build, or restored from a backup, must not put this editor into
+        // a state the renderer will refuse.
+        receipt_label_overrides: parseLabelOverrides(p.receipt_label_overrides),
       }))
     }).catch(() => {})
   }, [])
 
-  // Update preview iframe whenever form changes
-  useEffect(() => {
-    const html = buildReceiptHtml(buildPreviewData(form, previewMode))
+  /**
+   * Write the previewed document into the frame.
+   *
+   * Extracted and called from three places, because the single call inside an
+   * effect is how this pane came to sit frozen while someone edited: it bailed
+   * out silently when `contentDocument` was not there yet and never tried again,
+   * and even when it was there the first write can land in the document the
+   * browser is about to replace when the frame finishes loading `about:blank`.
+   * Writing the same HTML more than once is cheap and idempotent; a blank
+   * preview is the bug that was reported.
+   */
+  const paintPreview = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    const html = buildReceiptHtml(buildPreviewData(
+      form, previewMode,
+      // Only while the Wording step is open. Everywhere else the preview must
+      // show the language the trust actually prints in.
+      step === 'wording' ? wordingLang : undefined,
+    ))
     // Remove the auto-print script for preview
-    const previewHtml = html.replace('<script>window.onload=()=>{window.print()}</script>', '')
-    if (iframeRef.current) {
-      const doc = iframeRef.current.contentDocument
-      if (doc) {
-        doc.open()
-        doc.write(previewHtml)
-        doc.close()
-        markPageEdge(doc, setPageFit)
-      }
-    }
-  }, [form, previewMode])
+    doc.open()
+    doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
+    doc.close()
+    markPageEdge(doc, setPageFit)
+  }, [form, previewMode, step, wordingLang])
+
+  useEffect(() => {
+    paintPreview()
+    const id = requestAnimationFrame(() => { paintPreview() })
+    return () => cancelAnimationFrame(id)
+  }, [paintPreview])
 
   function set<K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -797,6 +871,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         slip_copies: form.slip_copies,
         slip_auto_print: form.slip_auto_print,
         slip_token_per_plate: form.slip_token_per_plate,
+        receipt_label_overrides: form.receipt_label_overrides,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -859,11 +934,29 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           </div>
         )}
 
-        <section className="space-y-4">
-          <div className="flex items-baseline gap-2 pt-1">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupDesign')}</h3>
-            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupDesignHint')}</p>
-          </div>
+        {/* ── The rail ─────────────────────────────────────────────────────
+            Seven steps where there were five stacked sections. The controls are
+            unchanged; what changed is that you see one group at a time, with the
+            preview beside it, instead of thirty controls in one scroll. */}
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={t('settings.receipts.heading')}>
+          {STEPS.map((sid, i) => (
+            <button
+              key={sid} type="button" role="tab" aria-selected={step === sid}
+              onClick={() => setStep(sid)} data-testid={`receipt-step-${sid}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                step === sid
+                  ? 'bg-navy-900 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span className={step === sid ? 'text-white/60' : 'text-slate-400'}>{i + 1}</span>
+              {' '}{t(`settings.receipts.step.${sid}`)}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-slate-400 -mt-1">{t(`settings.receipts.stepHint.${step}`)}</p>
+
+        {step === 'design' && <section className="space-y-4">
 
         {/* Template */}
         <div className="card">
@@ -894,6 +987,23 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             })}
           </div>
         </div>
+
+        {/* The designer, which used to be a tab of its own. A trust that makes
+            a design lands back on the gallery above with it selectable - it had
+            to change tabs to do that, which is half of why the two tabs were
+            reported as confusing. */}
+        <ReceiptDesignerCard
+          accent={form.primary_color}
+          onUseDesign={() => set('receipt_template', 'custom')}
+          selectedTemplate={form.receipt_template}
+        />
+        </section>}
+
+        {step === 'brand' && <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupBrand')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupBrandHint')}</p>
+          </div>
 
         {/* Colour & Visibility */}
         <div className="card">
@@ -962,9 +1072,22 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             </label>
           </div>
         </div>
-        </section>
+        </section>}
 
-        <section className="space-y-4">
+        {step === 'wording' && <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupWording')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupWordingHint')}</p>
+          </div>
+          <ReceiptWordingCard
+            value={form.receipt_label_overrides}
+            onChange={next => set('receipt_label_overrides', next)}
+            lang={wordingLang}
+            onLangChange={setWordingLang}
+          />
+        </section>}
+
+        {step === 'printing' && <section className="space-y-4">
           <div className="flex items-baseline gap-2 pt-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupPrinting')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupPrintingHint')}</p>
@@ -1026,7 +1149,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             )}
           </div>
         </div>
-        </section>
+        </section>}
 
         {/* ── ACCOMMODATION ───────────────────────────────────────────────
             A room bill and a donation receipt are different documents, and
@@ -1039,7 +1162,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             screens, because it is what the BILL prints — "arrive after 12,
             vacate by 10" was a board in the lobby and a number in the clerk's
             head, and the receipt could state neither. */}
-        <section className="space-y-4">
+        {step === 'stay' && <section className="space-y-4">
           <div className="flex items-baseline gap-2 pt-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupStay')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupStayHint')}</p>
@@ -1119,9 +1242,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
-        <section className="space-y-4">
+        {step === 'slips' && <section className="space-y-4">
           <div className="flex items-baseline gap-2 pt-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupSlips')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupSlipsHint')}</p>
@@ -1201,9 +1324,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <p className="text-xs text-slate-500">{t('settings.slips.note')}</p>
           </div>
         </div>
-        </section>
+        </section>}
 
-        <section className="space-y-4">
+        {step === 'content' && <section className="space-y-4">
           <div className="flex items-baseline gap-2 pt-1">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupContent')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupContentHint')}</p>
@@ -1296,7 +1419,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               placeholder={t('settings.receipts.footerPlaceholder') as string} />
           </div>
         </div>
-        </section>
+        </section>}
 
 
         {/* Sticky, because this form is four sections long: the Save button
@@ -1343,6 +1466,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               <iframe
                 ref={iframeRef}
                 title="Receipt Preview"
+                // The frame can finish loading `about:blank` AFTER the first
+                // write, discarding it. This is the cheap half of the fix.
+                onLoad={() => { paintPreview() }}
                 sandbox="allow-same-origin"
                 className="w-full h-full border-0"
                 style={{ zoom: 0.6, height: '933px', transformOrigin: 'top left' }}

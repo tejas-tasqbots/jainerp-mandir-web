@@ -19,7 +19,6 @@ import { BhojanshalaRates } from './BhojanshalaRates'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
-import { ReceiptDesignerTab } from './tabs/ReceiptDesignerTab'
 import { NumberingTab } from './tabs/NumberingTab'
 import { MessagesTab } from './tabs/MessagesTab'
 import { UsersTab } from './tabs/UsersTab'
@@ -67,13 +66,17 @@ interface Requirement {
  */
 const TAB_IDS = [
   'my-account', 'profile', 'public-profile', 'trustees', 'accounts',
-  'receipts', 'receipt-designs', 'numbering', 'messages', 'masters', 'users', 'backup',
+  'receipts', 'numbering', 'messages', 'masters', 'users', 'backup',
   'privacy', 'subscription',
 ] as const
 type TabId = (typeof TAB_IDS)[number]
 
 /** Old ?tab= values kept working, so existing links and bookmarks still land. */
 const TAB_ALIASES: Record<string, TabId> = {
+  // Was its own tab until the two receipt tabs were merged. Kept because a
+  // trust may have bookmarked it and a super admin reviewing a submitted design
+  // may have sent the link.
+  'receipt-designs': 'receipts',
   'donor-payments': 'accounts',
   gallery: 'public-profile',
   accounting: 'profile',
@@ -391,7 +394,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts', 'receipt-designs', 'messages'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts', 'messages'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-navy-900">{t('settings.title')}</h1>
         {/* Stays here even after the dashboard card is dismissed, so setup is
@@ -407,7 +410,6 @@ export function SettingsPage() {
           { id: 'trustees', labelKey: 'settings.tabs.trustees' },
           { id: 'accounts', labelKey: 'settings.tabs.accounts' },
           { id: 'receipts', labelKey: 'settings.tabs.receipts' },
-          { id: 'receipt-designs', labelKey: 'settings.tabs.receiptDesigns' },
           { id: 'numbering', labelKey: 'settings.tabs.numbering' },
           { id: 'messages', labelKey: 'settings.tabs.messages' },
           { id: 'masters', labelKey: 'settings.tabs.masters' },
@@ -535,8 +537,11 @@ export function SettingsPage() {
           <DonorPaymentsTab />
         </div>
       )}
+      {/* One tab, not two. The designer is the last card of this tab's Design
+          step: both answered "what does my receipt look like", both ran their
+          own live preview of the same document, and a trust that finished a
+          design had to change tabs to select it. */}
       {tab === 'receipts' && <ReceiptSettingsTab onGoToTab={setTab} />}
-      {tab === 'receipt-designs' && <ReceiptDesignerTab />}
 
       {tab === 'numbering' && <NumberingTab />}
 

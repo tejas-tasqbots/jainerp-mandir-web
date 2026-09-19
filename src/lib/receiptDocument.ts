@@ -94,6 +94,8 @@ export interface ReceiptDocument {
      */
     template?: string | null;
     receipt_show_upi_qr?: boolean;
+    /** The trust's own wording, `{ <label key>: { <lang>: text } }`. */
+    label_overrides?: unknown;
   } | null;
 }
 
@@ -243,8 +245,75 @@ function esc(v: unknown): string {
 }
 
 /** A colour the trust typed is interpolated into CSS, so only a hex colour gets through. */
+/**
+ * The trust's colour, always as six digits.
+ *
+ * The rules below append two-digit alpha to it (`${color}14`). A three-digit
+ * hex plus alpha is `#abc14`, which is not a colour, and Chromium drops the
+ * entire declaration - so a trust that had stored a short hex silently lost the
+ * amount panel's tint and the frame's wash. Expanding here fixes every existing
+ * use and lets new ones be written the same way.
+ */
+/**
+ * The trust's own wording over ours (tenant migration 046).
+ *
+ * `{ <label key>: { <language>: text } }`, the same map the printed designs
+ * read - a trust that renames "Donation Receipt" renames it here too, because a
+ * donor comparing the counter slip with the WhatsApp PDF must see one document.
+ *
+ * The rule is restated rather than imported: this file is vendored
+ * byte-identical into devotee-api and has no imports by design, and the two
+ * label tables are not the same key set anyway (this sheet prints `anumodana`,
+ * `soldTo` and `validUpto`, which no other design has). Keys this table does
+ * not have are ignored, which is also how a key the other table owns is ignored
+ * here.
+ *
+ * Locked: `computerGenerated` and the 80G certification. Those two say
+ * something about the law rather than about the trust - one explains the missing
+ * wet signature to an assessing officer, the other asserts an exemption - and we
+ * print them on the trust's behalf.
+ */
+const LOCKED_LABELS = ['certified80g', 'computerGenerated'];
+const MAX_LABEL_LEN = 160;
+
+function withOverrides(base: Labels, lang: ReceiptLanguage, raw: unknown): Labels {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
+  let out: Labels | null = null;
+  for (const [key, byLang] of Object.entries(raw as Record<string, unknown>)) {
+    if (LOCKED_LABELS.includes(key)) continue;
+    if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
+    if (!byLang || typeof byLang !== 'object' || Array.isArray(byLang)) continue;
+    const text = (byLang as Record<string, unknown>)[lang];
+    if (typeof text !== 'string') continue;
+    const v = text.trim();
+    // No markup, ever: labels are TEMPLATE, and `esc()` is applied to receipt
+    // data, not to the label table - a label carrying a tag would be written
+    // into the document as one.
+    if (!v || v.length > MAX_LABEL_LEN) continue;
+    out = out ?? { ...base };
+    // ESCAPED here, unlike our own labels. Everything in this table is
+    // interpolated into the sheet without `esc()` - the table was ours, so it
+    // was template. A trust's word is not, and two rules interpolate a label
+    // into an attribute, where a bare quote is enough. Escaping rather than
+    // refusing keeps "Donor's Copy" spellable: the entity prints as the
+    // apostrophe the trust typed.
+    //
+    // This is the ONLY escape on this path. receiptTemplates.ts excludes
+    // `label_overrides` from its own escapeDeep for exactly this reason - the
+    // Anumodana design routes through here, and two escapers produced
+    // `&amp;amp;lt;`.
+    (out as unknown as Record<string, string>)[key] = esc(v);
+  }
+  return out ?? base;
+}
+
 function safeColor(v: string | null | undefined): string {
-  return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(v ?? '') ? String(v) : '#7A1F1F';
+  const raw = String(v ?? '');
+  if (/^#[0-9a-f]{6}$/i.test(raw)) return raw;
+  if (/^#[0-9a-f]{3}$/i.test(raw)) {
+    return '#' + raw.slice(1).split('').map((c) => c + c).join('');
+  }
+  return '#7A1F1F';
 }
 
 function rupees(paise: number): string {
@@ -311,11 +380,17 @@ export function receiptParts(
 ): { lang: ReceiptLanguage; title: string; css: string; body: string } {
   const ownPage = opts.ownPage !== false;
   const m = r.mandir ?? {};
-  const L = LABELS[receiptLanguage(m.receipt_language)];
+  const lang = receiptLanguage(m.receipt_language);
+  const L = withOverrides(LABELS[lang], lang, m.label_overrides);
   const color = safeColor(m.primary_color);
   const gold = '#B8862B';
   const donation = r.kind === 'donation';
-  const title = r.title || L.donationReceipt;
+  // Escaped HERE, not at the ribbon: the two halves of this expression are
+  // different kinds of input. `r.title` is caller data ("Prasad Receipt",
+  // "Donation Receipt · Donor Copy"), `L.donationReceipt` is a label that
+  // `withOverrides` has already escaped. One esc() at the use site escaped the
+  // label twice and a trust's renamed title printed `&amp;lt;`.
+  const title = r.title ? esc(r.title) : L.donationReceipt;
   const date = new Date(r.date);
   const dateStr = Number.isNaN(date.getTime())
     ? ''
@@ -421,11 +496,18 @@ export function receiptParts(
   .details td:first-child { color: #8A7560; width: 36%; }
   .details td:last-child { font-weight: 600; }
   .badge { display: inline-block; font-size: 7.2pt; font-weight: 700; padding: .3mm 2.4mm; border-radius: 3mm; }
-  .badge.yes { background: #E3F4E6; color: #1E6B33; }
+  /* Affirmative in the TRUST'S colour, not a fixed leaf green: this sheet is
+     stationery, and a green pill inside a maroon-and-gold frame is what the
+     client pointed at. "No" stays neutral rather than alarm red - a gift that
+     carries no tax deduction is the normal case, not an error.
+     (Worded without the phrase this receipt prints for that row: CSS comments
+     ship inside the document, and qa-donor-receipt-template greps the whole
+     document to prove a SALE makes no tax claim. It was right to.) */
+  .badge.yes { background: ${color}14; color: ${color}; }
   .badge.no { background: #F3EEE6; color: #7A6A58; }
   .blessing { margin-top: 3mm; text-align: center; color: ${color}; }
   .blessing p { font-size: 8.2pt; font-style: italic; line-height: 1.5; margin-top: .6mm; padding: 0 4mm; }
-  .cert { margin-top: 2.6mm; background: #F1F8F2; border: .25mm solid #A9D5B2; border-radius: 1.5mm; padding: 1.8mm 3mm; font-size: 7pt; color: #1E5B2E; line-height: 1.45; }
+  .cert { margin-top: 2.6mm; background: ${color}0D; border: .25mm solid ${color}40; border-radius: 1.5mm; padding: 1.8mm 3mm; font-size: 7pt; color: ${color}; line-height: 1.45; }
   .paid-on { margin-top: 1.6mm; font-size: 7.4pt; color: #4A3B2E; text-align: center; }
   /* The QR sits INSIDE the frame beside the bank details. It used to be
      appended after the whole sheet by the print pipeline — outside the border,
@@ -469,7 +551,7 @@ export function receiptParts(
       ${m.address ? `<div class="addr">${esc(m.address)}${contact ? `<br/>${contact}` : ''}</div>` : contact ? `<div class="addr">${contact}</div>` : ''}
       ${regs.length ? `<div class="regs">${regs.map((x) => `<span>${x}</span>`).join('')}</div>` : ''}
     </div>
-    <div class="ribbon"><span>${esc(title)}</span></div>
+    <div class="ribbon"><span>${title}</span></div>
     ${r.is_voided ? `<div class="void-banner">⚠ ${esc(L.voided)}</div>` : ''}
     <div class="meta">
       <div><span class="k">${esc(L.receiptNo)}</span><b>${esc(r.receipt_number)}</b></div>
@@ -521,7 +603,7 @@ export function buildReceiptDocument(r: ReceiptDocument): string {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(title)}</title>
+<title>${title}</title>
 <style>${css}</style>
 </head>
 <body>${body}</body>

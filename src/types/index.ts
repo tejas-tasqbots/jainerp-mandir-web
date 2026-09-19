@@ -209,6 +209,19 @@ export interface Room {
   is_available?: boolean
   /** Only on the availability endpoint, for a specific date window. */
   available?: boolean
+  /**
+   * Whether housekeeping is holding the room (tenant migration 043).
+   *
+   * Present on `GET /rooms` too, not only on the availability board: that route
+   * is the generic resource CRUD and does `SELECT *`, so the column has been in
+   * the payload since the migration. It was simply never declared, which is why
+   * the check-in form could not tell a clerk that room 104 is being cleaned.
+   */
+  housekeeping_status?: 'ready' | 'dirty' | 'cleaning' | 'maintenance'
+  /** Only on the availability endpoint: a guest is physically in the room now. */
+  occupied?: boolean
+  /** Only on the availability endpoint: free now, but sold from this date. */
+  next_booking_from?: string | null
 }
 
 export interface RoomBooking {

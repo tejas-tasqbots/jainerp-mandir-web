@@ -695,7 +695,29 @@
     "depositSettled": "Deposit settled.",
     "depositSettleFailed": "Could not settle the deposit.",
     "checkInTime": "Check-in time",
-    "checkOutTime": "Check-out time"
+    "checkOutTime": "Check-out time",
+    "reservedAhead": "Booked ahead",
+    "heldForCleaning": "With housekeeping",
+    "heldOnly": "With housekeeping",
+    "freeUntil": "Free until {{date}}",
+    "state": {
+      "available": "Available",
+      "occupied": "Occupied",
+      "dirty": "Needs cleaning",
+      "cleaning": "Being cleaned",
+      "maintenance": "Under repair",
+      "booked": "Booked"
+    },
+    "stateHint": {
+      "available": "Click to book this room",
+      "occupied": "A guest is checked in. Free once they check out.",
+      "dirty": "Empty but not yet cleaned. Release it from Housekeeping.",
+      "cleaning": "Housekeeping is on it. It returns to the board when marked ready.",
+      "maintenance": "Held for repair. Released from Housekeeping once fixed.",
+      "booked": "Empty and clean, but already booked for these dates. Try other dates."
+    },
+    "sleepsN": "(sleeps {{n}})",
+    "perNightSuffix": "/night"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -2140,7 +2162,29 @@
       "paperThermal58": "58 mm roll",
       "previewStay": "Room bill",
       "groupStay": "Accommodation",
-      "groupStayHint": "What a guest is handed at checkout"
+      "groupStayHint": "What a guest is handed at checkout",
+      "groupBrand": "BRAND",
+      "groupBrandHint": "your colour and logo on every document",
+      "groupWording": "WORDING",
+      "groupWordingHint": "your words instead of ours",
+      "step": {
+        "design": "Design",
+        "wording": "Wording",
+        "brand": "Brand",
+        "printing": "Printing",
+        "content": "Content",
+        "stay": "Stay",
+        "slips": "Slips"
+      },
+      "stepHint": {
+        "design": "Pick the design your receipts print on, or build your own.",
+        "wording": "Change any word the receipt prints — for every design at once.",
+        "brand": "Your colour and your logo.",
+        "printing": "Paper size, how many copies, and the receipt language.",
+        "content": "The registration lines, the payment details and the footer.",
+        "stay": "The room bill, and the check-in / check-out policy it states.",
+        "slips": "Prasad, seva and bhojanshala tokens — a different document."
+      }
     },
     "save": "Save",
     "saved": "Saved",
@@ -2331,6 +2375,29 @@
       "houseRulesHint": "Printed at the foot of the room bill.",
       "templateGroupStay": "Built for stays",
       "templateGroupShared": "Shared with receipts"
+    },
+    "wording": {
+      "heading": "Your wording",
+      "subheading": "Change any word the receipt prints. Applies to every design, both copies, and the receipt your donor gets on WhatsApp.",
+      "language": "Language these words are for",
+      "lang": {
+        "en": "English",
+        "hi": "हिन्दी",
+        "mr": "मराठी",
+        "gu": "ગુજરાતી",
+        "kn": "ಕನ್ನಡ",
+        "ta": "தமிழ்",
+        "te": "తెలుగు"
+      },
+      "searchPlaceholder": "Search any word on the receipt…",
+      "commonHint": "The words trusts change most often. Search to reach any of the {{total}}.",
+      "searchResults": "{{count}} matching",
+      "noMatch": "No label matches that.",
+      "reset": "Use ours",
+      "resetAll": "Reset all",
+      "resetAllHint": "Clear your words for this language only",
+      "changedCount": "{{count}} changed",
+      "lockedNote": "Two sentences cannot be changed: {{words}}. They state the law rather than describe the trust, and we print them on your behalf."
     }
   },
   "setup": {
@@ -3152,6 +3219,12 @@
       "remittance": "Bank details & QR",
       "custom_text": "Your own line",
       "signature": "Signature block"
-    }
+    },
+    "useThis": "Use this design",
+    "inUse": "Printing now",
+    "nowPrinting": "{{name}} will print once you save.",
+    "frozenPending": "This design is waiting for approval, so it cannot be edited. Start a new version to make changes — the design you print today is unaffected.",
+    "frozenApproved": "This design is approved and printing, so it cannot be edited in place. Start a new version to make changes; this one keeps printing until the new one is approved.",
+    "wordingElsewhere": "Every other printed word is changed under Wording, which applies to all designs at once and needs no approval."
   }
 }
