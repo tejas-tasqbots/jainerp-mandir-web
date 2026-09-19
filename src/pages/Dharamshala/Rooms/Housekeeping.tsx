@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BrushCleaning, CheckCircle2, Wrench } from 'lucide-react'
+import { Brush, CheckCircle2, Wrench } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { useToast } from '../../../components/kit/Toast'
@@ -189,7 +189,7 @@ export function Housekeeping() {
                         type="button" disabled={busy === room.id}
                         onClick={() => void setStatus(room, 'cleaning')}
                         className="btn-secondary btn-sm"
-                      ><BrushCleaning size={13} /> {t('housekeeping.startCleaning')}</button>
+                      ><Brush size={13} /> {t('housekeeping.startCleaning')}</button>
                     )}
                     {room.housekeeping_status !== 'ready' && (
                       <button
