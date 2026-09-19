@@ -22,6 +22,17 @@ export interface TempleProfile {
   effective_modules?: string[]
   /** The same list with display names, for anything that labels a module. */
   modules?: { key: string; display_name: string; is_core: boolean; sort_order: number }[]
+  /**
+   * The trust's PRINTED vocabulary, as distinct from the operator's UI language.
+   *
+   * `/tenants/me` has returned both of these all along - it selects the whole
+   * profile row - and neither was declared, so nothing outside the Settings
+   * screen could read them. That is how the room bill came to print in the
+   * volunteer's chosen language with our words instead of the trust's. See
+   * `useReceiptLabels`.
+   */
+  receipt_language?: string | null
+  receipt_label_overrides?: unknown
 }
 
 interface ProfileState {

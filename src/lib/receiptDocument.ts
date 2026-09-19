@@ -307,6 +307,17 @@ function withOverrides(base: Labels, lang: ReceiptLanguage, raw: unknown): Label
   return out ?? base;
 }
 
+/**
+ * Two names, compared the way a person would.
+ *
+ * Case, punctuation and runs of spaces ignored: "Shri Jain Mandir Trust." and
+ * "SHRI JAIN MANDIR TRUST" are the same name typed twice, and treating them as
+ * different would print the redundant line this comparison exists to drop.
+ */
+function norm(v: string | null | undefined): string {
+  return String(v ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
 function safeColor(v: string | null | undefined): string {
   const raw = String(v ?? '');
   if (/^#[0-9a-f]{6}$/i.test(raw)) return raw;
@@ -423,12 +434,31 @@ export function receiptParts(
   // used to be gated on `bank_account_no`, so a trust holding a bank name and
   // an IFSC but no account number printed nothing; and the account NAME — the
   // one field someone making a transfer is asked to confirm — was never here.
-  const pay: string[] = [];
-  if (m.upi_id) pay.push(`${esc(L.upiId)} <b>${esc(m.upi_id)}</b>`);
-  if (m.bank_account_name) pay.push(`${esc(L.accountName)} <b>${esc(m.bank_account_name)}</b>`);
-  if (m.bank_account_no) pay.push(`${esc(L.accountNo)} <b>${esc(m.bank_account_no)}</b>`);
-  if (m.bank_ifsc) pay.push(`${esc(L.ifsc)} <b>${esc(m.bank_ifsc)}</b>`);
-  if (m.bank_name) pay.push(`${esc(L.bank)} <b>${esc(m.bank_name)}</b>`);
+  // Label and value kept apart, so they can be laid out as a table rather than
+  // joined into one centred paragraph with " | " between the fields. Five fields
+  // that way wrapped into three ragged lines at 7.2pt - worse in Hindi, where
+  // the labels are longer than the English ones the layout was eyeballed with -
+  // and a donor reading an account number off it had to work out where one
+  // field ended and the next began.
+  const pay: [string, string][] = [];
+  if (m.upi_id) pay.push([esc(L.upiId), esc(m.upi_id)]);
+  // Only when it is NOT the trust's own name. The header prints that in 17pt
+  // three inches above, so repeating it here adds the longest line on the page
+  // and says nothing - and the sheet has no room to spare: it measures 762px
+  // against a 762px A5 budget before the payment block is drawn at all.
+  //
+  // When it DOES differ it is worth the line, and more than the others were: an
+  // account held in a trustee's personal name rather than the trust's is what
+  // the super-admin donation-account queue exists to catch, and it now stands
+  // out on the receipt rather than hiding in a field that usually repeats the
+  // masthead.
+  const sameAsTrust = norm(m.bank_account_name) === norm(m.name);
+  if (m.bank_account_name && !sameAsTrust) {
+    pay.push([esc(L.accountName), esc(m.bank_account_name)]);
+  }
+  if (m.bank_account_no) pay.push([esc(L.accountNo), esc(m.bank_account_no)]);
+  if (m.bank_ifsc) pay.push([esc(L.ifsc), esc(m.bank_ifsc)]);
+  if (m.bank_name) pay.push([esc(L.bank), esc(m.bank_name)]);
   const paidOn = r.paid_on ? new Date(String(r.paid_on)) : null;
   const paidOnStr = paidOn && !Number.isNaN(paidOn.getTime())
     ? paidOn.toLocaleString('en-IN', {
@@ -514,7 +544,34 @@ export function receiptParts(
      in none of the design's colours, below the signature. */
   .pay { margin-top: 2mm; font-size: 7.2pt; color: #6B5B4B; line-height: 1.5;
     display: flex; align-items: center; justify-content: center; gap: 3mm; }
-  .pay-rows { text-align: center; }
+  /* Left-aligned inside a centred block: the HEADING is centred and the fields
+     are not, because a column of values with ragged left edges is the thing
+     that made this look untidy. */
+  .pay-rows { text-align: left; }
+  /* TWO pairs per row, not one per line.
+     One per line read well and cost a page: five rows pushed this sheet to
+     839px against an A5 box and it printed on two sheets, which is the original
+     reported defect. A grid of label / value / label / value reads the same and is
+     half the height, and there is room for it - the sheet is 148mm wide and
+     these fields are short. */
+  /* The caption is the grid's first cell, spanning the row, rather than a block
+     above it. As a separate element it cost its own line box AND its own
+     margin - 7px on a sheet that had 7px of headroom - and a grid where every
+     value already carries its label does not need a caption to be legible; it
+     needs one to be SEPARATED from the blessing above, which spanning a row
+     does just as well. */
+  .pay-tbl .cap { grid-column: 1 / -1; font-size: 6.4pt; letter-spacing: .5px;
+    text-transform: uppercase; color: #8A7560; }
+  .pay-tbl { display: grid; grid-template-columns: max-content auto max-content auto;
+    column-gap: 2.4mm; row-gap: 0; margin: .5mm 0 0; align-items: baseline;
+    line-height: 1.2; }
+  /* The labels never wrap: a two-line "A/C name" beside a one-line value is
+     what makes a grid look broken. */
+  .pay-tbl .k { color: #8A7560; white-space: nowrap; }
+  .pay-tbl .v { font-weight: 700; color: #4A3B2E; word-break: break-all; }
+  /* An odd number of fields leaves the last value spanning the empty pair,
+     so it never sits in a half-width cell with its digits wrapped. */
+  .pay-tbl .v:last-child:nth-child(2n) { grid-column: span 3; }
   .pay-head { display: block; font-size: 6.4pt; letter-spacing: .5px; text-transform: uppercase; color: #8A7560; }
   .pay-qr { flex: none; text-align: center; }
   .pay-qr img { width: 16mm; height: 16mm; display: block; }
@@ -581,7 +638,9 @@ export function receiptParts(
     </div>`}
     ${paidOnStr ? `<div class="paid-on">${esc(L.receivedOn)} <b>${esc(paidOnStr)}</b></div>` : ''}
     ${pay.length || r.upi_qr_data_uri ? `<div class="pay">
-      ${pay.length ? `<div class="pay-rows"><span class="pay-head">${esc(L.paymentDetails)}</span>${pay.join(' &nbsp;|&nbsp; ')}</div>` : ''}
+      ${pay.length ? `<div class="pay-rows">
+        <div class="pay-tbl"><span class="cap">${esc(L.paymentDetails)}</span>${pay.map(([k, v]) => `<span class="k">${k}</span><span class="v">${v}</span>`).join('')}</div>
+      </div>` : ''}
       ${r.upi_qr_data_uri ? `<div class="pay-qr"><img src="${r.upi_qr_data_uri}" alt="" /><span>${esc(L.scanToDonate)}</span></div>` : ''}
     </div>` : ''}
     <div class="spacer"></div>

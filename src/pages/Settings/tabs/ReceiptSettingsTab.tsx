@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
-import { buildReceiptHtml, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
+import { buildReceiptHtml, buildUpiQr, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
 import { parseLabelOverrides, type LabelOverrides } from '../../../lib/receiptLabels'
 import { ReceiptWordingCard } from './ReceiptWordingCard'
 import { ReceiptDesignerCard } from './ReceiptDesignerTab'
+import type { ReceiptDefinition } from '../../../lib/receiptDefinition'
 import { useToast } from '../../../components/kit/Toast'
 
 /**
@@ -520,6 +521,18 @@ function buildPreviewData(
    * would be previewed in English and look as though nothing had happened.
    */
   langOverride?: string,
+  /**
+   * A custom design being edited, which takes over the preview while the
+   * designer is open — the pane shows what that design will print rather than
+   * the design the trust currently has selected.
+   */
+  design?: { def: ReceiptDefinition; docKind: 'donation' | 'stay' | 'hall' } | null,
+  /**
+   * The encoded UPI QR, when the screen has one. Passed in rather than encoded
+   * here: this function is synchronous and `buildUpiQr` is not, which is why the
+   * preview never showed a QR on any design.
+   */
+  qr?: string | null,
 ): ReceiptData {
   // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact — and it
   // has to be shaped like a GSTIN, not merely non-empty ("0" used to switch GST
@@ -534,6 +547,9 @@ function buildPreviewData(
     receipt_number: 'DON/2025-26/000001',
     date: new Date().toISOString(),
     is_voided: false,
+    // The encoded QR, when the screen has one. Every design draws it from here;
+    // the pane simply never had a value to give them.
+    upi_qr_data_uri: qr ?? null,
     donor: {
       name: 'Ayush Kasliwal',
       mobile: '+919876543210',
@@ -649,6 +665,10 @@ function buildPreviewData(
       // happen - which is exactly the "preview while updating is not updating"
       // that was reported.
       label_overrides: form.receipt_label_overrides,
+      // A design under edit wins over the selected one. `template: 'custom'`
+      // with a definition is exactly what a counter prints, so the pane is the
+      // real thing and not a mock-up of it.
+      ...(design ? { template: 'custom', template_definition: design.def } : {}),
       receipt_show_upi_qr: form.receipt_show_upi_qr,
       ...(mode === 'slip'
         ? { surface: 'slip' as const, slip_token_per_plate: form.slip_token_per_plate }
@@ -725,6 +745,28 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
    */
   const [wordingLang, setWordingLang] = useState('en')
   /**
+   * The custom design being edited in the designer card below, if any.
+   *
+   * The designer used to draw its own preview, which cost the editor a third of
+   * its width: three nested columns left every field about 180px wide and every
+   * label wrapped over four lines. It now reports the definition up here and
+   * this screen's existing 420px pane renders it — one preview of one document,
+   * which is what it should always have been.
+   */
+  /**
+   * The trust's UPI pay QR, encoded for the preview.
+   *
+   * `buildPreviewData` is synchronous and `buildUpiQr` is not, so the pane has
+   * never shown a QR on any design - reported as "still I cant see teh UPI QR
+   * code". Encoded once in an effect below and held here, rather than awaited
+   * inside the builder.
+   */
+  const [previewQr, setPreviewQr] = useState<string | null>(null)
+  const [designPreview, setDesignPreview] = useState<{
+    def: ReceiptDefinition
+    docKind: 'donation' | 'stay' | 'hall'
+  } | null>(null)
+  /**
    * Whether the previewed design fits the paper it is set to print on.
    *
    * This screen is the one place an admin checks WHAT PRINTS, and it was the
@@ -799,6 +841,20 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
    * Writing the same HTML more than once is cheap and idempotent; a blank
    * preview is the bug that was reported.
    */
+  /**
+   * The designer reporting what it is editing.
+   *
+   * `useCallback` is load-bearing rather than tidy: the card's effect depends on
+   * this function, so an inline arrow would be a new identity every render and
+   * the effect would fire in a loop.
+   */
+  const handleDesignPreview = useCallback((
+    def: ReceiptDefinition | null,
+    docKind: 'donation' | 'stay' | 'hall',
+  ) => {
+    setDesignPreview(def ? { def, docKind } : null)
+  }, [])
+
   const paintPreview = useCallback(() => {
     const doc = iframeRef.current?.contentDocument
     if (!doc) return
@@ -807,19 +863,37 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
       // Only while the Wording step is open. Everywhere else the preview must
       // show the language the trust actually prints in.
       step === 'wording' ? wordingLang : undefined,
+      designPreview,
+      previewQr,
     ))
     // Remove the auto-print script for preview
     doc.open()
     doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
     doc.close()
     markPageEdge(doc, setPageFit)
-  }, [form, previewMode, step, wordingLang])
+  }, [form, previewMode, step, wordingLang, designPreview, previewQr])
 
   useEffect(() => {
     paintPreview()
     const id = requestAnimationFrame(() => { paintPreview() })
     return () => cancelAnimationFrame(id)
   }, [paintPreview])
+
+  /**
+   * Encode the QR when the things that change it change - and only then.
+   *
+   * Deliberately NOT inside `paintPreview`: that runs on every keystroke in a
+   * form with thirty controls, and re-encoding a 220px PNG because somebody
+   * edited the house rules is work nobody asked for. The dependency list is the
+   * three inputs `buildUpiQr` actually reads.
+   */
+  useEffect(() => {
+    let live = true
+    void buildUpiQr(buildPreviewData(form, 'receipt')).then((uri) => {
+      if (live) setPreviewQr(uri)
+    })
+    return () => { live = false }
+  }, [form.upi_id, form.name, form.receipt_show_upi_qr])
 
   function set<K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) {
     setForm(f => ({ ...f, [k]: v }))
@@ -996,6 +1070,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           accent={form.primary_color}
           onUseDesign={() => set('receipt_template', 'custom')}
           selectedTemplate={form.receipt_template}
+          onPreview={handleDesignPreview}
         />
         </section>}
 

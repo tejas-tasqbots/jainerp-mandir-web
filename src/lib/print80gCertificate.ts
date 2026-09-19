@@ -1,4 +1,5 @@
 import { api } from './api'
+import { receiptLabelsFor } from './receiptLabels'
 import { printReceiptHtml } from './printReceipt'
 
 interface Cert80gLine {
@@ -35,6 +36,14 @@ interface Cert80gData {
     logo_cdn_url?: string | null
     primary_color?: string
     footer?: string | null
+    /**
+     * The trust's receipt language and its own printed words (tenant migration
+     * 046). This certificate is filed with an assessing officer by the donor, so
+     * it reads the trust's vocabulary like every receipt does - it was hardcoded
+     * English until now.
+     */
+    receipt_language?: string | null
+    label_overrides?: unknown
   } | null
   lines: Cert80gLine[]
   total_paise: number
@@ -74,6 +83,14 @@ function modeName(mode: string): string {
 }
 
 function buildCert80gHtml(d: Cert80gData): string {
+  // The TRUST'S printed vocabulary, not the operator's UI language. This
+  // certificate is filed with an assessing officer by the donor, so every word
+  // on it is the trust's - and it was hardcoded English, which meant a trust
+  // that renamed a word saw it on its receipts and not on the certificate they
+  // are summarised on ("many receipts are not beening udpated as per the new
+  // wording sets"). `section80g5` is locked in the label table: the Act's own
+  // reference is not a phrase a trust restates.
+  const L = receiptLabelsFor(d.mandir?.receipt_language, d.mandir?.label_overrides)
   const m = d.mandir ?? { name: 'Mandir', address: '', primary_color: '#0D1B2E' }
   const color = m.primary_color || '#0D1B2E'
   const logo = m.logo_base64 || m.logo_cdn_url
@@ -150,18 +167,18 @@ function buildCert80gHtml(d: Cert80gData): string {
         ${[d.donor.address, d.donor.city, d.donor.state].filter(Boolean).length ? `<div><b>Address:</b> ${[d.donor.address, d.donor.city, d.donor.state].filter(Boolean).join(', ')}</div>` : ''}
       </div>
       <table>
-        <thead><tr><th>#</th><th>Date</th><th>Receipt No.</th><th>Category</th><th>Mode</th><th>Amount</th></tr></thead>
+        <thead><tr><th>#</th><th>${L.date}</th><th>${L.receiptNo}</th><th>${L.category}</th><th>${L.mode}</th><th>${L.amount}</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5">Total 80G-Eligible Donation</td><td style="text-align:right">₹ ${fmtRs(d.total_paise)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="5">${L.total80gEligible}</td><td style="text-align:right">₹ ${fmtRs(d.total_paise)}</td></tr></tfoot>
       </table>
-      <div class="words">Amount in words: ${amountInWords(d.total_paise)}</div>
+      <div class="words">${L.amountInWords}: ${amountInWords(d.total_paise)}</div>
       <div class="declaration">
         This is to certify that the above donation(s) have been received by <b>${m.name}</b> and are eligible
-        for deduction under <b>Section 80G(5)</b> of the Income Tax Act, 1961${m.reg_80g_number ? `, vide registration/approval no. <b>${m.reg_80g_number}</b>` : ''}${validUpto ? `, valid up to <b>${validUpto}</b>` : ''}.
+        for deduction under <b>${L.section80g5}</b> of the Income Tax Act, 1961${m.reg_80g_number ? `, vide registration/approval no. <b>${m.reg_80g_number}</b>` : ''}${validUpto ? `, valid up to <b>${validUpto}</b>` : ''}.
         No goods or services were provided in return for this donation.
       </div>
       <div class="sign">
-        <div class="box"><div class="line">Authorised Signatory</div></div>
+        <div class="box"><div class="line">${L.authorisedSignatory}</div></div>
       </div>
       ${m.footer ? `<div class="footer-note">${m.footer}</div>` : ''}
     </div>

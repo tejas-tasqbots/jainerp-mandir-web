@@ -18,8 +18,8 @@ export interface CollectionStreams {
   seva_paise?: number
   prasad_paise?: number
   bhojanshala_paise?: number
-  room_advance_paise?: number
-  hall_advance_paise?: number
+  rooms_paise?: number
+  hall_paise?: number
   included_streams?: string[]
   total_collection_paise: number
   expenses_paise: number
@@ -31,8 +31,8 @@ const STREAMS: [keyof CollectionStreams, string][] = [
   ['seva_paise', 'reports.streamSeva'],
   ['prasad_paise', 'reports.streamPrasad'],
   ['bhojanshala_paise', 'reports.streamBhojanshala'],
-  ['room_advance_paise', 'reports.streamRoomAdvance'],
-  ['hall_advance_paise', 'reports.streamHallAdvance'],
+  ['rooms_paise', 'reports.streamRooms'],
+  ['hall_paise', 'reports.streamHall'],
 ]
 
 /**

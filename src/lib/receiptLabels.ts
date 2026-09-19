@@ -109,6 +109,44 @@ export interface ReceiptLabels {
   guestFolio: string
   placeOfSupply: string
   taxableValue: string
+  // -- The three documents that are not one of the receipt designs -----------
+  // A room bill, an 80G certificate and a boli intimation are all handed to the
+  // person who paid, so they read the trust's vocabulary like everything else.
+  // They used to take their labels from the admin app's UI i18n, which is the
+  // OPERATOR'S language - so a renamed word changed the receipt and not the bill.
+  roomBill: string
+  hallBill: string
+  paymentsReceived: string
+  noPaymentsRecorded: string
+  /** The 80G certificate's footer total. */
+  total80gEligible: string
+  /** The Act's own section reference. Locked: it is the law's words, not ours. */
+  section80g5: string
+  boliIntimation: string
+  pledgedAmount: string
+  pledgeDate: string
+  paidSoFar: string
+  outstandingAmount: string
+  /** What the hall was booked FOR, on the hall bill. */
+  eventName: string
+  // -- The Anumodana sheet's own words ---------------------------------------
+  // That design is rendered by receiptDocument.ts, which carries its own label
+  // table because it is vendored into devotee-api and has no imports by design.
+  // These nine exist only there, and the wording editor never listed them - so a
+  // trust could not change the blessing line on the one design its donors
+  // receive by WhatsApp. The override mechanism already reached them; the editor
+  // did not. Declared here so it does.
+  soldTo: string
+  purpose: string
+  /** The blessing under the amount, and the line the client pointed at. */
+  anumodana: string
+  thanks: string
+  /** The 80G certification in the sheet's words. Locked, like `valid80g`. */
+  certified80g: string
+  validUpto: string
+  bank: string
+  authorised: string
+  voided: string
 }
 
 const en: ReceiptLabels = {
@@ -195,6 +233,27 @@ const en: ReceiptLabels = {
   guestFolio: 'Guest Folio',
   placeOfSupply: 'Place of Supply',
   taxableValue: 'Taxable Value',
+  roomBill: 'Room Bill',
+  hallBill: 'Hall Bill',
+  paymentsReceived: 'Payments Received',
+  noPaymentsRecorded: 'No payments recorded',
+  total80gEligible: 'Total 80G-Eligible Donation',
+  section80g5: 'Section 80G(5)',
+  boliIntimation: 'Boli Pledge Intimation',
+  pledgedAmount: 'Pledged Amount',
+  pledgeDate: 'Pledge Date',
+  paidSoFar: 'Paid So Far',
+  outstandingAmount: 'Outstanding Amount',
+  eventName: 'Event',
+  soldTo: 'Received from',
+  purpose: 'Purpose',
+  anumodana: 'Heartfelt anumodana for your generous daan. May this punya karya bring sukh and shanti to you and your family.',
+  thanks: 'Thank you. Jai Jinendra.',
+  certified80g: 'Certified that this donation is eligible for deduction under Section 80G(5)(vi) of the Income-tax Act, 1961.',
+  validUpto: 'Valid up to',
+  bank: 'Bank',
+  authorised: 'Authorised signatory',
+  voided: 'This receipt has been cancelled',
 }
 
 const hi: ReceiptLabels = {
@@ -281,6 +340,27 @@ const hi: ReceiptLabels = {
   guestFolio: 'अतिथि विवरण-पत्र',
   placeOfSupply: 'आपूर्ति स्थान',
   taxableValue: 'कर योग्य मूल्य',
+  roomBill: 'कक्ष बिल',
+  hallBill: 'हॉल बिल',
+  paymentsReceived: 'प्राप्त भुगतान',
+  noPaymentsRecorded: 'कोई भुगतान दर्ज नहीं',
+  total80gEligible: 'कुल 80G पात्र दान',
+  section80g5: 'धारा 80G(5)',
+  boliIntimation: 'बोली संकल्प सूचना',
+  pledgedAmount: 'संकल्प राशि',
+  pledgeDate: 'संकल्प दिनांक',
+  paidSoFar: 'अब तक भुगतान',
+  outstandingAmount: 'शेष राशि',
+  eventName: 'कार्यक्रम',
+  soldTo: 'प्राप्त',
+  purpose: 'उद्देश्य',
+  anumodana: 'आपके उदार दान की हार्दिक अनुमोदना। यह पुण्य कार्य आपके और आपके परिवार के जीवन में सुख-शांति लाए।',
+  thanks: 'धन्यवाद। जय जिनेन्द्र।',
+  certified80g: 'प्रमाणित किया जाता है कि यह दान आयकर अधिनियम, 1961 की धारा 80G(5)(vi) के अंतर्गत कटौती हेतु पात्र है।',
+  validUpto: 'वैधता',
+  bank: 'बैंक',
+  authorised: 'अधिकृत हस्ताक्षरकर्ता',
+  voided: 'यह रसीद निरस्त कर दी गई है',
 }
 
 const mr: ReceiptLabels = {
@@ -367,6 +447,27 @@ const mr: ReceiptLabels = {
   guestFolio: 'अतिथी तपशील-पत्र',
   placeOfSupply: 'पुरवठा ठिकाण',
   taxableValue: 'करपात्र मूल्य',
+  roomBill: 'खोली बिल',
+  hallBill: 'सभागृह बिल',
+  paymentsReceived: 'प्राप्त देयके',
+  noPaymentsRecorded: 'कोणतेही देयक नोंदवलेले नाही',
+  total80gEligible: 'एकूण 80G पात्र दान',
+  section80g5: 'कलम 80G(5)',
+  boliIntimation: 'बोली संकल्प सूचना',
+  pledgedAmount: 'संकल्प रक्कम',
+  pledgeDate: 'संकल्प दिनांक',
+  paidSoFar: 'आतापर्यंत भरलेले',
+  outstandingAmount: 'शिल्लक रक्कम',
+  eventName: 'कार्यक्रम',
+  soldTo: 'प्राप्त',
+  purpose: 'उद्देश',
+  anumodana: 'आपल्या उदार दानाची हार्दिक अनुमोदना. हे पुण्यकार्य आपल्या व आपल्या कुटुंबाच्या जीवनात सुख-शांती आणो.',
+  thanks: 'धन्यवाद. जय जिनेंद्र.',
+  certified80g: 'प्रमाणित करण्यात येते की हे दान आयकर अधिनियम, 1961 च्या कलम 80G(5)(vi) अंतर्गत वजावटीस पात्र आहे.',
+  validUpto: 'वैधता',
+  bank: 'बँक',
+  authorised: 'अधिकृत स्वाक्षरीकर्ता',
+  voided: 'ही पावती रद्द करण्यात आली आहे',
 }
 
 const gu: ReceiptLabels = {
@@ -453,6 +554,27 @@ const gu: ReceiptLabels = {
   guestFolio: 'અતિથિ વિગત-પત્ર',
   placeOfSupply: 'પુરવઠા સ્થળ',
   taxableValue: 'કરપાત્ર મૂલ્ય',
+  roomBill: 'રૂમ બિલ',
+  hallBill: 'હોલ બિલ',
+  paymentsReceived: 'પ્રાપ્ત ચુકવણી',
+  noPaymentsRecorded: 'કોઈ ચુકવણી નોંધાયેલ નથી',
+  total80gEligible: 'કુલ 80G પાત્ર દાન',
+  section80g5: 'કલમ 80G(5)',
+  boliIntimation: 'બોલી સંકલ્પ સૂચના',
+  pledgedAmount: 'સંકલ્પ રકમ',
+  pledgeDate: 'સંકલ્પ તારીખ',
+  paidSoFar: 'અત્યાર સુધી ચૂકવેલ',
+  outstandingAmount: 'બાકી રકમ',
+  eventName: 'નિમિત્ત',
+  soldTo: 'પ્રાપ્ત',
+  purpose: 'હેતુ',
+  anumodana: 'આપના ઉદાર દાનની હાર્દિક અનુમોદના. આ પુણ્ય કાર્ય આપના અને આપના પરિવારના જીવનમાં સુખ-શાંતિ લાવે.',
+  thanks: 'આભાર. જય જિનેન્દ્ર.',
+  certified80g: 'પ્રમાણિત કરવામાં આવે છે કે આ દાન આવકવેરા અધિનિયમ, 1961 ની કલમ 80G(5)(vi) હેઠળ કપાત માટે પાત્ર છે.',
+  validUpto: 'માન્યતા',
+  bank: 'બેંક',
+  authorised: 'અધિકૃત સહીકર્તા',
+  voided: 'આ પાવતી રદ કરવામાં આવી છે',
 }
 
 const kn: ReceiptLabels = {
@@ -539,6 +661,27 @@ const kn: ReceiptLabels = {
   guestFolio: 'ಅತಿಥಿ ವಿವರ ಪತ್ರ',
   placeOfSupply: 'ಪೂರೈಕೆ ಸ್ಥಳ',
   taxableValue: 'ತೆರಿಗೆಗೊಳಪಡುವ ಮೌಲ್ಯ',
+  roomBill: 'ಕೊಠಡಿ ಬಿಲ್',
+  hallBill: 'ಸಭಾಂಗಣ ಬಿಲ್',
+  paymentsReceived: 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿಗಳು',
+  noPaymentsRecorded: 'ಯಾವುದೇ ಪಾವತಿ ದಾಖಲಾಗಿಲ್ಲ',
+  total80gEligible: 'ಒಟ್ಟು 80G ಅರ್ಹ ದೇಣಿಗೆ',
+  section80g5: 'ಸೆಕ್ಷನ್ 80G(5)',
+  boliIntimation: 'ಬೋಲಿ ಸಂಕಲ್ಪ ಸೂಚನೆ',
+  pledgedAmount: 'ಸಂಕಲ್ಪ ಮೊತ್ತ',
+  pledgeDate: 'ಸಂಕಲ್ಪ ದಿನಾಂಕ',
+  paidSoFar: 'ಇದುವರೆಗೆ ಪಾವತಿಸಿದ',
+  outstandingAmount: 'ಬಾಕಿ ಮೊತ್ತ',
+  eventName: 'ಕಾರ್ಯಕ್ರಮ',
+  soldTo: 'ಇವರಿಂದ ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
+  purpose: 'ಉದ್ದೇಶ',
+  anumodana: 'ನಿಮ್ಮ ಉದಾರ ದಾನಕ್ಕೆ ಹೃತ್ಪೂರ್ವಕ ಅನುಮೋದನೆ. ಈ ಪುಣ್ಯ ಕಾರ್ಯ ನಿಮ್ಮ ಮತ್ತು ನಿಮ್ಮ ಕುಟುಂಬದ ಜೀವನದಲ್ಲಿ ಸುಖ-ಶಾಂತಿ ತರಲಿ.',
+  thanks: 'ಧನ್ಯವಾದಗಳು. ಜೈ ಜಿನೇಂದ್ರ.',
+  certified80g: 'ಈ ದಾನವು ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ, 1961 ರ ಸೆಕ್ಷನ್ 80G(5)(vi) ಅಡಿಯಲ್ಲಿ ಕಡಿತಕ್ಕೆ ಅರ್ಹವಾಗಿದೆ ಎಂದು ಪ್ರಮಾಣೀಕರಿಸಲಾಗಿದೆ.',
+  validUpto: 'ಮಾನ್ಯತೆ',
+  bank: 'ಬ್ಯಾಂಕ್',
+  authorised: 'ಅಧಿಕೃತ ಸಹಿದಾರರು',
+  voided: 'ಈ ರಶೀದಿಯನ್ನು ರದ್ದುಪಡಿಸಲಾಗಿದೆ',
 }
 
 const ta: ReceiptLabels = {
@@ -625,6 +768,27 @@ const ta: ReceiptLabels = {
   guestFolio: 'விருந்தினர் விவரப் பட்டியல்',
   placeOfSupply: 'வழங்கல் இடம்',
   taxableValue: 'வரிவிதிக்கத்தக்க மதிப்பு',
+  roomBill: 'அறை கட்டணச் சீட்டு',
+  hallBill: 'மண்டப கட்டணச் சீட்டு',
+  paymentsReceived: 'பெறப்பட்ட கட்டணங்கள்',
+  noPaymentsRecorded: 'எந்த கட்டணமும் பதிவாகவில்லை',
+  total80gEligible: 'மொத்த 80G தகுதியான நன்கொடை',
+  section80g5: 'பிரிவு 80G(5)',
+  boliIntimation: 'போலி சங்கல்ப அறிவிப்பு',
+  pledgedAmount: 'சங்கல்ப தொகை',
+  pledgeDate: 'சங்கல்ப தேதி',
+  paidSoFar: 'இதுவரை செலுத்தியது',
+  outstandingAmount: 'நிலுவைத் தொகை',
+  eventName: 'நிகழ்வு',
+  soldTo: 'பெறப்பட்டது',
+  purpose: 'நோக்கம்',
+  anumodana: 'உங்கள் தாராள நன்கொடைக்கு மனமார்ந்த அனுமோதனை. இந்தப் புண்ணிய காரியம் உங்களுக்கும் உங்கள் குடும்பத்திற்கும் சுகமும் சாந்தியும் அளிக்கட்டும்.',
+  thanks: 'நன்றி. ஜெய் ஜினேந்திரா.',
+  certified80g: 'இந்த நன்கொடை வருமான வரிச் சட்டம், 1961 பிரிவு 80G(5)(vi) இன் கீழ் கழிவுக்குத் தகுதியானது எனச் சான்றளிக்கப்படுகிறது.',
+  validUpto: 'செல்லுபடி',
+  bank: 'வங்கி',
+  authorised: 'அங்கீகரிக்கப்பட்ட கையொப்பமிடுபவர்',
+  voided: 'இந்த ரசீது ரத்து செய்யப்பட்டது',
 }
 
 const te: ReceiptLabels = {
@@ -711,6 +875,27 @@ const te: ReceiptLabels = {
   guestFolio: 'అతిథి వివరాల పత్రం',
   placeOfSupply: 'సరఫరా స్థలం',
   taxableValue: 'పన్ను విధించదగిన విలువ',
+  roomBill: 'గది బిల్లు',
+  hallBill: 'హాల్ బిల్లు',
+  paymentsReceived: 'స్వీకరించిన చెల్లింపులు',
+  noPaymentsRecorded: 'ఏ చెల్లింపూ నమోదు కాలేదు',
+  total80gEligible: 'మొత్తం 80G అర్హత దానం',
+  section80g5: 'సెక్షన్ 80G(5)',
+  boliIntimation: 'బోలి సంకల్ప సూచన',
+  pledgedAmount: 'సంకల్ప మొత్తం',
+  pledgeDate: 'సంకల్ప తేదీ',
+  paidSoFar: 'ఇప్పటివరకు చెల్లించిన',
+  outstandingAmount: 'బకాయి మొత్తం',
+  eventName: 'కార్యక్రమం',
+  soldTo: 'స్వీకరించబడింది',
+  purpose: 'ఉద్దేశ్యం',
+  anumodana: 'మీ ఉదార విరాళానికి హృదయపూర్వక అనుమోదన. ఈ పుణ్య కార్యం మీకు, మీ కుటుంబానికి సుఖశాంతులు ప్రసాదించాలి.',
+  thanks: 'ధన్యవాదాలు. జై జినేంద్ర.',
+  certified80g: 'ఈ విరాళం ఆదాయపు పన్ను చట్టం, 1961 లోని సెక్షన్ 80G(5)(vi) కింద మినహాయింపుకు అర్హమైనదని ధృవీకరించబడింది.',
+  validUpto: 'చెల్లుబాటు',
+  bank: 'బ్యాంక్',
+  authorised: 'అధీకృత సంతకందారు',
+  voided: 'ఈ రసీదు రద్దు చేయబడింది',
 }
 
 export const RECEIPT_LABELS: Record<ReceiptLang, ReceiptLabels> = { en, hi, mr, gu, kn, ta, te }
@@ -767,7 +952,18 @@ export function labelPlaceholders(key: keyof ReceiptLabels): string[] {
  * them is a compliance problem, not a preference. Everything else - every
  * heading, every field name, every blessing - is theirs.
  */
-export const LOCKED_LABELS: readonly string[] = ['valid80g', 'computerGenerated']
+export const LOCKED_LABELS: readonly string[] = [
+  'valid80g', 'computerGenerated',
+  // The Act's own section reference. A trust rewriting "Section 80G(5)" on a
+  // certificate a donor files with an assessing officer is the same class of
+  // problem as rewriting the certification sentence itself.
+  'section80g5',
+  // The Anumodana sheet's own 80G certification. The same statement `valid80g`
+  // makes on the printed designs, in the sheet's words, and locked for the same
+  // reason: a trust rewriting the exemption it claims to an assessing officer is
+  // a compliance problem rather than a preference.
+  'certified80g',
+]
 
 /** The keys a trust may override, in the order the editor should show them. */
 export const OVERRIDABLE_LABELS: readonly (keyof ReceiptLabels)[] =

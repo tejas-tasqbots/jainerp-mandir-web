@@ -63,6 +63,7 @@ export function ReceiptDesignerCard({
   accent,
   onUseDesign,
   selectedTemplate,
+  onPreview,
 }: {
   /** The trust's brand colour, offered as the starting accent for a new design. */
   accent?: string
@@ -70,6 +71,15 @@ export function ReceiptDesignerCard({
   onUseDesign?: () => void
   /** So the card can say whether the approved design is the one being printed. */
   selectedTemplate?: string
+  /**
+   * The definition currently being edited, or null when the editor is closed.
+   *
+   * This card does NOT render its own preview. The screen it sits on already has
+   * a 420px live preview of the same document, and running a second one cost the
+   * editor a third of its width — three nested columns left every field about
+   * 180px wide and every label wrapped over four lines.
+   */
+  onPreview?: (def: ReceiptDefinition | null, docKind: 'donation' | 'stay' | 'hall') => void
 }) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -127,91 +137,21 @@ export function ReceiptDesignerCard({
     setOpen(true)
   }
 
-  /* ── The live preview: the SAME renderer the printer uses ────────────────
-     Not a mock-up of the design — `buildReceiptHtml` with `template: 'custom'`
-     is exactly what a counter prints, so what an admin approves for submission
-     is what a reviewer will see and what a donor will receive.
-
-     ── WHY THE WRITE IS GUARDED THE WAY IT IS ──────────────────────────────
-     This effect used to bail out silently when `contentDocument` was not there
-     yet and never try again, which is one of the two ways this pane could sit
-     frozen while someone edited. The other was the editor's `fieldset disabled`
-     on a submitted design: nothing could change, so nothing did, and there was
-     no explanation on the fields — the reported "preview while updating is not
-     updating". Both are addressed: the write retries on the frame's load, and a
-     frozen design now says why in a banner over the fields. */
-  const paint = useCallback(() => {
-    const frame = iframeRef.current
-    const doc = frame?.contentDocument
-    if (!doc) return false
-    const sample: ReceiptData = {
-      receipt_number: docKind === 'stay' ? 'ROOM/2025-26/000042' : 'DON/2025-26/000001',
-      date: new Date().toISOString(),
-      is_voided: false,
-      kind: docKind === 'donation' ? 'donation' : 'service',
-      doc_title: docKind === 'stay' ? 'Room Receipt' : docKind === 'hall' ? 'Hall Receipt' : null,
-      donor: {
-        name: 'Ayush Kasliwal', mobile: '+919876543210',
-        address: '12 Sample Street, Surat, Gujarat, 395001',
-        pan_masked: 'ABXXXXX34C', pan_full: null,
-      },
-      category: docKind === 'stay' ? 'Dharamshala — Room 101' : 'General Donation',
-      amount_paise: docKind === 'stay' ? 336000 : 150000,
-      payment_mode: 'cash',
-      is_80g_eligible: docKind === 'donation',
-      payments: [{ payment_mode: 'cash', amount_paise: docKind === 'stay' ? 336000 : 150000, reference_no: null, paid_on: new Date().toISOString() }],
-      lines: docKind === 'stay'
-        ? [{ label: 'Room 101 (AC, sleeps 2)', qty: '2 nights × ₹1,500.00', amount_paise: 300000 }]
-        : null,
-      tax: docKind === 'stay' ? { cgst_paise: 8000, sgst_paise: 8000, igst_paise: 0 } : null,
-      meta: docKind === 'stay'
-        ? {
-          room_number: '101', nights: 2, persons: 3,
-          check_in_date: '2026-09-19', check_out_date: '2026-09-21',
-          checked_in_at: '2026-09-19T09:00:00.000Z',
-          checked_out_at: '2026-09-21T04:30:00.000Z',
-          guest_id_type: 'aadhaar', guest_id_last4: '9012',
-          paid_paise: 336000, due_paise: 0,
-        }
-        : null,
-      mandir: {
-        name: t('designer.sampleTrust'),
-        address: '12 Mandir Marg, Beawar, Rajasthan, 305901',
-        mobile: '+91 98765 43210', email: 'info@jainmandir.org',
-        pan: 'AAAAB1234C', reg_80g_number: '80G/2024/001',
-        registration_number: 'SOC/2015/BEAWAR/000123',
-        show_80g: true, show_gstin: true, show_logo: false,
-        eighty_g_enabled: true, gst_enabled: false,
-        upi_id: 'jaintrust@upi', bank_account_name: t('designer.sampleTrust'),
-        bank_account_no: '123456789012', bank_ifsc: 'SBIN0001234',
-        bank_name: 'State Bank of India',
-        primary_color: def.accent,
-        template: 'custom',
-        template_definition: def,
-        receipt_paper: 'a4', receipt_copies: 'single',
-        receipt_language: lang, receipt_show_upi_qr: false,
-        footer: null,
-      },
-    }
-    const html = buildReceiptHtml(sample)
-      .replace('<script>window.onload=()=>{window.print()}</script>', '')
-    doc.open()
-    doc.write(html)
-    doc.close()
-    return true
-  }, [def, docKind, lang, t])
-
+  /* ── The preview lives on the screen, not in this card ──────────────────
+     `buildReceiptHtml` with `template: 'custom'` is exactly what a counter
+     prints, so the enclosing settings screen can render this definition in the
+     preview it already has — and does, while the editor is open. Reporting it
+     upward rather than drawing it here is what gives the fields their width
+     back; it also means an admin compares their design against the same pane
+     they use for everything else, at 420px instead of 300. */
   useEffect(() => {
-    if (!open) return
-    // The frame is mounted in the same commit as this effect, so on the FIRST
-    // run its document can still be the one the browser is about to replace
-    // when `about:blank` finishes loading — that write is thrown away. A second
-    // attempt on the next frame is what makes the pane appear at all reliably;
-    // `onLoad` on the iframe covers the slower case.
-    if (!paint()) return
-    const id = requestAnimationFrame(() => { paint() })
-    return () => cancelAnimationFrame(id)
-  }, [open, paint])
+    onPreview?.(open ? def : null, docKind)
+  }, [open, def, docKind, onPreview])
+
+  // Closing the card, or leaving the step, must put the preview back to the
+  // trust's actual receipt — otherwise a half-finished draft goes on being
+  // previewed as though it were what prints.
+  useEffect(() => () => { onPreview?.(null, 'donation') }, [onPreview])
 
   const used = new Set(def.blocks)
   const unused = DEFINITION_BLOCKS.filter(b => !used.has(b))
@@ -418,9 +358,9 @@ export function ReceiptDesignerCard({
               </div>
             ) : null}
 
-            <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
+            <div className="p-3">
               <fieldset className="space-y-4 min-w-0" disabled={frozen}>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="form-label">{t('designer.name')}</label>
                     <input
@@ -442,7 +382,7 @@ export function ReceiptDesignerCard({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="form-label">{t('designer.accent')}</label>
                     <div className="flex items-center gap-2">
@@ -597,26 +537,6 @@ export function ReceiptDesignerCard({
 
                 {issue ? <p className="text-xs text-red-700" data-testid="design-issue">{issue}</p> : null}
               </fieldset>
-
-              {/* The real renderer, not a mock-up: what is previewed here is
-                  what a counter prints and what a donor is sent. */}
-              <div className="min-w-0">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  {t('designer.preview')}
-                </p>
-                <div className="overflow-hidden rounded bg-white shadow-sm ring-1 ring-slate-200" style={{ height: '420px' }}>
-                  <iframe
-                    ref={iframeRef} title={t('designer.preview')} sandbox="allow-same-origin"
-                    className="w-full border-0"
-                    // The frame may finish loading `about:blank` AFTER the first
-                    // write, which discards it. Repainting on load is the cheap
-                    // half of the fix; the rAF in the effect is the other half.
-                    onLoad={() => { paint() }}
-                    style={{ zoom: 0.45, height: '933px', transformOrigin: 'top left' }}
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-slate-400">{t('designer.previewHint')}</p>
-              </div>
             </div>
 
             {!frozen && (

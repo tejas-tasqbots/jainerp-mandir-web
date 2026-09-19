@@ -1,8 +1,16 @@
 import { api } from './api'
+import { receiptLabelsFor } from './receiptLabels'
 import { printReceiptHtml } from './printReceipt'
 
 interface IntimationData {
-  mandir: { name: string; city?: string | null; mobile?: string | null } | null
+  mandir: {
+    name: string
+    city?: string | null
+    mobile?: string | null
+    /** The trust's receipt language and its own printed words (migration 046). */
+    receipt_language?: string | null
+    label_overrides?: unknown
+  } | null
   boli: {
     id: string
     date: string
@@ -25,6 +33,15 @@ function fmtDate(d: string): string {
 }
 
 function buildIntimationHtml(d: IntimationData): string {
+  // The TRUST'S printed vocabulary, not the operator's UI language. An
+  // intimation is handed to the person who made the pledge, so it reads their
+  // trust's words in their trust's receipt language - it was hardcoded English,
+  // which is how it came to ignore the wording editor entirely.
+  //
+  // Named `labels` rather than `L`, which is how the receipt renderers spell it:
+  // `L` is Leaflet's UMD global in this project's type environment, and shadowing
+  // it here produced a page of errors about `typeof import("@types/leaflet")`.
+  const labels = receiptLabelsFor(d.mandir?.receipt_language, d.mandir?.label_overrides)
   const m = d.mandir ?? { name: 'Mandir' }
   const b = d.boli
   const color = '#0D1B2E'
@@ -55,16 +72,16 @@ function buildIntimationHtml(d: IntimationData): string {
       <h1>${m.name}</h1>
       <p>${[m.city, m.mobile].filter(Boolean).join(' · ')}</p>
     </div>
-    <div class="title"><h2>Boli Pledge Intimation</h2></div>
+    <div class="title"><h2>${labels.boliIntimation}</h2></div>
     <div class="body">
-      <div class="row"><span class="k">Donor</span><span class="v">${b.donor_name}${b.donor_mobile ? ' · ' + b.donor_mobile : ''}</span></div>
-      <div class="row"><span class="k">Pledge Date</span><span class="v">${fmtDate(b.date)}</span></div>
-      <div class="row"><span class="k">Description</span><span class="v">${b.description}</span></div>
-      <div class="row"><span class="k">Pledged Amount</span><span class="v">₹ ${fmtRs(b.committed_paise)}</span></div>
-      <div class="row"><span class="k">Paid So Far</span><span class="v">₹ ${fmtRs(b.paid_paise)}</span></div>
-      <div class="row"><span class="k">Status</span><span class="v" style="text-transform:capitalize">${b.status.replace('_', ' ')}</span></div>
+      <div class="row"><span class="k">${labels.donorName}</span><span class="v">${b.donor_name}${b.donor_mobile ? ' · ' + b.donor_mobile : ''}</span></div>
+      <div class="row"><span class="k">${labels.pledgeDate}</span><span class="v">${fmtDate(b.date)}</span></div>
+      <div class="row"><span class="k">${labels.description}</span><span class="v">${b.description}</span></div>
+      <div class="row"><span class="k">${labels.pledgedAmount}</span><span class="v">₹ ${fmtRs(b.committed_paise)}</span></div>
+      <div class="row"><span class="k">${labels.paidSoFar}</span><span class="v">₹ ${fmtRs(b.paid_paise)}</span></div>
+      <div class="row"><span class="k">${labels.status}</span><span class="v" style="text-transform:capitalize">${b.status.replace('_', ' ')}</span></div>
       <div class="out">
-        <span class="lbl">Outstanding Amount</span>
+        <span class="lbl">${labels.outstandingAmount}</span>
         <span class="amt">₹ ${fmtRs(b.outstanding_paise)}</span>
       </div>
       <p class="note">Kindly clear the outstanding pledge amount at your earliest convenience.

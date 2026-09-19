@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, ChevronRight, CircleAlert, X, Sparkles } from 'lucide-react'
+import { Check, Minus, ChevronDown, ChevronRight, CircleAlert, X, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 
 /**
@@ -33,6 +33,17 @@ interface SetupItem {
   done: boolean
   route: string
   weight: number
+  /**
+   * Whether the trust may say it does not have this (tenant migration 048).
+   *
+   * True for the things a trust genuinely may not have - cattle, rooms, a hall,
+   * a logo - and false for everything a receipt is invalid without. The API
+   * decides, and refuses to store a dismissal for anything else, so this flag
+   * is what the screen may OFFER rather than what it may send.
+   */
+  optional?: boolean
+  /** The trust has said so. Counts toward the percentage. */
+  not_applicable?: boolean
 }
 interface SetupGroup {
   key: string
@@ -78,6 +89,26 @@ export function SetupChecklist({ onDismissed }: { onDismissed?: () => void }) {
   useEffect(() => { fetchSetup().then(setSetup) }, [])
 
   if (!setup || hidden || setup.complete || setup.dismissed) return null
+
+  /**
+   * "We do not have one of those", and undoing it.
+   *
+   * The API returns the WHOLE checklist back, so the percentage and the "next
+   * action" both re-render from one response rather than being recomputed here
+   * from a guess about what changed.
+   */
+  async function toggleNotApplicable(it: SetupItem) {
+    try {
+      const { data } = await api.patch('/tenants/me/setup/not-applicable', {
+        key: it.key,
+        not_applicable: !it.not_applicable,
+      })
+      setSetup(data?.data ?? data)
+    } catch {
+      // A failed toggle leaves the checklist exactly as it was, which is the
+      // honest outcome: nothing is blocked by this screen either way.
+    }
+  }
 
   async function dismiss() {
     setHidden(true)
@@ -184,29 +215,54 @@ export function SetupChecklist({ onDismissed }: { onDismissed?: () => void }) {
 
               {expanded === g.key && (
                 <ul className="pb-2">
-                  {g.items.map(it => (
-                    <li key={it.key}>
-                      <button
-                        onClick={() => navigate(it.route)}
-                        disabled={it.done}
-                        className={`w-full flex items-start gap-3 pl-12 pr-5 py-2 text-left ${
-                          it.done ? 'cursor-default' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                          it.done ? 'bg-green-500 border-green-500' : 'border-slate-300'
-                        }`}>
-                          {it.done && <Check size={10} className="text-white" />}
-                        </span>
-                        <span className="min-w-0">
-                          <span className={`block text-sm ${it.done ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>
-                            {label(it)}
+                  {g.items.map(it => {
+                    // Settled = done, or the trust has said it has no such
+                    // thing. Both count toward the percentage; they look
+                    // different because one is an achievement and the other is
+                    // a fact about the trust.
+                    const settled = it.done || !!it.not_applicable
+                    return (
+                      <li key={it.key} className="flex items-start gap-1 pr-3">
+                        <button
+                          onClick={() => navigate(it.route)}
+                          disabled={settled}
+                          className={`flex-1 flex items-start gap-3 pl-12 pr-2 py-2 text-left ${
+                            settled ? 'cursor-default' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            it.done ? 'bg-green-500 border-green-500'
+                              : it.not_applicable ? 'bg-slate-300 border-slate-300'
+                                : 'border-slate-300'
+                          }`}>
+                            {it.done && <Check size={10} className="text-white" />}
+                            {!it.done && it.not_applicable && <Minus size={10} className="text-white" />}
                           </span>
-                          {!it.done && <span className="block text-xs text-slate-400">{why(it)}</span>}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                          <span className="min-w-0">
+                            <span className={`block text-sm ${settled ? 'text-slate-400 line-through' : 'text-slate-700 font-medium'}`}>
+                              {label(it)}
+                            </span>
+                            {!settled && <span className="block text-xs text-slate-400">{why(it)}</span>}
+                            {it.not_applicable && (
+                              <span className="block text-xs text-slate-400">{t('setup.notApplicableNote')}</span>
+                            )}
+                          </span>
+                        </button>
+                        {/* Only on the items the API will accept. A trust that
+                            could tick "Trust PAN — not applicable" would be
+                            handed a 100% meter and invalid 80G receipts. */}
+                        {it.optional && (
+                          <button
+                            onClick={() => void toggleNotApplicable(it)}
+                            className="mt-2 shrink-0 text-[11px] text-slate-400 hover:text-navy-700 whitespace-nowrap"
+                            title={it.not_applicable ? t('setup.weDoHaveIt') : t('setup.weDoNotHaveIt')}
+                          >
+                            {it.not_applicable ? t('setup.weDoHaveIt') : t('setup.weDoNotHaveIt')}
+                          </button>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>

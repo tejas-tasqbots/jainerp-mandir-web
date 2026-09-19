@@ -1695,10 +1695,8 @@
     "streamBhojanshala": "Bhojanshala",
     "streamDonations": "Donations",
     "streamExpenses": "Expenses",
-    "streamHallAdvance": "Hall Advance",
     "streamNet": "Net",
     "streamPrasad": "Prasad",
-    "streamRoomAdvance": "Room Advance",
     "streamSeva": "Seva",
     "streamTotalCollection": "Total Collection",
     "title": "Reports",
@@ -1739,7 +1737,9 @@
     "computedNotPaid": "Computed",
     "stillOwed": "Not yet disbursed.",
     "stillOwedHint": "₹{{amount}} of this month has been computed but not paid. It is a liability until it is.",
-    "noSalaryForMonth": "No salary computed for this month yet."
+    "noSalaryForMonth": "No salary computed for this month yet.",
+    "streamRooms": "Rooms",
+    "streamHall": "Hall"
   },
   "sensitive": {
     "bannerVerified": "These details have been verified by the platform, so they can no longer be edited here. Raise a change request and we will review it.",
@@ -2411,7 +2411,6 @@
         "te": "తెలుగు"
       },
       "searchPlaceholder": "Search any word on the receipt…",
-      "commonHint": "The words trusts change most often. Search to reach any of the {{total}}.",
       "searchResults": "{{count}} matching",
       "noMatch": "No label matches that.",
       "reset": "Use ours",
@@ -2419,7 +2418,20 @@
       "resetAllHint": "Clear your words for this language only",
       "changedCount": "{{count}} changed",
       "lockedNote": "Two sentences cannot be changed: {{words}}. They state the law rather than describe the trust, and we print them on your behalf.",
-      "keepToken": "Keep {{token}} in your wording — the trust’s name is put there when the receipt prints."
+      "keepToken": "Keep {{token}} in your wording — the trust’s name is put there when the receipt prints.",
+      "group": {
+        "gift": "The gift and the giver",
+        "money": "Amounts",
+        "doc": "Dates, numbers and purpose",
+        "blessing": "The blessing and the sign-off",
+        "payment": "How it was paid",
+        "statutory": "80G and registrations",
+        "stay": "Rooms, halls and stays",
+        "slips": "Counter slips and copies",
+        "boli": "Boli pledges",
+        "other": "Everything else"
+      },
+      "allHint": "Every word a receipt prints — all {{total}}, grouped by where it appears. Open a group, or search."
     }
   },
   "setup": {
@@ -2619,7 +2631,10 @@
     "showAll": "Show everything",
     "subtitle_one": "{{count}} thing left before your receipts are complete",
     "subtitle_other": "{{count}} things left before your receipts are complete",
-    "title": "Finish setting up your Mandir"
+    "title": "Finish setting up your Mandir",
+    "weDoNotHaveIt": "We don’t have this",
+    "weDoHaveIt": "We do have this",
+    "notApplicableNote": "Marked as not applicable — counts as complete."
   },
   "setupWizard": {
     "categories": {

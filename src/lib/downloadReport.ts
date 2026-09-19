@@ -162,7 +162,7 @@ export async function downloadReport(
           ['Stream', 'Amount'], [
             ['Donations', rs(d.donations_paise)], ['Seva', rs(d.seva_paise)],
             ['Prasad', rs(d.prasad_paise)], ['Bhojanshala', rs(d.bhojanshala_paise)],
-            ['Room Advance', rs(d.room_advance_paise)], ['Hall Advance', rs(d.hall_advance_paise)],
+            ['Rooms', rs(d.rooms_paise)], ['Hall', rs(d.hall_paise)],
             ['Total Collection', rs(d.total_collection_paise)], ['Expenses', rs(d.expenses_paise)],
             ['Net', rs(d.net_paise)],
           ])

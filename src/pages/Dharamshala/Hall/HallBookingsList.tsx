@@ -7,6 +7,7 @@ import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printBillDoc } from '../../../lib/printBill'
+import { useReceiptLabels } from '../../../lib/useReceiptLabels'
 import { useProfileStore } from '../../../store/profileStore'
 import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
@@ -28,6 +29,8 @@ const STATUSES = ['confirmed', 'completed', 'cancelled'] as const
 
 export function HallBookingsList() {
   const { t } = useTranslation()
+  /** The TRUST's printed words, for the bill. Not `t()` - see the hook. */
+  const L = useReceiptLabels()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -256,23 +259,23 @@ export function HallBookingsList() {
     printBillDoc({
       templeName: profile?.name || 'Temple',
       templeAddress: [profile?.address, profile?.city, profile?.state].filter(Boolean).join(', '),
-      title: t('dharamshala.hallBillTitle', { defaultValue: 'Hall Bill' }),
+      title: L.hallBill,
       invoiceNo: bill.invoice_no,
       meta: [
-        { label: t('dharamshala.event'), value: String(bill.event_name ?? '') },
-        { label: t('dharamshala.hall'), value: String(bill.hall_name ?? '') },
-        { label: t('common.date'), value: new Date(bill.booking_date).toLocaleDateString('en-IN') },
+        { label: L.eventName, value: String(bill.event_name ?? '') },
+        { label: L.room, value: String(bill.hall_name ?? '') },
+        { label: L.date, value: new Date(bill.booking_date).toLocaleDateString('en-IN') },
       ],
       charges: [
-        { label: t('dharamshala.total'), value: rs(bill.total_paise), bold: true },
+        { label: L.total, value: rs(bill.total_paise), bold: true },
       ],
-      paymentsLabel: t('dharamshala.paymentsReceived'),
+      paymentsLabel: L.paymentsReceived,
       payments: ((bill.payments ?? []) as Record<string, any>[]).map(p => ({
         label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${String(p.paid_on).slice(0, 10)})`,
         value: rs(p.amount_paise),
       })),
-      noPaymentsLabel: t('dharamshala.noPaymentsRecorded'),
-      balanceLabel: t('dharamshala.balance'),
+      noPaymentsLabel: L.noPaymentsRecorded,
+      balanceLabel: L.balanceDue,
       balanceValue: rs(due),
       balanceOutstanding: due > 0,
     })

@@ -18,6 +18,7 @@ import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRa
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { useReceiptLabels } from '../../../lib/useReceiptLabels'
 import type { RoomBooking } from '../../../types'
 import { useConfirm } from '../../../components/ConfirmDialog'
 import {
@@ -99,6 +100,8 @@ export function RoomsList() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const toast = useToast()
+  /** The TRUST's printed words, for the bill. Not `t()` - see the hook. */
+  const L = useReceiptLabels()
 
   const [bookings, setBookings] = useState<RoomBooking[]>([])
   const [total, setTotal] = useState(0)
@@ -655,25 +658,33 @@ export function RoomsList() {
     printBillDoc({
       templeName: profile?.name || 'Temple',
       templeAddress: [profile?.address, profile?.city, profile?.state].filter(Boolean).join(', '),
-      title: t('dharamshala.billTitle'),
+      // `L`, not `t()`. This document is handed to the GUEST, so it reads the
+      // trust's printed vocabulary in the trust's receipt language - the same
+      // table the seventeen receipt designs read. It used to use the operator's
+      // UI i18n, so a trust that renamed a word saw it on the receipt and not on
+      // the bill, and a Marathi-speaking volunteer handed guests a Marathi bill
+      // at a trust that issues English receipts. See lib/useReceiptLabels.ts.
+      title: L.roomBill,
       invoiceNo: bill.invoice_no,
       meta: [
-        { label: t('dharamshala.guest'), value: String(bill.guest_name ?? '') },
-        { label: t('dharamshala.room'), value: String(bill.room_number ?? '') },
+        { label: L.guest, value: String(bill.guest_name ?? '') },
+        { label: L.room, value: String(bill.room_number ?? '') },
       ],
       charges: [
-        { label: t('dharamshala.subtotal'), value: rs(bill.subtotal_paise) },
+        { label: L.subtotal, value: rs(bill.subtotal_paise) },
+        // CGST and SGST stay Latin in every language, like IFSC and PAN: they
+        // are what a CA looks for on the page and what the GST portal prints.
         { label: 'CGST', value: rs(bill.cgst_paise) },
         { label: 'SGST', value: rs(bill.sgst_paise) },
-        { label: t('dharamshala.total'), value: rs(bill.total_paise), bold: true },
+        { label: L.total, value: rs(bill.total_paise), bold: true },
       ],
-      paymentsLabel: t('dharamshala.paymentsReceived'),
+      paymentsLabel: L.paymentsReceived,
       payments: ((bill.payments ?? []) as Record<string, any>[]).map(p => ({
         label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${String(p.paid_on).slice(0, 10)})`,
         value: rs(p.amount_paise),
       })),
-      noPaymentsLabel: t('dharamshala.noPaymentsRecorded'),
-      balanceLabel: t('dharamshala.balance'),
+      noPaymentsLabel: L.noPaymentsRecorded,
+      balanceLabel: L.balanceDue,
       balanceValue: rs(due),
       balanceOutstanding: due > 0,
     })

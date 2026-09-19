@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RotateCcw, Search } from 'lucide-react'
+import { ChevronRight, RotateCcw, Search } from 'lucide-react'
 import {
   labelPlaceholders, LOCKED_LABELS, MAX_LABEL_LEN, OVERRIDABLE_LABELS, receiptLabels,
   type LabelOverrides, type ReceiptLabels,
@@ -32,16 +32,83 @@ import {
  */
 
 /**
- * The labels worth putting in front of someone, in the order they appear on a
- * receipt. Chosen from what a trust actually asks to change: the words for the
- * gift, the giver, the money, and the sign-off. Everything else is one search
- * away.
+ * Every printed word, grouped by where it appears on a receipt.
+ *
+ * The first version of this editor showed eighteen "common" labels and left the
+ * other eighty behind a search box. That answered an earlier complaint that the
+ * screen was too messy and created a worse one: a trust cannot search for a word
+ * it does not know we call `anumodana`, so nine of the Anumodana sheet's own
+ * lines - the blessing under the amount among them - were editable in principle
+ * and unfindable in practice.
+ *
+ * Grouped by WHERE THE WORD APPEARS rather than by what it is. "The blessing and
+ * the sign-off" is a place on the page; "string constants" is not. Someone
+ * looking for the line under the amount looks for the part of the receipt it is
+ * on, not for its key.
+ *
+ * `qa-document-wording.mjs` asserts every overridable key is in exactly one
+ * group. A key in none would be invisible, which is the defect being fixed here.
  */
-const COMMON: readonly (keyof ReceiptLabels)[] = [
-  'donationReceipt', 'receivedFrom', 'receivedWithThanks', 'donationAmount',
-  'amount', 'amountInWords', 'category', 'purposeOfDonation', 'donorName',
-  'paymentMode', 'receiptNo', 'date', 'thankYou', 'authorisedSignatory',
-  'forTrust', 'eligible80g', 'donorCopy', 'officeCopy',
+const GROUPS: { id: string; keys: readonly string[] }[] = [
+  {
+    id: 'gift',
+    keys: ['donationReceipt', 'receivedFrom', 'receivedWithThanks', 'soldTo',
+      'donorName', 'donorNamePrefix', 'donorsDetail', 'donorPan',
+      'anonymous', 'anonymousDonor', 'mobile', 'generalDonation'],
+  },
+  {
+    id: 'money',
+    keys: ['amount', 'amountInr', 'donationAmount', 'amountInWords',
+      'subtotal', 'total', 'amountPaid', 'balanceDue', 'advance',
+      'securityDeposit', 'realizedAmount'],
+  },
+  {
+    id: 'doc',
+    keys: ['date', 'receiptNo', 'transactionId', 'status', 'received',
+      'category', 'purpose', 'purposeOfDonation', 'description'],
+  },
+  {
+    id: 'blessing',
+    // The lines a trust is most likely to want in its own words, and the ones
+    // that were hardest to find: `anumodana` is the blessing under the amount.
+    keys: ['anumodana', 'thanks', 'thankYou', 'forTrust',
+      'authorisedSignatory', 'authorised', 'signature'],
+  },
+  {
+    id: 'payment',
+    keys: ['paymentMode', 'modeOfPayment', 'mode', 'paymentDetails',
+      'bankLabel', 'bank', 'accountName', 'accountNo', 'ifsc', 'upiId',
+      'scanToPay', 'scanToDonate', 'receivedOn', 'reference',
+      'instrumentNo', 'instrumentDate', 'paymentsReceived', 'noPaymentsRecorded'],
+  },
+  {
+    id: 'statutory',
+    keys: ['eligible80g', 'registrationNo', 'darpanNo', 'pan', 'panOfTrust',
+      'validUpto', 'total80gEligible', 'taxInvoice', 'placeOfSupply',
+      'taxableValue'],
+  },
+  {
+    id: 'stay',
+    keys: ['stayDetails', 'checkIn', 'checkOut', 'nights', 'persons', 'room',
+      'guest', 'guestIdLabel', 'houseRules', 'roomBill', 'hallBill',
+      'guestFolio', 'eventName'],
+  },
+  {
+    id: 'slips',
+    keys: ['bhojanshalaToken', 'prasadSlip', 'sevaReceipt', 'token', 'onePlate',
+      'breakfast', 'lunch', 'dinner', 'donorCopy', 'officeCopy', 'printHint'],
+  },
+  {
+    id: 'boli',
+    keys: ['boliIntimation', 'pledgedAmount', 'pledgeDate', 'paidSoFar',
+      'outstandingAmount'],
+  },
+  {
+    id: 'other',
+    // The catch-all, and it is deliberately LAST and deliberately named
+    // honestly. `yes`/`no` really are just words; `voided` is a stamp.
+    keys: ['yes', 'no', 'notProvided', 'voided'],
+  },
 ]
 
 const LANGS = ['en', 'hi', 'mr', 'gu', 'kn', 'ta', 'te'] as const
@@ -61,20 +128,48 @@ export function ReceiptWordingCard({
   const ours = useMemo(() => receiptLabels(lang), [lang])
   const shipped = useMemo(() => receiptLabels('en'), [])
 
+  /** Which group is expanded. The first, until somebody opens another. */
+  const [openGroup, setOpenGroup] = useState<string>(GROUPS[0].id)
+
   /**
-   * Which labels to show: the common ones until someone searches, then whatever
-   * matches — searched against BOTH our word and the trust's own, so a trust
-   * that renamed "Donation Amount" to "Bhet Rashi" can find it by either.
+   * Does a label match what was typed?
+   *
+   * Searched against our word AND the trust's own, so a trust that renamed
+   * "Donation Amount" to "Bhet Rashi" can find it by either — six months later
+   * "where did I change this" is asked with the NEW word in mind.
    */
-  const shown = useMemo(() => {
+  const matches = useMemo(() => {
     const term = q.trim().toLowerCase()
-    if (!term) return COMMON.filter(k => OVERRIDABLE_LABELS.includes(k))
-    return OVERRIDABLE_LABELS.filter(k =>
+    if (!term) return null
+    return (k: keyof ReceiptLabels) =>
       k.toLowerCase().includes(term)
       || String(ours[k] ?? '').toLowerCase().includes(term)
       || String(shipped[k] ?? '').toLowerCase().includes(term)
-      || String(value[k]?.[lang] ?? '').toLowerCase().includes(term))
+      || String(value[k]?.[lang] ?? '').toLowerCase().includes(term)
   }, [q, ours, shipped, value, lang])
+
+  /**
+   * The groups to render, and which keys in each.
+   *
+   * A search flattens the grouping — cutting across all nine is the point of a
+   * search — and an empty group is dropped rather than rendered empty.
+   */
+  const groups = useMemo(() => {
+    const editable = new Set<string>(OVERRIDABLE_LABELS as readonly string[])
+    return GROUPS
+      .map(g => ({
+        id: g.id,
+        keys: (g.keys as readonly (keyof ReceiptLabels)[])
+          .filter(k => editable.has(k as string))
+          .filter(k => !matches || matches(k)),
+      }))
+      .filter(g => g.keys.length > 0)
+  }, [matches])
+
+  const shownCount = useMemo(
+    () => groups.reduce((n, g) => n + g.keys.length, 0),
+    [groups],
+  )
 
   const changedCount = useMemo(
     () => OVERRIDABLE_LABELS.filter(k => (value[k]?.[lang] ?? '').trim()).length,
@@ -151,57 +246,61 @@ export function ReceiptWordingCard({
         </div>
         <p className="text-[11px] text-slate-400">
           {q.trim()
-            ? t('settings.wording.searchResults', { count: shown.length })
-            : t('settings.wording.commonHint', { total: OVERRIDABLE_LABELS.length })}
+            ? t('settings.wording.searchResults', { count: shownCount })
+            : t('settings.wording.allHint', { total: OVERRIDABLE_LABELS.length })}
         </p>
 
-        {shown.length === 0 ? (
+        {shownCount === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">{t('settings.wording.noMatch')}</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {shown.map(key => {
-              const mine = value[key]?.[lang] ?? ''
-              // A label with a `{token}` substitutes something at print time.
-              // The editor used to show the braces and say nothing about them,
-              // and a trust typed its own name over "For {name}" - which would
-              // have printed that person above every signature for ever.
-              const tokens = labelPlaceholders(key)
-              const missing = !!mine && tokens.some(tk => !mine.includes(tk))
+          <div className="divide-y divide-slate-100">
+            {groups.map(group => {
+              // A search flattens the grouping: cutting across all nine is the
+              // point of searching, so every matching group is open.
+              const expanded = !!q.trim() || openGroup === group.id
+              const changed = group.keys.filter(k => (value[k]?.[lang] ?? '').trim()).length
               return (
-                <li key={key} className="py-2" data-testid={`wording-${key}`}>
-                  <div className="flex items-baseline gap-2">
-                    {/* OUR word is the label of the field, not a placeholder
-                        inside it: a placeholder disappears the moment someone
-                        types, and the whole question here is "what was this
-                        before". */}
-                    <label className="form-label mb-0 flex-1 truncate" htmlFor={`wording-${key}`}>
-                      {ours[key]}
-                    </label>
-                    {mine && (
-                      <button
-                        type="button" onClick={() => set(key, '')}
-                        className="text-[11px] text-slate-400 hover:text-navy-700"
-                      >{t('settings.wording.reset')}</button>
+                <div key={group.id} data-testid={`wording-group-${group.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroup(expanded && !q.trim() ? '' : group.id)}
+                    className="flex w-full items-center gap-2 py-2 text-left"
+                    aria-expanded={expanded}
+                  >
+                    <ChevronRight
+                      size={14}
+                      className={`flex-shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                    />
+                    <span className="text-sm font-medium text-slate-800">
+                      {t(`settings.wording.group.${group.id}`)}
+                    </span>
+                    <span className="text-[11px] text-slate-400">{group.keys.length}</span>
+                    {/* How many of THIS group the trust has renamed, so a
+                        collapsed group still says whether anything is in it. */}
+                    {changed > 0 && (
+                      <span className="rounded-full bg-navy-50 px-1.5 text-[10px] font-bold text-navy-700">
+                        {changed}
+                      </span>
                     )}
-                  </div>
-                  <input
-                    id={`wording-${key}`}
-                    className={`form-input mt-1 ${missing ? 'border-red-400' : ''}`}
-                    value={mine}
-                    maxLength={MAX_LABEL_LEN}
-                    placeholder={String(ours[key] ?? '')}
-                    onChange={e => set(key, e.target.value)}
-                    aria-invalid={missing || undefined}
-                  />
-                  {tokens.length > 0 && (
-                    <p className={`form-hint ${missing ? 'text-red-600' : ''}`}>
-                      {t('settings.wording.keepToken', { token: tokens.join(' ') })}
-                    </p>
+                  </button>
+                  {expanded && (
+                    <ul className="pb-2 pl-6 divide-y divide-slate-50">
+                      {group.keys.map(key => (
+                        <WordingField
+                          key={key}
+                          labelKey={key}
+                          ours={String(ours[key] ?? '')}
+                          mine={value[key]?.[lang] ?? ''}
+                          onChange={text => set(key, text)}
+                          t={t}
+                        />
+                      ))}
+                    </ul>
                   )}
-                </li>
+                </div>
               )
             })}
-          </ul>
+          </div>
         )}
 
         {/* The two sentences a trust may NOT rewrite, said out loud. Silently
@@ -214,5 +313,71 @@ export function ReceiptWordingCard({
         </p>
       </div>
     </div>
+  )
+}
+
+/**
+ * One label: our word as the field's label, the trust's word in the box.
+ *
+ * OUR word is the LABEL and not a placeholder inside the input. A placeholder
+ * disappears the moment somebody types, and the whole question six months later
+ * is "what did this used to say" — which has to be answerable while the new
+ * wording is on screen.
+ */
+function WordingField({ labelKey, ours, mine, onChange, t }: {
+  labelKey: keyof ReceiptLabels
+  ours: string
+  mine: string
+  onChange: (text: string) => void
+  t: (key: string, opts?: Record<string, unknown>) => string
+}) {
+  // A label with a `{token}` substitutes something at print time. The editor
+  // used to show the braces and say nothing about them, and a trust typed its
+  // own name over "For {name}" — which would have printed that person above
+  // every signature for ever.
+  const tokens = labelPlaceholders(labelKey)
+  const missing = !!mine && tokens.some(tk => !mine.includes(tk))
+  // A sentence needs a textarea. `anumodana` is 120 characters and `valid80g`
+  // longer; both were single-line inputs showing about a fifth of themselves.
+  const long = ours.length > 60
+
+  return (
+    <li className="py-2" data-testid={`wording-${labelKey}`}>
+      <div className="flex items-baseline gap-2">
+        <label className="form-label mb-0 flex-1" htmlFor={`wording-${labelKey}`}>
+          {ours}
+        </label>
+        {mine && (
+          <button
+            type="button" onClick={() => onChange('')}
+            className="flex-shrink-0 text-[11px] text-slate-400 hover:text-navy-700"
+          >{t('settings.wording.reset')}</button>
+        )}
+      </div>
+      {long ? (
+        <textarea
+          id={`wording-${labelKey}`}
+          className={`form-input mt-1 ${missing ? 'border-red-400' : ''}`}
+          rows={2} value={mine} maxLength={MAX_LABEL_LEN}
+          placeholder={ours}
+          onChange={e => onChange(e.target.value)}
+          aria-invalid={missing || undefined}
+        />
+      ) : (
+        <input
+          id={`wording-${labelKey}`}
+          className={`form-input mt-1 ${missing ? 'border-red-400' : ''}`}
+          value={mine} maxLength={MAX_LABEL_LEN}
+          placeholder={ours}
+          onChange={e => onChange(e.target.value)}
+          aria-invalid={missing || undefined}
+        />
+      )}
+      {tokens.length > 0 && (
+        <p className={`form-hint ${missing ? 'text-red-600' : ''}`}>
+          {t('settings.wording.keepToken', { token: tokens.join(' ') })}
+        </p>
+      )}
+    </li>
   )
 }
