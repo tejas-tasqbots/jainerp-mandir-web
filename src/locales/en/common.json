@@ -717,7 +717,28 @@
       "booked": "Empty and clean, but already booked for these dates. Try other dates."
     },
     "sleepsN": "(sleeps {{n}})",
-    "perNightSuffix": "/night"
+    "perNightSuffix": "/night",
+    "checkInExpected": "Check-in (expected / actual)",
+    "checkOutExpected": "Check-out (expected / actual)",
+    "editTimes": "Correct the stay times",
+    "plannedCheckIn": "Expected check-in",
+    "plannedCheckOut": "Expected check-out",
+    "actualCheckIn": "Actually arrived",
+    "actualCheckOut": "Actually left",
+    "actualCheckOutLater": "Recorded at check-out.",
+    "timesRebillNote": "Changing when the guest actually arrived or left changes the nights billed, so the bill is recalculated when you save. The balance moves with it.",
+    "timesPlanNote": "The expected times are what the receipt states. The bill follows the actual arrival and departure, which are recorded at check-in and check-out.",
+    "timesSaved": "Stay times updated",
+    "timesRebilled": "Rebilled: {{nights}} night(s), {{amount}}",
+    "refund": "Refund",
+    "refundConfirm": "Refund",
+    "refundAmount": "Refund amount (₹)",
+    "refundMode": "Paid back by",
+    "refundable": "Refundable",
+    "refundLessNote": "Refund less than this if the trust is keeping part of it.",
+    "alreadyRefunded": "Already refunded",
+    "billTotal": "Bill total",
+    "refunded": "{{amount}} refunded"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -2397,7 +2418,8 @@
       "resetAll": "Reset all",
       "resetAllHint": "Clear your words for this language only",
       "changedCount": "{{count}} changed",
-      "lockedNote": "Two sentences cannot be changed: {{words}}. They state the law rather than describe the trust, and we print them on your behalf."
+      "lockedNote": "Two sentences cannot be changed: {{words}}. They state the law rather than describe the trust, and we print them on your behalf.",
+      "keepToken": "Keep {{token}} in your wording — the trust’s name is put there when the receipt prints."
     }
   },
   "setup": {
@@ -3226,5 +3248,13 @@
     "frozenPending": "This design is waiting for approval, so it cannot be edited. Start a new version to make changes — the design you print today is unaffected.",
     "frozenApproved": "This design is approved and printing, so it cannot be edited in place. Start a new version to make changes; this one keeps printing until the new one is approved.",
     "wordingElsewhere": "Every other printed word is changed under Wording, which applies to all designs at once and needs no approval."
+  },
+  "payments": {
+    "mode": {
+      "cash": "Cash",
+      "upi": "UPI",
+      "neft": "NEFT",
+      "cheque": "Cheque"
+    }
   }
 }

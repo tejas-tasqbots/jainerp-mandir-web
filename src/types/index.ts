@@ -228,6 +228,22 @@ export interface RoomBooking {
   id: string
   room_id: string
   room_number?: string
+  /**
+   * The four stay instants (tenant migration 043), separated because a booking
+   * and a bill answer different questions: "when may I arrive" and "when did you
+   * actually leave".
+   *
+   * `check_in_date` / `check_out_date` below are the dates the RESERVATION
+   * covers, which the exclusion constraint protects and the bill is computed
+   * from; check-in and checkout move them to what happened. These four are the
+   * clock times, and no screen displayed any of them until the Rooms list did.
+   */
+  planned_check_in_at?: string | null
+  planned_check_out_at?: string | null
+  checked_in_at?: string | null
+  checked_out_at?: string | null
+  /** Money already given back on this booking (tenant migration 047). */
+  refunded_paise?: number
   guest_name: string
   guest_mobile: string
   guest_id_type?: string

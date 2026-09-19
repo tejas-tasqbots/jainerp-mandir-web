@@ -741,6 +741,23 @@ export type LabelOverrides = Partial<Record<keyof ReceiptLabels, Record<string, 
 export const MAX_LABEL_LEN = 160
 
 /**
+ * The `{tokens}` a label substitutes at render time.
+ *
+ * `forTrust` is `For {name}` and prints the trust's name where the token is. A
+ * trust that types its own wording over it and leaves the token out gets a
+ * signature line with no trust on it - which is what happened: a screenshot of
+ * the wording editor showed a person's name typed into that field, and nothing
+ * on the screen suggested the braces meant anything.
+ *
+ * Returned rather than checked, so the editor can SAY which token is required
+ * instead of only refusing the save.
+ */
+export function labelPlaceholders(key: keyof ReceiptLabels): string[] {
+  const shipped = String(en[key] ?? '')
+  return [...shipped.matchAll(/\{([a-z_]+)\}/g)].map((m) => m[0])
+}
+
+/**
  * Words a trust may NOT rewrite.
  *
  * `valid80g` and `computerGenerated` are the two statements on a receipt that
@@ -783,6 +800,11 @@ export function parseLabelOverrides(raw: unknown): LabelOverrides {
       // table - labels are template, and a label carrying a tag would be
       // written into the document as one.
       if (v.includes('<') || v.includes('>')) continue
+      // Same rule as `labelOverrideIssue`. A stored override that lost its
+      // placeholder prints a signature line with no trust name on it, so the
+      // shipped label is used instead - a receipt that says the right thing in
+      // our words beats one that says the wrong thing in theirs.
+      if (labelPlaceholders(key as keyof ReceiptLabels).some((tk) => !v.includes(tk))) continue
       langs[lang] = v
     }
     if (Object.keys(langs).length) out[key as keyof ReceiptLabels] = langs
@@ -810,6 +832,14 @@ export function labelOverrideIssue(raw: unknown): string | null {
       if (typeof text !== 'string') return `The wording for "${key}" must be text.`
       if (text.length > MAX_LABEL_LEN) return `The wording for "${key}" is longer than ${MAX_LABEL_LEN} characters.`
       if (text.includes('<') || text.includes('>')) return 'Wording cannot contain < or >.'
+      // A placeholder the shipped label has must survive. Where it goes is the
+      // trust's choice - "For X", "X हेतु" and "X करिता" are three different
+      // word orders - so it is refused rather than re-appended.
+      for (const token of labelPlaceholders(key as keyof ReceiptLabels)) {
+        if (!text.includes(token)) {
+          return `The wording for "${key}" must still contain ${token}, which is replaced with the trust's name when the receipt prints.`
+        }
+      }
     }
   }
   return null

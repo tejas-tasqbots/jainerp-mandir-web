@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RotateCcw, Search } from 'lucide-react'
 import {
-  LOCKED_LABELS, MAX_LABEL_LEN, OVERRIDABLE_LABELS, receiptLabels,
+  labelPlaceholders, LOCKED_LABELS, MAX_LABEL_LEN, OVERRIDABLE_LABELS, receiptLabels,
   type LabelOverrides, type ReceiptLabels,
 } from '../../../lib/receiptLabels'
 
@@ -161,6 +161,12 @@ export function ReceiptWordingCard({
           <ul className="divide-y divide-slate-100">
             {shown.map(key => {
               const mine = value[key]?.[lang] ?? ''
+              // A label with a `{token}` substitutes something at print time.
+              // The editor used to show the braces and say nothing about them,
+              // and a trust typed its own name over "For {name}" - which would
+              // have printed that person above every signature for ever.
+              const tokens = labelPlaceholders(key)
+              const missing = !!mine && tokens.some(tk => !mine.includes(tk))
               return (
                 <li key={key} className="py-2" data-testid={`wording-${key}`}>
                   <div className="flex items-baseline gap-2">
@@ -179,11 +185,19 @@ export function ReceiptWordingCard({
                     )}
                   </div>
                   <input
-                    id={`wording-${key}`} className="form-input mt-1" value={mine}
+                    id={`wording-${key}`}
+                    className={`form-input mt-1 ${missing ? 'border-red-400' : ''}`}
+                    value={mine}
                     maxLength={MAX_LABEL_LEN}
                     placeholder={String(ours[key] ?? '')}
                     onChange={e => set(key, e.target.value)}
+                    aria-invalid={missing || undefined}
                   />
+                  {tokens.length > 0 && (
+                    <p className={`form-hint ${missing ? 'text-red-600' : ''}`}>
+                      {t('settings.wording.keepToken', { token: tokens.join(' ') })}
+                    </p>
+                  )}
                 </li>
               )
             })}

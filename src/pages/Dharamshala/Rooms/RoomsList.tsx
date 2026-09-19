@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, IndianRupee, Plus, Receipt, Trash2, X, ShieldCheck } from 'lucide-react'
+import { Clock, FileText, IndianRupee, Plus, Receipt, Trash2, Undo2, X, ShieldCheck } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise, parsePaise } from '../../../lib/api'
+import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printBillDoc } from '../../../lib/printBill'
@@ -37,6 +37,63 @@ function Row({ label, value }: { label: string; value?: number | null }) {
   )
 }
 
+/**
+ * One stay time, as EXPECTED and as it HAPPENED.
+ *
+ * The actual line only appears when the two disagree. A stay that went to plan
+ * is the common case, and a second identical line under every row in the table
+ * is noise that trains people to stop reading it.
+ *
+ * The expected value falls back to the booked DATE when no instant was stored:
+ * `planned_check_in_at` arrived with tenant migration 043, and rows written
+ * before it have only the date. Showing the date is right there - it is what the
+ * trust agreed - and showing nothing would read as missing data.
+ */
+function StayTime({ planned, date, actual }: {
+  planned?: string | null
+  date?: string | null
+  actual?: string | null
+}) {
+  const fmtDay = (v: string) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+  const fmtWhen = (v: string) =>
+    new Date(v).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+
+  const expected = planned ? fmtWhen(planned) : date ? fmtDay(date) : null
+  const happened = actual ? fmtWhen(actual) : null
+  // Compared by the minute, not by string: an instant and a bare date never
+  // render alike, so a string comparison would call every planned stay changed.
+  const differs = !!(actual && planned
+    && Math.abs(Date.parse(actual) - Date.parse(planned)) > 60_000)
+  const onlyActual = !!happened && !planned
+
+  return (
+    <div className="text-xs leading-tight">
+      <span className={happened && (differs || onlyActual) ? 'text-slate-400' : ''}>{expected ?? '\u2014'}</span>
+      {happened && (differs || onlyActual) && (
+        <span className="block font-medium text-navy-800">{happened}</span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What the trust is holding that is no longer its money.
+ *
+ * Mirrors `refundBooking` in the API: everything collected, less anything
+ * already refunded, less what the stay is still entitled to keep. A cancelled
+ * booking keeps nothing, because cancelling zeroes the bill; a checked-out one
+ * keeps its total, so only an overpayment is refundable.
+ *
+ * Computed here as well as there so the button can appear without a round trip -
+ * the API is the one that decides, and refuses anything this gets wrong.
+ */
+function refundable(b: RoomBooking): number {
+  const collected = b.paid_paise ?? 0
+  const refunded = b.refunded_paise ?? 0
+  const keep = b.status === 'cancelled' ? 0 : (b.total_paise ?? 0)
+  return Math.max(0, collected - refunded - keep)
+}
+
 export function RoomsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -60,6 +117,19 @@ export function RoomsList() {
   // leave before the room has been inspected, and the deposit is returned
   // afterwards. Held = taken - refunded - forfeited.
   const [depositModal, setDepositModal] = useState<RoomBooking | null>(null)
+  /** The stay-times dialog, and the four instants it is editing. */
+  const [timesModal, setTimesModal] = useState<RoomBooking | null>(null)
+  const [timesForm, setTimesForm] = useState({
+    planned_check_in_at: '', planned_check_out_at: '', checked_in_at: '', checked_out_at: '',
+  })
+  const [timesBusy, setTimesBusy] = useState(false)
+  const [timesError, setTimesError] = useState('')
+  /** The refund dialog. */
+  const [refundModal, setRefundModal] = useState<RoomBooking | null>(null)
+  const [refundAmt, setRefundAmt] = useState('')
+  const [refundMode, setRefundMode] = useState('cash')
+  const [refundBusy, setRefundBusy] = useState(false)
+  const [refundError, setRefundError] = useState('')
   const [forfeitAmt, setForfeitAmt] = useState('')
   const [settling, setSettling] = useState(false)
   const [settleError, setSettleError] = useState('')
@@ -112,12 +182,22 @@ export function RoomsList() {
       render: b => <span className="text-slate-600">{b.room_number || b.room_id}</span>,
     },
     {
-      key: 'check_in', label: t('dharamshala.checkIn'),
-      render: b => <span className="text-xs">{new Date(b.check_in_date).toLocaleDateString('en-IN')}</span>,
+      // EXPECTED on top, ACTUAL underneath when they differ.
+      //
+      // This column used to print `check_in_date` under the bare heading
+      // "CHECK-IN", so a clerk looking at a guest standing in front of them saw
+      // tomorrow's date and no way to tell an expectation from a fact. The
+      // instants have existed since tenant migration 043 and no screen showed
+      // either of them.
+      //
+      // Only shown when they DISAGREE. A stay that went to plan is the common
+      // case and a second identical line under every row is noise.
+      key: 'check_in', label: t('dharamshala.checkInExpected'),
+      render: b => <StayTime planned={b.planned_check_in_at} date={b.check_in_date} actual={b.checked_in_at} />,
     },
     {
-      key: 'check_out', label: t('dharamshala.checkOut'),
-      render: b => <span className="text-xs">{new Date(b.check_out_date).toLocaleDateString('en-IN')}</span>,
+      key: 'check_out', label: t('dharamshala.checkOutExpected'),
+      render: b => <StayTime planned={b.planned_check_out_at} date={b.check_out_date} actual={b.checked_out_at} />,
     },
     {
       key: 'persons', label: t('dharamshala.persons'),
@@ -132,6 +212,22 @@ export function RoomsList() {
     {
       key: 'balance', label: t('dharamshala.balance'), align: 'right',
       render: b => {
+        // A cancelled booking is not a debt. It used to show whatever bill it
+        // had when it was cancelled - reported as "why it is showing balance
+        // pening now if it is cancelled" - because cancelling only set the
+        // status. The API now zeroes the bill (tenant migration 047 backfills
+        // the rows that were cancelled before it did), and what the trust is
+        // HOLDING shows as a refund due instead, which is the actionable half.
+        if (b.status === 'cancelled') {
+          const held = b.paid_paise ?? 0
+          return held > 0
+            ? (
+              <span className="text-brand-blue font-semibold" title={t('dharamshala.refundDueHint')}>
+                &minus;₹{fmtPaise(held)}
+              </span>
+            )
+            : <span className="text-slate-400">&mdash;</span>
+        }
         const due = b.due_paise ?? b.balance_paise
         // A guest who leaves early is billed for fewer nights, so what they
         // already paid can EXCEED the final total. Show that as a refund due
@@ -176,6 +272,32 @@ export function RoomsList() {
               title={t('dharamshala.viewBill')} aria-label={t('dharamshala.viewBill')}
             >
               <FileText size={14} />
+            </button>
+          )}
+          {/* Correcting the times. A clerk who writes up an arrival an hour late,
+              or types the wrong day, had no way back - and on a checked-out stay
+              this re-bills, which is how an extension gets charged after the
+              fact. */}
+          {b.status !== 'cancelled' && (
+            <button
+              onClick={() => openTimes(b)}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('dharamshala.editTimes')} aria-label={t('dharamshala.editTimes')}
+            >
+              <Clock size={14} />
+            </button>
+          )}
+          {/* Giving money back. A cancelled booking that took an advance left the
+              trust holding money with nothing to do about it: "what if the
+              booking of room is cancel how to refund". Also covers a guest
+              overcharged at checkout, which is the same transaction. */}
+          {refundable(b) > 0 && (
+            <button
+              onClick={() => openRefund(b)}
+              className="p-1 text-slate-400 hover:text-brand-blue rounded"
+              title={t('dharamshala.refund')} aria-label={t('dharamshala.refund')}
+            >
+              <Undo2 size={14} />
             </button>
           )}
           {/* A guest can leave owing money — checkout does not require the bill
@@ -388,6 +510,102 @@ export function RoomsList() {
     }
   }
 
+  /**
+   * Open the stay-times dialog.
+   *
+   * `datetime-local` wants a local-time string with no zone, and the stored
+   * values are instants. Converted here rather than in the input: doing it the
+   * other way round (feeding an ISO string straight to the input) silently
+   * blanks the field, because the element rejects anything with a zone on it.
+   */
+  function openTimes(b: RoomBooking) {
+    const forInput = (v?: string | null) => {
+      if (!v) return ''
+      const d = new Date(v)
+      if (Number.isNaN(d.getTime())) return ''
+      // Shifted into the browser's own offset so the box shows the wall clock
+      // the clerk is looking at, then shifted back on save.
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+    }
+    setTimesModal(b)
+    setTimesError('')
+    setTimesForm({
+      planned_check_in_at: forInput(b.planned_check_in_at),
+      planned_check_out_at: forInput(b.planned_check_out_at),
+      checked_in_at: forInput(b.checked_in_at),
+      checked_out_at: forInput(b.checked_out_at),
+    })
+  }
+
+  async function saveTimes() {
+    if (!timesModal) return
+    setTimesBusy(true)
+    setTimesError('')
+    try {
+      // Only what CHANGED is sent. The endpoint treats an absent key as "leave
+      // it alone" and an explicit null as "clear it", so sending the whole form
+      // every time would rewrite instants nobody touched.
+      const forInput = (v?: string | null) => {
+        if (!v) return ''
+        const d = new Date(v)
+        return Number.isNaN(d.getTime())
+          ? ''
+          : new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+      }
+      const body: Record<string, string | null> = {}
+      for (const k of ['planned_check_in_at', 'planned_check_out_at', 'checked_in_at', 'checked_out_at'] as const) {
+        const now = timesForm[k]
+        const was = forInput(timesModal[k])
+        if (now === was) continue
+        body[k] = now ? new Date(now).toISOString() : null
+      }
+      if (!Object.keys(body).length) { setTimesModal(null); return }
+      const { data } = await api.patch(`/room-bookings/${timesModal.id}/times`, body)
+      const res = data?.data ?? data
+      if (res?.rebilled) {
+        toast.success(t('dharamshala.timesRebilled', {
+          nights: res.nights, amount: `₹${fmtPaise(res.total_paise)}`,
+        }))
+      } else {
+        toast.success(t('dharamshala.timesSaved'))
+      }
+      setTimesModal(null)
+      await load()
+    } catch (e) {
+      setTimesError(apiErrorMessage(e, t('common.saveFailed')))
+    } finally {
+      setTimesBusy(false)
+    }
+  }
+
+  function openRefund(b: RoomBooking) {
+    setRefundModal(b)
+    setRefundError('')
+    setRefundMode('cash')
+    // Prefilled with everything refundable, which is what a cancellation
+    // normally gives back. A cashier keeping part of it types a smaller number.
+    setRefundAmt((refundable(b) / 100).toFixed(2))
+  }
+
+  async function submitRefund() {
+    if (!refundModal) return
+    setRefundBusy(true)
+    setRefundError('')
+    try {
+      await api.post(`/room-bookings/${refundModal.id}/refund`, {
+        amount_paise: parsePaise(refundAmt),
+        payment_mode: refundMode,
+      })
+      toast.success(t('dharamshala.refunded', { amount: `₹${refundAmt}` }))
+      setRefundModal(null)
+      await load()
+    } catch (e) {
+      setRefundError(apiErrorMessage(e, t('common.saveFailed')))
+    } finally {
+      setRefundBusy(false)
+    }
+  }
+
   async function openCollect(b: RoomBooking) {
     try {
       const { data } = await api.get(`/room-bookings/${b.id}/bill`)
@@ -593,6 +811,164 @@ export function RoomsList() {
       )}
 
       {/* Collect an outstanding balance, including on a checked-out stay. */}
+      {/* ── Correcting the stay times ──────────────────────────────────────
+          Four instants, two of them expectations and two of them facts, and
+          until now nothing could edit any of them. On a checked-out stay this
+          RE-BILLS, which is how an extension gets charged after the guest has
+          already gone - so the dialog says so before the save rather than
+          surprising a cashier with a new total. */}
+      {timesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-navy-900">{t('dharamshala.editTimes')}</h3>
+                <p className="text-sm text-slate-500">
+                  {timesModal.guest_name} \u00b7 {t('dharamshala.room')} {timesModal.room_number}
+                </p>
+              </div>
+              <button onClick={() => setTimesModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="form-label" htmlFor="pci">{t('dharamshala.plannedCheckIn')}</label>
+                <input
+                  id="pci" type="datetime-local" className="form-input"
+                  value={timesForm.planned_check_in_at}
+                  onChange={e => setTimesForm(f => ({ ...f, planned_check_in_at: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="pco">{t('dharamshala.plannedCheckOut')}</label>
+                <input
+                  id="pco" type="datetime-local" className="form-input"
+                  value={timesForm.planned_check_out_at}
+                  onChange={e => setTimesForm(f => ({ ...f, planned_check_out_at: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="aci">{t('dharamshala.actualCheckIn')}</label>
+                <input
+                  id="aci" type="datetime-local" className="form-input"
+                  value={timesForm.checked_in_at}
+                  onChange={e => setTimesForm(f => ({ ...f, checked_in_at: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="aco">{t('dharamshala.actualCheckOut')}</label>
+                <input
+                  id="aco" type="datetime-local" className="form-input"
+                  value={timesForm.checked_out_at}
+                  onChange={e => setTimesForm(f => ({ ...f, checked_out_at: e.target.value }))}
+                  disabled={timesModal.status !== 'checked_out'}
+                />
+                {timesModal.status !== 'checked_out' && (
+                  <p className="form-hint">{t('dharamshala.actualCheckOutLater')}</p>
+                )}
+              </div>
+            </div>
+
+            {/* The consequence, before the save. The ACTUAL dates are what the
+                bill is computed from, so moving them moves the money. */}
+            <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
+              {timesModal.status === 'checked_out'
+                ? t('dharamshala.timesRebillNote')
+                : t('dharamshala.timesPlanNote')}
+            </p>
+
+            {timesError && <p className="mt-2 text-sm text-red-600">{timesError}</p>}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setTimesModal(null)} className="btn-secondary">{t('common.cancel')}</button>
+              <button onClick={() => void saveTimes()} disabled={timesBusy} className="btn-primary">
+                {timesBusy ? t('common.saving') : t('common.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Giving money back ──────────────────────────────────────────────
+          A cancelled booking that had taken an advance left the trust holding
+          money with nothing to do about it. Recorded as a tender against an
+          account, so the cash leaving the drawer is on the books. */}
+      {refundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-navy-900">{t('dharamshala.refund')}</h3>
+                <p className="text-sm text-slate-500">
+                  {refundModal.guest_name} \u00b7 {t('dharamshala.room')} {refundModal.room_number}
+                </p>
+              </div>
+              <button onClick={() => setRefundModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-1 text-sm border-y border-slate-100 py-3 mb-4">
+              <div className="flex justify-between">
+                <span className="text-slate-500">{t('dharamshala.paid')}</span>
+                <span>\u20b9{fmtPaise(refundModal.paid_paise ?? 0)}</span>
+              </div>
+              {(refundModal.refunded_paise ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{t('dharamshala.alreadyRefunded')}</span>
+                  <span>\u20b9{fmtPaise(refundModal.refunded_paise ?? 0)}</span>
+                </div>
+              )}
+              {refundModal.status !== 'cancelled' && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{t('dharamshala.billTotal')}</span>
+                  <span>\u20b9{fmtPaise(refundModal.total_paise ?? 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold">
+                <span>{t('dharamshala.refundable')}</span>
+                <span className="text-brand-blue">\u20b9{fmtPaise(refundable(refundModal))}</span>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="form-label" htmlFor="ramt">{t('dharamshala.refundAmount')}</label>
+                <input
+                  id="ramt" className="form-input" inputMode="decimal"
+                  value={refundAmt} onChange={e => setRefundAmt(e.target.value)}
+                />
+                <p className="form-hint">{t('dharamshala.refundLessNote')}</p>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="rmode">{t('dharamshala.refundMode')}</label>
+                <select
+                  id="rmode" className="form-select" value={refundMode}
+                  onChange={e => setRefundMode(e.target.value)}
+                >
+                  {['cash', 'upi', 'neft', 'cheque'].map(m => (
+                    <option key={m} value={m}>{t(`payments.mode.${m}`, m.toUpperCase())}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {refundError && <p className="mt-2 text-sm text-red-600">{refundError}</p>}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setRefundModal(null)} className="btn-secondary">{t('common.cancel')}</button>
+              <button
+                onClick={() => void submitRefund()}
+                disabled={refundBusy || parsePaise(refundAmt) <= 0}
+                className="btn-primary"
+              >{refundBusy ? t('common.saving') : t('dharamshala.refundConfirm')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {depositModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">

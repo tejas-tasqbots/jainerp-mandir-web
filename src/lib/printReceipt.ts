@@ -16,21 +16,47 @@ import { buildReceiptHtml, type ReceiptData } from './receiptTemplates'
 export * from './receiptTemplates'
 
 /**
- * UPI deep-link QR for the temple's UPI ID, pre-filled with the receipt amount
- * (plan §16). Generated in the browser — nothing is fetched, so it works on the
- * offline desktop counter. Returns null when there is no UPI ID configured or
- * the trust has the QR turned off.
+ * UPI deep-link QR for the trust's UPI ID.
+ *
+ * Generated in the browser — nothing is fetched, so it works on the offline
+ * desktop counter. Returns null only when the trust has no UPI ID, or has
+ * deliberately turned the QR off.
+ *
+ * ── WHY IT IS OPT-OUT ───────────────────────────────────────────────────────
+ * `receipt_show_upi_qr` used to be opt-IN and defaults to false, so a trust had
+ * to find a checkbox in Settings before a single donor ever saw a QR: reported
+ * as "on all receipts I need a QR of given UPI where payment details are
+ * there". A trust that has typed a UPI id has already said it wants to be paid
+ * that way.
+ *
+ * ── WHY THE AMOUNT IS USUALLY ABSENT ────────────────────────────────────────
+ * `am` used to be the receipt total, unconditionally. On a SETTLED receipt —
+ * which is most of them, since a receipt is what you get after paying — that is
+ * a QR asking for money the donor has just handed over, and scanning it pays
+ * twice. It now prefills ONLY what is still due. With nothing due the QR is
+ * open-amount, which is what "scan to donate" means and what `qrCaption()` has
+ * been saying in words all along.
  */
 export async function buildUpiQr(r: ReceiptData): Promise<string | null> {
   const m = r.mandir
-  if (!m?.receipt_show_upi_qr || !m.upi_id) return null
+  if (!m?.upi_id || m.receipt_show_upi_qr === false) return null
+  // What is still owed, if the document says. A room bill carries it in meta;
+  // everything else is settled at the counter by definition.
+  const meta = (r.meta ?? {}) as Record<string, unknown>
+  const due = Math.max(0, Math.round(Number(meta.due_paise ?? 0)))
   const params = new URLSearchParams({
     pa: m.upi_id,
     pn: m.name,
-    am: (r.amount_paise / 100).toFixed(2),
     cu: 'INR',
-    tn: r.receipt_number ? `Donation ${r.receipt_number}` : 'Donation',
+    // The document, not "Donation" — a guest settling a dharamshala bill saw
+    // "Donation ROOM/2026-27/000042" in their UPI app. Derived here rather than
+    // from the renderer's `docTitle`/label table, which are module-private to it
+    // on purpose: this note is one line of UPI metadata, not a printed label,
+    // and reaching across for it would tie the print pipeline to the designs.
+    tn: [r.doc_title || (r.kind === 'donation' ? 'Donation' : 'Payment'), r.receipt_number]
+      .filter(Boolean).join(' ').trim(),
   })
+  if (due > 0) params.set('am', (due / 100).toFixed(2))
   try {
     const QR = await import('qrcode')
     return await QR.toDataURL(`upi://pay?${params.toString()}`, { margin: 1, width: 220 })
