@@ -68,6 +68,40 @@ export interface ReceiptLabels {
   // The signature block at the foot of every A4 design.
   forTrust: string
   computerGenerated: string
+  // -- Remittance: how a devotee can pay the trust ---------------------------
+  // One block on every design replaces five hand-written copies. IFSC, UPI,
+  // PAN and the GST acronyms stay Latin in every language: they are printed on
+  // a passbook and a cheque that way, and a translated IFSC is unusable.
+  /** The "80G Eligible" row on a donation receipt. Six designs printed these
+   * two English words regardless of the trust's receipt language. */
+  eligible80g: string
+  paymentDetails: string
+  bankLabel: string
+  accountName: string
+  accountNo: string
+  ifsc: string
+  upiId: string
+  scanToDonate: string
+  receivedOn: string
+  reference: string
+  // -- A stay: the accommodation designs and the room bill -------------------
+  stayDetails: string
+  checkIn: string
+  checkOut: string
+  nights: string
+  persons: string
+  room: string
+  guest: string
+  guestIdLabel: string
+  advance: string
+  securityDeposit: string
+  amountPaid: string
+  balanceDue: string
+  houseRules: string
+  taxInvoice: string
+  guestFolio: string
+  placeOfSupply: string
+  taxableValue: string
 }
 
 const en: ReceiptLabels = {
@@ -124,6 +158,33 @@ const en: ReceiptLabels = {
   total: 'Total',
   forTrust: 'For {name}',
   computerGenerated: 'This is a computer-generated receipt and does not need a physical signature.',
+  eligible80g: '80G Eligible',
+  paymentDetails: 'Payment Details',
+  bankLabel: 'Bank',
+  accountName: 'A/C Name',
+  accountNo: 'A/C No.',
+  ifsc: 'IFSC',
+  upiId: 'UPI ID',
+  scanToDonate: 'Scan to donate',
+  receivedOn: 'Received on',
+  reference: 'Ref.',
+  stayDetails: 'Stay Details',
+  checkIn: 'Check-in',
+  checkOut: 'Check-out',
+  nights: 'Nights',
+  persons: 'Persons',
+  room: 'Room',
+  guest: 'Guest',
+  guestIdLabel: 'ID',
+  advance: 'Advance',
+  securityDeposit: 'Security Deposit',
+  amountPaid: 'Amount Paid',
+  balanceDue: 'Balance Due',
+  houseRules: 'House Rules',
+  taxInvoice: 'Tax Invoice',
+  guestFolio: 'Guest Folio',
+  placeOfSupply: 'Place of Supply',
+  taxableValue: 'Taxable Value',
 }
 
 const hi: ReceiptLabels = {
@@ -180,6 +241,33 @@ const hi: ReceiptLabels = {
   total: 'कुल',
   forTrust: '{name} हेतु',
   computerGenerated: 'यह कंप्यूटर द्वारा बनाई गई रसीद है; भौतिक हस्ताक्षर आवश्यक नहीं।',
+  eligible80g: '80G पात्र',
+  paymentDetails: 'भुगतान विवरण',
+  bankLabel: 'बैंक',
+  accountName: 'खाताधारक का नाम',
+  accountNo: 'खाता सं.',
+  ifsc: 'IFSC',
+  upiId: 'UPI आईडी',
+  scanToDonate: 'दान हेतु स्कैन करें',
+  receivedOn: 'प्राप्ति दिनांक',
+  reference: 'संदर्भ',
+  stayDetails: 'निवास विवरण',
+  checkIn: 'आगमन',
+  checkOut: 'प्रस्थान',
+  nights: 'रातें',
+  persons: 'व्यक्ति',
+  room: 'कक्ष',
+  guest: 'अतिथि',
+  guestIdLabel: 'पहचान पत्र',
+  advance: 'अग्रिम',
+  securityDeposit: 'सुरक्षा निधि',
+  amountPaid: 'प्राप्त राशि',
+  balanceDue: 'शेष राशि',
+  houseRules: 'नियम एवं शर्तें',
+  taxInvoice: 'कर बीजक',
+  guestFolio: 'अतिथि विवरण-पत्र',
+  placeOfSupply: 'आपूर्ति स्थान',
+  taxableValue: 'कर योग्य मूल्य',
 }
 
 const mr: ReceiptLabels = {
@@ -236,6 +324,33 @@ const mr: ReceiptLabels = {
   total: 'एकूण',
   forTrust: '{name} करिता',
   computerGenerated: 'ही संगणकाद्वारे तयार केलेली पावती आहे; प्रत्यक्ष स्वाक्षरीची आवश्यकता नाही.',
+  eligible80g: '80G पात्र',
+  paymentDetails: 'देयक तपशील',
+  bankLabel: 'बँक',
+  accountName: 'खातेदाराचे नाव',
+  accountNo: 'खाते क्र.',
+  ifsc: 'IFSC',
+  upiId: 'UPI आयडी',
+  scanToDonate: 'देणगीसाठी स्कॅन करा',
+  receivedOn: 'प्राप्ती दिनांक',
+  reference: 'संदर्भ',
+  stayDetails: 'निवास तपशील',
+  checkIn: 'आगमन',
+  checkOut: 'प्रस्थान',
+  nights: 'रात्री',
+  persons: 'व्यक्ती',
+  room: 'खोली',
+  guest: 'अतिथी',
+  guestIdLabel: 'ओळखपत्र',
+  advance: 'आगाऊ रक्कम',
+  securityDeposit: 'अनामत रक्कम',
+  amountPaid: 'भरलेली रक्कम',
+  balanceDue: 'शिल्लक रक्कम',
+  houseRules: 'नियम व अटी',
+  taxInvoice: 'कर देयक',
+  guestFolio: 'अतिथी तपशील-पत्र',
+  placeOfSupply: 'पुरवठा ठिकाण',
+  taxableValue: 'करपात्र मूल्य',
 }
 
 const gu: ReceiptLabels = {
@@ -292,6 +407,33 @@ const gu: ReceiptLabels = {
   total: 'કુલ',
   forTrust: '{name} વતી',
   computerGenerated: 'આ કમ્પ્યુટર દ્વારા બનાવેલી પાવતી છે; ભૌતિક સહીની જરૂર નથી.',
+  eligible80g: '80G પાત્ર',
+  paymentDetails: 'ચુકવણી વિગત',
+  bankLabel: 'બેંક',
+  accountName: 'ખાતાધારકનું નામ',
+  accountNo: 'ખાતા નં.',
+  ifsc: 'IFSC',
+  upiId: 'UPI આઈડી',
+  scanToDonate: 'દાન માટે સ્કેન કરો',
+  receivedOn: 'પ્રાપ્તિ તારીખ',
+  reference: 'સંદર્ભ',
+  stayDetails: 'નિવાસ વિગત',
+  checkIn: 'આગમન',
+  checkOut: 'પ્રસ્થાન',
+  nights: 'રાત્રિ',
+  persons: 'વ્યક્તિ',
+  room: 'ખંડ',
+  guest: 'અતિથિ',
+  guestIdLabel: 'ઓળખપત્ર',
+  advance: 'અગાઉથી રકમ',
+  securityDeposit: 'જમાનત રકમ',
+  amountPaid: 'ચૂકવેલ રકમ',
+  balanceDue: 'બાકી રકમ',
+  houseRules: 'નિયમો અને શરતો',
+  taxInvoice: 'કર બિલ',
+  guestFolio: 'અતિથિ વિગત-પત્ર',
+  placeOfSupply: 'પુરવઠા સ્થળ',
+  taxableValue: 'કરપાત્ર મૂલ્ય',
 }
 
 const kn: ReceiptLabels = {
@@ -348,6 +490,33 @@ const kn: ReceiptLabels = {
   total: 'ಒಟ್ಟು',
   forTrust: '{name} ಪರವಾಗಿ',
   computerGenerated: 'ಇದು ಗಣಕದಿಂದ ರಚಿತವಾದ ರಸೀದಿ; ಸಹಿ ಅಗತ್ಯವಿಲ್ಲ.',
+  eligible80g: '80G ಅರ್ಹ',
+  paymentDetails: 'ಪಾವತಿ ವಿವರ',
+  bankLabel: 'ಬ್ಯಾಂಕ್',
+  accountName: 'ಖಾತೆದಾರರ ಹೆಸರು',
+  accountNo: 'ಖಾತೆ ಸಂ.',
+  ifsc: 'IFSC',
+  upiId: 'UPI ಐಡಿ',
+  scanToDonate: 'ದೇಣಿಗೆಗೆ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+  receivedOn: 'ಸ್ವೀಕೃತಿ ದಿನಾಂಕ',
+  reference: 'ಉಲ್ಲೇಖ',
+  stayDetails: 'ವಸತಿ ವಿವರ',
+  checkIn: 'ಆಗಮನ',
+  checkOut: 'ನಿರ್ಗಮನ',
+  nights: 'ರಾತ್ರಿಗಳು',
+  persons: 'ವ್ಯಕ್ತಿಗಳು',
+  room: 'ಕೊಠಡಿ',
+  guest: 'ಅತಿಥಿ',
+  guestIdLabel: 'ಗುರುತಿನ ಚೀಟಿ',
+  advance: 'ಮುಂಗಡ',
+  securityDeposit: 'ಭದ್ರತಾ ಮೊತ್ತ',
+  amountPaid: 'ಪಾವತಿಸಿದ ಮೊತ್ತ',
+  balanceDue: 'ಬಾಕಿ ಮೊತ್ತ',
+  houseRules: 'ನಿಯಮ ಮತ್ತು ಷರತ್ತುಗಳು',
+  taxInvoice: 'ತೆರಿಗೆ ಬಿಲ್',
+  guestFolio: 'ಅತಿಥಿ ವಿವರ ಪತ್ರ',
+  placeOfSupply: 'ಪೂರೈಕೆ ಸ್ಥಳ',
+  taxableValue: 'ತೆರಿಗೆಗೊಳಪಡುವ ಮೌಲ್ಯ',
 }
 
 const ta: ReceiptLabels = {
@@ -404,6 +573,33 @@ const ta: ReceiptLabels = {
   total: 'மொத்தம்',
   forTrust: '{name} சார்பாக',
   computerGenerated: 'இது கணினியில் உருவாக்கப்பட்ட ரசீது; கையொப்பம் தேவையில்லை.',
+  eligible80g: '80G தகுதி',
+  paymentDetails: 'கட்டண விவரம்',
+  bankLabel: 'வங்கி',
+  accountName: 'கணக்கு பெயர்',
+  accountNo: 'கணக்கு எண்',
+  ifsc: 'IFSC',
+  upiId: 'UPI ஐடி',
+  scanToDonate: 'நன்கொடைக்கு ஸ்கேன் செய்யவும்',
+  receivedOn: 'பெறப்பட்ட நாள்',
+  reference: 'குறிப்பு',
+  stayDetails: 'தங்கும் விவரம்',
+  checkIn: 'வருகை',
+  checkOut: 'புறப்பாடு',
+  nights: 'இரவுகள்',
+  persons: 'நபர்கள்',
+  room: 'அறை',
+  guest: 'விருந்தினர்',
+  guestIdLabel: 'அடையாள அட்டை',
+  advance: 'முன்பணம்',
+  securityDeposit: 'வைப்புத்தொகை',
+  amountPaid: 'செலுத்திய தொகை',
+  balanceDue: 'நிலுவைத் தொகை',
+  houseRules: 'விதிமுறைகள்',
+  taxInvoice: 'வரி விலைப்பட்டியல்',
+  guestFolio: 'விருந்தினர் விவரப் பட்டியல்',
+  placeOfSupply: 'வழங்கல் இடம்',
+  taxableValue: 'வரிவிதிக்கத்தக்க மதிப்பு',
 }
 
 const te: ReceiptLabels = {
@@ -460,6 +656,33 @@ const te: ReceiptLabels = {
   total: 'మొత్తం',
   forTrust: '{name} తరఫున',
   computerGenerated: 'ఇది కంప్యూటర్ రూపొందించిన రసీదు; సంతకం అవసరం లేదు.',
+  eligible80g: '80G అర్హత',
+  paymentDetails: 'చెల్లింపు వివరాలు',
+  bankLabel: 'బ్యాంకు',
+  accountName: 'ఖాతాదారు పేరు',
+  accountNo: 'ఖాతా సం.',
+  ifsc: 'IFSC',
+  upiId: 'UPI ఐడీ',
+  scanToDonate: 'విరాళం కోసం స్కాన్ చేయండి',
+  receivedOn: 'అందిన తేదీ',
+  reference: 'సూచిక',
+  stayDetails: 'బస వివరాలు',
+  checkIn: 'రాక',
+  checkOut: 'నిష్క్రమణ',
+  nights: 'రాత్రులు',
+  persons: 'వ్యక్తులు',
+  room: 'గది',
+  guest: 'అతిథి',
+  guestIdLabel: 'గుర్తింపు కార్డు',
+  advance: 'అడ్వాన్స్',
+  securityDeposit: 'జమా మొత్తం',
+  amountPaid: 'చెల్లించిన మొత్తం',
+  balanceDue: 'బాకీ మొత్తం',
+  houseRules: 'నియమ నిబంధనలు',
+  taxInvoice: 'పన్ను ఇన్‌వాయిస్',
+  guestFolio: 'అతిథి వివరాల పత్రం',
+  placeOfSupply: 'సరఫరా స్థలం',
+  taxableValue: 'పన్ను విధించదగిన విలువ',
 }
 
 export const RECEIPT_LABELS: Record<ReceiptLang, ReceiptLabels> = { en, hi, mr, gu, kn, ta, te }

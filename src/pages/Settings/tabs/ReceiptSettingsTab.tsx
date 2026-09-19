@@ -359,6 +359,10 @@ const BLANK = {
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
   // Print settings (tenant-migration 011)
   receipt_copies: 'single', receipt_paper: 'a4', receipt_language: 'en', receipt_show_upi_qr: false,
+  // Accommodation (migration 004's column, first rendered 2026-09) and the
+  // trust's stay policy (tenant migration 043).
+  room_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
+  housekeeping_hold_on_checkout: true, stay_house_rules: '',
   // Counter slips (tenant-migration 032) — prasad, seva and bhojanshala print
   // through these instead of the receipt settings above. Separate because the
   // choices genuinely differ: a trust that prints donation receipts on A4
@@ -384,7 +388,100 @@ const BLANK = {
  * the SAME builder the same shape the API sends for that document, so what is
  * previewed is what prints.
  */
-export type PreviewMode = 'receipt' | '80g' | 'slip'
+/**
+ * What the preview is showing. `stay` is the accommodation document — a room
+ * bill follows the trust's `room_invoice_template`, not its donation template,
+ * and until this existed there was no way to see what a guest would be handed.
+ */
+/**
+ * Designs built for a stay, offered ONLY for accommodation.
+ *
+ * Deliberately a separate list from TEMPLATES. A folio on a donation receipt
+ * would print a "Stay details" panel with nothing in it and a "Balance due"
+ * row that means nothing for a gift — so it is not offered there, rather than
+ * offered and then degrading.
+ */
+const STAY_TEMPLATES: TemplateDef[] = [
+  {
+    id: 'folio',
+    label: 'Guest Folio',
+    badge: 'New',
+    thumb: (color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1px solid #e5e7eb">
+        <div style="display:flex;justify-content:space-between;padding:4px 6px;border-bottom:2px solid ${color}">
+          <div><div style="font-weight:800;font-size:7px">Mandir Name</div><div style="font-size:3.5px;color:#6b7280">Address · GSTIN</div></div>
+          <div style="text-align:right"><div style="font-size:3.5px;letter-spacing:1px;color:${color};font-weight:800">GUEST FOLIO</div><div style="font-family:monospace;font-size:5px">ROOM/000042</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#fafafa;border-bottom:1px solid #eef2f7">
+          <div><div style="font-size:3px;color:#9ca3af;letter-spacing:.8px">GUEST</div><div style="font-weight:700;font-size:5.5px">Ayush Kasliwal</div></div>
+          <div style="text-align:right"><div style="font-size:3px;color:#9ca3af;letter-spacing:.8px">MODE</div><div style="font-size:4.5px;font-weight:600">Cash + UPI</div></div>
+        </div>
+        <div style="display:flex">
+          <div style="flex:1;padding:3px 6px;border-right:1px solid #eef2f7">
+            <div style="font-size:3px;color:#9ca3af;letter-spacing:.8px">STAY DETAILS</div>
+            <div style="display:flex;justify-content:space-between;font-size:4px;margin-top:1.5px"><span style="color:#6b7280">Room</span><b>101</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:4px"><span style="color:#6b7280">Check-in</span><b>19 Sep, 2:30 pm</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:4px"><span style="color:#6b7280">Check-out</span><b>21 Sep, 10:00 am</b></div>
+          </div>
+          <div style="width:38%;padding:3px 6px">
+            <div style="font-size:3px;color:#9ca3af;letter-spacing:.8px">AMOUNT</div>
+            <div style="display:flex;justify-content:space-between;font-size:5px;font-weight:800;color:${color};margin-top:1.5px"><span>Total</span><span>₹3,360</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:4px"><span style="color:#6b7280">Paid</span><b>₹3,360</b></div>
+          </div>
+        </div>
+      </div>`,
+  },
+  {
+    id: 'stay_invoice',
+    label: 'Stay Tax Invoice',
+    badge: 'GST',
+    // Monochrome on purpose: a tax invoice is a statutory form, so this design
+    // does not take the trust's colour and the thumbnail must not either.
+    thumb: (_color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1.5px solid #111827">
+        <div style="text-align:center;background:#111827;color:#fff;font-size:3.5px;letter-spacing:2px;padding:1.5px">TAX INVOICE</div>
+        <div style="display:flex;justify-content:space-between;padding:3px 6px;border-bottom:1px solid #111827">
+          <div><div style="font-weight:800;font-size:6.5px">Mandir Name</div><div style="font-size:3.5px;color:#4b5563">GSTIN: 24AAAAB1234C1Z5</div></div>
+          <div style="text-align:right;font-size:3.5px;line-height:1.6">Receipt No: <b style="font-family:monospace">ROOM/000042</b><br>Place of Supply: Gujarat</div>
+        </div>
+        <div style="display:flex;border-bottom:1px solid #111827">
+          <div style="flex:1;padding:3px 6px"><div style="font-size:3px;color:#6b7280;letter-spacing:.8px">GUEST</div><div style="font-weight:700;font-size:5px">Ayush Kasliwal</div></div>
+          <div style="flex:1;padding:3px 6px;border-left:1px solid #d1d5db"><div style="font-size:3px;color:#6b7280;letter-spacing:.8px">STAY</div><div style="font-size:4px">2 nights · 3 persons</div></div>
+        </div>
+        <div style="padding:3px 6px">
+          <div style="display:flex;justify-content:space-between;font-size:4px;border:1px solid #e5e7eb;padding:1.5px 3px"><span>Taxable Value</span><b>₹3,200.00</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:4px;border:1px solid #e5e7eb;border-top:0;padding:1.5px 3px"><span>CGST</span><b>₹80.00</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:4px;border:1px solid #e5e7eb;border-top:0;padding:1.5px 3px"><span>SGST</span><b>₹80.00</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:4.5px;font-weight:800;background:#f3f4f6;border:1px solid #e5e7eb;border-top:0;padding:1.5px 3px"><span>Total</span><b>₹3,360.00</b></div>
+        </div>
+      </div>`,
+  },
+  {
+    id: 'stay_slip',
+    label: 'Stay Slip',
+    badge: 'A5',
+    thumb: (color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1px solid #d1d5db;border-top:3px solid ${color};max-width:78%;margin:0 auto">
+        <div style="padding:4px 6px;border-bottom:1px dashed #d1d5db">
+          <div style="font-weight:800;font-size:6.5px">Mandir Name</div>
+          <div style="font-size:3.5px;color:#6b7280">Address, City · Phone</div>
+          <div style="font-size:3.5px;letter-spacing:1.2px;color:${color};font-weight:800;margin-top:2px">GUEST FOLIO</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:3.5px;padding:2px 6px;background:#fafafa;color:#4b5563">
+          <span>Receipt No <b style="font-family:monospace">ROOM/000042</b></span><span>21 Sep 2026</span>
+        </div>
+        <div style="padding:3px 6px">
+          <div style="font-weight:700;font-size:5.5px">Ayush Kasliwal</div>
+          <div style="font-size:3.5px;color:#6b7280">+91 98765 43210 · Cash + UPI</div>
+          <div style="display:flex;justify-content:space-between;font-size:4px;margin-top:2.5px;border-bottom:1px solid #f6f7f9"><span style="color:#6b7280">Check-in</span><b>19 Sep, 2:30 pm</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:4px;border-bottom:1px solid #f6f7f9"><span style="color:#6b7280">Check-out</span><b>21 Sep, 10:00 am</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:5px;font-weight:800;color:${color};margin-top:1px"><span>Total</span><span>₹3,360</span></div>
+        </div>
+      </div>`,
+  },
+]
+
+export type PreviewMode = 'receipt' | 'stay' | '80g' | 'slip'
 
 function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): ReceiptData {
   // Mirrors the server's `statutoryVisibility`: the NUMBER is the fact — and it
@@ -406,12 +503,14 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
       pan_masked: 'ABXXXXX34C',
       address: '12 Sample Street', city: 'Surat', state: 'Gujarat', pincode: '395001',
     },
-    category: mode === 'slip' ? 'Bhojanshala — lunch (10 plates)' : 'General Donation',
-    amount_paise: mode === 'slip' ? 20000 : 150000,
+    category: mode === 'slip'
+      ? 'Bhojanshala — lunch (10 plates)'
+      : mode === 'stay' ? 'Dharamshala — Room 101' : 'General Donation',
+    amount_paise: mode === 'slip' ? 20000 : mode === 'stay' ? 336000 : 150000,
     payment_mode: 'cash',
     // A slip is a purchase, a receipt is a gift: the wording, the 80G row and
     // the registration numbers follow this.
-    kind: mode === 'slip' ? 'service' : 'donation',
+    kind: mode === 'slip' || mode === 'stay' ? 'service' : 'donation',
     ...(mode === 'slip'
       ? {
         slip_kind: 'bhojanshala' as const,
@@ -419,10 +518,36 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
         meta: { tokens: 10, meal_type: 'lunch', rate_paise: 2000, tokens_redeemed: 0 },
       }
       : {}),
+    // A two-night stay, itemised, taxed and settled across two tenders on two
+    // different days — the shape that exercises every block an accommodation
+    // document has: the stay instants, the split payment and the GST rows.
+    ...(mode === 'stay'
+      ? {
+        doc_title: 'Room Receipt',
+        lines: [
+          { label: 'Room 101 (AC, sleeps 2)', qty: '2 nights × ₹1,500.00', amount_paise: 300000 },
+          { label: 'Extra person charge', qty: '1 × ₹200.00', amount_paise: 20000 },
+        ],
+        tax: { cgst_paise: 8000, sgst_paise: 8000, igst_paise: 0 },
+        payments: [
+          { payment_mode: 'cash', amount_paise: 200000, reference_no: null, paid_on: '2026-09-19T06:30:00.000Z' },
+          { payment_mode: 'upi', amount_paise: 136000, reference_no: 'UPI/428193', paid_on: '2026-09-21T04:30:00.000Z' },
+        ],
+        meta: {
+          room_number: '101', nights: 2, persons: 3,
+          check_in_date: '2026-09-19', check_out_date: '2026-09-21',
+          planned_check_in_at: `2026-09-19T${(form.default_checkin_time || '12:00')}:00+05:30`,
+          planned_check_out_at: `2026-09-21T${(form.default_checkout_time || '10:00')}:00+05:30`,
+          checked_in_at: '2026-09-19T06:30:00.000Z',
+          checked_out_at: '2026-09-21T04:30:00.000Z',
+          guest_id_type: 'aadhaar', guest_id_last4: '9012',
+        },
+      }
+      : {}),
     // The sample donation is 80G-eligible only if this trust could actually
     // issue one. Previewing a "80G Eligible: Yes" row on a trust with no
     // registration shows an admin a receipt they can never produce.
-    is_80g_eligible: mode === 'slip' ? false : has80g,
+    is_80g_eligible: mode === 'slip' || mode === 'stay' ? false : has80g,
     mandir: {
       name: form.name || 'Shree Jain Mandir',
       address: form.address || '123, Temple Road, Ahmedabad, Gujarat 380001',
@@ -470,7 +595,12 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
       footer: form.custom_receipt_footer || 'Jai Jinendra! Thank you for your generous donation.',
       template: mode === 'slip'
         ? (form.slip_template === 'receipt' ? form.receipt_template : form.slip_template)
-        : mode === '80g' ? '80g' : form.receipt_template,
+        : mode === '80g' ? '80g'
+          // Falls back to the donation template exactly as the API's
+          // `templateFor()` does, so the preview and the print agree for a
+          // trust that has not chosen an accommodation design.
+          : mode === 'stay' ? (form.room_invoice_template || form.receipt_template)
+            : form.receipt_template,
       primary_color: form.primary_color,
       receipt_copies: (mode === 'slip' ? form.slip_copies : form.receipt_copies) as 'single' | 'both',
       receipt_paper: (mode === 'slip'
@@ -485,6 +615,52 @@ function buildPreviewData(form: typeof BLANK, mode: PreviewMode = 'receipt'): Re
   }
 }
 
+/**
+ * Draw the paper's bottom edge across the preview, and report whether the
+ * design actually fits above it.
+ *
+ * Reads the page box out of the document's own `@page` rule rather than
+ * recomputing it: `buildReceiptHtml` is the only thing that decides paper, and
+ * a second copy of that arithmetic here is a second thing to get wrong. A
+ * thermal roll has no page box and is skipped — a roll is as long as it needs
+ * to be.
+ */
+function markPageEdge(
+  doc: Document,
+  report: (fit: { fits: boolean; over: number } | null) => void,
+): void {
+  const css = Array.from(doc.querySelectorAll('style')).map(s => s.textContent ?? '').join('\n')
+  const rule = /@page\s*\{[^}]*size:\s*(A4|A5)[^}]*?(?:margin:\s*([\d.]+)mm)?[^}]*\}/i.exec(css)
+  if (!rule) { report(null); return }        // thermal / token — not paged
+  const paperH = rule[1].toUpperCase() === 'A5' ? 210 : 297
+  const margin = Number(rule[2] ?? 0)
+  const boxMm = paperH - margin * 2
+  const boxPx = (boxMm / 25.4) * 96
+
+  const design = doc.querySelector('.sheet, .page') as HTMLElement | null
+  // Measured AFTER the renderer's own scaling, because that scaling is a plain
+  // CSS zoom and is exactly what the printer will apply too.
+  const h = design?.getBoundingClientRect().height ?? 0
+
+  const marker = doc.createElement('div')
+  marker.setAttribute('data-page-edge', '')
+  marker.style.cssText = [
+    'position:absolute', 'left:0', 'right:0', `top:${Math.round(boxPx)}px`,
+    'border-top:2px dashed #dc2626', 'pointer-events:none', 'z-index:2147483647',
+  ].join(';')
+  const tag = doc.createElement('span')
+  tag.textContent = `end of page 1 · ${rule[1].toUpperCase()}`
+  tag.style.cssText = [
+    'position:absolute', 'right:4px', 'top:2px', 'font:600 9px/1.4 system-ui,sans-serif',
+    'color:#dc2626', 'background:#fff', 'padding:1px 4px', 'border-radius:3px',
+  ].join(';')
+  marker.appendChild(tag)
+  doc.body.style.position = 'relative'
+  doc.body.appendChild(marker)
+
+  report({ fits: h <= boxPx + 1, over: Math.max(0, Math.round(h - boxPx)) })
+}
+
 export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts') => void } = {}) {
   const toast = useToast()
   const { t } = useTranslation()
@@ -495,6 +671,15 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('receipt')
+  /**
+   * Whether the previewed design fits the paper it is set to print on.
+   *
+   * This screen is the one place an admin checks WHAT PRINTS, and it was the
+   * one screen that could not answer the question: the preview iframe scrolls,
+   * so a receipt that printed onto a second sheet looked perfectly fine here.
+   * A client found that instead of us.
+   */
+  const [pageFit, setPageFit] = useState<{ fits: boolean; over: number } | null>(null)
 
   useEffect(() => {
     api.get('/tenants/me').then(r => {
@@ -516,6 +701,11 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         custom_receipt_footer: (p.custom_receipt_footer as string) || '',
         receipt_copies: (p.receipt_copies as string) || 'single',
         receipt_paper: (p.receipt_paper as string) || 'a4',
+        room_invoice_template: (p.room_invoice_template as string) || '',
+        default_checkin_time: ((p.default_checkin_time as string) || '12:00').slice(0, 5),
+        default_checkout_time: ((p.default_checkout_time as string) || '10:00').slice(0, 5),
+        housekeeping_hold_on_checkout: p.housekeeping_hold_on_checkout !== false,
+        stay_house_rules: (p.stay_house_rules as string) || '',
         receipt_language: (p.receipt_language as string) || 'en',
         receipt_show_upi_qr: Boolean(p.receipt_show_upi_qr),
         slip_template: (p.slip_template as string) || 'token',
@@ -552,6 +742,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         doc.open()
         doc.write(previewHtml)
         doc.close()
+        markPageEdge(doc, setPageFit)
       }
     }
   }, [form, previewMode])
@@ -594,6 +785,11 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         custom_receipt_footer: form.custom_receipt_footer,
         receipt_copies: form.receipt_copies,
         receipt_paper: form.receipt_paper,
+        room_invoice_template: form.room_invoice_template,
+        default_checkin_time: form.default_checkin_time,
+        default_checkout_time: form.default_checkout_time,
+        housekeeping_hold_on_checkout: form.housekeeping_hold_on_checkout,
+        stay_house_rules: form.stay_house_rules,
         receipt_language: form.receipt_language,
         receipt_show_upi_qr: form.receipt_show_upi_qr,
         slip_template: form.slip_template,
@@ -638,6 +834,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   ]
   const missingRequired = statutory.filter(s => s.required && !s.value)
   const selected = TEMPLATES.find(t => t.id === form.receipt_template)
+  const stayDesign = [...STAY_TEMPLATES, ...TEMPLATES]
+    .find(t => t.id === (form.room_invoice_template || form.receipt_template))
 
   return (
     // Side by side from xl only: the preview is 420 px, and below that it sat
@@ -828,6 +1026,99 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             )}
           </div>
         </div>
+        </section>
+
+        {/* ── ACCOMMODATION ───────────────────────────────────────────────
+            A room bill and a donation receipt are different documents, and
+            until now a trust could choose only one design for both: the
+            renderer read `receipt_template` whatever the document was. The
+            column to hold the answer (`room_invoice_template`) has existed
+            since migration 004 and nothing had ever read it.
+
+            The stay policy lives here too rather than in the Dharamshala
+            screens, because it is what the BILL prints — "arrive after 12,
+            vacate by 10" was a board in the lobby and a number in the clerk's
+            head, and the receipt could state neither. */}
+        <section className="space-y-4">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupStay')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.groupStayHint')}</p>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <h3 className="font-semibold text-sm">{t('settings.stay.heading')}</h3>
+              <p className="mt-0.5 text-xs text-slate-500">{t('settings.stay.subheading')}</p>
+            </div>
+            <div className="card-body space-y-4">
+              <div>
+                <label className="form-label">{t('settings.stay.template')}</label>
+                <select
+                  className="form-select" data-testid="stay-template"
+                  value={form.room_invoice_template}
+                  onChange={e => set('room_invoice_template', e.target.value)}
+                >
+                  {/* Blank is not "none" — it means "whatever donations use",
+                      which is what every trust has today and must keep. */}
+                  <option value="">{t('settings.stay.templateSameAsReceipt')}</option>
+                  <optgroup label={t('settings.stay.templateGroupStay')}>
+                    {STAY_TEMPLATES.map(tpl => (
+                      <option key={tpl.id} value={tpl.id}>{tpl.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label={t('settings.stay.templateGroupShared')}>
+                    {TEMPLATES.map(tpl => (
+                      <option key={tpl.id} value={tpl.id}>{tpl.label}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <p className="form-hint">{t('settings.stay.templateHint')}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label">{t('settings.stay.checkinTime')}</label>
+                  <input
+                    type="time" className="form-input" data-testid="stay-checkin-time"
+                    value={form.default_checkin_time}
+                    onChange={e => set('default_checkin_time', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">{t('settings.stay.checkoutTime')}</label>
+                  <input
+                    type="time" className="form-input" data-testid="stay-checkout-time"
+                    value={form.default_checkout_time}
+                    onChange={e => set('default_checkout_time', e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="form-hint -mt-2">{t('settings.stay.timesHint')}</p>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox" className="form-checkbox mt-0.5" data-testid="stay-housekeeping-hold"
+                  checked={form.housekeeping_hold_on_checkout}
+                  onChange={e => set('housekeeping_hold_on_checkout', e.target.checked)}
+                />
+                <span>
+                  <span className="text-sm text-slate-700">{t('settings.stay.housekeepingHold')}</span>
+                  <span className="block text-[11px] text-slate-400">{t('settings.stay.housekeepingHoldHint')}</span>
+                </span>
+              </label>
+
+              <div>
+                <label className="form-label">{t('settings.stay.houseRules')}</label>
+                <textarea
+                  className="form-input" rows={3} data-testid="stay-house-rules"
+                  value={form.stay_house_rules}
+                  onChange={e => set('stay_house_rules', e.target.value)}
+                  placeholder={t('settings.stay.houseRulesPlaceholder')}
+                />
+                <p className="form-hint">{t('settings.stay.houseRulesHint')}</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -1026,13 +1317,16 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <Eye size={14} className="text-slate-500" />
             <h3 className="font-semibold text-sm">{t('settings.receipts.livePreview')}</h3>
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-              {previewMode === 'receipt' ? (selected?.label || 'Classic') : previewMode === '80g' ? '80G' : t('settings.slips.heading')}
+              {previewMode === 'receipt' ? (selected?.label || 'Classic')
+                : previewMode === 'stay' ? (stayDesign?.label || selected?.label || 'Classic')
+                  : previewMode === '80g' ? '80G' : t('settings.slips.heading')}
               {previewMode === 'receipt' && selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
             </span>
             {/* Three documents print from this screen; all three are previewable. */}
             <div className="w-full flex gap-1">
               {([
                 ['receipt', t('settings.receipts.previewReceipt')],
+                ['stay', t('settings.receipts.previewStay')],
                 ['80g', t('settings.receipts.preview80g')],
                 ['slip', t('settings.receipts.previewSlip')],
               ] as [PreviewMode, string][]).map(([m, label]) => (
@@ -1058,6 +1352,14 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           {previewMode === '80g' && !form.reg_80g_number.trim() && (
             <p className="px-3 pb-2 text-[11px] leading-relaxed text-amber-700" data-testid="preview-80g-note">
               {t('settings.receipts.preview80gUnavailable')}
+            </p>
+          )}
+          {/* The dashed line in the preview is where the paper ends. This says
+              so in words when the design crosses it, because the preview
+              scrolls and a second printed sheet is otherwise invisible here. */}
+          {pageFit && !pageFit.fits && (
+            <p className="px-3 pb-2 text-[11px] leading-relaxed text-red-700" data-testid="preview-overflow-note">
+              {t('settings.receipts.previewOverflows', { mm: Math.round(pageFit.over / 96 * 25.4) })}
             </p>
           )}
           <div className="px-3 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-2">

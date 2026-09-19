@@ -21,12 +21,31 @@ export function AddRoomCheckin() {
     guest_id_type: 'aadhaar',
     check_in_date: new Date().toISOString().slice(0, 10),
     check_out_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    // Pre-filled from the trust's policy below. A booking has always had two
+    // DATES and no times, so "rooms from 12, vacate by 10" lived on a board in
+    // the lobby and the bill could state neither (tenant migration 043).
+    check_in_time: '12:00',
+    check_out_time: '10:00',
     persons_count: '1',
     advance: '',
     payment_mode: 'cash',
     id_proof_number: '',
     deposit: '',
   }))
+
+  // The trust's own check-in/checkout times. Failing to load them is not worth
+  // an error: the form keeps the 12:00/10:00 defaults, which is what the
+  // migration defaults the columns to anyway.
+  useEffect(() => {
+    api.get('/tenants/me').then(r => {
+      const p = r.data?.data ?? r.data ?? {}
+      setForm(f => ({
+        ...f,
+        check_in_time: String(p.default_checkin_time ?? f.check_in_time).slice(0, 5),
+        check_out_time: String(p.default_checkout_time ?? f.check_out_time).slice(0, 5),
+      }))
+    }).catch(() => { /* keep the defaults */ })
+  }, [])
 
   useEffect(() => {
     api.get('/rooms?is_available=true').then(r => {
@@ -53,6 +72,8 @@ export function AddRoomCheckin() {
         guest_id_type: form.guest_id_type,
         check_in_date: form.check_in_date,
         check_out_date: form.check_out_date,
+        check_in_time: form.check_in_time,
+        check_out_time: form.check_out_time,
         persons_count: parseInt(form.persons_count),
         advance_paise: form.advance ? parsePaise(form.advance) : 0,
         payment_mode: form.payment_mode,
@@ -170,16 +191,32 @@ export function AddRoomCheckin() {
             required
           />
 
-          <div className="grid grid-cols-3 gap-4">
+          {/* Date AND time. The times are stated on the bill, which is what the
+              client asked for — and a guest arriving at 2:30 pm and leaving at
+              10 am was previously recorded as "19 Sep to 21 Sep", which
+              settles no argument about a late checkout. */}
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <label className="form-label">{t('dharamshala.checkInDate')}</label>
               <input type="date" className="form-input" value={form.check_in_date}
                 onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
+              <input
+                type="time" className="form-input mt-1.5" data-testid="check-in-time"
+                aria-label={t('dharamshala.checkInTime')}
+                value={form.check_in_time}
+                onChange={e => setForm(f => ({ ...f, check_in_time: e.target.value }))}
+              />
             </div>
             <div>
               <label className="form-label">{t('dharamshala.checkOutDate')}</label>
               <input type="date" className="form-input" value={form.check_out_date}
                 onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
+              <input
+                type="time" className="form-input mt-1.5" data-testid="check-out-time"
+                aria-label={t('dharamshala.checkOutTime')}
+                value={form.check_out_time}
+                onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))}
+              />
             </div>
             <div>
               <label className="form-label">{t('dharamshala.personsLabel')}</label>

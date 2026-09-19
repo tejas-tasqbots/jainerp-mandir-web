@@ -693,7 +693,9 @@
     "refundPreview": "₹{{amount}} will be refunded to the guest.",
     "forfeitTooLarge": "Only ₹{{held}} is held against this booking.",
     "depositSettled": "Deposit settled.",
-    "depositSettleFailed": "Could not settle the deposit."
+    "depositSettleFailed": "Could not settle the deposit.",
+    "checkInTime": "Check-in time",
+    "checkOutTime": "Check-out time"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -1334,7 +1336,8 @@
     "payroll": "Payroll",
     "staff": "Staff",
     "staffDirectory": "Directory",
-    "attendance": "Attendance"
+    "attendance": "Attendance",
+    "housekeeping": "Housekeeping"
   },
   "palette": {
     "close": "Close",
@@ -2097,6 +2100,7 @@
       "paymentHeading": "Payment Details (on receipts)",
       "preview80g": "80G",
       "preview80gUnavailable": "Add your 80G registration number in Temple Profile to preview this design — without it a receipt cannot claim tax exemption.",
+      "previewOverflows": "This design runs {{mm}} mm past the bottom of the paper, so it will print onto a second sheet. Choose a different paper size or a more compact design.",
       "previewReceipt": "Receipt",
       "previewSlip": "Counter slip",
       "previewUpdates": "Updates as you change settings",
@@ -2133,7 +2137,10 @@
       "groupContent": "What prints on it",
       "groupContentHint": "Pulled from Temple Profile and Accounts",
       "paperA5": "A5 half sheet",
-      "paperThermal58": "58 mm roll"
+      "paperThermal58": "58 mm roll",
+      "previewStay": "Room bill",
+      "groupStay": "Accommodation",
+      "groupStayHint": "What a guest is handed at checkout"
     },
     "save": "Save",
     "saved": "Saved",
@@ -2212,7 +2219,8 @@
       "receipts": "Receipt Settings",
       "subscription": "Subscription & Usage",
       "trustees": "Trustees",
-      "users": "Users"
+      "users": "Users",
+      "receiptDesigns": "Your designs"
     },
     "title": "Settings",
     "trustees": {
@@ -2306,6 +2314,23 @@
       "zeroNote": "Leave empty if a sitting has no fixed rate — the counter will then ask for it.",
       "save": "Save rates",
       "saved": "Rates saved"
+    },
+    "stay": {
+      "heading": "Room bills & stay policy",
+      "subheading": "The design a guest receives, and the times your bills state.",
+      "template": "Room bill design",
+      "templateSameAsReceipt": "Same as donation receipts",
+      "templateHint": "A stay bill and a donation receipt can use different designs. Leave this as \"same as donation receipts\" to keep one design for both.",
+      "checkinTime": "Check-in from",
+      "checkoutTime": "Check-out by",
+      "timesHint": "Fills in every new booking, and prints on the bill. A clerk can still change either for a particular guest.",
+      "housekeepingHold": "Hold a room for cleaning after checkout",
+      "housekeepingHoldHint": "The room stops being offered until someone marks it ready. Switch this off if the same person takes the booking and cleans the room.",
+      "houseRules": "House rules",
+      "houseRulesPlaceholder": "Silence after 10 pm. No outside food in rooms.",
+      "houseRulesHint": "Printed at the foot of the room bill.",
+      "templateGroupStay": "Built for stays",
+      "templateGroupShared": "Shared with receipts"
     }
   },
   "setup": {
@@ -3008,6 +3033,125 @@
       "CHECKSUM": "This GSTIN fails its check character. Please look for a typo.",
       "PAN_MISMATCH": "This number was issued to PAN {{inner}}, but the trust's PAN is {{pan}}. It must be the trust's own registration.",
       "DATE": "Enter a real calendar date."
+    }
+  },
+  "housekeeping": {
+    "heading": "Housekeeping",
+    "subheading": "Rooms waiting to be cleaned, and rooms held for repair. A room is not offered for booking until it is marked ready.",
+    "filter": {
+      "todo": "Needs attention",
+      "all": "All rooms"
+    },
+    "status": {
+      "ready": "Ready",
+      "dirty": "Needs cleaning",
+      "cleaning": "Being cleaned",
+      "maintenance": "Maintenance"
+    },
+    "startCleaning": "Start cleaning",
+    "markReady": "Mark ready",
+    "markMaintenance": "Maintenance",
+    "maintenanceReason": "What needs repairing? This is shown until the room is marked ready.",
+    "confirmReadyTitle": "Put this room back on offer?",
+    "confirmReady": "Room {{room}} will be offered for booking again, at the counter and in the devotee app.",
+    "saved": "Room {{room}} updated",
+    "occupied": "A guest is checked in. This room becomes housekeeping’s once they check out.",
+    "outOfService": "Out of service in the Rooms master. Bring it back into service there first.",
+    "allClear": "Every room is ready",
+    "allClearHint": "Nothing is waiting to be cleaned or repaired.",
+    "failed": "Could not update the room. Try again."
+  },
+  "designer": {
+    "heading": "Your own receipt designs",
+    "subheading": "Build a receipt the way your trust wants it. A design prints only after the JainERP team has approved it.",
+    "new": "New design",
+    "newHeading": "New design",
+    "untitled": "Our receipt",
+    "empty": "You have not built a design yet. Start one, or keep using the ready-made designs on the Receipts tab.",
+    "name": "Name this design",
+    "forDocument": "For",
+    "docKindLocked": "Locked once saved — start a new design for a different document.",
+    "kind": {
+      "donation": "Donation receipts",
+      "stay": "Room bills",
+      "hall": "Hall bills"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Awaiting approval",
+      "approved": "In use",
+      "rejected": "Changes needed",
+      "superseded": "Replaced"
+    },
+    "accent": "Colour",
+    "font": "Lettering",
+    "fontOpt": {
+      "sans": "Plain",
+      "serif": "Traditional"
+    },
+    "frame": "Border",
+    "frameOpt": {
+      "none": "None",
+      "hairline": "Hairline",
+      "single": "Single line",
+      "double": "Double line"
+    },
+    "density": "Spacing",
+    "densityOpt": {
+      "compact": "Tight",
+      "normal": "Normal",
+      "roomy": "Airy"
+    },
+    "centerHeader": "Centre the trust name",
+    "emphasiseAmount": "Highlight the amount",
+    "showQr": "Show the payment QR",
+    "blocks": "What appears on the receipt",
+    "blocksHint": "Drag order with the arrows. Remove anything you do not want — a few parts a receipt must carry cannot be removed.",
+    "blockRequired": "Every receipt must carry this",
+    "removeBlock": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "yourWords": "Your own wording",
+    "titleOverride": "Call the document",
+    "titlePlaceholder": "Donation Receipt",
+    "titleHint": "Leave blank to use the standard name for each document.",
+    "ownLine": "Your line at the foot",
+    "ownLinePlaceholder": "Jai Jinendra! Thank you for your generous daan.",
+    "noMarkupHint": "Plain text only. Set it once per language — a language you leave blank uses your English line.",
+    "preview": "Live preview",
+    "previewHint": "Exactly what will print, drawn by the same renderer.",
+    "sampleTrust": "Shri Jain Mandir Trust",
+    "saved": "Design saved",
+    "saveFailed": "Could not save the design.",
+    "submit": "Send for approval",
+    "submitted": "Sent. You will see it here once it is reviewed.",
+    "confirmSubmitTitle": "Send this design for approval?",
+    "confirmSubmit": "The JainERP team will review it. You can keep using your current receipts until it is approved.",
+    "confirmDelete": "Delete \"{{name}}\"? This cannot be undone.",
+    "newVersion": "Started version {{version}}. Your approved design keeps printing until this one is approved.",
+    "startVersion": "Start a new version",
+    "approvalNote": "Nothing prints until it is approved.",
+    "rejectedHeading": "Changes needed before this can be approved",
+    "pendingHeading": "This design is with the JainERP team. It cannot be edited while it is being reviewed — start a new version if you need to change it.",
+    "block": {
+      "invocation": "Jain invocation",
+      "logo": "Logo",
+      "trust_name": "Trust name",
+      "trust_address": "Address & contact",
+      "trust_identity": "PAN / registration numbers",
+      "doc_title": "Document title",
+      "doc_meta": "Receipt number & date",
+      "party": "Donor / guest",
+      "amount": "Amount",
+      "amount_words": "Amount in words",
+      "details": "Category, payment mode, 80G",
+      "items": "Itemised lines",
+      "stay": "Check-in / check-out",
+      "tax_note": "80G certification",
+      "blessing": "Blessing / thanks",
+      "remittance": "Bank details & QR",
+      "custom_text": "Your own line",
+      "signature": "Signature block"
     }
   }
 }

@@ -340,7 +340,16 @@ export function SetupWizard() {
             'logo_base64', 'show_logo_on_receipts',
             'show_80g_on_receipt', 'show_gstin_on_header',
             'receipt_copies', 'receipt_paper',
-          ])
+          ],
+          // Write `receipt_template` as well as `donation_receipt_template`.
+          // This wizard only ever wrote the latter; Settings → Receipts writes
+          // and reads the former, and so does the renderer — so a trust picked
+          // a design during onboarding, Settings then showed "Classic"
+          // selected, and Classic is what printed. Both columns now agree from
+          // the moment onboarding finishes.
+          form.donation_receipt_template.trim()
+            ? { receipt_template: form.donation_receipt_template.trim() }
+            : {})
           break
         case 'public': {
           const body: Record<string, unknown> = {}
