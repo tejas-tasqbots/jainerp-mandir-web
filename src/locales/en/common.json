@@ -2397,7 +2397,9 @@
       "houseRulesPlaceholder": "Silence after 10 pm. No outside food in rooms.",
       "houseRulesHint": "Printed at the foot of the room bill.",
       "templateGroupStay": "Built for stays",
-      "templateGroupShared": "Shared with receipts"
+      "templateGroupShared": "Shared with receipts",
+      "needsGstin": "needs a GSTIN",
+      "gstTemplateUnavailable": "This trust has no GSTIN on file, so it cannot issue a tax invoice (s.31 CGST). Room bills will print as a guest folio until a GSTIN is saved in Temple Profile."
     },
     "wording": {
       "heading": "Your wording",

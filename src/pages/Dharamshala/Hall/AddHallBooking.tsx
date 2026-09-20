@@ -19,6 +19,10 @@ export function AddHallBooking() {
   const [splitMode, setSplitMode] = useState(false)
   const [payRows, setPayRows] = useState<PaymentRow[]>([emptyPaymentRow()])
   const [booker, setBooker] = useState<DevoteeSelection | null>(null)
+  // Hidden entirely for a trust with no GSTIN. Under s.31 CGST an unregistered
+  // person may not issue a tax invoice, so a recipient's GSTIN has nothing to
+  // appear on and asking for it at the counter is noise.
+  const [gstRegistered, setGstRegistered] = useState(false)
 
   const [form, setForm] = useState({
     hall_id: '',
@@ -31,17 +35,26 @@ export function AddHallBooking() {
   })
 
   // A hall is let to firms far more often than a room is - a wedding, a
-  // conference - so the recipient's GSTIN matters more on this form than
-  // anywhere else in the module. Rule 46(e): without it the company cannot
-  // claim input tax credit on the invoice they just paid.
+  // conference - so where the trust IS registered, the recipient's GSTIN
+  // matters more on this form than anywhere else in the module. Rule 46(e):
+  // without it the company cannot claim credit on the invoice it just paid.
   //
-  // Same shared rule the API applies on submit, so the clerk is never told a
-  // number is fine and then refused.
-  const gstinCheck = recipientGstin(form.booker_gstin)
-  const gstinError = form.booker_gstin.trim() ? (gstinCheck.error ?? null) : null
+  // The same shared rule the API applies on submit, so the clerk is never told
+  // a number is fine and then refused. Gated on `gstRegistered` as well, so a
+  // hidden field can never block a booking - that would be an error with no
+  // visible cause.
+  const gstinCheck = recipientGstin(gstRegistered ? form.booker_gstin : '')
+  const gstinError = gstRegistered && form.booker_gstin.trim() ? (gstinCheck.error ?? null) : null
 
   useEffect(() => {
     api.get('/halls').then(r => setHalls(r.data.data || []))
+  }, [])
+
+  useEffect(() => {
+    api.get('/tenants/me').then(r => {
+      const p = r.data?.data ?? r.data ?? {}
+      setGstRegistered(Boolean(p.is_gst_registered) && Boolean(String(p.gstin ?? '').trim()))
+    }).catch(() => { /* not registered, as far as this form is concerned */ })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -116,7 +129,7 @@ export function AddHallBooking() {
 
           {/* CGST Rule 46(e). Beside the event name because it belongs with the
               party details, not with the money. */}
-          <div>
+          {gstRegistered && <div>
             <label className="form-label" htmlFor="booker-gstin">{t('dharamshala.guestGstin')}</label>
             <input
               id="booker-gstin" className="form-input" value={form.booker_gstin}
@@ -129,7 +142,7 @@ export function AddHallBooking() {
             <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>
               {gstinError || t('dharamshala.guestGstinHint')}
             </p>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

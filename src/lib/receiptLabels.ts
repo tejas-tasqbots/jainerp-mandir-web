@@ -112,6 +112,13 @@ export interface ReceiptLabels {
   // CGST/SGST/IGST are absent on purpose: statutory acronyms stay Latin in
   // every language, and a tax head is not a trust's word to change.
   hsnSac: string
+  // s.31(3)(c) CGST: a REGISTERED person supplying exempt or nil-rated
+  // services issues a bill of supply instead of a tax invoice. A temple with a
+  // GSTIN letting a room below the taxable tariff is exactly that case.
+  //
+  // An UNREGISTERED trust issues neither - it has no standing to - so it never
+  // reaches this label; buildReceiptHtml falls its template back instead.
+  billOfSupply: string
   taxRate: string
   reverseCharge: string
   guestGstin: string
@@ -244,6 +251,7 @@ const en: ReceiptLabels = {
   placeOfSupply: 'Place of Supply',
   taxableValue: 'Taxable Value',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'Bill of Supply',
   taxRate: 'Rate',
   reverseCharge: 'Reverse Charge',
   guestGstin: 'Guest GSTIN',
@@ -359,6 +367,7 @@ const hi: ReceiptLabels = {
   placeOfSupply: 'आपूर्ति स्थान',
   taxableValue: 'कर योग्य मूल्य',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'आपूर्ति बिल',
   taxRate: 'दर',
   reverseCharge: 'रिवर्स चार्ज',
   guestGstin: 'अतिथि GSTIN',
@@ -474,6 +483,7 @@ const mr: ReceiptLabels = {
   placeOfSupply: 'पुरवठा ठिकाण',
   taxableValue: 'करपात्र मूल्य',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'पुरवठा देयक',
   taxRate: 'दर',
   reverseCharge: 'रिव्हर्स चार्ज',
   guestGstin: 'पाहुणे GSTIN',
@@ -589,6 +599,7 @@ const gu: ReceiptLabels = {
   placeOfSupply: 'પુરવઠા સ્થળ',
   taxableValue: 'કરપાત્ર મૂલ્ય',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'પુરવઠા બિલ',
   taxRate: 'દર',
   reverseCharge: 'રિવર્સ ચાર્જ',
   guestGstin: 'મહેમાન GSTIN',
@@ -704,6 +715,7 @@ const kn: ReceiptLabels = {
   placeOfSupply: 'ಪೂರೈಕೆ ಸ್ಥಳ',
   taxableValue: 'ತೆರಿಗೆಗೊಳಪಡುವ ಮೌಲ್ಯ',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'ಪೂರೈಕೆ ಬಿಲ್',
   taxRate: 'ದರ',
   reverseCharge: 'ರಿವರ್ಸ್ ಚಾರ್ಜ್',
   guestGstin: 'ಅತಿಥಿ GSTIN',
@@ -819,6 +831,7 @@ const ta: ReceiptLabels = {
   placeOfSupply: 'வழங்கல் இடம்',
   taxableValue: 'வரிவிதிக்கத்தக்க மதிப்பு',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'வழங்கல் பட்டியல்',
   taxRate: 'விகிதம்',
   reverseCharge: 'ரிவர்ஸ் சார்ஜ்',
   guestGstin: 'விருந்தினர் GSTIN',
@@ -934,6 +947,7 @@ const te: ReceiptLabels = {
   placeOfSupply: 'సరఫరా స్థలం',
   taxableValue: 'పన్ను విధించదగిన విలువ',
   hsnSac: 'HSN/SAC',
+  billOfSupply: 'సరఫరా బిల్లు',
   taxRate: 'రేటు',
   reverseCharge: 'రివర్స్ ఛార్జ్',
   guestGstin: 'అతిథి GSTIN',

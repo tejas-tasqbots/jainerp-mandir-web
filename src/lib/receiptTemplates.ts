@@ -2261,6 +2261,20 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   const pos = r.place_of_supply || r.donor?.state || ''
   const rc = tax?.reverse_charge === true
 
+  // ── TAX INVOICE, OR BILL OF SUPPLY ────────────────────────────────────────
+  // s.31(3)(c) CGST: a registered person supplying exempt or nil-rated services
+  // issues a BILL OF SUPPLY, not a tax invoice. A temple that holds a GSTIN and
+  // lets a room below the taxable tariff is precisely that — `isTariffTaxable`
+  // in room-charges decides it, and the bill then carries no tax at all.
+  //
+  // Heading such a document "TAX INVOICE" would assert tax on a supply that
+  // bore none. Rule 49 asks for much the same particulars minus the tax, so the
+  // SAC and the place of supply stay and the rate and reverse-charge lines go.
+  //
+  // An UNREGISTERED trust never gets here: buildReceiptHtml falls its template
+  // back to stay_invoice, because it has no standing to issue either document.
+  const taxed = taxTotal > 0 && mandir.gst_enabled !== false
+
   // One line minimum. A room bill settled at the counter may arrive with no
   // itemisation at all, and a tax invoice with an empty description column is
   // not an invoice — so the category becomes the single line it describes.
@@ -2281,13 +2295,16 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <td>${l.label}</td>
         <td class="c mono">${sac}</td>
         <td class="c">${l.qty || '—'}</td>
-        <td class="r">${rate ? rate + '%' : '—'}</td>
+        ${taxed ? `<td class="r">${rate ? rate + '%' : '—'}</td>` : ''}
         <td class="r">${fmtRs(share)}</td>
       </tr>`
   }).join('')
 
+  // One fewer column when the Rate column is absent, or the totals detach from
+  // the right-hand edge they are meant to line up with.
+  const span = taxed ? 5 : 4
   const taxLine = (label: string, pct: string, amt: number) =>
-    `<tr><td colspan="5" class="r lbl">${label}${pct ? ' @ ' + pct + '%' : ''}</td><td class="r">${fmtRs(amt)}</td></tr>`
+    `<tr><td colspan="${span}" class="r lbl">${label}${pct ? ' @ ' + pct + '%' : ''}</td><td class="r">${fmtRs(amt)}</td></tr>`
 
   return `
   <style>
@@ -2326,7 +2343,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     @media print { .page{border-color:#111827;margin:0;} }
   </style>
   <div class="page">
-    <div class="title"><b>${L.taxInvoice}</b><span>${L.originalForRecipient}</span></div>
+    <div class="title"><b>${taxed ? L.taxInvoice : L.billOfSupply}</b><span>${L.originalForRecipient}</span></div>
     ${voidedBanner(r.is_voided)}
     <div class="parties">
       <div>
@@ -2341,7 +2358,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
           <tr><td>${L.receiptNo}</td><td class="mono">${r.receipt_number}</td></tr>
           <tr><td>${L.date}</td><td>${dateStr}</td></tr>
           ${pos ? `<tr><td>${L.placeOfSupply}</td><td>${pos}</td></tr>` : ''}
-          <tr><td>${L.reverseCharge}</td><td>${rc ? L.yes : L.no}</td></tr>
+          ${taxed ? `<tr><td>${L.reverseCharge}</td><td>${rc ? L.yes : L.no}</td></tr>` : ''}
         </table>
       </div>
     </div>
@@ -2363,15 +2380,15 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <th>${L.description}</th>
         <th class="c">${L.hsnSac}</th>
         <th class="c">${L.qty}</th>
-        <th class="r">${L.taxRate}</th>
-        <th class="r">${L.taxableValue}</th>
+        ${taxed ? `<th class="r">${L.taxRate}</th>` : ''}
+        <th class="r">${taxed ? L.taxableValue : L.amount}</th>
       </tr>
       ${lineRows}
-      ${taxTotal > 0 ? `${taxLine(L.taxableValue, '', taxable)}
+      ${taxed ? `${taxLine(L.taxableValue, '', taxable)}
       ${cgst > 0 ? taxLine('CGST', ratePct(cgst, taxable, tax?.rate_pct != null ? tax.rate_pct / 2 : null), cgst) : ''}
       ${sgst > 0 ? taxLine('SGST', ratePct(sgst, taxable, tax?.rate_pct != null ? tax.rate_pct / 2 : null), sgst) : ''}
       ${igst > 0 ? taxLine('IGST', ratePct(igst, taxable, tax?.rate_pct), igst) : ''}` : ''}
-      <tr class="grand"><td colspan="5" class="r">${L.total}</td><td class="r">₹ ${fmtRs(r.amount_paise)}</td></tr>
+      <tr class="grand"><td colspan="${span}" class="r">${L.total}</td><td class="r">₹ ${fmtRs(r.amount_paise)}</td></tr>
     </table>
     <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
     <div class="body">
@@ -3016,6 +3033,25 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // shaped document with an empty registration line on it.
   if (template === '80g' && (!r.is_80g_eligible || mandir.eighty_g_enabled === false)) {
     template = 'classic'
+  }
+  // ── A TRUST WITH NO GSTIN MUST NOT ISSUE A TAX INVOICE ────────────────────
+  // The same class of guard as the 80G one above, and a firmer rule than it.
+  //
+  // Many temple trusts are not GST-registered at all. Under s.31 CGST only a
+  // REGISTERED person may issue a tax invoice, and s.32 prohibits an
+  // unregistered person from collecting tax — so a document headed TAX INVOICE
+  // from a trust with no GSTIN is not merely untidy, it is a document it is not
+  // entitled to issue, at ₹10,000 or the tax involved under s.122.
+  //
+  // An unregistered person cannot even issue a "bill of supply": that is for a
+  // registered person supplying exempt goods or paying under composition
+  // (s.31(3)(c)). What they issue is an ordinary commercial receipt, which is
+  // what `stay_invoice` prints when it sees no tax — it titles itself Guest
+  // Folio and omits every tax row. So the fallback is to that rather than to a
+  // donation design, and a trust that picked this template still gets the
+  // structured accommodation document it was after.
+  if (template === 'room_gst' && !mandir.gst_enabled) {
+    template = 'stay_invoice'
   }
   const color = mandir.primary_color || '#0D1B2E'
   const thermal = mandir.receipt_paper === 'thermal80' || mandir.receipt_paper === 'thermal58'

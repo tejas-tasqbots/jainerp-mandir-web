@@ -27,6 +27,11 @@ export function AddRoomCheckin() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [guest, setGuest] = useState<DevoteeSelection | null>(null)
+  // Most temple trusts are NOT GST-registered, and a recipient's GSTIN is
+  // meaningless on a bill that carries no tax - the trust has no standing to
+  // issue a tax invoice at all (s.31 CGST). So the field is not merely optional
+  // for them, it is noise at the counter, and it stays hidden.
+  const [gstRegistered, setGstRegistered] = useState(false)
 
   // Lazy initializer: this object was rebuilt on every render even though only
   // the first one is ever used, and it calls Date.now() to do it.
@@ -52,8 +57,8 @@ export function AddRoomCheckin() {
   // (recipientGstin, shared), so the clerk is never told a number is fine and
   // then refused - and a mistyped GSTIN is caught while the guest is still at
   // the window rather than after they have gone.
-  const gstinCheck = recipientGstin(form.guest_gstin)
-  const gstinError = form.guest_gstin.trim() ? (gstinCheck.error ?? null) : null
+  const gstinCheck = recipientGstin(gstRegistered ? form.guest_gstin : '')
+  const gstinError = gstRegistered && form.guest_gstin.trim() ? (gstinCheck.error ?? null) : null
 
   // The trust's own check-in/checkout times. Failing to load them is not worth
   // an error: the form keeps the 12:00/10:00 defaults, which is what the
@@ -61,6 +66,10 @@ export function AddRoomCheckin() {
   useEffect(() => {
     api.get('/tenants/me').then(r => {
       const p = r.data?.data ?? r.data ?? {}
+      // `is_gst_registered` is the flag; a GSTIN on file without it is a trust
+      // that entered the number and has not turned GST on, and its receipts
+      // carry no tax either way.
+      setGstRegistered(Boolean(p.is_gst_registered) && Boolean(String(p.gstin ?? '').trim()))
       setForm(f => ({
         ...f,
         check_in_time: String(p.default_checkin_time ?? f.check_in_time).slice(0, 5),
@@ -219,7 +228,7 @@ export function AddRoomCheckin() {
                 Validated as you type rather than on submit: a GSTIN is fifteen
                 characters of state code, PAN and check digit, and finding out
                 it was mistyped after the guest has walked away is too late. */}
-            <div>
+            {gstRegistered && <div>
               <label className="form-label" htmlFor="guest-gstin">{t('dharamshala.guestGstin')}</label>
               <input
                 id="guest-gstin" className="form-input" value={form.guest_gstin}
@@ -232,7 +241,7 @@ export function AddRoomCheckin() {
               <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>
                 {gstinError || t('dharamshala.guestGstinHint')}
               </p>
-            </div>
+            </div>}
             <div>
               <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
               <input

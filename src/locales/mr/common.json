@@ -2397,7 +2397,9 @@
       "houseRulesPlaceholder": "रात्री 10 नंतर शांतता. खोलीत बाहेरचे अन्न नको.",
       "houseRulesHint": "खोली बिलाच्या तळाशी छापले जाते.",
       "templateGroupStay": "निवासासाठी तयार",
-      "templateGroupShared": "पावत्यांसोबत सामायिक"
+      "templateGroupShared": "पावत्यांसोबत सामायिक",
+      "needsGstin": "GSTIN आवश्यक",
+      "gstTemplateUnavailable": "या ट्रस्टचा GSTIN नोंदलेला नाही, म्हणून ते कर देयक जारी करू शकत नाही (कलम 31 CGST). मंदिर प्रोफाइलमध्ये GSTIN जतन होईपर्यंत खोली देयके पाहुणे फोलिओ म्हणून छापली जातील."
     },
     "wording": {
       "heading": "तुमची शब्दरचना",

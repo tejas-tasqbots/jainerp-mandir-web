@@ -1031,6 +1031,16 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const selected = TEMPLATES.find(t => t.id === form.receipt_template)
   const stayDesign = [...STAY_TEMPLATES, ...TEMPLATES]
     .find(t => t.id === (form.room_invoice_template || form.receipt_template))
+  // Same rule as buildPreviewData and as the server's statutoryVisibility: the
+  // NUMBER is the fact, and it has to be shaped like a GSTIN.
+  //
+  // A trust with no GSTIN may not issue a tax invoice at all (s.31 CGST), so
+  // buildReceiptHtml falls `room_gst` back to the folio. Silently, which is the
+  // problem this solves: an admin who picks "Room GST Invoice" and gets a folio
+  // has no way to tell whether the setting saved. Say so instead.
+  const gstRegistered = isWellFormedGstin(form.gstin)
+  const gstTemplateUnavailable = !gstRegistered
+    && (form.room_invoice_template || form.receipt_template) === 'room_gst'
 
   return (
     // Side by side from xl only: the preview is 420 px, and below that it sat
@@ -1307,7 +1317,12 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   <option value="">{t('settings.stay.templateSameAsReceipt')}</option>
                   <optgroup label={t('settings.stay.templateGroupStay')}>
                     {STAY_TEMPLATES.map(tpl => (
-                      <option key={tpl.id} value={tpl.id}>{tpl.label}</option>
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.label}
+                        {tpl.id === 'room_gst' && !gstRegistered
+                          ? ` — ${t('settings.stay.needsGstin')}`
+                          : ''}
+                      </option>
                     ))}
                   </optgroup>
                   <optgroup label={t('settings.stay.templateGroupShared')}>
@@ -1317,6 +1332,11 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   </optgroup>
                 </select>
                 <p className="form-hint">{t('settings.stay.templateHint')}</p>
+                {gstTemplateUnavailable && (
+                  <p className="text-[11px] leading-relaxed text-amber-700 mt-1" data-testid="stay-gst-unavailable">
+                    {t('settings.stay.gstTemplateUnavailable')}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -2397,7 +2397,9 @@
       "houseRulesPlaceholder": "रात्रि 10 बजे के बाद मौन। कक्ष में बाहर का भोजन वर्जित।",
       "houseRulesHint": "कक्ष बिल के नीचे छपता है।",
       "templateGroupStay": "निवास हेतु बनी",
-      "templateGroupShared": "रसीदों के साथ साझा"
+      "templateGroupShared": "रसीदों के साथ साझा",
+      "needsGstin": "GSTIN आवश्यक",
+      "gstTemplateUnavailable": "इस ट्रस्ट का GSTIN दर्ज नहीं है, अतः यह कर बीजक जारी नहीं कर सकता (धारा 31 CGST)। जब तक मंदिर प्रोफ़ाइल में GSTIN सुरक्षित नहीं होता, कक्ष बिल अतिथि फोलियो के रूप में छपेंगे।"
     },
     "wording": {
       "heading": "आपकी शब्दावली",
