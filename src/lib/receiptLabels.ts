@@ -108,6 +108,18 @@ export interface ReceiptLabels {
   guestFolio: string
   placeOfSupply: string
   taxableValue: string
+  // ── GST TAX INVOICE (CGST Rule 46) ────────────────────────────────────────
+  // CGST/SGST/IGST are absent on purpose: statutory acronyms stay Latin in
+  // every language, and a tax head is not a trust's word to change.
+  hsnSac: string
+  taxRate: string
+  reverseCharge: string
+  guestGstin: string
+  originalForRecipient: string
+  gstDeclaration: string
+  qty: string
+  supplier: string
+  recipient: string
   // -- The three documents that are not one of the receipt designs -----------
   // A room bill, an 80G certificate and a boli intimation are all handed to the
   // person who paid, so they read the trust's vocabulary like everything else.
@@ -231,6 +243,15 @@ const en: ReceiptLabels = {
   guestFolio: 'Guest Folio',
   placeOfSupply: 'Place of Supply',
   taxableValue: 'Taxable Value',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'Rate',
+  reverseCharge: 'Reverse Charge',
+  guestGstin: 'Guest GSTIN',
+  originalForRecipient: 'Original for Recipient',
+  gstDeclaration: 'We declare that this invoice shows the actual price of the services described and that all particulars are true and correct.',
+  qty: 'Qty',
+  supplier: 'Supplier',
+  recipient: 'Recipient',
   roomBill: 'Room Bill',
   hallBill: 'Hall Bill',
   paymentsReceived: 'Payments Received',
@@ -337,6 +358,15 @@ const hi: ReceiptLabels = {
   guestFolio: 'अतिथि विवरण-पत्र',
   placeOfSupply: 'आपूर्ति स्थान',
   taxableValue: 'कर योग्य मूल्य',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'दर',
+  reverseCharge: 'रिवर्स चार्ज',
+  guestGstin: 'अतिथि GSTIN',
+  originalForRecipient: 'प्राप्तकर्ता हेतु मूल प्रति',
+  gstDeclaration: 'हम घोषित करते हैं कि इस बीजक में वर्णित सेवाओं का वास्तविक मूल्य दर्शाया गया है तथा सभी विवरण सत्य एवं सही हैं।',
+  qty: 'मात्रा',
+  supplier: 'प्रदाता',
+  recipient: 'प्राप्तकर्ता',
   roomBill: 'कक्ष बिल',
   hallBill: 'हॉल बिल',
   paymentsReceived: 'प्राप्त भुगतान',
@@ -443,6 +473,15 @@ const mr: ReceiptLabels = {
   guestFolio: 'अतिथी तपशील-पत्र',
   placeOfSupply: 'पुरवठा ठिकाण',
   taxableValue: 'करपात्र मूल्य',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'दर',
+  reverseCharge: 'रिव्हर्स चार्ज',
+  guestGstin: 'पाहुणे GSTIN',
+  originalForRecipient: 'प्राप्तकर्त्यासाठी मूळ प्रत',
+  gstDeclaration: 'आम्ही घोषित करतो की या देयकात वर्णन केलेल्या सेवांची प्रत्यक्ष किंमत दर्शविली आहे आणि सर्व तपशील खरे व अचूक आहेत.',
+  qty: 'संख्या',
+  supplier: 'पुरवठादार',
+  recipient: 'प्राप्तकर्ता',
   roomBill: 'खोली बिल',
   hallBill: 'सभागृह बिल',
   paymentsReceived: 'प्राप्त देयके',
@@ -549,6 +588,15 @@ const gu: ReceiptLabels = {
   guestFolio: 'અતિથિ વિગત-પત્ર',
   placeOfSupply: 'પુરવઠા સ્થળ',
   taxableValue: 'કરપાત્ર મૂલ્ય',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'દર',
+  reverseCharge: 'રિવર્સ ચાર્જ',
+  guestGstin: 'મહેમાન GSTIN',
+  originalForRecipient: 'પ્રાપ્તકર્તા માટે મૂળ નકલ',
+  gstDeclaration: 'અમે ઘોષણા કરીએ છીએ કે આ બિલમાં વર્ણવેલ સેવાઓની વાસ્તવિક કિંમત દર્શાવેલ છે અને તમામ વિગતો સાચી અને યોગ્ય છે.',
+  qty: 'જથ્થો',
+  supplier: 'સપ્લાયર',
+  recipient: 'પ્રાપ્તકર્તા',
   roomBill: 'રૂમ બિલ',
   hallBill: 'હોલ બિલ',
   paymentsReceived: 'પ્રાપ્ત ચુકવણી',
@@ -655,6 +703,15 @@ const kn: ReceiptLabels = {
   guestFolio: 'ಅತಿಥಿ ವಿವರ ಪತ್ರ',
   placeOfSupply: 'ಪೂರೈಕೆ ಸ್ಥಳ',
   taxableValue: 'ತೆರಿಗೆಗೊಳಪಡುವ ಮೌಲ್ಯ',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'ದರ',
+  reverseCharge: 'ರಿವರ್ಸ್ ಚಾರ್ಜ್',
+  guestGstin: 'ಅತಿಥಿ GSTIN',
+  originalForRecipient: 'ಸ್ವೀಕರಿಸುವವರಿಗೆ ಮೂಲ ಪ್ರತಿ',
+  gstDeclaration: 'ಈ ಬಿಲ್‌ನಲ್ಲಿ ವಿವರಿಸಿದ ಸೇವೆಗಳ ವಾಸ್ತವಿಕ ಬೆಲೆಯನ್ನು ತೋರಿಸಲಾಗಿದೆ ಮತ್ತು ಎಲ್ಲಾ ವಿವರಗಳು ಸತ್ಯ ಮತ್ತು ಸರಿಯಾಗಿವೆ ಎಂದು ನಾವು ಘೋಷಿಸುತ್ತೇವೆ.',
+  qty: 'ಪ್ರಮಾಣ',
+  supplier: 'ಸರಬರಾಜುದಾರ',
+  recipient: 'ಸ್ವೀಕರಿಸುವವರು',
   roomBill: 'ಕೊಠಡಿ ಬಿಲ್',
   hallBill: 'ಸಭಾಂಗಣ ಬಿಲ್',
   paymentsReceived: 'ಸ್ವೀಕರಿಸಿದ ಪಾವತಿಗಳು',
@@ -761,6 +818,15 @@ const ta: ReceiptLabels = {
   guestFolio: 'விருந்தினர் விவரப் பட்டியல்',
   placeOfSupply: 'வழங்கல் இடம்',
   taxableValue: 'வரிவிதிக்கத்தக்க மதிப்பு',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'விகிதம்',
+  reverseCharge: 'ரிவர்ஸ் சார்ஜ்',
+  guestGstin: 'விருந்தினர் GSTIN',
+  originalForRecipient: 'பெறுநருக்கான மூலப் பிரதி',
+  gstDeclaration: 'இந்த விலைப்பட்டியலில் குறிப்பிடப்பட்ட சேவைகளின் உண்மையான விலை காட்டப்பட்டுள்ளது என்றும், அனைத்து விவரங்களும் உண்மையானவை மற்றும் சரியானவை என்றும் நாங்கள் அறிவிக்கிறோம்.',
+  qty: 'அளவு',
+  supplier: 'வழங்குநர்',
+  recipient: 'பெறுநர்',
   roomBill: 'அறை கட்டணச் சீட்டு',
   hallBill: 'மண்டப கட்டணச் சீட்டு',
   paymentsReceived: 'பெறப்பட்ட கட்டணங்கள்',
@@ -867,6 +933,15 @@ const te: ReceiptLabels = {
   guestFolio: 'అతిథి వివరాల పత్రం',
   placeOfSupply: 'సరఫరా స్థలం',
   taxableValue: 'పన్ను విధించదగిన విలువ',
+  hsnSac: 'HSN/SAC',
+  taxRate: 'రేటు',
+  reverseCharge: 'రివర్స్ ఛార్జ్',
+  guestGstin: 'అతిథి GSTIN',
+  originalForRecipient: 'స్వీకర్తకు అసలు ప్రతి',
+  gstDeclaration: 'ఈ ఇన్‌వాయిస్‌లో వివరించిన సేవల వాస్తవ ధర చూపబడింది మరియు అన్ని వివరాలు నిజమైనవి మరియు సరైనవి అని మేము ప్రకటిస్తున్నాము.',
+  qty: 'పరిమాణం',
+  supplier: 'సరఫరాదారు',
+  recipient: 'స్వీకర్త',
   roomBill: 'గది బిల్లు',
   hallBill: 'హాల్ బిల్లు',
   paymentsReceived: 'స్వీకరించిన చెల్లింపులు',
@@ -945,6 +1020,9 @@ export function labelPlaceholders(key: keyof ReceiptLabels): string[] {
  * heading, every field name, every blessing - is theirs.
  */
 export const LOCKED_LABELS: readonly string[] = [
+  // A declaration made TO the tax authority. A trust may rename "Dan" to
+  // "Bhet"; it may not restate what it is certifying under Rule 46.
+  'gstDeclaration',
   'valid80g', 'computerGenerated',
   // The Act's own section reference. A trust rewriting "Section 80G(5)" on a
   // certificate a donor files with an assessing officer is the same class of

@@ -180,6 +180,16 @@ export interface ReceiptData {
     city?: string | null
     state?: string | null
     pincode?: string | null
+    /**
+     * The RECIPIENT's GSTIN — Rule 46(e), and absent from this payload until
+     * now.
+     *
+     * A dharamshala lets rooms to companies and other trusts, not only to
+     * individuals, and a registered recipient cannot claim input tax credit
+     * from an invoice that does not carry their GSTIN. Optional because most
+     * guests are individuals, who have none.
+     */
+    gstin?: string | null
   }
   category: string
   amount_paise: number
@@ -193,7 +203,21 @@ export interface ReceiptData {
    * counter-slip work, by prasad — a prasad slip IS its lines, because the
    * devotee collects against them rather than against a total.
    */
-  lines?: Array<{ label: string; qty?: string; amount_paise: number }> | null
+  lines?: Array<{
+    label: string
+    qty?: string
+    amount_paise: number
+    /**
+     * HSN/SAC per line — Rule 46(g). Accommodation is SAC 9963.
+     *
+     * Per LINE rather than per document, because a folio can mix a room at
+     * 9963 with food at 9963.xx and a hall at 9972, and one code at the top
+     * would be wrong for two of the three.
+     */
+    sac?: string | null
+    /** The line's GST rate as a percentage — Rule 46(k). */
+    rate_pct?: number | null
+  }> | null
   /**
    * The GST split, when tax was actually charged.
    *
@@ -201,7 +225,33 @@ export interface ReceiptData {
    * GstRateService returns 0% for an unregistered trust, and the receipt
    * builders send `tax: null` rather than a row of zeroes.
    */
-  tax?: { cgst_paise?: number; sgst_paise?: number; igst_paise?: number } | null
+  tax?: {
+    cgst_paise?: number
+    sgst_paise?: number
+    igst_paise?: number
+    /**
+     * The rate as a percentage, and the document-level SAC — Rule 46(k) and
+     * 46(g). Fallbacks for when the lines do not carry their own.
+     *
+     * The old tax invoice printed "CGST ₹80.00" and no rate anywhere, which is
+     * an incomplete invoice: the recipient cannot verify the tax without it.
+     */
+    rate_pct?: number | null
+    sac_code?: string | null
+    /**
+     * Rule 46(p): whether tax is payable on reverse charge.
+     *
+     * Prints either way. "No" is the declaration the rule asks for, so leaving
+     * it off when false is the same omission as leaving it off when true.
+     */
+    reverse_charge?: boolean
+  } | null
+  /**
+   * Rule 46(n). Falls back to the guest's state, which is what the old
+   * template used — correct for accommodation, where the place of supply is
+   * the property's location, but stated explicitly when the API knows it.
+   */
+  place_of_supply?: string | null
   /** Module-specific extras a template may render — token counts, meal, dates. */
   meta?: Record<string, unknown> | null
 }
@@ -2068,6 +2118,11 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
   const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0)
   const gstShown = taxTotal > 0 && mandir.gst_enabled
   const taxable = r.amount_paise - (gstShown ? taxTotal : 0)
+  // Rule 46(k) wants the rate, and this design printed only amounts. CGST and
+  // SGST each carry half the rate; IGST carries all of it.
+  const halfRate = ratePct(tax?.cgst_paise ?? tax?.sgst_paise ?? 0, taxable,
+    tax?.rate_pct != null ? tax.rate_pct / 2 : null)
+  const fullRate = ratePct(taxTotal, taxable, tax?.rate_pct)
   const money = stayMoneyRows(r)
   const row = (k: string, v: string, strong = false) =>
     `<tr${strong ? ' class="strong"' : ''}><td>${k}</td><td>${v}</td></tr>`
@@ -2115,7 +2170,8 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <div class="doc">
         ${L.receiptNo}: <b>${r.receipt_number}</b><br>
         ${L.date}: ${dateStr}
-        ${mandir.show_gstin && mandir.gstin && r.donor?.state ? `<br>${L.placeOfSupply}: ${r.donor.state}` : ''}
+        ${gstShown && (r.place_of_supply || r.donor?.state) ? `<br>${L.placeOfSupply}: ${r.place_of_supply || r.donor?.state}` : ''}
+        ${gstShown ? `<br>${L.reverseCharge}: ${r.tax?.reverse_charge === true ? L.yes : L.no}` : ''}
       </div>
     </div>
     <div class="grid">
@@ -2123,6 +2179,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         <div class="cap">${L.guest}</div>
         <div class="nm">${r.donor?.name || L.anonymous}</div>
         <div class="sub">${[r.donor?.mobile, r.donor?.address].filter(Boolean).join('<br>')}</div>
+        ${r.donor?.gstin ? `<div class="sub"><b>${L.guestGstin}:</b> ${r.donor.gstin}</div>` : ''}
       </div>
       ${facts.length ? `<div>
         <div class="cap">${L.stayDetails}</div>
@@ -2132,15 +2189,197 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     <div class="body">
       ${itemsBlock(r, color, { total: false })}
       <table class="amt">
+        ${gstShown ? row(L.hsnSac, tax?.sac_code || SAC_ACCOMMODATION) : ''}
+        ${gstShown && fullRate ? row(L.taxRate, `${fullRate}%`) : ''}
         ${gstShown ? row(L.taxableValue, `₹ ${fmtRs(taxable)}`) : ''}
-        ${gstShown && (tax?.cgst_paise ?? 0) > 0 ? row('CGST', `₹ ${fmtRs(tax!.cgst_paise!)}`) : ''}
-        ${gstShown && (tax?.sgst_paise ?? 0) > 0 ? row('SGST', `₹ ${fmtRs(tax!.sgst_paise!)}`) : ''}
-        ${gstShown && (tax?.igst_paise ?? 0) > 0 ? row('IGST', `₹ ${fmtRs(tax!.igst_paise!)}`) : ''}
+        ${gstShown && (tax?.cgst_paise ?? 0) > 0 ? row(`CGST${halfRate ? ' @ ' + halfRate + '%' : ''}`, `₹ ${fmtRs(tax!.cgst_paise!)}`) : ''}
+        ${gstShown && (tax?.sgst_paise ?? 0) > 0 ? row(`SGST${halfRate ? ' @ ' + halfRate + '%' : ''}`, `₹ ${fmtRs(tax!.sgst_paise!)}`) : ''}
+        ${gstShown && (tax?.igst_paise ?? 0) > 0 ? row(`IGST${fullRate ? ' @ ' + fullRate + '%' : ''}`, `₹ ${fmtRs(tax!.igst_paise!)}`) : ''}
         ${money.map(([k, v, strong]) => row(k, v, strong)).join('')}
       </table>
-      <div class="words">${amountInWords(r.amount_paise)}</div>
+      <div class="words">${L.amountInWords}: ${amountInWords(r.amount_paise)}</div>
       ${paymentFooter(r, color, { compact: true })}
       ${signatureBlock(mandir)}
+    </div>
+    ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+  </div>`
+}
+
+/**
+ * The GST rate for a tax component, as a percentage string.
+ *
+ * Derived from the money when the payload does not carry a rate, which every
+ * existing document is: `rate_pct` is new. Deriving matters rather than being a
+ * nicety — Rule 46(k) requires the RATE, and an invoice that prints
+ * "CGST 80.00" with no percentage anywhere is incomplete, so falling back to
+ * blank would have left every historical reprint non-compliant.
+ *
+ * cgst/taxable is exact for a uniform rate, which accommodation is. Trailing
+ * zeros are trimmed so 6 prints as "6" and 2.5 as "2.5".
+ */
+function ratePct(componentPaise: number, taxablePaise: number, declared?: number | null): string {
+  if (declared != null && declared > 0) return String(Number(declared.toFixed(2)))
+  if (!taxablePaise || !componentPaise) return ''
+  return String(Number(((componentPaise / taxablePaise) * 100).toFixed(2)))
+}
+
+/**
+ * SAC 9963 — accommodation, food and beverage services.
+ *
+ * The default rather than a hardcoding: a line carries its own code when the
+ * API sends one, then the document's, then this. A dharamshala bill is
+ * accommodation unless told otherwise, and printing nothing is the one option
+ * Rule 46(g) does not allow.
+ */
+const SAC_ACCOMMODATION = '9963'
+
+// ── TEMPLATE 17: Room GST tax invoice ───────────────────────────────────────
+// A strict CGST Rule 46 tax invoice for accommodation.
+//
+// The existing `stay_invoice` carries a GST badge and was missing four
+// mandatory particulars: the recipient's GSTIN (46(e)), HSN/SAC (46(g)), the
+// tax RATE (46(k)) and the reverse-charge declaration (46(p)). That is not a
+// cosmetic gap. An invoice missing mandatory particulars can cost a registered
+// guest their input tax credit, and s.122 CGST exposes the issuer to a penalty
+// of ₹10,000 or the tax involved, whichever is higher — on a trust that let a
+// hall to a company for a wedding, the tax involved is the larger number.
+//
+// Monochrome on purpose. A tax invoice is a statutory form: it does not take
+// the trust's brand colour, and `color` is deliberately not a parameter here so
+// no later edit can quietly introduce one.
+function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
+  const facts = stayFacts(r)
+  const tax = r.tax ?? null
+  const cgst = tax?.cgst_paise ?? 0
+  const sgst = tax?.sgst_paise ?? 0
+  const igst = tax?.igst_paise ?? 0
+  const taxTotal = cgst + sgst + igst
+  const taxable = r.amount_paise - taxTotal
+  // Rule 46(n). For accommodation the place of supply is where the property is,
+  // which is the guest's stated state on a domestic booking; an explicit value
+  // from the API wins.
+  const pos = r.place_of_supply || r.donor?.state || ''
+  const rc = tax?.reverse_charge === true
+
+  // One line minimum. A room bill settled at the counter may arrive with no
+  // itemisation at all, and a tax invoice with an empty description column is
+  // not an invoice — so the category becomes the single line it describes.
+  const lines = (r.lines && r.lines.length)
+    ? r.lines
+    : [{ label: r.category || L.roomBill, qty: '', amount_paise: r.amount_paise, sac: null, rate_pct: null }]
+
+  // Each line's taxable share. The payload gives gross line amounts, so on a
+  // tax-inclusive bill the tax has to come back out proportionally rather than
+  // be shown as though the guest were charged it twice.
+  const grossTotal = lines.reduce((n, l) => n + l.amount_paise, 0) || r.amount_paise
+  const lineRows = lines.map((l, i) => {
+    const share = taxTotal > 0 ? Math.round((l.amount_paise / grossTotal) * taxable) : l.amount_paise
+    const sac = l.sac || tax?.sac_code || SAC_ACCOMMODATION
+    const rate = ratePct(taxTotal, taxable, tax?.rate_pct ?? l.rate_pct)
+    return `<tr>
+        <td class="c">${i + 1}</td>
+        <td>${l.label}</td>
+        <td class="c mono">${sac}</td>
+        <td class="c">${l.qty || '—'}</td>
+        <td class="r">${rate ? rate + '%' : '—'}</td>
+        <td class="r">${fmtRs(share)}</td>
+      </tr>`
+  }).join('')
+
+  const taxLine = (label: string, pct: string, amt: number) =>
+    `<tr><td colspan="5" class="r lbl">${label}${pct ? ' @ ' + pct + '%' : ''}</td><td class="r">${fmtRs(amt)}</td></tr>`
+
+  return `
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#111827; }
+    .page { max-width:760px; margin:18px auto; background:#fff; border:1.5px solid #111827; }
+    .title { display:flex; align-items:baseline; justify-content:center; gap:10px; background:#111827; color:#fff; padding:6px 14px; }
+    .title b { font-size:11.5px; letter-spacing:3px; text-transform:uppercase; }
+    .title span { font-size:8.5px; letter-spacing:1px; opacity:.85; }
+    .parties { display:flex; border-bottom:1px solid #111827; }
+    .parties > div { flex:1; padding:10px 16px; }
+    .parties > div + div { border-left:1px solid #111827; }
+    .cap { font-size:8px; letter-spacing:1.2px; text-transform:uppercase; color:#6b7280; font-weight:700; margin-bottom:3px; }
+    .nm { font-size:13px; font-weight:800; line-height:1.3; }
+    .sub { font-size:9.5px; color:#4b5563; line-height:1.55; margin-top:2px; }
+    .logo { height:36px; width:auto; object-fit:contain; margin-bottom:4px; }
+    table.meta { width:100%; border-collapse:collapse; }
+    table.meta td { font-size:9.5px; padding:1.5px 0; vertical-align:top; }
+    table.meta td:first-child { color:#6b7280; width:46%; }
+    table.meta td:last-child { font-weight:700; text-align:right; }
+    .mono { font-family:'Courier New',monospace; }
+    table.items { width:100%; border-collapse:collapse; }
+    table.items th { font-size:8.5px; letter-spacing:.8px; text-transform:uppercase; background:#f3f4f6;
+      border-bottom:1px solid #111827; padding:5px 6px; text-align:left; color:#374151; }
+    table.items td { font-size:10px; padding:5px 6px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    table.items td.c, table.items th.c { text-align:center; }
+    table.items td.r, table.items th.r { text-align:right; white-space:nowrap; }
+    table.items td.lbl { color:#4b5563; font-weight:600; }
+    table.items tr.grand td { font-size:12px; font-weight:800; background:#f3f4f6; border-top:1px solid #111827; border-bottom:1px solid #111827; }
+    .words { font-size:10px; padding:7px 16px; border-bottom:1px solid #e5e7eb; }
+    .words b { font-style:italic; }
+    .body { padding:10px 16px; }
+    .decl { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; padding:10px 16px; border-top:1px solid #e5e7eb; }
+    .decl p { font-size:8.5px; color:#6b7280; line-height:1.5; max-width:62%; }
+    .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 16px 0; font-size:11px; }
+    .footer-note { font-size:9.5px; color:#6b7280; text-align:center; font-style:italic; padding:0 16px 8px; }
+    @media print { .page{border-color:#111827;margin:0;} }
+  </style>
+  <div class="page">
+    <div class="title"><b>${L.taxInvoice}</b><span>${L.originalForRecipient}</span></div>
+    ${voidedBanner(r.is_voided)}
+    <div class="parties">
+      <div>
+        <div class="cap">${L.supplier}</div>
+        ${logoTag(mandir)}
+        <div class="nm">${mandir.name}</div>
+        <div class="sub">${[mandir.address, mandir.mobile, mandir.email].filter(Boolean).join('<br>')}</div>
+        ${regBlock(mandir, r)}
+      </div>
+      <div>
+        <table class="meta">
+          <tr><td>${L.receiptNo}</td><td class="mono">${r.receipt_number}</td></tr>
+          <tr><td>${L.date}</td><td>${dateStr}</td></tr>
+          ${pos ? `<tr><td>${L.placeOfSupply}</td><td>${pos}</td></tr>` : ''}
+          <tr><td>${L.reverseCharge}</td><td>${rc ? L.yes : L.no}</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="parties">
+      <div>
+        <div class="cap">${L.recipient}</div>
+        <div class="nm">${r.donor?.name || L.anonymous}</div>
+        <div class="sub">${[r.donor?.mobile, r.donor?.address, [r.donor?.city, r.donor?.state, r.donor?.pincode].filter(Boolean).join(', ')].filter(Boolean).join('<br>')}</div>
+        ${r.donor?.gstin ? `<div class="sub"><b>${L.guestGstin}:</b> <span class="mono">${r.donor.gstin}</span></div>` : ''}
+      </div>
+      ${facts.length ? `<div>
+        <div class="cap">${L.stayDetails}</div>
+        <table class="meta">${facts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+      </div>` : ''}
+    </div>
+    <table class="items">
+      <tr>
+        <th class="c">#</th>
+        <th>${L.description}</th>
+        <th class="c">${L.hsnSac}</th>
+        <th class="c">${L.qty}</th>
+        <th class="r">${L.taxRate}</th>
+        <th class="r">${L.taxableValue}</th>
+      </tr>
+      ${lineRows}
+      ${taxTotal > 0 ? `${taxLine(L.taxableValue, '', taxable)}
+      ${cgst > 0 ? taxLine('CGST', ratePct(cgst, taxable, tax?.rate_pct != null ? tax.rate_pct / 2 : null), cgst) : ''}
+      ${sgst > 0 ? taxLine('SGST', ratePct(sgst, taxable, tax?.rate_pct != null ? tax.rate_pct / 2 : null), sgst) : ''}
+      ${igst > 0 ? taxLine('IGST', ratePct(igst, taxable, tax?.rate_pct), igst) : ''}` : ''}
+      <tr class="grand"><td colspan="5" class="r">${L.total}</td><td class="r">₹ ${fmtRs(r.amount_paise)}</td></tr>
+    </table>
+    <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
+    <div class="body">
+      ${paymentFooter(r, '#111827', { compact: true })}
+    </div>
+    <div class="decl">
+      <p>${L.gstDeclaration}</p>
+      <div>${signatureBlock(mandir)}</div>
     </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
   </div>`
@@ -2429,6 +2668,9 @@ function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
   // can hand a guest a folio while its donors still get a devotional receipt.
   if (template === 'folio') return buildFolio(r, dateStr, mandir, color)
   if (template === 'stay_invoice') return buildStayInvoice(r, dateStr, mandir, color)
+  // A strict CGST Rule 46 tax invoice. No `color` argument: a statutory form
+  // does not take the trust's brand colour.
+  if (template === 'room_gst') return buildRoomGst(r, dateStr, mandir)
   if (template === 'stay_slip') return buildStaySlip(r, dateStr, mandir, color)
   return buildClassic(r, dateStr, mandir, color)
 }

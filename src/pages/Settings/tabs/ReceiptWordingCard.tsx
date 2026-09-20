@@ -83,9 +83,21 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
   },
   {
     id: 'statutory',
+    // The GST tax-invoice vocabulary lives here with taxInvoice/placeOfSupply/
+    // taxableValue, which it extends. Added to an EXISTING group on purpose: a
+    // new group would need its own translated heading in seven languages, and
+    // these words belong beside the ones already here.
+    //
+    // `gstDeclaration` is deliberately absent — it is in LOCKED_LABELS. A trust
+    // may rename "Dan" to "Bhet"; it may not reword a declaration it is making
+    // to the tax authority.
+    //
+    // CGST, SGST and IGST are absent because they are not labels at all:
+    // statutory acronyms stay Latin in every language.
     keys: ['eligible80g', 'registrationNo', 'darpanNo', 'pan', 'panOfTrust',
       'validUpto', 'total80gEligible', 'taxInvoice', 'placeOfSupply',
-      'taxableValue'],
+      'taxableValue', 'hsnSac', 'taxRate', 'reverseCharge', 'guestGstin',
+      'originalForRecipient', 'supplier', 'recipient', 'qty'],
   },
   {
     id: 'stay',

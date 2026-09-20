@@ -486,6 +486,52 @@ const STAY_TEMPLATES: TemplateDef[] = [
       </div>`,
   },
   {
+    id: 'room_gst',
+    label: 'Room GST Invoice',
+    badge: 'RULE 46',
+    // Monochrome, like stay_invoice and for the same reason: a tax invoice is a
+    // statutory form and does not carry the trust's brand colour. The thumbnail
+    // shows the four particulars that distinguish this from the folio designs —
+    // HSN/SAC, the rate, the recipient's GSTIN and the reverse-charge line —
+    // because those are the reason to pick it.
+    thumb: (_color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1.5px solid #111827">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:3px;background:#111827;color:#fff;padding:1.5px">
+          <b style="font-size:3.5px;letter-spacing:1.5px">TAX INVOICE</b><span style="font-size:2.5px;opacity:.85">Original for Recipient</span>
+        </div>
+        <div style="display:flex;border-bottom:1px solid #111827">
+          <div style="flex:1;padding:2.5px 5px">
+            <div style="font-size:2.5px;color:#6b7280;letter-spacing:.8px">SUPPLIER</div>
+            <div style="font-weight:800;font-size:5.5px">Mandir Name</div>
+            <div style="font-size:3px;color:#4b5563">Address, City</div>
+          </div>
+          <div style="flex:1;padding:2.5px 5px;border-left:1px solid #111827;font-size:3px;line-height:1.7">
+            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Invoice No</span><b style="font-family:monospace">ROOM/000042</b></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Place of Supply</span><b>Gujarat</b></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Reverse Charge</span><b>No</b></div>
+          </div>
+        </div>
+        <div style="display:flex;border-bottom:1px solid #111827">
+          <div style="flex:1;padding:2.5px 5px">
+            <div style="font-size:2.5px;color:#6b7280;letter-spacing:.8px">RECIPIENT</div>
+            <div style="font-weight:700;font-size:4.5px">Ayush Kasliwal</div>
+            <div style="font-size:3px;color:#4b5563">GSTIN: <span style="font-family:monospace">24AAAAB1234C1Z5</span></div>
+          </div>
+        </div>
+        <div style="display:flex;background:#f3f4f6;border-bottom:1px solid #111827;font-size:2.5px;letter-spacing:.5px;color:#374151;padding:1.5px 5px">
+          <span style="flex:1">DESCRIPTION</span><span style="width:18%;text-align:center">SAC</span><span style="width:14%;text-align:right">RATE</span><span style="width:22%;text-align:right">TAXABLE</span>
+        </div>
+        <div style="display:flex;font-size:3px;padding:1.5px 5px;border-bottom:1px solid #e5e7eb">
+          <span style="flex:1">Room 101 · 2 nights</span><span style="width:18%;text-align:center;font-family:monospace">9963</span><span style="width:14%;text-align:right">12%</span><span style="width:22%;text-align:right">3,200.00</span>
+        </div>
+        <div style="padding:1.5px 5px;font-size:3px">
+          <div style="display:flex;justify-content:space-between;color:#4b5563"><span>CGST @ 6%</span><b>80.00</b></div>
+          <div style="display:flex;justify-content:space-between;color:#4b5563"><span>SGST @ 6%</span><b>80.00</b></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:4px;font-weight:800;background:#f3f4f6;border-top:1px solid #111827;padding:1.5px 5px"><span>Total</span><span>₹ 3,360.00</span></div>
+      </div>`,
+  },
+  {
     id: 'stay_slip',
     label: 'Stay Slip',
     badge: 'A5',
