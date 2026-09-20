@@ -119,6 +119,10 @@ export interface ReceiptLabels {
   // An UNREGISTERED trust issues neither - it has no standing to - so it never
   // reaches this label; buildReceiptHtml falls its template back instead.
   billOfSupply: string
+  hsnSummary: string
+  termsConditions: string
+  duplicateForOffice: string
+  srNo: string
   taxRate: string
   reverseCharge: string
   guestGstin: string
@@ -252,6 +256,10 @@ const en: ReceiptLabels = {
   taxableValue: 'Taxable Value',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'Bill of Supply',
+  hsnSummary: 'Tax Summary (HSN/SAC-wise)',
+  termsConditions: 'Terms & Conditions',
+  duplicateForOffice: 'Duplicate for Office',
+  srNo: 'Sr.',
   taxRate: 'Rate',
   reverseCharge: 'Reverse Charge',
   guestGstin: 'Guest GSTIN',
@@ -368,6 +376,10 @@ const hi: ReceiptLabels = {
   taxableValue: 'कर योग्य मूल्य',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'आपूर्ति बिल',
+  hsnSummary: 'कर सारांश (HSN/SAC अनुसार)',
+  termsConditions: 'नियम एवं शर्तें',
+  duplicateForOffice: 'कार्यालय हेतु द्वितीय प्रति',
+  srNo: 'क्र.',
   taxRate: 'दर',
   reverseCharge: 'रिवर्स चार्ज',
   guestGstin: 'अतिथि GSTIN',
@@ -484,6 +496,10 @@ const mr: ReceiptLabels = {
   taxableValue: 'करपात्र मूल्य',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'पुरवठा देयक',
+  hsnSummary: 'कर सारांश (HSN/SAC नुसार)',
+  termsConditions: 'नियम व अटी',
+  duplicateForOffice: 'कार्यालयासाठी दुसरी प्रत',
+  srNo: 'क्र.',
   taxRate: 'दर',
   reverseCharge: 'रिव्हर्स चार्ज',
   guestGstin: 'पाहुणे GSTIN',
@@ -600,6 +616,10 @@ const gu: ReceiptLabels = {
   taxableValue: 'કરપાત્ર મૂલ્ય',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'પુરવઠા બિલ',
+  hsnSummary: 'કર સારાંશ (HSN/SAC પ્રમાણે)',
+  termsConditions: 'નિયમો અને શરતો',
+  duplicateForOffice: 'કાર્યાલય માટે બીજી નકલ',
+  srNo: 'ક્રમ',
   taxRate: 'દર',
   reverseCharge: 'રિવર્સ ચાર્જ',
   guestGstin: 'મહેમાન GSTIN',
@@ -716,6 +736,10 @@ const kn: ReceiptLabels = {
   taxableValue: 'ತೆರಿಗೆಗೊಳಪಡುವ ಮೌಲ್ಯ',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'ಪೂರೈಕೆ ಬಿಲ್',
+  hsnSummary: 'ತೆರಿಗೆ ಸಾರಾಂಶ (HSN/SAC ಪ್ರಕಾರ)',
+  termsConditions: 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು',
+  duplicateForOffice: 'ಕಚೇರಿಗಾಗಿ ಎರಡನೇ ಪ್ರತಿ',
+  srNo: 'ಕ್ರ.',
   taxRate: 'ದರ',
   reverseCharge: 'ರಿವರ್ಸ್ ಚಾರ್ಜ್',
   guestGstin: 'ಅತಿಥಿ GSTIN',
@@ -832,6 +856,10 @@ const ta: ReceiptLabels = {
   taxableValue: 'வரிவிதிக்கத்தக்க மதிப்பு',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'வழங்கல் பட்டியல்',
+  hsnSummary: 'வரி சுருக்கம் (HSN/SAC வாரியாக)',
+  termsConditions: 'விதிமுறைகள் மற்றும் நிபந்தனைகள்',
+  duplicateForOffice: 'அலுவலகத்திற்கான இரண்டாம் பிரதி',
+  srNo: 'வ.எண்',
   taxRate: 'விகிதம்',
   reverseCharge: 'ரிவர்ஸ் சார்ஜ்',
   guestGstin: 'விருந்தினர் GSTIN',
@@ -948,6 +976,10 @@ const te: ReceiptLabels = {
   taxableValue: 'పన్ను విధించదగిన విలువ',
   hsnSac: 'HSN/SAC',
   billOfSupply: 'సరఫరా బిల్లు',
+  hsnSummary: 'పన్ను సారాంశం (HSN/SAC వారీగా)',
+  termsConditions: 'నిబంధనలు మరియు షరతులు',
+  duplicateForOffice: 'కార్యాలయం కోసం రెండవ ప్రతి',
+  srNo: 'క్ర.',
   taxRate: 'రేటు',
   reverseCharge: 'రివర్స్ ఛార్జ్',
   guestGstin: 'అతిథి GSTIN',

@@ -34,6 +34,64 @@ type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: s
 
 const TEMPLATES: TemplateDef[] = [
   {
+    // ── ONE RULED DESIGN FOR EVERY MODULE ─────────────────────────────────
+    // In the SHARED list rather than the stay-only one, because it serves
+    // rooms, halls, bhojanshala AND gaushala from one template - it reads the
+    // document rather than being told which module sent it. A trust picks it
+    // once and never has to know which template a module needs.
+    //
+    // The structure is the ruled grid an auditor reads fluently, taken from
+    // how Tally/Vyapar-style invoices are laid out. Not the fields: no Ship
+    // To, no transport, no vehicle number, no e-way bill, no TCS. A trust
+    // moves no goods and has no consignee, and copying those would make its
+    // receipts look like software for somebody else.
+    id: 'ruled',
+    label: 'Ruled (Trust Invoice)',
+    badge: 'NEW',
+    // Monochrome thumbnail, like the design: a ruled statutory document does
+    // not take the trust's colour.
+    thumb: (_color: string) => `
+      <div style="font-family:Arial,sans-serif;font-size:6px;background:#fff;border:1.5px solid #111827">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid #111827;padding:1.5px 4px">
+          <b style="font-size:3.5px;letter-spacing:1.5px">TAX INVOICE</b><span style="font-size:2.5px;color:#374151">ORIGINAL</span>
+        </div>
+        <div style="display:flex;border-bottom:1.5px solid #111827">
+          <div style="flex:1;padding:2px 4px">
+            <div style="font-size:2.5px;color:#5b6472;letter-spacing:.8px">SUPPLIER</div>
+            <div style="font-weight:800;font-size:5px">Mandir Name</div>
+            <div style="font-size:2.8px;color:#4b5563">Address, City</div>
+          </div>
+          <div style="flex:1;padding:2px 4px;border-left:1px solid #111827;font-size:2.8px;line-height:1.6">
+            <div style="display:flex;justify-content:space-between"><span style="color:#5b6472">Invoice No</span><b>ROOM/001</b></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:#5b6472">Place of Supply</span><b>Maharashtra</b></div>
+          </div>
+        </div>
+        <div style="display:flex;border-bottom:1.5px solid #111827">
+          <div style="flex:1;padding:2px 4px">
+            <div style="font-size:2.5px;color:#5b6472;letter-spacing:.8px">RECIPIENT</div>
+            <div style="font-weight:700;font-size:4px">Ayush Kasliwal</div>
+          </div>
+          <div style="flex:1;padding:2px 4px;border-left:1px solid #111827">
+            <div style="font-size:2.5px;color:#5b6472;letter-spacing:.8px">STAY DETAILS</div>
+            <div style="font-size:2.8px">Room 101 · 2 nights</div>
+          </div>
+        </div>
+        <div style="display:flex;background:#f3f4f6;border-bottom:1px solid #111827;font-size:2.5px;color:#374151;padding:1px 4px">
+          <span style="width:8%">Sr</span><span style="flex:1">DESCRIPTION</span><span style="width:16%;text-align:center">SAC</span><span style="width:12%;text-align:center">QTY</span><span style="width:20%;text-align:right">AMOUNT</span>
+        </div>
+        <div style="display:flex;font-size:2.8px;padding:1px 4px;border-bottom:1px solid #e5e7eb">
+          <span style="width:8%">1</span><span style="flex:1">Room 101</span><span style="width:16%;text-align:center">9963</span><span style="width:12%;text-align:center">2</span><span style="width:20%;text-align:right">3,000.00</span>
+        </div>
+        <div style="display:flex;border-top:1.5px solid #111827">
+          <div style="flex:1.3;padding:1.5px 4px;font-size:2.5px;color:#5b6472">TAX SUMMARY</div>
+          <div style="flex:1;padding:1.5px 4px;border-left:1px solid #111827;font-size:2.8px">
+            <div style="display:flex;justify-content:space-between"><span>CGST</span><span>80.00</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:3.5px;border-top:1px solid #111827;padding-top:.5px"><span>TOTAL</span><span>3,360.00</span></div>
+          </div>
+        </div>
+      </div>`,
+  },
+  {
     // The receipt donors are sent on WhatsApp (devotee-api renders the same
     // builder, lib/receiptDocument.ts) — first, so a trust sees it before the
     // older designs.

@@ -97,7 +97,8 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
     keys: ['eligible80g', 'registrationNo', 'darpanNo', 'pan', 'panOfTrust',
       'validUpto', 'total80gEligible', 'taxInvoice', 'placeOfSupply',
       'taxableValue', 'hsnSac', 'taxRate', 'reverseCharge', 'guestGstin',
-      'originalForRecipient', 'supplier', 'recipient', 'qty', 'billOfSupply'],
+      'originalForRecipient', 'supplier', 'recipient', 'qty', 'billOfSupply',
+      'hsnSummary', 'termsConditions', 'duplicateForOffice', 'srNo'],
   },
   {
     id: 'stay',

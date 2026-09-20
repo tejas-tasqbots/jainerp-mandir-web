@@ -2499,6 +2499,254 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
   </div>`
 }
 
+// ── TEMPLATE 18: Ruled ──────────────────────────────────────────────────────
+// The boxed, ruled grid an Indian trust's auditor reads without being taught
+// it - the structural lesson taken from Tally/Vyapar-style invoices - applied
+// to a temple's documents rather than a wholesaler's.
+//
+// Serves rooms, halls, bhojanshala and gaushala from one template. The first
+// three are taxable supplies; a cow sponsorship is a donation. The document
+// says which it is, and the blocks that do not apply collapse rather than
+// printing empty.
+//
+// Monochrome, like the other statutory designs: a ruled invoice does not take
+// the trust's brand colour, and `color` is deliberately not a parameter.
+function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
+  const donation = isDonationDoc(r)
+  const tax = r.tax ?? null
+  const cgst = tax?.cgst_paise ?? 0
+  const sgst = tax?.sgst_paise ?? 0
+  const igst = tax?.igst_paise ?? 0
+  const taxTotal = cgst + sgst + igst
+  // A gift is never a taxable supply, whatever tax numbers happen to ride
+  // along: a cow sponsorship follows the trust's 80G registration, not its
+  // GSTIN.
+  const taxed = !donation && taxTotal > 0 && mandir.gst_enabled !== false
+  const taxable = r.amount_paise - (taxed ? taxTotal : 0)
+  const pos = r.place_of_supply || r.donor?.state || ''
+  const facts = stayFacts(r)
+  const meta = (r.meta ?? {}) as Record<string, unknown>
+  const paid = Number(meta.paid_paise ?? 0)
+  const due = Number(meta.due_paise ?? 0)
+
+  // One line minimum: a counter sale may arrive with no itemisation, and a
+  // ruled table with an empty description column is not a document.
+  const lines = (r.lines && r.lines.length)
+    ? r.lines
+    : [{ label: r.category || '', qty: '', amount_paise: r.amount_paise, sac: null, rate_pct: null }]
+  const grossTotal = lines.reduce((n, l) => n + l.amount_paise, 0) || r.amount_paise
+  const shareOf = (amt: number) => (taxed ? Math.round((amt / grossTotal) * taxable) : amt)
+  const rateOf = (l: { rate_pct?: number | null }) =>
+    ratePct(taxTotal, taxable, tax?.rate_pct ?? l.rate_pct)
+  const sacOf = (l: { sac?: string | null }) => l.sac || tax?.sac_code || SAC_ACCOMMODATION
+
+  // ── THE RATE-WISE TAX SUMMARY ─────────────────────────────────────────────
+  // Standard on an Indian tax invoice and what reconciles the document against
+  // GSTR-1. Grouped by SAC and rate, because that is the grouping the return
+  // asks for - a room at 12% and prasad at 5% on one bill are two rows, and a
+  // single-rate bill is one row rather than a table nobody needs.
+  const groups = new Map<string, { sac: string; rate: string; taxable: number }>()
+  if (taxed) {
+    for (const l of lines) {
+      const sac = sacOf(l)
+      const rate = rateOf(l)
+      const key = sac + '|' + rate
+      const g = groups.get(key) ?? { sac, rate, taxable: 0 }
+      g.taxable += shareOf(l.amount_paise)
+      groups.set(key, g)
+    }
+  }
+  // Only when it tells the reader something the totals block does not. One
+  // rate means one row, and a one-row table is furniture - which is the whole
+  // point of not copying a wholesaler's invoice wholesale.
+  const summaryRows = [...groups.values()].map((g) => {
+    // Split proportionally so the rows add up to the tax actually charged
+    // rather than to a recomputation that can differ by a paisa.
+    const share = taxable > 0 ? g.taxable / taxable : 1
+    const gc = Math.round(cgst * share)
+    const gs = Math.round(sgst * share)
+    const gi = Math.round(igst * share)
+    return `<tr>
+        <td class="mono">${g.sac}</td>
+        <td class="r">${fmtRs(g.taxable)}</td>
+        ${igst > 0 ? '' : `<td class="c">${g.rate ? (Number(g.rate) / 2) + '%' : '\u2014'}</td><td class="r">${fmtRs(gc)}</td>
+        <td class="c">${g.rate ? (Number(g.rate) / 2) + '%' : '\u2014'}</td><td class="r">${fmtRs(gs)}</td>`}
+        ${igst > 0 ? `<td class="c">${g.rate ? g.rate + '%' : '\u2014'}</td><td class="r">${fmtRs(gi)}</td>` : ''}
+        <td class="r"><b>${fmtRs(gc + gs + gi)}</b></td>
+      </tr>`
+  }).join('')
+  const showSummary = taxed && groups.size > 1
+
+  const totalRow = (label: string, value: string, strong = false) => `
+      <tr${strong ? ' class="grand"' : ''}>
+        <td>${label}</td><td class="r">${value}</td>
+      </tr>`
+
+  // The copy caption. `receipt_copies` offers one or two today, so a third
+  // caption has nothing to drive it yet - noted rather than invented.
+  const copyCaption = L.originalForRecipient
+
+  return `
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#111827; }
+    .page { max-width:760px; margin:16px auto; background:#fff; border:1.5px solid #111827; }
+    .title { display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom:1.5px solid #111827; padding:5px 10px; }
+    .title b { font-size:12px; letter-spacing:3px; text-transform:uppercase; }
+    .title span { font-size:8.5px; letter-spacing:.8px; color:#374151; text-transform:uppercase; }
+    .grid { display:flex; border-bottom:1.5px solid #111827; }
+    .grid > div { flex:1; padding:8px 10px; min-width:0; }
+    .grid > div + div { border-left:1px solid #111827; }
+    .cap { font-size:8px; letter-spacing:1.2px; text-transform:uppercase; color:#5b6472; font-weight:700; margin-bottom:3px; }
+    /* The identity strip gets the full width of the sheet, not a share of the
+       two-column header. Measured inside that column it ran to eight lines. */
+    .idrow { padding:5px 10px; border-bottom:1.5px solid #111827; }
+    .idrow .reg-block { margin:0; font-size:9px; line-height:1.55; }
+    .nm { font-size:16px; font-weight:800; line-height:1.25; }
+    .sub { font-size:9.5px; color:#4b5563; line-height:1.55; margin-top:2px; }
+    .logo { height:32px; width:auto; object-fit:contain; margin-bottom:3px; }
+    .mono { font-family:'Courier New',monospace; }
+    table.kv { width:100%; border-collapse:collapse; }
+    table.kv td { font-size:9.5px; padding:1px 0; vertical-align:top; }
+    table.kv td:first-child { color:#5b6472; width:46%; }
+    table.kv td:last-child { font-weight:700; text-align:right; }
+    table.items { width:100%; border-collapse:collapse; }
+    table.items th { font-size:8px; letter-spacing:.8px; text-transform:uppercase; background:#f3f4f6;
+      border-bottom:1px solid #111827; padding:4px 6px; text-align:left; color:#374151; font-weight:700; }
+    table.items td { font-size:10px; padding:4px 6px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    table.items th + th, table.items td + td { border-left:1px solid #e5e7eb; }
+    .c { text-align:center; }
+    .r { text-align:right; white-space:nowrap; }
+    .lower { display:flex; border-top:1.5px solid #111827; }
+    .lower > div { padding:8px 10px; min-width:0; }
+    .lower > div + div { border-left:1px solid #111827; }
+    table.sum { width:100%; border-collapse:collapse; }
+    table.sum th { font-size:7.5px; letter-spacing:.6px; text-transform:uppercase; color:#374151;
+      padding:3px 5px; border-bottom:1px solid #d1d5db; text-align:left; font-weight:700; }
+    table.sum td { font-size:9.5px; padding:3px 5px; border-bottom:1px solid #f3f4f6; }
+    table.tot { width:100%; border-collapse:collapse; }
+    table.tot td { font-size:10.5px; padding:3px 6px; }
+    table.tot tr.grand td { font-size:14px; font-weight:800; border-top:1.5px solid #111827;
+      border-bottom:1.5px solid #111827; padding:6px; }
+    .words { font-size:10px; padding:6px 10px; border-top:1px solid #111827; }
+    .foot { display:flex; border-top:1.5px solid #111827; }
+    .foot > div { padding:8px 10px; min-width:0; }
+    .foot > div + div { border-left:1px solid #111827; }
+    .decl { font-size:8.5px; color:#4b5563; line-height:1.5; }
+    .sign { text-align:right; font-size:9.5px; }
+    .voided { background:#fee2e2; border-bottom:1px solid #fca5a5; color:#991b1b; text-align:center;
+      font-weight:700; padding:5px; font-size:11px; letter-spacing:1px; }
+    .footer-note { font-size:9.5px; color:#5b6472; text-align:center; font-style:italic; padding:6px 10px; border-top:1px solid #e5e7eb; }
+    @media print { .page{border-color:#111827;margin:0;} }
+  </style>
+  <div class="page">
+    <div class="title">
+      <b>${docTitle(r, donation ? L.donationReceipt : (taxed ? L.taxInvoice : L.billOfSupply))}</b>
+      <span>${copyCaption}</span>
+    </div>
+    ${r.is_voided ? `<div class="voided">${L.voided}</div>` : ''}
+
+    <div class="grid">
+      <div>
+        <div class="cap">${L.supplier}</div>
+        ${logoTag(mandir)}
+        <div class="nm">${mandir.name}</div>
+        <div class="sub">${[mandir.address, mandir.mobile, mandir.email].filter(Boolean).join('<br>')}</div>
+      </div>
+      <div>
+        <table class="kv">
+          <tr><td>${L.receiptNo}</td><td class="mono">${r.receipt_number}</td></tr>
+          <tr><td>${L.date}</td><td>${dateStr}</td></tr>
+          ${taxed && pos ? `<tr><td>${L.placeOfSupply}</td><td>${pos}</td></tr>` : ''}
+          ${taxed ? `<tr><td>${L.reverseCharge}</td><td>${tax?.reverse_charge === true ? L.yes : L.no}</td></tr>` : ''}
+          ${donation ? `<tr><td>${L.eligible80g}</td><td>${r.is_80g_eligible ? L.yes : L.no}</td></tr>` : ''}
+        </table>
+      </div>
+    </div>
+
+    <div class="idrow">${regBlock(mandir, r)}</div>
+
+    <div class="grid">
+      <div>
+        <div class="cap">${donation ? L.receivedFrom : L.recipient}</div>
+        <div class="nm">${r.donor?.name || L.anonymous}</div>
+        <div class="sub">${[r.donor?.mobile, r.donor?.address,
+          [r.donor?.city, r.donor?.state, r.donor?.pincode].filter(Boolean).join(', ')].filter(Boolean).join('<br>')}</div>
+        ${donorPan(r) ? `<div class="sub">${L.donorPan}: <b>${donorPan(r)}</b></div>` : ''}
+        ${r.donor?.gstin ? `<div class="sub">${L.guestGstin}: <b class="mono">${r.donor.gstin}</b></div>` : ''}
+      </div>
+      ${facts.length ? `<div>
+        <div class="cap">${L.stayDetails}</div>
+        <table class="kv">${facts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+      </div>` : ''}
+    </div>
+
+    <table class="items">
+      <tr>
+        <th class="c">${L.srNo}</th>
+        <th>${L.description}</th>
+        ${taxed ? `<th class="c">${L.hsnSac}</th>` : ''}
+        <th class="c">${L.qty}</th>
+        ${taxed ? `<th class="r">${L.taxRate}</th>` : ''}
+        <th class="r">${taxed ? L.taxableValue : L.amount}</th>
+      </tr>
+      ${lines.map((l, i) => `<tr>
+        <td class="c">${i + 1}</td>
+        <td>${l.label}</td>
+        ${taxed ? `<td class="c mono">${sacOf(l)}</td>` : ''}
+        <td class="c">${l.qty || '\u2014'}</td>
+        ${taxed ? `<td class="r">${rateOf(l) ? rateOf(l) + '%' : '\u2014'}</td>` : ''}
+        <td class="r">${fmtRs(shareOf(l.amount_paise))}</td>
+      </tr>`).join('')}
+    </table>
+
+    <div class="lower">
+      ${showSummary ? `<div style="flex:1.3">
+        <div class="cap">${L.hsnSummary}</div>
+        <table class="sum">
+          <tr>
+            <th>${L.hsnSac}</th><th class="r">${L.taxableValue}</th>
+            ${igst > 0 ? `<th class="c">${L.taxRate}</th><th class="r">IGST</th>`
+              : `<th class="c">${L.taxRate}</th><th class="r">CGST</th><th class="c">${L.taxRate}</th><th class="r">SGST</th>`}
+            <th class="r">${L.total}</th>
+          </tr>
+          ${summaryRows}
+        </table>
+      </div>` : ''}
+      <div style="flex:0 0 46%;margin-left:auto">
+        <table class="tot">
+          ${taxed ? totalRow(L.taxableValue, '\u20b9 ' + fmtRs(taxable)) : ''}
+          ${taxed && cgst > 0 ? totalRow('CGST', '\u20b9 ' + fmtRs(cgst)) : ''}
+          ${taxed && sgst > 0 ? totalRow('SGST', '\u20b9 ' + fmtRs(sgst)) : ''}
+          ${taxed && igst > 0 ? totalRow('IGST', '\u20b9 ' + fmtRs(igst)) : ''}
+          ${totalRow(L.total, '\u20b9 ' + fmtRs(r.amount_paise), true)}
+          ${paid > 0 ? totalRow(L.amountPaid, '\u20b9 ' + fmtRs(paid)) : ''}
+          ${due > 0 ? totalRow(L.balanceDue, '\u20b9 ' + fmtRs(due)) : ''}
+        </table>
+      </div>
+    </div>
+
+    <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
+
+    <div class="lower" style="border-top:1px solid #111827">
+      <div style="flex:1.2">${remittanceBlock(r, '#111827', { compact: true })}</div>
+      ${mandir.house_rules ? `<div style="flex:1">
+        <div class="cap">${L.termsConditions}</div>
+        <div class="decl">${mandir.house_rules}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="foot">
+      <div style="flex:1.4">
+        <div class="decl">${taxed ? L.gstDeclaration
+          : (donation && r.is_80g_eligible ? L.certified80g : L.computerGenerated)}</div>
+      </div>
+      <div style="flex:1" class="sign">${signatureBlock(mandir)}</div>
+    </div>
+    ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
+  </div>`
+}
+
 // ── TEMPLATE 16: Stay slip ──────────────────────────────────────────────────
 // A half-sheet for a busy front desk: the room, the window, the balance, and
 // nothing else. Designed narrow so it reads at full size on A5 rather than
@@ -2785,6 +3033,10 @@ function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
   // A strict CGST Rule 46 tax invoice. No `color` argument: a statutory form
   // does not take the trust's brand colour.
   if (template === 'room_gst') return buildRoomGst(r, dateStr, mandir)
+  // One ruled design for rooms, halls, bhojanshala and gaushala: it reads the
+  // document rather than being told which module sent it. No `color` argument -
+  // a ruled statutory document does not take the trust's brand colour.
+  if (template === 'ruled') return buildRuled(r, dateStr, mandir)
   if (template === 'stay_slip') return buildStaySlip(r, dateStr, mandir, color)
   return buildClassic(r, dateStr, mandir, color)
 }
