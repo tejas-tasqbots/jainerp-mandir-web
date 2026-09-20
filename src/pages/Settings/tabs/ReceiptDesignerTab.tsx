@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, Check, Copy, Plus, Send, Trash2, X } from 'lucide-react'
 import { api } from '../../../lib/api'
-import { buildReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import {
   DEFINITION_BLOCKS, DEFINITION_DENSITIES, DEFINITION_FONTS, DEFINITION_FRAMES,
   defaultDefinition, definitionIssue, MAX_TEXT_LEN, REQUIRED_BLOCKS,
@@ -84,7 +83,6 @@ export function ReceiptDesignerCard({
   const { t } = useTranslation()
   const toast = useToast()
   const confirm = useConfirm()
-  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [loading, setLoading] = useState(true)
