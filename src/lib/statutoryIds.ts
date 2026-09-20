@@ -85,6 +85,44 @@ export function isWellFormedGstin(value: unknown): boolean {
   return typeof value === 'string' && GSTIN_RE.test(value.trim().toUpperCase())
 }
 
+/**
+ * A RECIPIENT's GSTIN, normalised — or null when they gave none.
+ *
+ * Mirrors `recipientGstin` in mandiradmin-api. Kept in step by
+ * qa-statutory-ids, which is why the messages are worded identically: the
+ * counter sees this one as it types and the API's on submit, and two different
+ * sentences for the same fault reads as two different faults.
+ *
+ * Not `statutoryIssue`: that is for the TRUST's own registrations and also
+ * checks that the PAN embedded in a GSTIN matches the profile's PAN — exactly
+ * wrong here, since a guest's GSTIN embeds the guest's PAN.
+ *
+ * Checks the check character, unlike `isWellFormedGstin`. That looser test
+ * exists so a typo in a stored registration does not silently switch a trust's
+ * tax off; nothing like that applies to a value being typed now, and a GSTIN
+ * that prints on an invoice but does not validate is worse than a blank because
+ * it looks settled.
+ */
+export function recipientGstin(value: unknown): { gstin: string | null; error?: string } {
+  if (value == null || value === '') return { gstin: null }
+  if (typeof value !== 'string') return { gstin: null, error: 'GSTIN must be text.' }
+  const v = value.trim().toUpperCase()
+  if (!v) return { gstin: null }
+  if (!GSTIN_RE.test(v)) {
+    return {
+      gstin: null,
+      error: 'GSTIN must be 15 characters: 2-digit state code, the PAN, an entity number, Z and a check character (e.g. 27AAATR1234C1Z0).',
+    }
+  }
+  if (!isGstStateCode(v.slice(0, 2))) {
+    return { gstin: null, error: `A GSTIN starts with a state code (01-38); "${v.slice(0, 2)}" is not one.` }
+  }
+  if (gstinCheckCharacter(v.slice(0, 14)) !== v[14]) {
+    return { gstin: null, error: 'This GSTIN fails its check character. Please check it for a typo.' }
+  }
+  return { gstin: v }
+}
+
 export function embeddedPan(field: StatutoryField, value: string): string | null {
   if (field === 'gstin') return value.length === 15 ? value.slice(2, 12) : null
   if (field === 'reg_12ab_number' || field === 'reg_80g_number' || field === 'reg_80g_urn') {

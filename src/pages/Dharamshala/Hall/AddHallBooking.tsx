@@ -6,6 +6,7 @@ import { api, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { emptyPaymentRow, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import { SplitPaymentToggle } from '../../../components/SplitPaymentToggle'
+import { recipientGstin } from '../../../lib/statutoryIds'
 import type { Hall, DevoteeSelection } from '../../../types'
 
 export function AddHallBooking() {
@@ -26,7 +27,18 @@ export function AddHallBooking() {
     session_type: 'full_day',
     advance: '',
     payment_mode: 'cash',
+    booker_gstin: '',
   })
+
+  // A hall is let to firms far more often than a room is - a wedding, a
+  // conference - so the recipient's GSTIN matters more on this form than
+  // anywhere else in the module. Rule 46(e): without it the company cannot
+  // claim input tax credit on the invoice they just paid.
+  //
+  // Same shared rule the API applies on submit, so the clerk is never told a
+  // number is fine and then refused.
+  const gstinCheck = recipientGstin(form.booker_gstin)
+  const gstinError = form.booker_gstin.trim() ? (gstinCheck.error ?? null) : null
 
   useEffect(() => {
     api.get('/halls').then(r => setHalls(r.data.data || []))
@@ -36,6 +48,9 @@ export function AddHallBooking() {
     e.preventDefault()
     if (!form.hall_id) { setError('Select a hall'); return }
     if (!form.event_name) { setError('Enter event name'); return }
+    // Stops the booking rather than dropping the number: a hall invoice that
+    // looks complete and is not a valid tax invoice is the worse outcome.
+    if (gstinError) { setError(gstinError); return }
     setSaving(true)
     setError('')
     try {
@@ -46,6 +61,10 @@ export function AddHallBooking() {
         session_type: form.session_type,
         advance_paise: form.advance ? parsePaise(form.advance) : 0,
         payment_mode: form.payment_mode,
+        // Normalised, not as typed. A hall booking records its booker inline
+        // rather than through a guest record, so this goes at the top level
+        // (tenant migration 049 adds hall_bookings.booker_gstin).
+        booker_gstin: gstinCheck.gstin,
       }
 
       if (booker?.global_user_id) {
@@ -93,6 +112,23 @@ export function AddHallBooking() {
             <label className="form-label">{t('dharamshala.eventName')}</label>
             <input className="form-input" placeholder={t('dharamshala.eventNamePlaceholder')} value={form.event_name}
               onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
+          </div>
+
+          {/* CGST Rule 46(e). Beside the event name because it belongs with the
+              party details, not with the money. */}
+          <div>
+            <label className="form-label" htmlFor="booker-gstin">{t('dharamshala.guestGstin')}</label>
+            <input
+              id="booker-gstin" className="form-input" value={form.booker_gstin}
+              onChange={e => setForm(f => ({ ...f, booker_gstin: e.target.value.toUpperCase() }))}
+              placeholder="27AAATR1234C1Z0"
+              maxLength={15}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>
+              {gstinError || t('dharamshala.guestGstinHint')}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

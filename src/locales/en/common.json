@@ -683,6 +683,8 @@
     "idVoter": "Voter ID",
     "idDl": "Driving licence",
     "idStoredHint": "Stored encrypted. Only the last 4 digits are shown again.",
+    "guestGstin": "Guest GSTIN (optional)",
+    "guestGstinHint": "For a company or trust booking. Needed on the tax invoice for them to claim input tax credit.",
     "securityDeposit": "Security deposit",
     "depositHint": "Refundable. Does not pay the room bill.",
     "depositNotTaken": "The booking was created, but the deposit was not taken. Collect it from the rooms list.",

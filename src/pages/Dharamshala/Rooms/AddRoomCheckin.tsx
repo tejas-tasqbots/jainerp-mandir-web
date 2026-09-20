@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
+import { recipientGstin } from '../../../lib/statutoryIds'
 import type { Room, DevoteeSelection } from '../../../types'
 
 /**
@@ -43,8 +44,16 @@ export function AddRoomCheckin() {
     advance: '',
     payment_mode: 'cash',
     id_proof_number: '',
+    guest_gstin: '',
     deposit: '',
   }))
+
+  // Validated as the counter types. The same rule the API applies on submit
+  // (recipientGstin, shared), so the clerk is never told a number is fine and
+  // then refused - and a mistyped GSTIN is caught while the guest is still at
+  // the window rather than after they have gone.
+  const gstinCheck = recipientGstin(form.guest_gstin)
+  const gstinError = form.guest_gstin.trim() ? (gstinCheck.error ?? null) : null
 
   // The trust's own check-in/checkout times. Failing to load them is not worth
   // an error: the form keeps the 12:00/10:00 defaults, which is what the
@@ -77,6 +86,10 @@ export function AddRoomCheckin() {
     e.preventDefault()
     if (!form.room_id) { setError('Select a room'); return }
     if (!guest?.name && !guest?.global_user_id) { setError('Enter guest name'); return }
+    // A malformed GSTIN stops the booking rather than being dropped silently.
+    // Dropping it would produce a room bill that looks complete and is not a
+    // valid tax invoice for the company that just paid for the room.
+    if (gstinError) { setError(gstinError); return }
     setSaving(true)
     setError('')
     try {
@@ -99,6 +112,9 @@ export function AddRoomCheckin() {
       const idFields = {
         id_proof_type: form.guest_id_type,
         id_proof_number: form.id_proof_number.trim() || null,
+        // Normalised, not as typed: the API stores what it is given, and
+        // "27aaatr1234c1z0" on an invoice is not a GSTIN anybody can look up.
+        gstin: gstinCheck.gstin,
       }
       if (guest?.global_user_id) {
         payload.guest = { global_user_id: guest.global_user_id, name: guest.name, mobile: guest.mobile, ...idFields }
@@ -194,6 +210,28 @@ export function AddRoomCheckin() {
                 autoComplete="off"
               />
               <p className="text-xs text-slate-500 mt-1">{t('dharamshala.idStoredHint')}</p>
+            </div>
+            {/* CGST Rule 46(e): the recipient's GSTIN. Optional, because most
+                guests are individuals who have none — but without it a company
+                sending staff cannot claim input tax credit on the invoice, and
+                there was previously nowhere to put it at all.
+
+                Validated as you type rather than on submit: a GSTIN is fifteen
+                characters of state code, PAN and check digit, and finding out
+                it was mistyped after the guest has walked away is too late. */}
+            <div>
+              <label className="form-label" htmlFor="guest-gstin">{t('dharamshala.guestGstin')}</label>
+              <input
+                id="guest-gstin" className="form-input" value={form.guest_gstin}
+                onChange={e => setForm(f => ({ ...f, guest_gstin: e.target.value.toUpperCase() }))}
+                placeholder="27AAATR1234C1Z0"
+                maxLength={15}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>
+                {gstinError || t('dharamshala.guestGstinHint')}
+              </p>
             </div>
             <div>
               <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
