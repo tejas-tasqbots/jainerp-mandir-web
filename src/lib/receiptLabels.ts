@@ -56,7 +56,6 @@ export interface ReceiptLabels {
   donorCopy: string
   officeCopy: string
   scanToPay: string
-  printHint: string
   // Counter slips: the title per module, and the per-plate Bhojanshala token.
   bhojanshalaToken: string
   prasadSlip: string
@@ -190,7 +189,6 @@ const en: ReceiptLabels = {
   donorCopy: 'Donor Copy',
   officeCopy: 'Office Copy',
   scanToPay: 'Scan to pay',
-  printHint: 'Ctrl+P to print or save as PDF',
   bhojanshalaToken: 'Bhojanshala Token',
   prasadSlip: 'Prasad Slip',
   sevaReceipt: 'Seva Receipt',
@@ -297,7 +295,6 @@ const hi: ReceiptLabels = {
   donorCopy: 'दाता प्रति',
   officeCopy: 'कार्यालय प्रति',
   scanToPay: 'भुगतान हेतु स्कैन करें',
-  printHint: 'प्रिंट या PDF के लिए Ctrl+P दबाएँ',
   bhojanshalaToken: 'भोजनशाला टोकन',
   prasadSlip: 'प्रसाद पर्ची',
   sevaReceipt: 'सेवा रसीद',
@@ -404,7 +401,6 @@ const mr: ReceiptLabels = {
   donorCopy: 'देणगीदार प्रत',
   officeCopy: 'कार्यालय प्रत',
   scanToPay: 'भरण्यासाठी स्कॅन करा',
-  printHint: 'प्रिंट किंवा PDF साठी Ctrl+P दाबा',
   bhojanshalaToken: 'भोजनशाळा टोकन',
   prasadSlip: 'प्रसाद पावती',
   sevaReceipt: 'सेवा पावती',
@@ -511,7 +507,6 @@ const gu: ReceiptLabels = {
   donorCopy: 'દાતા નકલ',
   officeCopy: 'કાર્યાલય નકલ',
   scanToPay: 'ચુકવણી માટે સ્કેન કરો',
-  printHint: 'પ્રિન્ટ અથવા PDF માટે Ctrl+P દબાવો',
   bhojanshalaToken: 'ભોજનશાળા ટોકન',
   prasadSlip: 'પ્રસાદ સ્લિપ',
   sevaReceipt: 'સેવા રસીદ',
@@ -618,7 +613,6 @@ const kn: ReceiptLabels = {
   donorCopy: 'ದಾನಿಯ ಪ್ರತಿ',
   officeCopy: 'ಕಚೇರಿ ಪ್ರತಿ',
   scanToPay: 'ಪಾವತಿಸಲು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
-  printHint: 'ಮುದ್ರಿಸಲು ಅಥವಾ PDF ಗಾಗಿ Ctrl+P ಒತ್ತಿರಿ',
   bhojanshalaToken: 'ಭೋಜನಶಾಲೆ ಟೋಕನ್',
   prasadSlip: 'ಪ್ರಸಾದ ಚೀಟಿ',
   sevaReceipt: 'ಸೇವಾ ರಸೀದಿ',
@@ -725,7 +719,6 @@ const ta: ReceiptLabels = {
   donorCopy: 'நன்கொடையாளர் நகல்',
   officeCopy: 'அலுவலக நகல்',
   scanToPay: 'செலுத்த ஸ்கேன் செய்யவும்',
-  printHint: 'அச்சிட அல்லது PDF க்கு Ctrl+P அழுத்தவும்',
   bhojanshalaToken: 'போஜனசாலை டோக்கன்',
   prasadSlip: 'பிரசாத சீட்டு',
   sevaReceipt: 'சேவை ரசீது',
@@ -832,7 +825,6 @@ const te: ReceiptLabels = {
   donorCopy: 'దాత ప్రతి',
   officeCopy: 'కార్యాలయ ప్రతి',
   scanToPay: 'చెల్లించడానికి స్కాన్ చేయండి',
-  printHint: 'ముద్రించడానికి లేదా PDF కోసం Ctrl+P నొక్కండి',
   bhojanshalaToken: 'భోజనశాల టోకెన్',
   prasadSlip: 'ప్రసాద చీటీ',
   sevaReceipt: 'సేవా రసీదు',

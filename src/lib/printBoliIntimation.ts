@@ -63,9 +63,8 @@ function buildIntimationHtml(d: IntimationData): string {
     .out .lbl{font-size:13px;color:#b91c1c;font-weight:700;}
     .out .amt{font-size:24px;font-weight:800;color:#b91c1c;font-family:monospace;}
     .note{font-size:11px;color:#6b7280;margin-top:16px;font-style:italic;line-height:1.7;}
-    .print-hint{font-size:10px;color:#cbd5e1;text-align:center;padding:8px;}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{background:#fff;}.page{border:none;margin:0;}.print-hint{display:none;}}
+    @media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{background:#fff;}.page{border:none;margin:0;}}
   </style></head><body>
   <div class="page">
     <div class="header">
@@ -87,7 +86,6 @@ function buildIntimationHtml(d: IntimationData): string {
       <p class="note">Kindly clear the outstanding pledge amount at your earliest convenience.
         This is a reminder intimation and not a payment receipt. A receipt will be issued upon payment.</p>
     </div>
-    <div class="print-hint">Ctrl+P to print or save as PDF</div>
   </div></body></html>`
 }
 

@@ -251,16 +251,14 @@ async function renderHtmlToCanvas(html: string): Promise<HTMLCanvasElement> {
     const doc = iframe.contentWindow?.document
     if (!doc) throw new Error('Could not create render frame')
     // Drop the auto-print script — we only want layout, not a print dialog.
-    // The "${L.printHint}" hint is only meant for someone
-    // looking at the receipt on screen before printing; @media print already
-    // hides it for real printing, but html2canvas rasterizes the live DOM and
-    // ignores print-media rules, so without stripping it here it would end up
-    // baked into every downloaded/shared PDF.
     doc.open()
     doc.write(
-      html
-        .replace('<script>window.onload=()=>{window.print()}</script>', '')
-        .replace(/<div class="print-hint">.*?<\/div>/, ''),
+      // No `.print-hint` strip any more: the designs stopped emitting that
+      // line. This regex was the workaround for it, and the fact that one
+      // render path had to delete the hint while every design also hid it
+      // behind `@media print` was the sign it should never have been in the
+      // markup.
+      html.replace('<script>window.onload=()=>{window.print()}</script>', ''),
     )
     doc.close()
 

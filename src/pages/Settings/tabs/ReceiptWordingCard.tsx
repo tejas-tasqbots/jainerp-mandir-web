@@ -96,7 +96,7 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
   {
     id: 'slips',
     keys: ['bhojanshalaToken', 'prasadSlip', 'sevaReceipt', 'token', 'onePlate',
-      'breakfast', 'lunch', 'dinner', 'donorCopy', 'officeCopy', 'printHint'],
+      'breakfast', 'lunch', 'dinner', 'donorCopy', 'officeCopy'],
   },
   {
     id: 'boli',

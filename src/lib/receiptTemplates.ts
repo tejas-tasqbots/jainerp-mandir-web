@@ -500,11 +500,20 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   // A room or hall bill is not a donation: printing the trust's 80G and 12AB
   // numbers on it reads as a tax-exemption claim for money that buys a service.
   const donation = !r || isDonationDoc(r)
+  // IDENTITY FIRST, THEN THE CLAIM. CGST Rule 46 groups the supplier's name,
+  // address and GSTIN at the head of an invoice; 80G guidance groups the
+  // trust's name, address, registration number and PAN the same way. An
+  // exemption number is not identity - it is an assertion about the money - so
+  // it follows, and on a room bill it is absent entirely.
   const parts: string[] = []
+  parts.push(...identityParts(mandir))
+  // GSTIN used to be pasted onto the end of the address paragraph in eight
+  // designs, which made the most consequential identifier on a taxable supply
+  // a fragment of prose while lesser numbers had a structured block.
+  if (mandir.show_gstin && mandir.gstin) parts.push(`GSTIN: <b>${mandir.gstin}</b>`)
   if (mandir.show_80g && donation && mandir.reg_80g_number) parts.push(`80G: <b>${mandir.reg_80g_number}</b>`)
   if (mandir.show_80g && donation && mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
   if (mandir.show_80g && donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
-  parts.push(...identityParts(mandir))
   if (!parts.length) return ''
 
   // ── CHIPS, NOT A RUN OF PIPES ─────────────────────────────────────────────
@@ -520,10 +529,21 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   //
   // Inline-styled for the same reason `remittanceBlock` is: it drops into
   // thirteen different stylesheets without each of them growing a copy.
+  //
+  // The border is `currentColor` and the CONTAINER is set to a muted grey, so
+  // the outline takes that grey while each value stays dark inside it. Before,
+  // `currentColor` inherited body text colour and drew six heavy black boxes
+  // across the page - the thing the client circled in red.
+  // INLINE-BLOCK IN A BLOCK, NOT A FLEX ROW. A flex row needs
+  // `justify-content` told to it, and this one strip now lands in nine headers
+  // of which some are centred and some left-aligned - so a flex row would have
+  // needed a per-design override, and would have been wrong in whichever design
+  // was added next. Inline-block chips inherit `text-align` from the header they
+  // sit in and follow it for free.
   const chips = parts
-    .map((p) => `<span style="display:inline-block;border:1px solid currentColor;border-radius:3px;padding:1px 5px;opacity:.85;white-space:nowrap">${p}</span>`)
+    .map((p) => `<span style="display:inline-block;border:1px solid currentColor;border-radius:3px;padding:0 4px;margin:1px 3px 1px 0;white-space:nowrap"><span style="color:#111827">${p}</span></span>`)
     .join('')
-  return `<div class="reg-block" style="display:flex;flex-wrap:wrap;gap:3px 5px;align-items:center">${chips}</div>`
+  return `<div class="reg-block" style="color:#9ca3af">${chips}</div>`
 }
 
 /**
@@ -771,19 +791,19 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
     .badge-green { background:${affirm(color).bg}; color:${affirm(color).text}; }
     .badge-red { background:#f6f7f9; color:${DENY_TEXT}; }
-    .reg-block { font-size:10.5px; color:#374151; border-top:1px dashed #e2e8f0; padding-top:10px; margin-top:4px; line-height:1.9; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10.5px; color:#374151; padding-top:8px; line-height:1.9; }
     .pay-label { font-weight:700; color:${color}; }
     .footer-note { font-size:11px; color:#6b7280; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; text-align:center; font-style:italic; }
-    .print-hint { font-size:11px; color:#9ca3af; text-align:center; margin-top:14px; padding-bottom:8px; }
-    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border-radius:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border-radius:0;} }
   </style>
   <div class="page">
     <div class="header">
       ${logoTag(mandir)}
       <div class="header-text">
         <h1>${mandir.name}</h1>
-        <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+        <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-badge">
         <div class="label">${docTitle(r, L.donationReceipt)}</div>
@@ -812,11 +832,9 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         ${isDonationDoc(r) ? `<tr><td>${L.eligible80g}</td><td><span class="${r.is_80g_eligible ? 'badge badge-green' : 'badge badge-red'}">${r.is_80g_eligible ? L.yes : L.no}</span></td></tr>` : ''}
       </table>
       ${itemsBlock(r, color)}
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">${L.printHint}</div>
     </div>
   </div>`
 }
@@ -842,19 +860,19 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .amount-row .k { font-weight:700; color:#111; font-size:15px; }
     .amount-row .v { font-size:24px; font-weight:800; color:${color}; font-family:monospace; }
     .words { font-size:10.5px; color:#6b7280; font-style:italic; text-align:right; padding-bottom:12px; border-bottom:1px solid #f3f4f6; margin-bottom:4px; }
-    .reg-block { font-size:10px; color:#6b7280; margin-top:20px; line-height:2; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10px; color:#6b7280; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:24px; font-style:italic; }
-    .print-hint { font-size:10px; color:#d1d5db; text-align:center; margin-top:12px; }
-    @media print { .page{border:none;margin:0;padding:28px;} .print-hint{display:none;} }
+    @media print { .page{border:none;margin:0;padding:28px;} }
   </style>
   <div class="page">
     <div class="top">
       <div class="mandir-info">
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
-        <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+        <p>${mandir.address}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="rhs">
         <div class="rtitle">${docTitle(r, L.donationReceipt)}</div>
@@ -871,11 +889,9 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     <div class="field amount-row"><span class="k">${L.amount}</span><span class="v">₹ ${fmtRs(r.amount_paise)}</span></div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     ${itemsBlock(r, color)}
-      ${regBlock(mandir, r)}
     ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -911,12 +927,11 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
     .badge-yes { background:${affirm(color).bg}; color:${affirm(color).text}; }
     .badge-no { background:#f6f7f9; color:${DENY_TEXT}; }
-    .reg-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; padding-top:16px; border-top:1px solid #f1f5f9; margin-top:8px; }
-    .print-hint { font-size:10px; color:#cbd5e1; text-align:center; margin-top:10px; }
-    @media print { body{background:#fff;} .page{box-shadow:none;border-radius:0;margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{box-shadow:none;border-radius:0;margin:0;} }
   </style>
   <div class="page">
     <div class="stripe"></div>
@@ -924,7 +939,8 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
       ${logoTag(mandir)}
       <div class="mandir-info">
         <h1>${mandir.name}</h1>
-        <p>${mandir.address}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</p>
+        <p>${mandir.address}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-id">
         <div class="tag">${docTitle(r, L.donationReceipt).toUpperCase()}</div>
@@ -958,11 +974,9 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         ${isDonationDoc(r) ? `<div class="detail-item"><div class="k">${L.eligible80g}</div><div class="v"><span class="${r.is_80g_eligible ? 'badge badge-yes' : 'badge badge-no'}">${r.is_80g_eligible ? L.yes + ' ✓' : L.no}</span></div></div>` : ''}
       </div>
       ${itemsBlock(r, color)}
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">${L.printHint}</div>
     </div>
   </div>`
 }
@@ -997,13 +1011,12 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     /* line-height was 2 on both. With a trust that holds every registration
        these are three or four lines each, and double leading alone put this
        design over an A4 page (qa-receipt-pages.mjs, tallest-header case). */
-    .reg-block { font-size:10.5px; color:#78350f; margin-top:12px; line-height:1.65; padding-top:10px; border-top:1px dashed #f59e0b; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10.5px; color:#78350f; line-height:1.65; padding-top:6px; }
     .pay-label { color:#c97b22; font-weight:700; }
     .footer-note { font-size:11px; color:#a16207; text-align:center; margin-top:10px; font-style:italic; }
     .bottom-border { height:8px; background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22); margin-top:12px; }
-    .print-hint { font-size:10px; color:#d97706; text-align:center; padding:8px; background:#fef9ee; }
-    @media print { body{background:#fff;} .page{border-color:#999;box-shadow:none;margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{border-color:#999;box-shadow:none;margin:0;} }
   </style>
   <div class="page">
     <div class="top-border"></div>
@@ -1011,7 +1024,8 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <div class="aum">🕉</div>
       ${logoTag(mandir)}
       <div class="mandir-name">${mandir.name}</div>
-      <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
+      <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</div>
+      ${regBlock(mandir, r)}
       <div class="receipt-title">${docTitle(r, `${L.donationReceipt} / दान रसीद`)}</div>
     </div>
     <div class="meta">
@@ -1033,13 +1047,11 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         <tr class="words-row"><td></td><td>${amountInWords(r.amount_paise)}</td></tr>
       </table>
       ${itemsBlock(r, mandir.primary_color || '#0D1B2E')}
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, mandir.primary_color || '#0D1B2E')}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
     </div>
     <div class="bottom-border"></div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1074,13 +1086,12 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .dt { font-size:10px; color:#9ca3af; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
     .dd { font-size:13px; color:#111; font-weight:600; }
     .elig-yes { color:${affirm(color).text}; } .elig-no { color:${DENY_TEXT}; }
-    .reg-block { font-size:10.5px; color:#374151; border-top:1px solid #f3f4f6; padding-top:9px; margin-top:6px; line-height:1.6; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:12px; font-style:italic; }
     .bottom { height:4px; background:${color}20; margin-top:16px; position:relative; }
     .bottom::before { content:''; position:absolute; left:0; top:0; height:100%; width:30%; background:${color}; }
-    .print-hint { font-size:10px; color:#d1d5db; text-align:center; padding:10px; }
-    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;} }
   </style>
   <div class="page">
     <div class="accent-bar"></div>
@@ -1088,7 +1099,8 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div>
         ${logoTag(mandir)}
         <div class="mandir-name">${mandir.name}</div>
-        <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: '+mandir.gstin : ''}</div>
+        <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</div>
+        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-meta">
         <div class="rt">${docTitle(r, L.donationReceipt)}</div>
@@ -1121,13 +1133,11 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         </div>
       </div>
       ${itemsBlock(r, color)}
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
     </div>
     <div class="bottom"></div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1170,8 +1180,7 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .sig-block .entity { font-size:12px; font-weight:700; color:#111; margin-top:2px; }
     .sig-block .auth { font-size:10px; color:#6b7280; margin-top:20px; border-top:1px solid #9ca3af; padding-top:4px; }
     .bank-box { border:1px solid #d1d5db; border-radius:4px; padding:8px 12px; font-size:10px; color:#374151; line-height:1.8; }
-    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:6px; background:#f9fafb; }
-    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border:none;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0;border:none;} }
   </style>
   <div class="page">
     <div class="top-bar">
@@ -1231,7 +1240,6 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         <div class="auth">${L.authorisedSignatory}</div>
       </div>
     </div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1267,8 +1275,7 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .sig-block { text-align:center; }
     .sig-block .sig-line { width:120px; border-top:1px solid #333; margin:0 auto 3px; }
     .sig-block .sig-label { font-size:10px; color:#555; }
-    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; background:#f9fafb; }
-    @media print { body{background:#fff;} .page{margin:0;border:2px solid #333;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{margin:0;border:2px solid #333;} }
   </style>
   <div class="page">
     <div class="header">
@@ -1314,7 +1321,6 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div style="font-size:10px;font-weight:700;color:#111;margin-top:2px">${mandir.name}</div>
       </div>
     </div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1356,8 +1362,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
     .sig-right .role { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-top:12px; border-top:1px solid #333; padding-top:4px; }
     .sig-right .org { font-size:12px; font-weight:700; color:#111; }
     .footer-note { font-size:10px; color:#777; text-align:center; padding:6px 28px 9px; border-top:1px solid #ccc; font-style:italic; }
-    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; background:#f9fafb; }
-    @media print { body{background:#fff;} .page{margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{margin:0;} }
   </style>
   <div class="page">
     <div class="header">
@@ -1411,7 +1416,6 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
     </div>
     ${identityLine(mandir) ? `<div class="footer-note" style="font-style:normal">${identityLine(mandir)}</div>` : ''}
     <div class="footer-note">PLEASE SEE OVERLEAF FOR PARTICULARS OF THE TRUST</div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1446,8 +1450,7 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     .sig-box .sig-line { width:140px; border-top:1px solid #333; margin:0 auto 4px; }
     .sig-box .sig-lbl { font-size:11px; font-weight:700; }
     .reg-footer { font-size:10px; color:#555; padding:8px 16px; border-top:1px solid #ccc; background:#fafafa; }
-    .print-hint { font-size:10px; color:#9ca3af; text-align:center; padding:5px; }
-    @media print { body{background:#fff;} .page{margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{margin:0;} }
   </style>
   <div class="page">
     <div class="header">
@@ -1495,7 +1498,6 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     </div>
     ${isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number ? `<div class="reg-footer">80G Exemption: <b>${mandir.reg_80g_number}</b>${mandir.pan ? ' &nbsp;|&nbsp; PAN: <b>'+mandir.pan+'</b>' : ''} — This donation is eligible for income tax deduction u/s 80G of Income Tax Act, 1961.</div>` : ''}
     ${mandir.footer ? `<div class="reg-footer" style="border-top:1px solid #ccc">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1565,8 +1567,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     .sign-box .for { font-weight:700; color:#0f172a; margin-bottom:34px; }
     .sign-box .line { border-top:1px solid #94a3b8; padding-top:4px; min-width:190px; }
     .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; }
-    .print-hint { font-size:10px; color:#cbd5e1; text-align:center; padding:8px; }
-    @media print { body{background:#fff;} .page{box-shadow:none;border:none;margin:0;border-radius:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{box-shadow:none;border:none;margin:0;border-radius:0;} }
   </style>
   <div class="page">
     <div class="ribbon"></div>
@@ -1632,7 +1633,6 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
         </div>
       </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-      <div class="print-hint">${L.printHint}</div>
     </div>
   </div>`
 }
@@ -1802,12 +1802,12 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     .totals .row { display:flex; justify-content:space-between; font-size:12px; padding:5px 0; color:#374151; }
     .totals .grand { border-top:2px solid ${color}; margin-top:4px; padding-top:8px; font-size:16px; font-weight:800; color:${color}; }
     .words { font-size:10.5px; color:#6b7280; font-style:italic; text-align:right; margin-top:4px; }
-    .reg-block, .payment-block { font-size:10px; color:#4b5563; line-height:1.9; margin-top:12px; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .payment-block { font-size:10px; color:#4b5563; line-height:1.9; margin-top:12px; }
     .pay-label { font-weight:700; color:${color}; }
     .footer-note { font-size:11px; color:#6b7280; text-align:center; font-style:italic; margin-top:16px; }
-    .print-hint { font-size:10px; color:#cbd5e1; text-align:center; margin-top:10px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:8px; margin-bottom:14px; }
-    @media print { body{background:#fff;} .page{border:none;margin:0;padding:24px;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{border:none;margin:0;padding:24px;} }
   </style>
   <div class="page">
     ${voidedBanner(r.is_voided)}
@@ -1815,7 +1815,8 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
       <div class="trust">
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
-        <p>${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}${mandir.show_gstin && mandir.gstin ? '<br>GSTIN: ' + mandir.gstin : ''}</p>
+        <p>${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         <div class="kind">${docTitle(r, L.donationReceipt)}</div>
@@ -1840,11 +1841,9 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
       <div class="row grand"><span>${L.total}</span><span>₹ ${fmtRs(r.amount_paise)}</span></div>
     </div></div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
-    ${regBlock(mandir, r)}
     ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -1877,12 +1876,12 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     .rows .r { display:flex; justify-content:space-between; padding:7px 2px; border-bottom:1px dotted ${gold}55; }
     .rows .r span:first-child { color:#6B5A44; }
     .rows .r span:last-child { font-weight:700; }
-    .reg-block, .payment-block { font-size:10px; color:#6B5A44; line-height:1.9; margin-top:10px; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .payment-block { font-size:10px; color:#6B5A44; line-height:1.9; margin-top:10px; }
     .pay-label { font-weight:700; color:${color}; }
     .footer-note { text-align:center; font-style:italic; color:${gold}; font-size:12px; margin-top:14px; }
-    .print-hint { text-align:center; font-size:10px; color:#C9BCA6; margin-top:8px; }
     .voided { border:1px solid #B91C1C; color:#B91C1C; text-align:center; font-weight:700; padding:7px; margin-bottom:12px; letter-spacing:2px; }
-    @media print { body{background:#fff;} .page{margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{margin:0;} }
   </style>
   <div class="page"><div class="inner">
     ${voidedBanner(r.is_voided)}
@@ -1890,6 +1889,7 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     ${logoTag(mandir) ? `<div style="text-align:center;margin-top:8px">${logoTag(mandir)}</div>` : ''}
     <div class="name">${mandir.name}</div>
     <div class="addr">${mandir.address}${mandir.mobile ? ' · ' + mandir.mobile : ''}</div>
+    ${regBlock(mandir, r)}
     <div class="regs">${[mandir.pan ? `PAN ${mandir.pan}` : '', mandir.show_gstin && mandir.gstin ? `GSTIN ${mandir.gstin}` : ''].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>
     <div class="kind"><span>${docTitle(r, L.donationReceipt)}</span></div>
     <div class="meta"><span>${L.receiptNo}: <b>${r.receipt_number}</b></span><span>${L.date}: <b>${dateStr}</b></span></div>
@@ -1910,11 +1910,9 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     </div>
     ${itemsBlock(r, color)}
     ${r.is_80g_eligible && mandir.show_80g && isDonationDoc(r) ? `<div style="font-size:10.5px;color:#6B5A44;margin-top:10px">${L.valid80g}</div>` : ''}
-    ${regBlock(mandir, r)}
     ${paymentFooter(r, color)}
     ${signatureBlock(mandir)}
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div></div>`
 }
 
@@ -2006,8 +2004,7 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     .body { padding:0 22px 14px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 22px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#9ca3af; text-align:center; font-style:italic; padding:0 22px 8px; }
-    .print-hint { font-size:9px; color:#d1d5db; text-align:center; padding-bottom:8px; }
-    @media print { body{background:#fff;} .page{border:none;margin:0;} .print-hint{display:none;} }
+    @media print { body{background:#fff;} .page{border:none;margin:0;} }
   </style>
   <div class="page">
     ${voidedBanner(r.is_voided)}
@@ -2015,7 +2012,8 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
       <div class="trust">
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
-        <p>${[mandir.address, mandir.mobile, mandir.show_gstin && mandir.gstin ? `GSTIN: ${mandir.gstin}` : ''].filter(Boolean).join(' · ')}</p>
+        <p>${[mandir.address, mandir.mobile].filter(Boolean).join(' · ')}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         <div class="kind">${docTitle(r, L.guestFolio)}</div>
@@ -2051,12 +2049,10 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     <div class="words">${amountInWords(r.amount_paise)}</div>
     <div class="body">
       ${itemsBlock(r, color)}
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, color, { compact: true })}
       ${signatureBlock(mandir)}
     </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -2104,8 +2100,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     .words { font-size:10px; font-style:italic; color:#4b5563; margin-top:6px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 20px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 20px 8px; }
-    .print-hint { font-size:9px; color:#d1d5db; text-align:center; padding-bottom:8px; }
-    @media print { .page{border-color:#111827;margin:0;} .print-hint{display:none;} }
+    @media print { .page{border-color:#111827;margin:0;} }
   </style>
   <div class="page">
     <div class="title">${docTitle(r, gstShown ? L.taxInvoice : L.guestFolio)}</div>
@@ -2114,7 +2109,8 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       <div class="trust">
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
-        <p>${mandir.address}${mandir.mobile ? `<br>${mandir.mobile}` : ''}${mandir.show_gstin && mandir.gstin ? `<br>GSTIN: <b>${mandir.gstin}</b>` : ''}</p>
+        <p>${mandir.address}${mandir.mobile ? `<br>${mandir.mobile}` : ''}</p>
+        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         ${L.receiptNo}: <b>${r.receipt_number}</b><br>
@@ -2143,12 +2139,10 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         ${money.map(([k, v, strong]) => row(k, v, strong)).join('')}
       </table>
       <div class="words">${amountInWords(r.amount_paise)}</div>
-      ${regBlock(mandir, r)}
       ${paymentFooter(r, color, { compact: true })}
       ${signatureBlock(mandir)}
     </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -2181,8 +2175,7 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     .sign { display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; font-size:8.5px; color:#9ca3af; }
     .sign .line { border-top:1px solid #9ca3af; padding-top:2px; min-width:110px; text-align:center; color:#4b5563; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:5px; font-size:10px; }
-    .print-hint { font-size:8.5px; color:#d1d5db; text-align:center; padding-bottom:7px; }
-    @media print { .page{margin:0;} .print-hint{display:none;} }
+    @media print { .page{margin:0;} }
   </style>
   <div class="page">
     ${voidedBanner(r.is_voided)}
@@ -2208,7 +2201,6 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
         <span class="line">${L.authorisedSignatory}</span>
       </div>
     </div>
-    <div class="print-hint">${L.printHint}</div>
   </div>`
 }
 
@@ -2479,7 +2471,6 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .upi-cap { font-size:9.5px; }
     .upi-id { font-family:monospace; }
     .copy-banner { text-align:center; font-size:10px; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
-    @media print { .print-hint { display:none; } }
   </style>
   <div class="roll">
     <div class="name">${mandir.name}</div>
@@ -2553,7 +2544,6 @@ function slipStyles(mandir: NonNullable<ReceiptData['mandir']>): string {
     .slip .of { text-align:center; font-size:28px; font-weight:800; letter-spacing:1px; margin:4px 0 0; }
     .slip .meal { text-align:center; font-size:15px; font-weight:800; text-transform:uppercase; margin:0 0 2px; }
     .slip .plate { text-align:center; font-size:11px; margin-bottom:5px; }
-    @media print { .print-hint { display:none; } }
   </style>`;
 }
 
@@ -2659,6 +2649,19 @@ function buildPlateToken(
  */
 const SHEET_DESIGNS: ReadonlySet<string> = new Set(['anumodana'])
 
+/**
+ * Designs whose single copy fills a page, so two copies are two SHEETS.
+ *
+ * Separate from SHEET_DESIGNS on purpose: that set is about how a design is
+ * drawn (no paper margin, its own scale, the copy label inside its title). This
+ * one is only about whether a donor copy and an office copy can share paper.
+ *
+ * Measured, not guessed — an 80G certificate copy is 737px on A5 against a
+ * 733px box, while a token is 230px and is meant to tile two-up and be cut.
+ * qa-receipt-print asserts the resulting page counts.
+ */
+const FULL_PAGE_DESIGNS: ReadonlySet<string> = new Set(['80g'])
+
 /** Paper, in mm. Portrait, and the only two full-page sizes Settings offers. */
 const PAPER_MM: Record<'a4' | 'a5', { w: number; h: number; css: string }> = {
   a4: { w: 210, h: 297, css: 'A4' },
@@ -2700,20 +2703,51 @@ function pageRules(paper: string | undefined, template: string): string {
   // happening (the acknowledgement room bill). 2% of headroom absorbs the
   // rounding; the size difference is invisible.
   //
-  // A sheet design is already drawn AT A5, so there is no bigger paper to
-  // scale down from — on A4 it simply centres, which is how a half-sheet
-  // receipt is meant to come out of an A4 tray. On A5 it gets 4% instead,
-  // for two reasons: a trust with a long name and a full set of registration
-  // chips grows the header past the sheet's own 210mm, and `margin: 0` would
-  // otherwise land the frame inside the printer's unprintable edge, where
-  // most printers clip it.
-  const scale = !a5 ? 1 : sheet ? 0.96 : 0.69
+  // A sheet design is NOT in fact drawn at A5, which is what the 0.96 here used
+  // to assume. Measured: the Anumodana sheet is 888px tall with ordinary data
+  // and 1001px with a long trust name, a full address and a long footer. A5's
+  // printable box is 794px. So it needed 0.894 at best and 0.793 at worst, and
+  // 0.96 fitted neither — it printed a second, nearly empty A5 page, which is
+  // the extra page the client photographed. A PDF page count found it; the
+  // screen layout could not, because pagination only happens when printing.
+  //
+  // 0.78 covers the measured worst case with a little headroom. It is a real
+  // trade: an ordinary A5 Anumodana now prints ~12% smaller than it strictly
+  // needs to, because one constant has to serve both. Correct and slightly
+  // small beats silently paginated — a receipt whose second page is blank gets
+  // handed to a devotee as two sheets, one of them meaningless.
+  //
+  // The proper fix is for the sheet to FLOW to its paper instead of being a
+  // fixed-height artifact that gets scaled; that is a redesign of
+  // buildAnumodana, not a constant. qa-receipt-print counts PDF pages so this
+  // cannot drift back either way.
+  const scale = !a5 ? 1 : sheet ? 0.78 : 0.69
+
+  // ── ONE COPY PER SHEET, FOR DESIGNS THAT FILL A SHEET ─────────────────────
+  // Not the same question as `sheet`. `sheet` decides paper margin, scale and
+  // whether the copy label goes in the title; this decides whether a donor copy
+  // and an office copy can SHARE a page.
+  //
+  // Measured on A5, stress data: an 80G certificate copy is 737px against a
+  // 733px printable box. It is not a sheet design - it keeps its 8mm margin and
+  // its 0.69 scale - but two of them plus the 32px cut-line margin came to
+  // 1509px against the 1466px that two pages give, so the office copy spilled
+  // onto a third, near-empty page. Exactly the symptom the sheet branch below
+  // was written for, on a design that branch did not cover.
+  //
+  // Lowering the scale would not have fixed it: at 0.68 each copy fits, but two
+  // plus the separator still exceed two pages by 19px. The separator is the
+  // part that has to go, which is what this does.
+  //
+  // Small designs are deliberately excluded - a token is 230px, and tiling two
+  // on one sheet to be cut apart is the point of the cut line.
+  const ownPagePerCopy = sheet || FULL_PAGE_DESIGNS.has(template)
   return `@page { size: ${size.css}; margin: ${margin}mm; }
   ${scale === 1 ? '' : `/* A4 design on A5 paper — see pageRules(). Not inside @media print:
      the Settings preview renders this same document, and a preview that shows
      a size the printer will not produce is the one thing that screen is for. */
   .receipt-copy { zoom: ${scale}; }`}
-  ${!sheet ? '' : `/* A sheet design fills the page, so a donor copy and an office copy are two
+  ${!ownPagePerCopy ? '' : `/* A full-page design fills the page, so a donor copy and an office copy are two
      SHEETS — the dashed cut line between them belongs to designs that share
      one. Left in, its 32px of margin pushed the second copy onto a third page. */
   .copy-sep { display: none; }
