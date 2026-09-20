@@ -404,7 +404,8 @@
     "type": "Type",
     "upi": "UPI",
     "yes": "Yes",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "remove": "Remove"
   },
   "creditors": {
     "actions": "Actions",
@@ -2211,7 +2212,12 @@
         "content": "The registration lines, the payment details and the footer.",
         "stay": "The room bill, and the check-in / check-out policy it states.",
         "slips": "Prasad, seva and bhojanshala tokens — a different document."
-      }
+      },
+      "terms": "Terms & Conditions",
+      "termsPlaceholder": "Cancellation, deposit and refund terms. Printed on every receipt.",
+      "termsHint": "Printed when filled in, hidden when empty. Room policy (check-in and vacate times) goes under Stay.",
+      "signature": "Authorised signature",
+      "signatureHint": "A small PNG or JPG. Printed above the signature line. Stored with the receipt, so it prints with no network."
     },
     "save": "Save",
     "saved": "Saved",

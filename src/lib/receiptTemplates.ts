@@ -116,6 +116,20 @@ export interface ReceiptData {
      * design needs to ask what kind of document it is drawing.
      */
     house_rules?: string | null
+    /**
+     * The trust's terms, printed on any document (tenant migration 051).
+     *
+     * Separate from `house_rules`, which the API sends only on a stay: "rooms
+     * from 12 noon" belongs on a room bill alone, while cancellation terms
+     * belong on a hall invoice and a gaushala receipt too.
+     *
+     * No companion toggle, deliberately - the text being present is the
+     * intent. A checkbox beside a textarea asks the same question twice and
+     * then lets the two answers disagree.
+     */
+    terms?: string | null
+    /** Authorised signature as a data URI, like `logo_base64`. */
+    signature_image?: string | null
     template?: string
     primary_color?: string
     // Print settings (tenant-migration 011, widened by 032).
@@ -1851,7 +1865,14 @@ function signatureBlock(mandir: NonNullable<ReceiptData['mandir']>): string {
     <div style="font-size:9.5px;color:#6b7280;max-width:55%;line-height:1.6">${L.computerGenerated}</div>
     <div style="text-align:center;min-width:180px">
       <div style="font-size:10px;color:#6b7280">${L.forTrust.replace('{name}', mandir.name)}</div>
-      <div style="height:34px"></div>
+      <!-- The signature image, when the trust supplied one, in the space the
+           rule was always drawn over. Same 34px the blank left, so a design's
+           page-fit does not change depending on whether a signature exists,
+           and object-fit contain so a wide scan is letterboxed not stretched.
+           NO BACKTICKS: this comment is inside a template literal. -->
+      ${mandir.signature_image
+        ? `<img src="${mandir.signature_image}" alt="" style="height:34px;max-width:170px;object-fit:contain;display:block;margin:0 auto" />`
+        : '<div style="height:34px"></div>'}
       <div style="border-top:1px solid #9ca3af;padding-top:4px;font-size:10px;color:#374151">${L.authorisedSignatory}</div>
     </div>
   </div>`
@@ -2511,7 +2532,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
 //
 // Monochrome, like the other statutory designs: a ruled invoice does not take
 // the trust's brand colour, and `color` is deliberately not a parameter.
-function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
+function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, copyLabel?: string): string {
   const donation = isDonationDoc(r)
   const tax = r.tax ?? null
   const cgst = tax?.cgst_paise ?? 0
@@ -2582,9 +2603,15 @@ function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
         <td>${label}</td><td class="r">${value}</td>
       </tr>`
 
-  // The copy caption. `receipt_copies` offers one or two today, so a third
-  // caption has nothing to drive it yet - noted rather than invented.
-  const copyCaption = L.originalForRecipient
+  // ── WHICH COPY THIS IS ────────────────────────────────────────────────────
+  // Wired to the two copies that already exist rather than inventing a third.
+  // `receipt_copies` offers one or two, so the captions are Original and
+  // Duplicate for Office; a Triplicate has nothing to drive it and is not
+  // pretended into existence.
+  //
+  // "Duplicate for Office", not the trade's "Duplicate for Transporter": a
+  // trust moves nothing, and its second copy goes to its own office.
+  const copyCaption = copyLabel === L.officeCopy ? L.duplicateForOffice : L.originalForRecipient
 
   return `
   <style>
@@ -2730,9 +2757,12 @@ function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
 
     <div class="lower" style="border-top:1px solid #111827">
       <div style="flex:1.2">${remittanceBlock(r, '#111827', { compact: true })}</div>
-      ${mandir.house_rules ? `<div style="flex:1">
+      ${(mandir.terms || mandir.house_rules) ? `<div style="flex:1">
         <div class="cap">${L.termsConditions}</div>
-        <div class="decl">${mandir.house_rules}</div>
+        <!-- The general terms first, then the stay rules. A room bill shows
+             both when the trust has both: cancellation terms apply to every
+             document, "vacate by 10 am" only to this one. -->
+        <div class="decl">${[mandir.terms, mandir.house_rules].filter(Boolean).join('<br>')}</div>
       </div>` : ''}
     </div>
 
@@ -3036,7 +3066,7 @@ function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
   // One ruled design for rooms, halls, bhojanshala and gaushala: it reads the
   // document rather than being told which module sent it. No `color` argument -
   // a ruled statutory document does not take the trust's brand colour.
-  if (template === 'ruled') return buildRuled(r, dateStr, mandir)
+  if (template === 'ruled') return buildRuled(r, dateStr, mandir, copyLabel)
   if (template === 'stay_slip') return buildStaySlip(r, dateStr, mandir, color)
   return buildClassic(r, dateStr, mandir, color)
 }

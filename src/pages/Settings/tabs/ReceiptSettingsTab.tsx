@@ -445,6 +445,7 @@ const BLANK = {
   // trust's stay policy (tenant migration 043).
   room_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
   housekeeping_hold_on_checkout: true, stay_house_rules: '',
+  receipt_terms: '', receipt_signature_image: '',
   // Counter slips (tenant-migration 032) — prasad, seva and bhojanshala print
   // through these instead of the receipt settings above. Separate because the
   // choices genuinely differ: a trust that prints donation receipts on A4
@@ -750,6 +751,13 @@ function buildPreviewData(
       show_80g: has80g && form.show_80g_on_receipt,
       show_gstin: gstEnabled && form.show_gstin_on_header,
       footer: form.custom_receipt_footer || 'Jai Jinendra! Thank you for your generous donation.',
+      // Previewed, so the screen shows what will print. house_rules was never
+      // in this payload either, so the stay rules had been invisible here -
+      // on the one screen whose whole job is answering "what does this look
+      // like".
+      terms: form.receipt_terms || null,
+      signature_image: form.receipt_signature_image || null,
+      house_rules: mode === 'stay' ? (form.stay_house_rules || null) : null,
       template: mode === 'slip'
         ? (form.slip_template === 'receipt' ? form.receipt_template : form.slip_template)
         : mode === '80g' ? '80g'
@@ -905,6 +913,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: ((p.default_checkout_time as string) || '10:00').slice(0, 5),
         housekeeping_hold_on_checkout: p.housekeeping_hold_on_checkout !== false,
         stay_house_rules: (p.stay_house_rules as string) || '',
+        receipt_terms: (p.receipt_terms as string) || '',
+        receipt_signature_image: (p.receipt_signature_image as string) || '',
         receipt_language: (p.receipt_language as string) || 'en',
         receipt_show_upi_qr: Boolean(p.receipt_show_upi_qr),
         slip_template: (p.slip_template as string) || 'token',
@@ -1003,6 +1013,19 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     setForm(f => ({ ...f, [k]: v }))
   }
 
+  function handleSignatureFile(file: File) {
+    if (!file.type.startsWith('image/')) return
+    // Same 2MB bound as the logo. A signature is a small PNG; anything larger
+    // is a photograph of a page, which will not print legibly at 34px high
+    // anyway and would bloat every receipt payload.
+    if (file.size > 2 * 1024 * 1024) { toast.success(t('settings.receipts.logoRequiredWarn')); return }
+    const reader = new FileReader()
+    reader.onload = e => set('receipt_signature_image', e.target?.result as string)
+    // As a data URI, like the logo: the desktop edition renders with no
+    // network, so a hosted signature would print as a broken image.
+    reader.readAsDataURL(file)
+  }
+
   function handleLogoFile(file: File) {
     if (!file.type.startsWith('image/')) return
     if (file.size > 2 * 1024 * 1024) { toast.success(t('settings.receipts.logoRequiredWarn')); return }
@@ -1042,6 +1065,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: form.default_checkout_time,
         housekeeping_hold_on_checkout: form.housekeeping_hold_on_checkout,
         stay_house_rules: form.stay_house_rules,
+        receipt_terms: form.receipt_terms,
+        receipt_signature_image: form.receipt_signature_image,
         receipt_language: form.receipt_language,
         receipt_show_upi_qr: form.receipt_show_upi_qr,
         slip_template: form.slip_template,
@@ -1428,6 +1453,41 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   <span className="block text-[11px] text-slate-400">{t('settings.stay.housekeepingHoldHint')}</span>
                 </span>
               </label>
+
+              <div>
+                <label className="form-label">{t('settings.receipts.terms')}</label>
+                <textarea
+                  className="form-input" rows={3} data-testid="receipt-terms"
+                  value={form.receipt_terms}
+                  onChange={e => set('receipt_terms', e.target.value)}
+                  placeholder={t('settings.receipts.termsPlaceholder')}
+                />
+                {/* No show/hide toggle: typing terms IS asking for them to be
+                    printed, and a checkbox would let the two answers
+                    disagree. */}
+                <p className="form-hint">{t('settings.receipts.termsHint')}</p>
+              </div>
+
+              <div>
+                <label className="form-label">{t('settings.receipts.signature')}</label>
+                <div className="flex items-center gap-3">
+                  {form.receipt_signature_image
+                    ? <img src={form.receipt_signature_image} alt="" className="h-10 max-w-[150px] object-contain border border-slate-200 rounded bg-white p-1" />
+                    : <div className="h-10 w-[150px] border border-dashed border-slate-300 rounded" />}
+                  <input
+                    type="file" accept="image/*" data-testid="receipt-signature-file"
+                    className="text-xs"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleSignatureFile(f) }}
+                  />
+                  {form.receipt_signature_image && (
+                    <button
+                      type="button" className="btn-secondary btn-sm"
+                      onClick={() => set('receipt_signature_image', '')}
+                    >{t('common.remove')}</button>
+                  )}
+                </div>
+                <p className="form-hint">{t('settings.receipts.signatureHint')}</p>
+              </div>
 
               <div>
                 <label className="form-label">{t('settings.stay.houseRules')}</label>
