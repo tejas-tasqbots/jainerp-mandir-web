@@ -965,7 +965,11 @@
     "type": "Type",
     "uploadCsv": "Upload CSV",
     "verifyReveal": "Verify & reveal",
-    "verifying": "Verifying…"
+    "verifying": "Verifying…",
+    "txnRoom": "Room",
+    "txnHall": "Hall",
+    "txnGaushala": "Gaushala",
+    "txnEvent": "Event"
   },
   "employees": {
     "actions": "Actions",

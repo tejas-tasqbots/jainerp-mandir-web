@@ -965,7 +965,11 @@
     "type": "प्रकार",
     "uploadCsv": "CSV अपलोड करा",
     "verifyReveal": "पडताळा आणि उघड करा",
-    "verifying": "पडताळत आहे…"
+    "verifying": "पडताळत आहे…",
+    "txnRoom": "खोली",
+    "txnHall": "सभागृह",
+    "txnGaushala": "गोशाळा",
+    "txnEvent": "कार्यक्रम"
   },
   "employees": {
     "actions": "क्रिया",

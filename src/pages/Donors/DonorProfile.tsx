@@ -20,7 +20,7 @@ import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
 
 interface LedgerRow {
   id: string
-  txn_type: 'donation' | 'boli' | 'seva'
+  txn_type: 'donation' | 'boli' | 'seva' | 'room' | 'hall' | 'gaushala' | 'event'
   invoice_no: string | null
   amount_paise: number
   payment_mode: string | null
@@ -153,13 +153,33 @@ export function DonorProfile() {
     }
   }
 
-  // Download a donation's receipt as PDF. Only donation-type rows (with an invoice)
-  // have a printable receipt — boli/seva rows don't route through /donations.
+  /**
+   * Where each kind of transaction's receipt comes from.
+   *
+   * Reported: "any type of transaction with receipt is not showing me there".
+   * This screen could only ever download a DONATION - the button was hidden
+   * for everything else - so a guest could not be handed their room bill from
+   * the profile of the person who paid it.
+   *
+   * A boli is absent on purpose: a pledge is not a receipt. It becomes one when
+   * it is paid, and that payment is a donation row of its own.
+   */
+  const RECEIPT_PATH: Partial<Record<LedgerRow['txn_type'], string>> = {
+    donation: '/donations',
+    room: '/room-bookings',
+    hall: '/hall-bookings',
+    seva: '/seva-bookings',
+    gaushala: '/cow-sponsorships',
+  }
+
+  const hasReceipt = (row: LedgerRow) => Boolean(RECEIPT_PATH[row.txn_type] && row.invoice_no)
+
   async function downloadReceipt(row: LedgerRow) {
-    if (row.txn_type !== 'donation') return
+    const base = RECEIPT_PATH[row.txn_type]
+    if (!base) return
     setReceiptBusy(row.id)
     try {
-      await downloadReceiptPdf(row.id)
+      await downloadReceiptPdf(row.id, base)
     } catch {
       toast.error(t('donors.receiptFailed'))
     } finally {
@@ -168,14 +188,21 @@ export function DonorProfile() {
   }
 
   const txnBadge = (type: string) => {
-    if (type === 'donation') return 'badge-green'
-    if (type === 'seva') return 'badge-blue'
+    if (type === 'donation' || type === 'gaushala') return 'badge-green'
+    if (type === 'seva' || type === 'event') return 'badge-blue'
+    // A stay or a hall is a SALE, not a gift. Slate keeps the green badge
+    // meaning "this was donated", which the 80G figure above depends on.
+    if (type === 'room' || type === 'hall') return 'badge-gray'
     return 'badge-yellow' // boli pledge — visually distinct from a settled donation, matches BoliList's "pledged" badge
   }
 
   const txnLabel = (tx: LedgerRow) => {
     if (tx.txn_type === 'donation') return t('donors.txnDonation')
     if (tx.txn_type === 'seva') return t('donors.txnSeva')
+    if (tx.txn_type === 'room') return t('donors.txnRoom')
+    if (tx.txn_type === 'hall') return t('donors.txnHall')
+    if (tx.txn_type === 'gaushala') return t('donors.txnGaushala')
+    if (tx.txn_type === 'event') return t('donors.txnEvent')
     return tx.outstanding_paise === tx.amount_paise ? t('donors.txnBoliPledged') : t('donors.txnBoliPartial')
   }
 
@@ -231,7 +258,10 @@ export function DonorProfile() {
     { key: 'date', label: t('donors.date'), render: tx => <span className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</span> },
     {
       key: 'receipt', label: t('donors.receipt'), align: 'right',
-      render: tx => tx.txn_type === 'donation' && !tx.voided && tx.invoice_no ? (
+      // `hasReceipt`, not a donation test. This column was the visible half of
+      // the report: a room stay that DID have an invoice number showed a dash
+      // here, so even once the row appeared there was no way to get the bill.
+      render: tx => hasReceipt(tx) && !tx.voided ? (
         <button
           type="button" onClick={() => downloadReceipt(tx)} disabled={receiptBusy === tx.id}
           title={t('donors.downloadReceipt')} aria-label={t('donors.downloadReceipt')}
