@@ -881,7 +881,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
     .badge-green { background:${affirm(color).bg}; color:${affirm(color).text}; }
     .badge-red { background:#f6f7f9; color:${DENY_TEXT}; }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; padding:0 32px; }  /* this design pads .header and .body, not .page, so the strip needs its own 32px or it prints against the sheet edge */
     .payment-block { font-size:10.5px; color:#374151; padding-top:8px; line-height:1.9; }
     .pay-label { font-weight:700; color:${color}; }
     .footer-note { font-size:11px; color:#6b7280; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; text-align:center; font-style:italic; }
@@ -1017,7 +1017,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
     .badge-yes { background:${affirm(color).bg}; color:${affirm(color).text}; }
     .badge-no { background:#f6f7f9; color:${DENY_TEXT}; }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; padding:0 36px; }  /* this design pads .header and .body, not .page, so the strip needs its own 36px or it prints against the sheet edge */
     .payment-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#64748b; text-align:center; font-style:italic; padding-top:16px; border-top:1px solid #f1f5f9; margin-top:8px; }
@@ -1101,7 +1101,7 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     /* line-height was 2 on both. With a trust that holds every registration
        these are three or four lines each, and double leading alone put this
        design over an A4 page (qa-receipt-pages.mjs, tallest-header case). */
-    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; padding:0 32px; }  /* this design pads .header and .body, not .page, so the strip needs its own 32px or it prints against the sheet edge */
     .payment-block { font-size:10.5px; color:#78350f; line-height:1.65; padding-top:6px; }
     .pay-label { color:#a16207; font-weight:700; }
     .footer-note { font-size:11px; color:#a16207; text-align:center; margin-top:10px; font-style:italic; }
@@ -1176,7 +1176,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .dt { font-size:10px; color:#6b7280; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
     .dd { font-size:13px; color:#111; font-weight:600; }
     .elig-yes { color:${affirm(color).text}; } .elig-no { color:${DENY_TEXT}; }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; padding:0 40px; }  /* this design pads .header and .body, not .page, so the strip needs its own 40px or it prints against the sheet edge */
     .pay-label { color:${color}; font-weight:700; }
     .footer-note { font-size:11px; color:#6b7280; text-align:center; margin-top:12px; font-style:italic; }
     .bottom { height:4px; background:${color}20; margin-top:16px; position:relative; }
@@ -1358,7 +1358,12 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     table.main th:last-child { text-align:right; }
     table.main td { padding:10px 14px; border-bottom:1px solid #ddd; font-size:12px; }
     table.main td.amount-td { text-align:right; font-weight:700; font-family:monospace; font-size:14px; }
-    table.main tr.total-row td { font-weight:900; border-top:2px solid #333; font-size:14px; }
+    table.main tr.total-row td { font-weight:900; border-top:2px solid #333; font-size:15px; }
+    /* Right-aligned, because the description column is wide: measured, the
+       word "Total" sat 441px from the figure it labels - the far left of
+       the page from its own number. Every invoicing product puts the label
+       immediately beside the total. */
+    table.main tr.total-row td:first-child { text-align:right; }
     table.main tr.total-row td.amount-td { color:${color}; }
     .footer-section { padding:10px 14px; border-top:1px solid #ccc; background:#fafafa; font-size:10.5px; color:#374151; line-height:1.8; }
     .sig-row { display:flex; justify-content:space-between; align-items:flex-end; padding:10px 14px 14px; }
@@ -1788,8 +1793,37 @@ function itemsBlock(r: ReceiptData, color: string, opts: { total?: boolean } = {
       <td style="padding:${pad};${band}border-bottom:1px solid #eef2f7;font-size:${size};text-align:right;white-space:nowrap;color:${strong ? '#111' : '#374151'};font-weight:700">${value}</td>
     </tr>`
   }
+  // ── ITEMS FULL WIDTH, TOTALS IN A RIGHT-HAND BLOCK ────────────────────────
+  // The published convention, and what every mainstream invoicing product
+  // produces: line items span the page, and Subtotal / Tax / Total stack in a
+  // narrow column under the RIGHT-HAND END of that table, with payment notes to
+  // their left. It follows the F-pattern a reader actually uses - across the
+  // top, down the left, then out to the figure at the end.
+  //
+  // Measured before this: eleven of thirteen itemised designs ran their totals
+  // across the full width, starting at 0-6% of the content and spanning 88-100%
+  // of it. That puts the number the reader came for in the middle of nowhere,
+  // with "Total" marooned at the far left of the page from its own figure.
+  //
+  // 46% wide, so it sits under the amount column without crowding it, and as a
+  // block-level table with `margin-left:auto` rather than a float - floats and
+  // print pagination disagree, and this has to survive a page break.
+  const sumRow = (label: string, value: string, strong = false) => `
+    <tr>
+      <td style="padding:${strong ? '7px 10px' : '4px 10px'};font-size:${strong ? '15px' : '11.5px'};color:${strong ? '#111' : '#374151'};font-weight:${strong ? 700 : 400};${strong ? `border-top:1.5px solid ${tint(color, 'cc', '#9ca3af')};` : ''}white-space:nowrap">${label}</td>
+      <td style="padding:${strong ? '7px 10px' : '4px 10px'};font-size:${strong ? '15px' : '11.5px'};text-align:right;white-space:nowrap;color:${strong ? '#111' : '#111827'};font-weight:700;${strong ? `border-top:1.5px solid ${tint(color, 'cc', '#9ca3af')};` : ''}">${value}</td>
+    </tr>`
+
+  const summary = [
+    gstShown ? sumRow(L.subtotal, `₹ ${fmtRs(net)}`) : '',
+    gstShown && (tax?.cgst_paise ?? 0) > 0 ? sumRow('CGST', `₹ ${fmtRs(tax!.cgst_paise!)}`) : '',
+    gstShown && (tax?.sgst_paise ?? 0) > 0 ? sumRow('SGST', `₹ ${fmtRs(tax!.sgst_paise!)}`) : '',
+    gstShown && (tax?.igst_paise ?? 0) > 0 ? sumRow('IGST', `₹ ${fmtRs(tax!.igst_paise!)}`) : '',
+    opts.total === false ? '' : sumRow(L.total, `₹ ${fmtRs(r.amount_paise)}`, true),
+  ].join('')
+
   return `
-  <table style="width:100%;border-collapse:collapse;margin:14px 0 4px;border:1px solid #e5e7eb">
+  <table style="width:100%;border-collapse:collapse;margin:14px 0 0;border:1px solid #e5e7eb">
     <thead>
       <tr>
         <th style="padding:6px 10px;background:${color};color:#fff;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:left">${L.description}</th>
@@ -1798,13 +1832,9 @@ function itemsBlock(r: ReceiptData, color: string, opts: { total?: boolean } = {
     </thead>
     <tbody>
       ${lines.map((l) => row(`${l.label}${l.qty ? ` <span style="color:#6b7280;font-size:11px">· ${l.qty}</span>` : ''}`, `₹ ${fmtRs(l.amount_paise)}`)).join('')}
-      ${gstShown ? row(`${L.subtotal}`, `₹ ${fmtRs(net)}`) : ''}
-      ${gstShown && (tax?.cgst_paise ?? 0) > 0 ? row('CGST', `₹ ${fmtRs(tax!.cgst_paise!)}`) : ''}
-      ${gstShown && (tax?.sgst_paise ?? 0) > 0 ? row('SGST', `₹ ${fmtRs(tax!.sgst_paise!)}`) : ''}
-      ${gstShown && (tax?.igst_paise ?? 0) > 0 ? row('IGST', `₹ ${fmtRs(tax!.igst_paise!)}`) : ''}
-      ${opts.total === false ? '' : row(L.total, `₹ ${fmtRs(r.amount_paise)}`, true)}
     </tbody>
-  </table>`
+  </table>
+  ${summary ? `<table style="width:46%;min-width:190px;margin:0 0 6px auto;border-collapse:collapse;page-break-inside:avoid;break-inside:avoid">${summary}</table>` : ''}`
 }
 
 /**
@@ -2208,7 +2238,12 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     table.facts td:first-child { color:#6b7280; width:45%; }
     table.facts td:last-child { font-weight:600; }
     .body { padding:12px 20px; }
-    table.amt { width:100%; border-collapse:collapse; margin-top:10px; }
+    /* A narrow summary flush right, not a full-width row - the convention
+       every invoicing product follows, and measured at 94% of the width
+       before this. The itemised table above it still spans the page; it is
+       the TOTALS that belong in a column under its right-hand end. */
+    table.amt { width:52%; min-width:210px; border-collapse:collapse; margin:10px 0 0 auto;
+      page-break-inside:avoid; break-inside:avoid; }
     table.amt td { padding:5px 8px; font-size:11px; border:1px solid #e5e7eb; }
     table.amt td:last-child { text-align:right; font-weight:600; white-space:nowrap; }
     table.amt tr.strong td { font-weight:800; font-size:15px; background:#f3f4f6; border-top:1.5px solid #9ca3af; }
