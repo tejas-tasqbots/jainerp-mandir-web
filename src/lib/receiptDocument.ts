@@ -575,7 +575,7 @@ export function receiptParts(
   .pay-head { display: block; font-size: 6.4pt; letter-spacing: .5px; text-transform: uppercase; color: #8A7560; }
   .pay-qr { flex: none; text-align: center; }
   .pay-qr img { width: 16mm; height: 16mm; display: block; }
-  .pay-qr span { display: block; font-size: 5.8pt; color: #8A7560; max-width: 16mm; line-height: 1.2; }
+  .pay-qr span { display: block; font-size: 6.4pt; color: #8A7560; max-width: 18mm; line-height: 1.25; }  /* 5.8pt is 7.7px - under the 8px floor the structure audit sets, and     the same QR caption that was 7.5px in receiptTemplates. A caption     nobody can read is a caption not worth the space. 18mm rather than     16 so the larger type still fits two words to a line. */
   .spacer { flex: 1; min-height: 2mm; }
   .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; margin-top: 2mm; }
   .foot .note { font-size: 6.6pt; color: #8A7560; line-height: 1.5; max-width: 58%; }

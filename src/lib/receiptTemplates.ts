@@ -532,10 +532,25 @@ function logoTag(mandir: ReceiptData['mandir']): string {
  * issued it, and separately may or may not make an 80G claim.
  */
 function identityParts(mandir: NonNullable<ReceiptData['mandir']>): string[] {
-  const parts: string[] = []
-  if (mandir.pan) parts.push(`PAN: <b>${mandir.pan}</b>`)
-  if (mandir.registration_number) parts.push(`${L.registrationNo}: <b>${mandir.registration_number}</b>`)
-  if (mandir.darpan_number) parts.push(`${L.darpanNo}: <b>${mandir.darpan_number}</b>`)
+  return identityPairs(mandir).map(([k, v]) => `${k}: <b>${v}</b>`)
+}
+
+/**
+ * The same, as label/value pairs.
+ *
+ * regBlock needs the two apart to set the label quiet and the value firm. They
+ * used to arrive as one pre-formatted string with the value already wrapped in
+ * <b>, which left label and number at the same weight - a row of seven of those
+ * is the wall of text the client saw.
+ *
+ * identityParts keeps the joined form for the designs that lay out their own
+ * header line and expect a string.
+ */
+function identityPairs(mandir: NonNullable<ReceiptData['mandir']>): Array<[string, string]> {
+  const parts: Array<[string, string]> = []
+  if (mandir.pan) parts.push(['PAN', mandir.pan])
+  if (mandir.registration_number) parts.push([L.registrationNo, mandir.registration_number])
+  if (mandir.darpan_number) parts.push([L.darpanNo, mandir.darpan_number])
   return parts
 }
 
@@ -555,15 +570,15 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   // trust's name, address, registration number and PAN the same way. An
   // exemption number is not identity - it is an assertion about the money - so
   // it follows, and on a room bill it is absent entirely.
-  const parts: string[] = []
-  parts.push(...identityParts(mandir))
+  const parts: Array<[string, string]> = []
+  parts.push(...identityPairs(mandir))
   // GSTIN used to be pasted onto the end of the address paragraph in eight
   // designs, which made the most consequential identifier on a taxable supply
   // a fragment of prose while lesser numbers had a structured block.
-  if (mandir.show_gstin && mandir.gstin) parts.push(`GSTIN: <b>${mandir.gstin}</b>`)
-  if (mandir.show_80g && donation && mandir.reg_80g_number) parts.push(`80G: <b>${mandir.reg_80g_number}</b>`)
-  if (mandir.show_80g && donation && mandir.reg_12a_number) parts.push(`12A: <b>${mandir.reg_12a_number}</b>`)
-  if (mandir.show_80g && donation && mandir.reg_12ab_number) parts.push(`12AB: <b>${mandir.reg_12ab_number}</b>`)
+  if (mandir.show_gstin && mandir.gstin) parts.push(['GSTIN', mandir.gstin])
+  if (mandir.show_80g && donation && mandir.reg_80g_number) parts.push(['80G', mandir.reg_80g_number])
+  if (mandir.show_80g && donation && mandir.reg_12a_number) parts.push(['12A', mandir.reg_12a_number])
+  if (mandir.show_80g && donation && mandir.reg_12ab_number) parts.push(['12AB', mandir.reg_12ab_number])
   if (!parts.length) return ''
 
   // ── CHIPS, NOT A RUN OF PIPES ─────────────────────────────────────────────
@@ -580,20 +595,28 @@ function regBlock(mandir: ReceiptData['mandir'], r?: ReceiptData): string {
   // Inline-styled for the same reason `remittanceBlock` is: it drops into
   // thirteen different stylesheets without each of them growing a copy.
   //
-  // The border is `currentColor` and the CONTAINER is set to a muted grey, so
-  // the outline takes that grey while each value stays dark inside it. Before,
-  // `currentColor` inherited body text colour and drew six heavy black boxes
-  // across the page - the thing the client circled in red.
-  // INLINE-BLOCK IN A BLOCK, NOT A FLEX ROW. A flex row needs
-  // `justify-content` told to it, and this one strip now lands in nine headers
-  // of which some are centred and some left-aligned - so a flex row would have
-  // needed a per-design override, and would have been wrong in whichever design
-  // was added next. Inline-block chips inherit `text-align` from the header they
-  // sit in and follow it for free.
+  // ── PLAIN TYPE, NOT CHIPS ─────────────────────────────────────────────────
+  // These were bordered pills and the client's verdict was "it is in the boxes
+  // look too ugly and different from the template structure ui in teh all
+  // receipts". Correct: an outlined chip belongs to none of these designs. Each
+  // has its own type system - rules, small caps, a tinted band - so the same
+  // chip bolted into thirteen of them looks bolted on in all thirteen.
+  //
+  // A letterhead sets identity numbers as TYPE: a quiet label, a firm value,
+  // and space between. No border, no background, no radius.
+  //
+  // The chips were introduced to stop a wrapped line beginning with an orphan
+  // "|". No separator character at all is the better answer - the space is
+  // margin, so a wrap has nothing to orphan - and each item stays nowrap so a
+  // number never splits from its own label.
+  //
+  // Inline-block rather than flex so the strip inherits text-align from
+  // whatever it sits in: centred designs centre it, left-aligned ones do not,
+  // with no per-design override to forget on the next design.
   const chips = parts
-    .map((p) => `<span style="display:inline-block;border:1px solid currentColor;border-radius:3px;padding:0 4px;margin:1px 3px 1px 0;white-space:nowrap"><span style="color:#111827">${p}</span></span>`)
+    .map(([k, v]) => `<span style="display:inline-block;margin:0 13px 1px 0;white-space:nowrap"><span style="opacity:.6">${k}</span> <b style="font-weight:600">${v}</b></span>`)
     .join('')
-  return `<div class="reg-block" style="color:#9ca3af">${chips}</div>`
+  return `<div class="reg-block">${chips}</div>`
 }
 
 /**
@@ -719,8 +742,25 @@ function mandirHouseRules(r: ReceiptData): string {
  * there is nothing to say, so a cash donation from a trust with no bank
  * details adds no empty boxes and shifts nothing below it.
  */
-function paymentFooter(r: ReceiptData, color: string, opts: { compact?: boolean } = {}): string {
-  const stay = stayBlock(r, color, opts)
+/**
+ * The panels under an itemised bill: the stay window, and how to pay.
+ *
+ * `stay: false` for a design that ALREADY prints the stay details in its own
+ * header. Four do - folio, stay_invoice, room_gst and stay_slip - and they were
+ * printing check-in, check-out, persons and the guest ID twice, under a second
+ * heading reading STAY DETAILS. It is plainly visible in the client's room
+ * receipt and it is what "many receipts struture is not got analyze" meant.
+ *
+ * The duplication was invisible to review because the two blocks are built by
+ * different functions from the same `meta`: `stayFacts` for a header grid,
+ * `stayBlock` for this footer, each written as though it were the only one.
+ */
+function paymentFooter(
+  r: ReceiptData,
+  color: string,
+  opts: { compact?: boolean; stay?: boolean } = {},
+): string {
+  const stay = opts.stay === false ? '' : stayBlock(r, color, opts)
   const remit = remittanceBlock(r, color, opts)
   // Side by side when both exist, because stacking two bordered panels under an
   // itemised bill cost ~45px and pushed the tall designs onto a second sheet.
@@ -777,7 +817,7 @@ function remittanceBlock(
   const qrPanel = qr
     ? `<div style="flex:none;text-align:center">
       <img src="${qr}" alt="" style="width:${qrSize}px;height:${qrSize}px;display:block" />
-      <div style="font-size:7.5px;color:#6b7280;margin-top:1px;max-width:${qrSize}px;line-height:1.2">${qrCaption(r)}</div>
+      <div style="font-size:8.5px;color:#6b7280;margin-top:2px;max-width:${qrSize}px;line-height:1.2">${qrCaption(r)}</div>
     </div>`
     : ''
 
@@ -853,7 +893,6 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       <div class="header-text">
         <h1>${mandir.name}</h1>
         <p>${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-badge">
         <div class="label">${docTitle(r, L.donationReceipt)}</div>
@@ -861,6 +900,7 @@ function buildClassic(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="date">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="body">
       ${voidedBanner(r.is_voided)}
       <div class="section-label">${L.receivedFrom}</div>
@@ -922,7 +962,6 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
         <p>${mandir.address}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="rhs">
         <div class="rtitle">${docTitle(r, L.donationReceipt)}</div>
@@ -930,6 +969,7 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="rdate">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     ${voidedBanner(r.is_voided)}
     <div class="field"><span class="k">${L.receivedFrom}</span><span class="v">${r.donor?.name || L.anonymous}${r.donor?.mobile ? '<br><span style="font-weight:400;font-size:11px;color:#6b7280">'+r.donor.mobile+'</span>' : ''}</span></div>
     ${donorPan(r) ? `<div class="field"><span class="k">${L.donorPan}</span><span class="v">${donorPan(r)}</span></div>` : ''}
@@ -990,7 +1030,6 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
       <div class="mandir-info">
         <h1>${mandir.name}</h1>
         <p>${mandir.address}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-id">
         <div class="tag">${docTitle(r, L.donationReceipt).toUpperCase()}</div>
@@ -998,6 +1037,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         <div class="dt">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     ${voidedBanner(r.is_voided)}
     <div class="body">
       <div class="grid2">
@@ -1075,9 +1115,9 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
       ${logoTag(mandir)}
       <div class="mandir-name">${mandir.name}</div>
       <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</div>
-      ${regBlock(mandir, r)}
       <div class="receipt-title">${docTitle(r, `${L.donationReceipt} / दान रसीद`)}</div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="meta">
       <span>${L.receiptNo}: ${r.receipt_number}</span>
       <span>${L.date}: ${dateStr}</span>
@@ -1093,7 +1133,7 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         <tr><td>${L.category}</td><td>${r.category || '—'}</td></tr>
         <tr><td>${L.paymentMode}</td><td>${paymentModeText(r)}</td></tr>
         ${isDonationDoc(r) ? `<tr><td>${L.eligible80g}</td><td>${r.is_80g_eligible ? '✓ Yes' : 'No'}</td></tr>` : ''}
-        <tr><td>${L.amount}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>
+        ${r.lines?.length ? '' : `<tr><td>${L.amount}</td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr>`}
         <tr class="words-row"><td></td><td>${amountInWords(r.amount_paise)}</td></tr>
       </table>
       ${itemsBlock(r, mandir.primary_color || '#0D1B2E')}
@@ -1150,7 +1190,6 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         ${logoTag(mandir)}
         <div class="mandir-name">${mandir.name}</div>
         <div class="mandir-address">${mandir.address}${mandir.mobile ? '<br>'+mandir.mobile : ''}</div>
-        ${regBlock(mandir, r)}
       </div>
       <div class="receipt-meta">
         <div class="rt">${docTitle(r, L.donationReceipt)}</div>
@@ -1158,6 +1197,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         <div class="rd">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     ${voidedBanner(r.is_voided)}
     <div class="body">
       <div class="sec">
@@ -1167,7 +1207,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         ${donorPan(r) ? `<div class="donor-sub">${L.pan}: ${donorPan(r)}</div>` : ''}
       </div>
       <div class="sec">
-        <div class="sec-title">${amountLabel(r)}</div>
+        <div class="sec-title">${r.lines?.length ? L.total : amountLabel(r)}</div>
         <div class="amount-line">
           <span class="amount-cur">₹</span>
           <span class="amount-num">${fmtRs(r.amount_paise)}</span>
@@ -1360,7 +1400,9 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       </tbody>
       <tfoot><tr class="total-row"><td><b>Total</b></td><td class="amount-td">₹ ${fmtRs(r.amount_paise)}</td></tr></tfoot>
     </table>
-    ${itemsBlock(r, color)}
+    <!-- total: false - the tfoot above already carries it, and itemsBlock
+         printing another put "Total" twice on every room bill. -->
+    ${itemsBlock(r, color, { total: false })}
     <div class="footer-section" style="padding-top:0;border:0">${paymentFooter(r, color, { compact: true })}</div>
     ${mandir.footer ? `<div class="footer-section" style="border-top:1px solid #ccc">${mandir.footer}</div>` : ''}
     <div class="sig-row">
@@ -1536,7 +1578,7 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
            placeholders for "Bank" and "IFS Code" on a trust that had an
            account number and nothing else. The amount now always renders the
            same way and the bank details are the shared block. -->
-      <div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>
+      ${r.lines?.length ? '' : `<div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>`}
       <div class="field-row"><span class="lbl">${L.modeOfPayment}</span><span class="val">${paymentModeText(r)}</span></div>
       ${paymentFooter(r, color)}
       <div class="sig-row">
@@ -1618,6 +1660,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     .sign-box .line { border-top:1px solid #94a3b8; padding-top:4px; min-width:190px; }
     .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; }
     @media print { body{background:#fff;} .page{box-shadow:none;border:none;margin:0;border-radius:0;} }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
   <div class="page">
     <div class="ribbon"></div>
@@ -1866,7 +1909,6 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
         <p>${mandir.address}${mandir.mobile ? '<br>' + mandir.mobile : ''}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         <div class="kind">${docTitle(r, L.donationReceipt)}</div>
@@ -1874,6 +1916,7 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
         <div class="dt">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="parties">
       <div class="party">
         <div class="cap">${L.receivedFrom}</div>
@@ -1948,7 +1991,7 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     <div class="to-sub">${[r.donor?.mobile, donorPan(r) ? `${L.pan} ${donorPan(r)}` : ''].filter(Boolean).join(' · ')}</div>
     <div class="amt">
       <div>
-        <div class="cap">${amountLabel(r)}</div>
+        <div class="cap">${r.lines?.length ? L.total : amountLabel(r)}</div>
         <div class="words">${amountInWords(r.amount_paise)}</div>
       </div>
       <div class="val">₹ ${fmtRs(r.amount_paise)}</div>
@@ -2055,6 +2098,7 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 22px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#9ca3af; text-align:center; font-style:italic; padding:0 22px 8px; }
     @media print { body{background:#fff;} .page{border:none;margin:0;} }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
   <div class="page">
     ${voidedBanner(r.is_voided)}
@@ -2063,7 +2107,6 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
         <p>${[mandir.address, mandir.mobile].filter(Boolean).join(' · ')}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         <div class="kind">${docTitle(r, L.guestFolio)}</div>
@@ -2071,6 +2114,7 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
         <div class="dt">${dateStr}</div>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="guest">
       <div>
         <div class="cap">${L.guest}</div>
@@ -2092,14 +2136,17 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
         <table>${facts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
       </div>` : ''}
       <div class="money"${facts.length ? '' : ' style="width:100%"'}>
-        <div class="cap" style="margin-bottom:5px">${L.amount}</div>
+        ${r.lines?.length ? '' : `<div class="cap" style="margin-bottom:5px">${L.amount}</div>`}
         <table>${money.map(([k, v, strong]) => `<tr class="${strong ? 'strong' : ''}"><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
       </div>
     </div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     <div class="body">
-      ${itemsBlock(r, color)}
-      ${paymentFooter(r, color, { compact: true })}
+      <!-- total: false - the money panel above is stayMoneyRows, which opens
+           with the total; a second one under the itemised table repeated both
+           the figure and the AMOUNT caption. -->
+      ${itemsBlock(r, color, { total: false })}
+      ${paymentFooter(r, color, { compact: true, stay: false })}
       ${signatureBlock(mandir)}
     </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
@@ -2156,6 +2203,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 20px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 20px 8px; }
     @media print { .page{border-color:#111827;margin:0;} }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
   <div class="page">
     <div class="title">${docTitle(r, gstShown ? L.taxInvoice : L.guestFolio)}</div>
@@ -2165,7 +2213,6 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         ${logoTag(mandir)}
         <h1>${mandir.name}</h1>
         <p>${mandir.address}${mandir.mobile ? `<br>${mandir.mobile}` : ''}</p>
-        ${regBlock(mandir, r)}
       </div>
       <div class="doc">
         ${L.receiptNo}: <b>${r.receipt_number}</b><br>
@@ -2174,6 +2221,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         ${gstShown ? `<br>${L.reverseCharge}: ${r.tax?.reverse_charge === true ? L.yes : L.no}` : ''}
       </div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="grid">
       <div>
         <div class="cap">${L.guest}</div>
@@ -2198,7 +2246,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
         ${money.map(([k, v, strong]) => row(k, v, strong)).join('')}
       </table>
       <div class="words">${L.amountInWords}: ${amountInWords(r.amount_paise)}</div>
-      ${paymentFooter(r, color, { compact: true })}
+      ${paymentFooter(r, color, { compact: true, stay: false })}
       ${signatureBlock(mandir)}
     </div>
     ${mandir.footer ? `<div class="footer-note">${mandir.footer}</div>` : ''}
@@ -2341,6 +2389,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 16px 0; font-size:11px; }
     .footer-note { font-size:9.5px; color:#6b7280; text-align:center; font-style:italic; padding:0 16px 8px; }
     @media print { .page{border-color:#111827;margin:0;} }
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
   <div class="page">
     <div class="title"><b>${taxed ? L.taxInvoice : L.billOfSupply}</b><span>${L.originalForRecipient}</span></div>
@@ -2351,7 +2400,6 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         ${logoTag(mandir)}
         <div class="nm">${mandir.name}</div>
         <div class="sub">${[mandir.address, mandir.mobile, mandir.email].filter(Boolean).join('<br>')}</div>
-        ${regBlock(mandir, r)}
       </div>
       <div>
         <table class="meta">
@@ -2362,6 +2410,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
         </table>
       </div>
     </div>
+    ${regBlock(mandir, r)}
     <div class="parties">
       <div>
         <div class="cap">${L.recipient}</div>
@@ -2392,7 +2441,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     </table>
     <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
     <div class="body">
-      ${paymentFooter(r, '#111827', { compact: true })}
+      ${paymentFooter(r, '#111827', { compact: true, stay: false })}
     </div>
     <div class="decl">
       <p>${L.gstDeclaration}</p>
@@ -2451,7 +2500,7 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
         ${facts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
         ${money.map(([k, v, strong]) => `<tr class="${strong ? 'strong' : ''}"><td>${k}</td><td>${v}</td></tr>`).join('')}
       </table>
-      ${paymentFooter(r, color, { compact: true })}
+      ${paymentFooter(r, color, { compact: true, stay: false })}
       <div class="sign">
         <span>${L.computerGenerated}</span>
         <span class="line">${L.authorisedSignatory}</span>
