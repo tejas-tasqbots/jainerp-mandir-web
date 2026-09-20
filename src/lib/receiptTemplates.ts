@@ -711,7 +711,7 @@ function stayBlock(r: ReceiptData, color: string, opts: { compact?: boolean } = 
 
   const size = opts.compact ? '9px' : '9.5px'
   const cells = rows
-    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#6b7280;flex:none">${k}</span><b style="color:#111827">${v}</b></div>`)
+    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#5b6472;flex:none">${k}</span><b style="color:#111827">${v}</b></div>`)
     .join('')
   const rules = mandirHouseRules(r)
   return `<div class="stay" style="flex:1;margin-top:9px;border:1px solid ${color}22;border-left:2px solid ${color};border-radius:3px;padding:${opts.compact ? '5px 8px' : '7px 10px'};background:${color}05">
@@ -807,7 +807,7 @@ function remittanceBlock(
   // today. Alignment is not worth a page.
   const labelW = opts.compact ? '46px' : '52px'
   const cells = rows
-    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#6b7280;flex:none;min-width:${labelW}">${k}</span><b style="color:#111827;word-break:break-all;min-width:0">${v}</b></div>`)
+    .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#5b6472;flex:none;min-width:${labelW}">${k}</span><b style="color:#111827;word-break:break-all;min-width:0">${v}</b></div>`)
     .join('')
 
   // Two columns only when there is a QR AND rows to sit beside it. A QR alone
@@ -817,7 +817,7 @@ function remittanceBlock(
   const qrPanel = qr
     ? `<div style="flex:none;text-align:center">
       <img src="${qr}" alt="" style="width:${qrSize}px;height:${qrSize}px;display:block" />
-      <div style="font-size:8.5px;color:#6b7280;margin-top:2px;max-width:${qrSize}px;line-height:1.2">${qrCaption(r)}</div>
+      <div style="font-size:8.5px;color:#5b6472;margin-top:2px;max-width:${qrSize}px;line-height:1.2">${qrCaption(r)}</div>
     </div>`
     : ''
 
@@ -953,7 +953,7 @@ function buildMinimal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10px; color:#6b7280; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
-    .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:24px; font-style:italic; }
+    .footer-note { font-size:11px; color:#6b7280; text-align:center; margin-top:24px; font-style:italic; }
     @media print { .page{border:none;margin:0;padding:28px;} }
   </style>
   <div class="page">
@@ -999,12 +999,12 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .receipt-id { margin-left:auto; text-align:right; }
     .receipt-id .tag { display:inline-block; background:${color}15; color:${color}; font-size:10px; font-weight:700; letter-spacing:1px; padding:3px 10px; border-radius:999px; margin-bottom:6px; }
     .receipt-id .num { font-size:17px; font-weight:700; font-family:monospace; color:#0f172a; }
-    .receipt-id .dt { font-size:11px; color:#94a3b8; margin-top:2px; }
+    .receipt-id .dt { font-size:11px; color:#64748b; margin-top:2px; }
     ${voidedBanner(r.is_voided) ? '.voided{background:#fef2f2;border-left:4px solid #ef4444;color:#b91c1c;padding:10px 16px;font-weight:700;font-size:12px;margin:16px 36px;}' : ''}
     .body { padding:24px 36px 32px; }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
     .info-card { background:#f8fafc; border-radius:8px; padding:14px 16px; }
-    .info-card .label { font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+    .info-card .label { font-size:10px; color:#64748b; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
     .info-card .value { font-size:14px; font-weight:700; color:#0f172a; }
     .info-card .sub { font-size:11px; color:#64748b; margin-top:2px; }
     .amount-hero { background:linear-gradient(135deg,${color},${color}cc); border-radius:10px; padding:20px 24px; color:#fff; display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
@@ -1012,7 +1012,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .amount-hero .amt { font-size:32px; font-weight:900; font-family:monospace; }
     .amount-hero .words { font-size:10.5px; opacity:.8; margin-top:4px; font-style:italic; }
     .details { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
-    .detail-item .k { font-size:10px; color:#94a3b8; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
+    .detail-item .k { font-size:10px; color:#64748b; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:2px; }
     .detail-item .v { font-size:13px; font-weight:600; color:#0f172a; }
     .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
     .badge-yes { background:${affirm(color).bg}; color:${affirm(color).text}; }
@@ -1020,7 +1020,7 @@ function buildModern(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10.5px; color:#475569; background:#f8fafc; border-radius:6px; padding:10px 14px; margin-bottom:12px; line-height:2; }
     .pay-label { color:${color}; font-weight:700; }
-    .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; padding-top:16px; border-top:1px solid #f1f5f9; margin-top:8px; }
+    .footer-note { font-size:11px; color:#64748b; text-align:center; font-style:italic; padding-top:16px; border-top:1px solid #f1f5f9; margin-top:8px; }
     @media print { body{background:#fff;} .page{box-shadow:none;border-radius:0;margin:0;} }
   </style>
   <div class="page">
@@ -1080,11 +1080,11 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     .page { max-width:680px; margin:24px auto; background:#fffef9; border:2px solid #c97b22; border-radius:4px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.1); }
     .top-border { height:8px; background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22); }
     .header { padding:13px 32px; text-align:center; border-bottom:2px solid #f59e0b; background:linear-gradient(180deg,#fef3c7,#fffef9); }
-    .aum { font-size:28px; color:#c97b22; margin-bottom:2px; }
+    .aum { font-size:28px; color:#a16207; margin-bottom:2px; }
     .logo { height:56px; width:auto; object-fit:contain; margin-bottom:8px; }
     .mandir-name { font-size:22px; font-weight:700; color:#92400e; letter-spacing:.5px; }
     .mandir-address { font-size:11px; color:#78350f; margin-top:3px; line-height:1.7; }
-    .receipt-title { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#c97b22; margin-top:10px; border-top:1px dashed #f59e0b; padding-top:8px; }
+    .receipt-title { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#a16207; margin-top:10px; border-top:1px dashed #f59e0b; padding-top:8px; }
     .meta { display:flex; justify-content:space-between; padding:9px 32px; background:#fef9ee; border-bottom:1px solid #fde68a; font-size:12px; color:#78350f; font-weight:600; }
     ${voidedBanner(r.is_voided) ? '.voided{background:#fee2e2;border:2px solid #f87171;color:#991b1b;padding:8px;text-align:center;font-weight:700;font-size:13px;margin:12px 32px;}' : ''}
     .body { padding:12px 32px 14px; }
@@ -1096,17 +1096,17 @@ function buildTraditional(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     td { padding:5px 12px; border-bottom:1px solid #fef3c7; font-size:13px; }
     td:first-child { color:#78350f; font-weight:600; width:38%; }
     td:last-child { color:#1c1917; font-weight:500; }
-    .amount-td { font-size:22px; font-weight:800; color:#c97b22; font-family:monospace; }
+    .amount-td { font-size:22px; font-weight:800; color:#a16207; font-family:monospace; }
     .words-row td { font-size:10.5px; color:#a16207; font-style:italic; }
     /* line-height was 2 on both. With a trust that holds every registration
        these are three or four lines each, and double leading alone put this
        design over an A4 page (qa-receipt-pages.mjs, tallest-header case). */
     .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .payment-block { font-size:10.5px; color:#78350f; line-height:1.65; padding-top:6px; }
-    .pay-label { color:#c97b22; font-weight:700; }
+    .pay-label { color:#a16207; font-weight:700; }
     .footer-note { font-size:11px; color:#a16207; text-align:center; margin-top:10px; font-style:italic; }
     .bottom-border { height:8px; background:linear-gradient(90deg,#c97b22,#f59e0b,#c97b22); margin-top:12px; }
-    @media print { body{background:#fff;} .page{border-color:#999;box-shadow:none;margin:0;} }
+    @media print { body{background:#fff;} .page{border-color:#6b7280;box-shadow:none;margin:0;} }
   </style>
   <div class="page">
     <div class="top-border"></div>
@@ -1159,7 +1159,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .receipt-meta { text-align:right; }
     .receipt-meta .rt { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:${color}; font-weight:700; margin-bottom:8px; }
     .receipt-meta .rn { font-size:18px; font-weight:700; font-family:'Courier New',monospace; color:#111; }
-    .receipt-meta .rd { font-size:11px; color:#9ca3af; margin-top:4px; }
+    .receipt-meta .rd { font-size:11px; color:#6b7280; margin-top:4px; }
     ${voidedBanner(r.is_voided) ? '.voided{border:1px solid #fca5a5;background:#fff5f5;color:#b91c1c;padding:10px 16px;font-weight:700;text-align:center;font-size:12px;margin:16px 40px;}' : ''}
     .body { padding:20px 40px 24px; }
     /* 24px between four sections, on the airiest design in the gallery, was
@@ -1173,12 +1173,12 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .amount-cur { font-size:20px; font-weight:700; color:${color}; }
     .amount-words { font-size:11px; color:#6b7280; font-style:italic; margin-top:2px; }
     .dl { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    .dt { font-size:10px; color:#9ca3af; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
+    .dt { font-size:10px; color:#6b7280; font-weight:700; letter-spacing:.5px; text-transform:uppercase; margin-bottom:3px; }
     .dd { font-size:13px; color:#111; font-weight:600; }
     .elig-yes { color:${affirm(color).text}; } .elig-no { color:${DENY_TEXT}; }
     .reg-block { font-size:9.5px; line-height:1.6; margin:4px 0 0; }
     .pay-label { color:${color}; font-weight:700; }
-    .footer-note { font-size:11px; color:#9ca3af; text-align:center; margin-top:12px; font-style:italic; }
+    .footer-note { font-size:11px; color:#6b7280; text-align:center; margin-top:12px; font-style:italic; }
     .bottom { height:4px; background:${color}20; margin-top:16px; position:relative; }
     .bottom::before { content:''; position:absolute; left:0; top:0; height:100%; width:30%; background:${color}; }
     @media print { body{background:#fff;} .page{box-shadow:none;margin:0;} }
@@ -1453,7 +1453,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
     .sig-right { text-align:right; }
     .sig-right .role { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-top:12px; border-top:1px solid #333; padding-top:4px; }
     .sig-right .org { font-size:12px; font-weight:700; color:#111; }
-    .footer-note { font-size:10px; color:#777; text-align:center; padding:6px 28px 9px; border-top:1px solid #ccc; font-style:italic; }
+    .footer-note { font-size:10px; color:#6b7280; text-align:center; padding:6px 28px 9px; border-top:1px solid #ccc; font-style:italic; }
     @media print { body{background:#fff;} .page{margin:0;} }
   </style>
   <div class="page">
@@ -1626,7 +1626,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     .reg-strip { display:flex; flex-wrap:wrap; gap:0; background:${color}0c; border-bottom:1px solid #e2e8f0; }
     .reg-strip .cell { flex:1; min-width:150px; padding:9px 16px; border-right:1px solid #e2e8f0; }
     .reg-strip .cell:last-child { border-right:none; }
-    .reg-strip .k { font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color:#7c8598; font-weight:700; }
+    .reg-strip .k { font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color:#64748b; font-weight:700; }
     .reg-strip .v { font-size:12px; font-weight:700; color:#0f172a; margin-top:2px; font-family:'Courier New',monospace; }
     ${r.is_voided ? '.voided{background:#fee2e2;border:2px solid #f87171;color:#991b1b;padding:9px;text-align:center;font-weight:700;margin:14px 34px;border-radius:5px;}' : ''}
     .title { text-align:center; padding:14px; }
@@ -1635,7 +1635,7 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     .body { padding:6px 34px 26px; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
     .card { border:1px solid #e2e8f0; border-radius:6px; padding:14px 16px; }
-    .card .lbl { font-size:9.5px; text-transform:uppercase; letter-spacing:.7px; color:#7c8598; font-weight:700; margin-bottom:6px; }
+    .card .lbl { font-size:9.5px; text-transform:uppercase; letter-spacing:.7px; color:#64748b; font-weight:700; margin-bottom:6px; }
     .card .nm { font-size:15px; font-weight:700; color:#0f172a; }
     .card .li { font-size:12px; color:#475569; line-height:1.9; margin-top:2px; }
     .card .li b { color:#0f172a; }
@@ -1654,11 +1654,11 @@ function build80G(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptDa
     .pay { font-size:10.5px; color:#475569; margin-top:12px; line-height:1.9; }
     .pay b { color:#0f172a; }
     .sign-row { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
-    .sign-note { font-size:10.5px; color:#94a3b8; font-style:italic; max-width:320px; }
+    .sign-note { font-size:10.5px; color:#64748b; font-style:italic; max-width:320px; }
     .sign-box { text-align:center; font-size:11px; color:#475569; }
     .sign-box .for { font-weight:700; color:#0f172a; margin-bottom:34px; }
     .sign-box .line { border-top:1px solid #94a3b8; padding-top:4px; min-width:190px; }
-    .footer-note { font-size:11px; color:#94a3b8; text-align:center; font-style:italic; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; }
+    .footer-note { font-size:11px; color:#64748b; text-align:center; font-style:italic; margin-top:16px; padding-top:12px; border-top:1px solid #e2e8f0; }
     @media print { body{background:#fff;} .page{box-shadow:none;border:none;margin:0;border-radius:0;} }
     .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
@@ -1770,11 +1770,24 @@ function itemsBlock(r: ReceiptData, color: string, opts: { total?: boolean } = {
   const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0)
   const gstShown = taxTotal > 0 && r.mandir?.gst_enabled
   const net = r.amount_paise - (gstShown ? taxTotal : 0)
-  const row = (label: string, value: string, strong = false) => `
+  // THE TOTAL IS THE FIGURE THE READER CAME FOR, so it is set larger than the
+  // rows above it, banded, and ruled off. Measured before this: the total was
+  // 12px like every other row and merely bold, which put it at 1.1 to 1.45x
+  // the body size across seven designs - a bill whose conclusion does not
+  // stand out from its line items reads as a list, not a bill.
+  //
+  // 15px against 12px rows is about 1.5x the body text, which is where the eye
+  // lands first without the figure shouting.
+  const row = (label: string, value: string, strong = false) => {
+    const pad = strong ? '9px 10px' : '7px 10px'
+    const size = strong ? '15px' : '12px'
+    const band = strong ? `background:${tint(color, '0f', '#f6f7f9')};border-top:1.5px solid ${tint(color, 'cc', '#9ca3af')};` : ''
+    return `
     <tr>
-      <td style="padding:7px 10px;border-bottom:1px solid #eef2f7;font-size:12px;color:${strong ? '#111' : '#374151'};font-weight:${strong ? 700 : 400}">${label}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #eef2f7;font-size:12px;text-align:right;white-space:nowrap;color:${strong ? '#111' : '#374151'};font-weight:${strong ? 700 : 600}">${value}</td>
+      <td style="padding:${pad};${band}border-bottom:1px solid #eef2f7;font-size:${size};color:${strong ? '#111' : '#374151'};font-weight:${strong ? 700 : 400};letter-spacing:${strong ? '.3px' : 'normal'}">${label}</td>
+      <td style="padding:${pad};${band}border-bottom:1px solid #eef2f7;font-size:${size};text-align:right;white-space:nowrap;color:${strong ? '#111' : '#374151'};font-weight:700">${value}</td>
     </tr>`
+  }
   return `
   <table style="width:100%;border-collapse:collapse;margin:14px 0 4px;border:1px solid #e5e7eb">
     <thead>
@@ -1805,7 +1818,7 @@ function itemsBlock(r: ReceiptData, color: string, opts: { total?: boolean } = {
 function signatureBlock(mandir: NonNullable<ReceiptData['mandir']>): string {
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:22px;padding-top:12px;border-top:1px solid #e5e7eb">
-    <div style="font-size:9.5px;color:#9ca3af;max-width:55%;line-height:1.6">${L.computerGenerated}</div>
+    <div style="font-size:9.5px;color:#6b7280;max-width:55%;line-height:1.6">${L.computerGenerated}</div>
     <div style="text-align:center;min-width:180px">
       <div style="font-size:10px;color:#6b7280">${L.forTrust.replace('{name}', mandir.name)}</div>
       <div style="height:34px"></div>
@@ -1887,7 +1900,7 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     .doc .dt { font-size:11px; color:#6b7280; margin-top:2px; }
     .parties { display:flex; gap:24px; margin:20px 0 4px; }
     .party { flex:1; }
-    .party .cap { font-size:9px; letter-spacing:1.4px; text-transform:uppercase; color:#9ca3af; margin-bottom:4px; }
+    .party .cap { font-size:9px; letter-spacing:1.4px; text-transform:uppercase; color:#6b7280; margin-bottom:4px; }
     .party .nm { font-size:14px; font-weight:700; }
     .party .sub { font-size:11px; color:#6b7280; line-height:1.7; }
     .totals { display:flex; justify-content:flex-end; margin-top:10px; }
@@ -1945,7 +1958,7 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
 // gold hairline, and the amount set as the centrepiece. Serif throughout, and
 // the Jai Jinendra line at the head where a printed Jain receipt carries it.
 function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
-  const gold = '#B8862B'
+  const gold = '#8F6519'
   return `
   <style>
     body { font-family: Georgia, 'Times New Roman', serif; background:#FBF8F1; color:#241C10; }
@@ -1954,15 +1967,15 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     .jai { text-align:center; color:${gold}; font-size:12px; letter-spacing:3px; }
     .name { text-align:center; font-size:22px; font-weight:700; color:${color}; margin-top:6px; }
     .addr { text-align:center; font-size:10.5px; color:#6B5A44; line-height:1.7; margin-top:4px; }
-    .regs { text-align:center; font-size:9.5px; color:#8A7560; margin-top:6px; }
+    .regs { text-align:center; font-size:9.5px; color:#7A6550; margin-top:6px; }
     .kind { text-align:center; margin:14px 0 4px; }
     .kind span { display:inline-block; border-top:1px solid ${gold}; border-bottom:1px solid ${gold}; padding:4px 18px; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:${color}; }
     .meta { display:flex; justify-content:space-between; font-size:11.5px; color:#4B3F30; margin:10px 2px 14px; }
-    .to-cap { font-size:9.5px; letter-spacing:2px; text-transform:uppercase; color:#8A7560; }
+    .to-cap { font-size:9.5px; letter-spacing:2px; text-transform:uppercase; color:#7A6550; }
     .to { font-size:17px; font-weight:700; margin-top:2px; }
     .to-sub { font-size:11px; color:#6B5A44; margin-top:2px; }
     .amt { display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid ${gold}66; background:${gold}0f; padding:12px 16px; margin:14px 0 6px; }
-    .amt .cap { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#8A7560; }
+    .amt .cap { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#7A6550; }
     .amt .words { font-size:11px; font-style:italic; color:#6B5A44; margin-top:3px; }
     .amt .val { font-size:26px; font-weight:700; color:${color}; white-space:nowrap; }
     .rows { font-size:12.5px; }
@@ -2077,9 +2090,9 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     .doc { text-align:right; flex:none; }
     .doc .kind { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:${color}; font-weight:800; }
     .doc .no { font-size:14px; font-weight:700; font-family:'Courier New',monospace; margin-top:2px; }
-    .doc .dt { font-size:10px; color:#9ca3af; }
+    .doc .dt { font-size:10px; color:#6b7280; }
     .guest { display:flex; justify-content:space-between; gap:16px; padding:12px 22px; background:#fafafa; border-bottom:1px solid #eef2f7; }
-    .cap { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#9ca3af; font-weight:700; }
+    .cap { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#6b7280; font-weight:700; }
     .guest .nm { font-size:15px; font-weight:700; margin-top:1px; }
     .guest .sub { font-size:10px; color:#6b7280; margin-top:2px; line-height:1.45; }
     .cols { display:flex; gap:0; align-items:stretch; }
@@ -2092,11 +2105,11 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     .money table { width:100%; border-collapse:collapse; }
     .money td { padding:4px 0; font-size:10.5px; border-bottom:1px solid #f6f7f9; }
     .money td:last-child { text-align:right; font-weight:600; white-space:nowrap; }
-    .money tr.strong td { font-weight:800; font-size:12px; color:${color}; }
+    .money tr.strong td { font-weight:800; font-size:15px; color:${color}; padding-top:3px; border-top:1.5px solid ${tint(color, 'cc', '#9ca3af')}; }
     .words { padding:0 22px 10px; font-size:9.5px; font-style:italic; color:#6b7280; }
     .body { padding:0 22px 14px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 22px 0; font-size:11px; }
-    .footer-note { font-size:10px; color:#9ca3af; text-align:center; font-style:italic; padding:0 22px 8px; }
+    .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 22px 8px; }
     @media print { body{background:#fff;} .page{border:none;margin:0;} }
     .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
   </style>
@@ -2198,7 +2211,7 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     table.amt { width:100%; border-collapse:collapse; margin-top:10px; }
     table.amt td { padding:5px 8px; font-size:11px; border:1px solid #e5e7eb; }
     table.amt td:last-child { text-align:right; font-weight:600; white-space:nowrap; }
-    table.amt tr.strong td { font-weight:800; background:#f3f4f6; }
+    table.amt tr.strong td { font-weight:800; font-size:15px; background:#f3f4f6; border-top:1.5px solid #9ca3af; }
     .words { font-size:10px; font-style:italic; color:#4b5563; margin-top:6px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 20px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 20px 8px; }
@@ -2380,7 +2393,7 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     table.items td.c, table.items th.c { text-align:center; }
     table.items td.r, table.items th.r { text-align:right; white-space:nowrap; }
     table.items td.lbl { color:#4b5563; font-weight:600; }
-    table.items tr.grand td { font-size:12px; font-weight:800; background:#f3f4f6; border-top:1px solid #111827; border-bottom:1px solid #111827; }
+    table.items tr.grand td { font-size:15px; font-weight:800; background:#f3f4f6; border-top:1.5px solid #111827; border-bottom:1.5px solid #111827; padding-top:7px; padding-bottom:7px; }
     .words { font-size:10px; padding:7px 16px; border-bottom:1px solid #e5e7eb; }
     .words b { font-style:italic; }
     .body { padding:10px 16px; }
@@ -2476,8 +2489,8 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     td { padding:2.5px 0; font-size:10px; border-bottom:1px solid #f6f7f9; }
     td:first-child { color:#6b7280; width:46%; }
     td:last-child { text-align:right; font-weight:600; }
-    tr.strong td { font-weight:800; font-size:11.5px; color:${color}; }
-    .sign { display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; font-size:8.5px; color:#9ca3af; }
+    tr.strong td { font-weight:800; font-size:14px; color:${color}; border-top:1.5px solid ${tint(color, 'cc', '#9ca3af')}; padding-top:3px; }
+    .sign { display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; font-size:8.5px; color:#6b7280; }
     .sign .line { border-top:1px solid #9ca3af; padding-top:2px; min-width:110px; text-align:center; color:#4b5563; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:5px; font-size:10px; }
     @media print { .page{margin:0;} }
@@ -2582,7 +2595,7 @@ function buildCustom(
   const align = def.header_align
 
   const cap = (text: string) =>
-    `<div style="font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#9ca3af;font-weight:700">${text}</div>`
+    `<div style="font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#6b7280;font-weight:700">${text}</div>`
 
   const block = (name: DefinitionBlock): string => {
     switch (name) {
@@ -3166,6 +3179,22 @@ export function buildReceiptHtml(input: ReceiptData): string {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt ${r.receipt_number}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
+  /* TABULAR FIGURES, EVERYWHERE. Measured: not one of the seventeen designs
+     asked for them, so a column of amounts was set in proportional numerals
+     and the digits did not line up under each other - 3,360.00 above 200.00
+     with the decimal points in different places. It is the single most visible
+     difference between a receipt that looks typeset and one that looks typed.
+
+     Set on the body rather than on the money cells: a receipt is mostly
+     figures - amounts, dates, a receipt number, a PAN, a GSTIN - and all of
+     them read better aligned. Declared once here so no design has to remember
+     it, and the lining-nums companion stops a font with old-style figures
+     dropping the 3, 4, 7 and 9 below the baseline.
+
+     NO BACKTICKS IN THIS COMMENT. It lives inside a template literal, so a
+     backtick here ends the literal and the CSS after it becomes code. That is
+     the fourth time this file has caught me with it. */
+  body{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;}
   .copy-banner{text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;padding:8px 0 0;}
   .copy-sep{border-top:1px dashed #9ca3af;margin:16px 0;}
   .upi-qr{text-align:center;padding:12px 0 18px;}

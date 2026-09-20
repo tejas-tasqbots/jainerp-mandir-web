@@ -394,7 +394,7 @@ export function receiptParts(
   const lang = receiptLanguage(m.receipt_language);
   const L = withOverrides(LABELS[lang], lang, m.label_overrides);
   const color = safeColor(m.primary_color);
-  const gold = '#B8862B';
+  const gold = '#8F6519';
   const donation = r.kind === 'donation';
   // Escaped HERE, not at the ribbon: the two halves of this expression are
   // different kinds of input. `r.title` is caller data ("Prasad Receipt",
@@ -511,19 +511,19 @@ export function receiptParts(
   .ribbon span { display: inline-block; background: ${color}; color: #FFF; font-size: 8.6pt; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; padding: 1.1mm 6mm; border-radius: 4mm; }
   .meta { display: flex; justify-content: space-between; margin-top: 3mm; font-size: 7.8pt; border-top: .25mm dashed #D9C8AC; border-bottom: .25mm dashed #D9C8AC; padding: 1.6mm 1mm; }
   .meta b { font-size: 9pt; color: #2B2118; }
-  .meta .k { color: #8A7560; margin-right: 1.5mm; }
+  .meta .k { color: #7A6550; margin-right: 1.5mm; }
   .from { margin-top: 3.2mm; }
-  .from .k { font-size: 7.6pt; color: #8A7560; text-transform: uppercase; letter-spacing: .8px; }
+  .from .k { font-size: 7.6pt; color: #7A6550; text-transform: uppercase; letter-spacing: .8px; }
   .from .name { font-size: 13.5pt; font-weight: 700; margin-top: .8mm; line-height: 1.25; }
   .from .sub { font-size: 7.4pt; color: #6B5B4B; margin-top: .6mm; line-height: 1.45; }
   .amount { margin-top: 3mm; display: flex; align-items: center; justify-content: space-between; gap: 4mm;
     background: linear-gradient(90deg, ${color}14, ${color}06); border-left: 1.2mm solid ${gold}; border-radius: 1.5mm; padding: 2.4mm 4mm; }
-  .amount .k { font-size: 7.6pt; color: #8A7560; text-transform: uppercase; letter-spacing: .8px; }
+  .amount .k { font-size: 7.6pt; color: #7A6550; text-transform: uppercase; letter-spacing: .8px; }
   .amount .words { font-size: 8pt; font-style: italic; color: #4A3B2E; margin-top: .8mm; line-height: 1.4; }
   .amount .fig { font-size: 19pt; font-weight: 800; color: ${color}; white-space: nowrap; }
   .details { margin-top: 2.4mm; width: 100%; border-collapse: collapse; font-size: 8pt; }
   .details td { padding: 1.15mm 1mm; border-bottom: .25mm solid #F0E6D6; vertical-align: top; }
-  .details td:first-child { color: #8A7560; width: 36%; }
+  .details td:first-child { color: #7A6550; width: 36%; }
   .details td:last-child { font-weight: 600; }
   .badge { display: inline-block; font-size: 7.2pt; font-weight: 700; padding: .3mm 2.4mm; border-radius: 3mm; }
   /* Affirmative in the TRUST'S colour, not a fixed leaf green: this sheet is
@@ -561,28 +561,28 @@ export function receiptParts(
      needs one to be SEPARATED from the blessing above, which spanning a row
      does just as well. */
   .pay-tbl .cap { grid-column: 1 / -1; font-size: 6.4pt; letter-spacing: .5px;
-    text-transform: uppercase; color: #8A7560; }
+    text-transform: uppercase; color: #7A6550; }
   .pay-tbl { display: grid; grid-template-columns: max-content auto max-content auto;
     column-gap: 2.4mm; row-gap: 0; margin: .5mm 0 0; align-items: baseline;
     line-height: 1.2; }
   /* The labels never wrap: a two-line "A/C name" beside a one-line value is
      what makes a grid look broken. */
-  .pay-tbl .k { color: #8A7560; white-space: nowrap; }
+  .pay-tbl .k { color: #7A6550; white-space: nowrap; }
   .pay-tbl .v { font-weight: 700; color: #4A3B2E; word-break: break-all; }
   /* An odd number of fields leaves the last value spanning the empty pair,
      so it never sits in a half-width cell with its digits wrapped. */
   .pay-tbl .v:last-child:nth-child(2n) { grid-column: span 3; }
-  .pay-head { display: block; font-size: 6.4pt; letter-spacing: .5px; text-transform: uppercase; color: #8A7560; }
+  .pay-head { display: block; font-size: 6.4pt; letter-spacing: .5px; text-transform: uppercase; color: #7A6550; }
   .pay-qr { flex: none; text-align: center; }
   .pay-qr img { width: 16mm; height: 16mm; display: block; }
-  .pay-qr span { display: block; font-size: 6.4pt; color: #8A7560; max-width: 18mm; line-height: 1.25; }  /* 5.8pt is 7.7px - under the 8px floor the structure audit sets, and     the same QR caption that was 7.5px in receiptTemplates. A caption     nobody can read is a caption not worth the space. 18mm rather than     16 so the larger type still fits two words to a line. */
+  .pay-qr span { display: block; font-size: 6.4pt; color: #7A6550; max-width: 18mm; line-height: 1.25; }  /* 5.8pt is 7.7px - under the 8px floor the structure audit sets, and     the same QR caption that was 7.5px in receiptTemplates. A caption     nobody can read is a caption not worth the space. 18mm rather than     16 so the larger type still fits two words to a line. */
   .spacer { flex: 1; min-height: 2mm; }
   .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; margin-top: 2mm; }
-  .foot .note { font-size: 6.6pt; color: #8A7560; line-height: 1.5; max-width: 58%; }
+  .foot .note { font-size: 6.6pt; color: #7A6550; line-height: 1.5; max-width: 58%; }
   .sign { text-align: center; font-size: 7.4pt; color: #4A3B2E; min-width: 38mm; }
-  .sign .line { border-top: .3mm solid #9C8A74; margin-top: 7mm; padding-top: 1mm; color: #8A7560; }
+  .sign .line { border-top: .3mm solid #9C8A74; margin-top: 7mm; padding-top: 1mm; color: #7A6550; }
   .custom { margin-top: 1.6mm; text-align: center; font-size: 7.6pt; color: #4A3B2E; font-style: italic; }
-  .brand { margin-top: 1.4mm; text-align: center; font-size: 6pt; color: #B3A38E; letter-spacing: .4px; }
+  .brand { margin-top: 1.4mm; text-align: center; font-size: 6pt; color: #7A6550; letter-spacing: .4px; }
   .void-banner { margin-top: 3mm; text-align: center; background: #FDECEC; border: .35mm solid #E08A8A; color: #9B1C1C; font-weight: 700; font-size: 8.4pt; padding: 1.6mm; border-radius: 1.5mm; text-transform: uppercase; letter-spacing: 1px; }
   .void-mark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   .void-mark span { transform: rotate(-32deg); font-size: 64pt; font-weight: 800; color: rgba(190, 30, 30, .12); letter-spacing: 8px; }
