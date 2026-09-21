@@ -123,14 +123,32 @@ function desktopBridge(): DesktopPrintBridge | undefined {
  * still been paid for and the hall still needs them. The PDF fallback opens
  * for whichever ones fell back, exactly as the single-document path does.
  */
-export async function printReceiptDocuments(htmls: string[]): Promise<void> {
+export async function printReceiptDocuments(
+  htmls: string[],
+  /**
+   * The ALL-TOKENS-IN-ONE document, for when per-job printing is unavailable.
+   *
+   * Required, not optional, and that is the point. The first version of this
+   * took only the array and fell back to `htmls[0]` — which is the document
+   * for token ONE. In a browser, where there is no desktop bridge, a ten-thali
+   * sale therefore printed a single page carrying a single token and dropped
+   * the other nine without a word. Reported immediately: "it is showing only
+   * one page and on that only 1 token".
+   *
+   * `htmls[0]` and "the whole set" are different documents, and the type could
+   * not tell them apart because both are a string. Taking the fallback as its
+   * own parameter is what stops that substitution being possible.
+   */
+  combined: string,
+): Promise<void> {
   const bridge = desktopBridge()
   if (!bridge?.printHtml || htmls.length <= 1) {
     // A browser cannot reliably fire N print jobs — each would need its own
     // dialog, and a popup blocker or an impatient cancel leaves the counter
-    // with an unknown number of tokens. One document is the honest behaviour
-    // there, and the dashed cut lines are what it is for.
-    printReceiptHtml(htmls[0] ?? '')
+    // with an unknown number of tokens. So it prints every token in ONE
+    // document, to be cut along the dashed lines; that is what those lines are
+    // for, and it is the behaviour the browser build always had.
+    printReceiptHtml(combined)
     return
   }
   for (const html of htmls) {
@@ -200,7 +218,7 @@ export async function printDonationReceipt(id: string, basePath = '/donations'):
   // Also the manual Print button's path: a reprint of a three-thali sale has to
   // produce three tokens just as the original did.
   const perToken = buildPlateTokenDocuments(receipt)
-  if (perToken) { await printReceiptDocuments(perToken); return }
+  if (perToken) { await printReceiptDocuments(perToken, buildReceiptHtml(receipt)); return }
   printReceiptHtml(buildReceiptHtml(receipt))
 }
 
@@ -238,7 +256,7 @@ export async function autoPrintSlip(id: string, basePath: string): Promise<boole
     // One job per plate token on a roll, so the printer's end-of-job cut
     // separates them; null for everything else, which prints as before.
     const perToken = buildPlateTokenDocuments(receipt)
-    if (perToken) await printReceiptDocuments(perToken)
+    if (perToken) await printReceiptDocuments(perToken, buildReceiptHtml(receipt))
     else printReceiptHtml(buildReceiptHtml(receipt))
     return true
   } catch {
