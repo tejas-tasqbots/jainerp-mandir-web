@@ -2173,7 +2173,17 @@ function buildFolio(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 22px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 22px 8px; }
     @media print { body{background:#fff;} .page{border:none;margin:0;} }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
+    /* Horizontal padding matching this design's own .body inset. The strip is
+       a SIBLING of the padded blocks, not a child, so without its own inset
+       it sits at x=0 against the page border and the first glyph of "PAN"
+       prints shaved - reported from a real print and from the PDF, and
+       measurable in the render (the text started 1px from the page edge).
+       The ruled design is deliberately NOT in this list: its strip lives
+       inside .idrow, which pads it 10px, so that design is already
+       consistent. NO BACKTICKS IN HERE - this comment is inside a template
+       literal, so a backtick ends the literal and the CSS after it becomes
+       code. That is the seventh time this file has caught me with it. */
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; padding:0 22px; color:#6b7280; }
   </style>
   <div class="page">
     ${voidedBanner(r.is_voided)}
@@ -2260,30 +2270,41 @@ function buildStayInvoice(r: ReceiptData, dateStr: string, mandir: NonNullable<R
     .doc { text-align:right; flex:none; font-size:10px; line-height:1.7; }
     .doc b { font-family:'Courier New',monospace; font-size:12px; }
     .grid { display:flex; border-bottom:1px solid #111827; }
-    .grid > div { flex:1; padding:10px 20px; }
+    /* 8px, not 10. Part of a measured 150px trim: with a 9-night stay this
+       design came to 1150px against A4's 1062px printable box and printed a
+       second page carrying the totals alone. room_gst and ruled render the
+       SAME bill in 1009px and 988px, so the height was spacing rather than
+       content - this design simply had the loosest rhythm of the three. */
+    .grid > div { flex:1; padding:8px 20px; }
     .grid > div + div { border-left:1px solid #d1d5db; }
     .cap { font-size:8px; letter-spacing:1px; text-transform:uppercase; color:#6b7280; font-weight:700; margin-bottom:3px; }
     .nm { font-size:13px; font-weight:700; }
     .sub { font-size:10px; color:#4b5563; line-height:1.5; margin-top:2px; }
     table.facts { width:100%; border-collapse:collapse; }
-    table.facts td { padding:3px 0; font-size:10px; }
+    table.facts td { padding:2px 0; font-size:10px; }
     table.facts td:first-child { color:#6b7280; width:45%; }
     table.facts td:last-child { font-weight:600; }
-    .body { padding:12px 20px; }
+    .body { padding:9px 20px; }
     /* A narrow summary flush right, not a full-width row - the convention
        every invoicing product follows, and measured at 94% of the width
        before this. The itemised table above it still spans the page; it is
        the TOTALS that belong in a column under its right-hand end. */
     table.amt { width:52%; min-width:210px; border-collapse:collapse; margin:10px 0 0 auto;
       page-break-inside:avoid; break-inside:avoid; }
-    table.amt td { padding:5px 8px; font-size:11px; border:1px solid #e5e7eb; }
+    table.amt td { padding:4px 8px; font-size:11px; border:1px solid #e5e7eb; }
     table.amt td:last-child { text-align:right; font-weight:600; white-space:nowrap; }
     table.amt tr.strong td { font-weight:800; font-size:15px; background:#f3f4f6; border-top:1.5px solid #9ca3af; }
     .words { font-size:10px; font-style:italic; color:#4b5563; margin-top:6px; }
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 20px 0; font-size:11px; }
     .footer-note { font-size:10px; color:#6b7280; text-align:center; font-style:italic; padding:0 20px 8px; }
     @media print { .page{border-color:#111827;margin:0;} }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
+    /* 20px, matching .head / .grid / .body. Without it the strip sat at x=0
+       inside a page with a 1.5px border, so the P of "PAN" printed under that
+       border and came out shaved - reported from a real print and from the PDF,
+       and visible in the render once the strip was measured (textL was 1px).
+       Four designs were given this inset by hand when the strip was added and
+       the rest were not, which is why only some templates showed it. */
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; padding:0 20px; color:#6b7280; }
   </style>
   <div class="page">
     <div class="title">${docTitle(r, gstShown ? L.taxInvoice : L.guestFolio)}</div>
@@ -2457,6 +2478,13 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     table.items th { font-size:8.5px; letter-spacing:.8px; text-transform:uppercase; background:#f3f4f6;
       border-bottom:1px solid #111827; padding:5px 6px; text-align:left; color:#374151; }
     table.items td { font-size:10px; padding:5px 6px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    /* The TABLE is inset, not its outer cells. Padding on :first-child /
+       :last-child only reaches whichever cells happen to be first and last, and
+       this table's column set varies - IGST appears only on an interstate
+       supply - so the rightmost column is not always the same one. Measured at
+       1.32mm of clearance on A5, which is where the reported shaving happens;
+       insetting the table itself cannot be undone by a column appearing. */
+    table.items { width:calc(100% - 32px); margin-left:16px; margin-right:16px; }
     table.items td.c, table.items th.c { text-align:center; }
     table.items td.r, table.items th.r { text-align:right; white-space:nowrap; }
     table.items td.lbl { color:#4b5563; font-weight:600; }
@@ -2469,7 +2497,17 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .voided { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; text-align:center; font-weight:700; padding:7px; margin:10px 16px 0; font-size:11px; }
     .footer-note { font-size:9.5px; color:#6b7280; text-align:center; font-style:italic; padding:0 16px 8px; }
     @media print { .page{border-color:#111827;margin:0;} }
-    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; color:#6b7280; }
+    /* Horizontal padding matching this design's own .body inset. The strip is
+       a SIBLING of the padded blocks, not a child, so without its own inset
+       it sits at x=0 against the page border and the first glyph of "PAN"
+       prints shaved - reported from a real print and from the PDF, and
+       measurable in the render (the text started 1px from the page edge).
+       The ruled design is deliberately NOT in this list: its strip lives
+       inside .idrow, which pads it 10px, so that design is already
+       consistent. NO BACKTICKS IN HERE - this comment is inside a template
+       literal, so a backtick ends the literal and the CSS after it becomes
+       code. That is the seventh time this file has caught me with it. */
+    .reg-block { font-size:9.5px; line-height:1.6; margin:6px 0 0; padding:0 16px; color:#6b7280; }
   </style>
   <div class="page">
     <div class="title"><b>${taxed ? L.taxInvoice : L.billOfSupply}</b><span>${L.originalForRecipient}</span></div>
@@ -2652,6 +2690,15 @@ function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     table.items th { font-size:8px; letter-spacing:.8px; text-transform:uppercase; background:#f3f4f6;
       border-bottom:1px solid #111827; padding:4px 6px; text-align:left; color:#374151; font-weight:700; }
     table.items td { font-size:10px; padding:4px 6px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    /* The outer columns align with this design's own inset instead of sitting
+       6px from the frame. An items table that spans the full width is a
+       sibling of the padded blocks, so its first and last cells were the
+       closest ink to the page border in the whole document - measured at
+       7px on A4 and 5px on A5, which is where the reported shaving happens.
+       It is also simply better set: the columns line up with the headings
+       above and below them rather than hanging outside. */
+    table.items th:first-child, table.items td:first-child { padding-left:14px; }
+    table.items th:last-child, table.items td:last-child { padding-right:14px; }
     table.items th + th, table.items td + td { border-left:1px solid #e5e7eb; }
     .c { text-align:center; }
     .r { text-align:right; white-space:nowrap; }
