@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { DesktopUpdateState } from './Layout/UpdateButton'
 
 // Augment the window type to include Electron desktop globals.
 declare global {
@@ -17,6 +18,10 @@ declare global {
         temple: string
         edition: string
       } | null>
+      // Optional: an installer built before the Update button has none of them.
+      getUpdateState?: () => Promise<DesktopUpdateState>
+      onUpdateState?: (cb: (state: DesktopUpdateState) => void) => () => void
+      checkForUpdates?: () => Promise<void>
       [key: string]: unknown
     }
   }

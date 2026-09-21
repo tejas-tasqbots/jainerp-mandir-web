@@ -2839,7 +2839,11 @@
     "closeMenu": "Close menu",
     "language": "Language",
     "logout": "Logout",
-    "menu": "Menu"
+    "menu": "Menu",
+    "updateDownloading": "Downloading update {{percent}}%",
+    "updateDownloadingTitle": "JainERP {{version}} is downloading. You can keep working.",
+    "updateReady": "Update now",
+    "updateReadyTitle": "JainERP {{version}} is ready to install. Click to restart and install it."
   },
   "tour": {
     "accounts": {

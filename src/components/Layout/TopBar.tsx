@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/authStore'
 import { api } from '../../lib/api'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { UpdateButton } from './UpdateButton'
 import { resetTour } from '../Walkthrough'
 
 export function TopBar({ onMenu }: { onMenu?: () => void }) {
@@ -49,6 +50,9 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         </button>
       </div>
       <div className="flex flex-shrink-0 items-center gap-3 sm:gap-4">
+        {/* Desktop only: shows once an update is downloaded, and stays until it
+            is installed. Renders nothing in a browser. */}
+        <UpdateButton />
         {/* Who is signed in: from md up. Below that it pushed into the search
             box (it did at 711 px) and the tenant name above says enough. */}
         <div className="hidden md:flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
