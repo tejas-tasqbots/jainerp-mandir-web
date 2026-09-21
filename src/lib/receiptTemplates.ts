@@ -3442,7 +3442,7 @@ export function printsTokenPerPlate(r: ReceiptData): boolean {
   const template = mandir?.template;
   const tokens = Number((r.meta as Record<string, unknown> | null | undefined)?.tokens ?? 0);
   return !!mandir?.slip_token_per_plate
-    && (template === 'token' || template === 'compact')
+    && (template === 'token' || template === 'compact' || template === 'plate')
     && r.slip_kind === 'bhojanshala'
     && !r.is_voided
     && Number.isInteger(tokens) && tokens > 1 && tokens <= MAX_PLATE_TOKENS;
@@ -3468,9 +3468,28 @@ function buildPlateToken(
   <div class="slip">
     <div class="name">${mandir.name}</div>
     <div class="kind">${docTitle(r, L.bhojanshalaToken)}</div>
-    <div class="of">${index} / ${of}</div>
+    ${mandir.template === 'plate'
+      // ── A LAYOUT WITHOUT THE RUNNING NUMBER ────────────────────────────────
+      // Asked for directly: ten thalis should produce ten tokens that each say
+      // "1 plate", not "1 / 10" ... "10 / 10". The numbering exists so a torn
+      // off token cannot be mistaken for the whole sale, which matters when a
+      // family is handed the strip and presents it in pieces. It gets in the
+      // way when the tokens are handed out individually - a devotee holding
+      // "7 / 10" reads it as a queue position or a shortfall, and asks.
+      //
+      // The plate count TAKES THE NUMBER'S PLACE rather than just being
+      // deleted. The big line is the only thing readable at arm's length
+      // across a counter, and a token whose largest text is the trust's name
+      // is a token the server has to lean in to read. Measured side by side:
+      // with the number simply removed, the tallest thing left was 11px.
+      ? `<div class="of">${L.onePlate}</div>`
+      : `<div class="of">${index} / ${of}</div>`}
     ${meal ? `<div class="meal">${meal}</div>` : ''}
-    <div class="plate">${L.onePlate}${rate > 0 ? ` · ₹ ${fmtRs(rate)}` : ''}</div>
+    ${mandir.template === 'plate'
+      // The words are already the big line above, so this carries the rate
+      // alone rather than repeating "1 plate" underneath itself.
+      ? (rate > 0 ? `<div class="plate">₹ ${fmtRs(rate)}</div>` : '')
+      : `<div class="plate">${L.onePlate}${rate > 0 ? ` · ₹ ${fmtRs(rate)}` : ''}</div>`}
     ${slipRow(L.receiptNo, r.receipt_number ?? '—')}
     ${slipRow(L.date, dateStr)}
     <div class="note">${mandir.footer || L.thankYou}</div>
@@ -3593,6 +3612,56 @@ function pageRules(paper: string | undefined, template: string): string {
   .receipt-copy:last-of-type { page-break-after: auto; break-after: auto; }`}`
 }
 
+/**
+ * One document per plate token, for printers that cut per JOB.
+ *
+ * ── WHY THIS EXISTS ────────────────────────────────────────────────────────
+ * A bhojanshala sale of three thalis prints three tokens, and the dining hall
+ * collects one per plate — so they have to arrive as three separate pieces of
+ * paper. The renderer already puts each token on its own PAGE on a roll, and
+ * that is not enough: most ESC/POS drivers cut at the end of the JOB rather
+ * than at the end of every page. Photographed at the counter: three tokens
+ * (1/3, 2/3, 3/3) came out as one continuous strip with one cut at the bottom.
+ *
+ * There is no raw device channel anywhere in this product — the desktop bridge
+ * is print:html / print:page / print:toPDF and nothing else — so an ESC/POS
+ * cut command between tokens is not available. What IS available is ending the
+ * job, which every such driver does cut on. So: N tokens, N documents, N jobs.
+ *
+ * Returns null when this does not apply — a sheet tiles its tokens to be cut
+ * by hand, and a single-token sale is a single document either way. The caller
+ * then prints the one document it would have printed before.
+ */
+export function buildPlateTokenDocuments(input: ReceiptData): string[] | null {
+  if (!printsTokenPerPlate(input)) return null
+  // Sheet paper is unaffected: the tokens tile on one page and are cut along
+  // the dashed lines, which is the point of that layout.
+  if (!isRoll(input.mandir?.receipt_paper)) return null
+
+  const n = Number((input.meta as Record<string, unknown>).tokens)
+  const docs: string[] = []
+  for (let i = 1; i <= n; i++) {
+    // Each document carries ONE token, so it is a complete job on its own.
+    // `plate_index` narrows the existing renderer to a single plate rather
+    // than duplicating buildPlateToken's layout here — one place draws a
+    // token, and this only chooses how many jobs it goes into.
+    docs.push(buildReceiptHtml({
+      ...input,
+      meta: { ...(input.meta as Record<string, unknown>), plate_index: i },
+    }))
+  }
+  // The office copy, when the trust keeps one, is the single combined slip —
+  // the counter reconciles the SALE, not the plates. It is the last job so the
+  // devotee's tokens are already off the printer when it prints.
+  if (input.mandir?.receipt_copies === 'both') {
+    docs.push(buildReceiptHtml({
+      ...input,
+      meta: { ...(input.meta as Record<string, unknown>), plate_index: 0 },
+    }))
+  }
+  return docs
+}
+
 export function buildReceiptHtml(input: ReceiptData): string {
   // A document that has not been numbered yet arrives with receipt_number:
   // null; every template interpolates it directly, so the guest's copy read
@@ -3639,7 +3708,9 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // A counter slip is chosen by TEMPLATE, not by paper: a trust may print a
   // token on A5 (a half-sheet cut in two at the window is common) and still
   // want the token layout, while another prints full receipts on an 80 mm roll.
-  const slip = template === 'token' || template === 'compact'
+  // 'plate' is the token layout without the running number - see
+  // buildPlateToken. It is a slip like the other two.
+  const slip = template === 'token' || template === 'compact' || template === 'plate'
 
   const one = (copyLabel?: string) => {
     const body = slip
@@ -3682,9 +3753,24 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // along the dashed lines.
   if (printsTokenPerPlate(r)) {
     const n = Number((r.meta as Record<string, unknown>).tokens)
-    const tokens = Array.from({ length: n }, (_, i) =>
-      `<div class="plate-token">${buildPlateToken(r, dateStr, mandir, i + 1, n)}</div>`).join('')
-    const office = mandir.receipt_copies === 'both'
+    // ── ONE TOKEN, WHEN ASKED FOR ONE ───────────────────────────────────────
+    // `plate_index` narrows this document to a single plate, so a caller can
+    // print N tokens as N separate JOBS. That is not the same as N pages: most
+    // ESC/POS drivers cut at the end of the job, not of each page, so a
+    // three-token job came off the printer as one strip with one cut.
+    // buildPlateTokenDocuments() is the caller; 0 means the office copy alone.
+    // Absent means the whole set in one document, which is what a SHEET wants
+    // (its tokens tile and are cut by hand) and what every existing caller
+    // gets unchanged.
+    const only = Number((r.meta as Record<string, unknown>).plate_index ?? NaN)
+    const single = Number.isInteger(only)
+    const from = single ? only : 1
+    const to = single ? only : n
+    const tokens = from < 1 ? '' : Array.from({ length: to - from + 1 }, (_, i) =>
+      `<div class="plate-token">${buildPlateToken(r, dateStr, mandir, from + i, n)}</div>`).join('')
+    // The office copy prints with the set, or alone when plate_index is 0.
+    const wantsOffice = mandir.receipt_copies === 'both' && (!single || only === 0)
+    const office = wantsOffice
       ? `<div class="plate-office">${one(L.officeCopy)}</div>`
       : ''
     // Last in the document on purpose: the office copy carries the slip
@@ -3727,7 +3813,14 @@ export function buildReceiptHtml(input: ReceiptData): string {
   .copy-banner{text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;padding:8px 0 0;}
   .copy-sep{border-top:1px dashed #9ca3af;margin:16px 0;}
   /* The roll separator. Zero height, because it draws nothing: it exists only
-     to end the page, which is how a receipt-mode driver is asked to cut. On
+     to end the page.
+     A PAGE BREAK IS NOT A CUT. That was the assumption here and it is wrong:
+     most ESC/POS drivers cut at the end of the JOB, not at the end of each
+     page, so a three-token job came off the printer as one strip with a single
+     cut at the bottom - photographed at the counter. Ending the page is still
+     right (it keeps a token from being split across a tear), but a document
+     that must arrive as N separate pieces has to be printed as N separate
+     JOBS. printReceiptDocuments() does that; see buildPlateTokenDocuments. On
      screen it is invisible, which is correct - a preview of a cut is nothing
      to look at. */
   .roll-cut{height:0;page-break-after:always;break-after:page;}

@@ -10,7 +10,7 @@
  */
 
 import { api } from './api'
-import { buildReceiptHtml, type ReceiptData } from './receiptTemplates'
+import { buildPlateTokenDocuments, buildReceiptHtml, type ReceiptData } from './receiptTemplates'
 
 // The designs, re-exported: `printReceipt` stays the one import path.
 export * from './receiptTemplates'
@@ -98,6 +98,51 @@ function desktopBridge(): DesktopPrintBridge | undefined {
  * writes a PDF and opens it when there is no printer — a counter machine
  * frequently has none configured. The browser build is untouched.
  */
+/**
+ * Print several documents as several JOBS, one after another.
+ *
+ * ── WHY N JOBS AND NOT N PAGES ─────────────────────────────────────────────
+ * A bhojanshala sale of three thalis has to come off the printer as three
+ * separate tokens, because the dining hall collects one per plate. The
+ * renderer already gives each token its own PAGE on a roll — and that is not
+ * enough. Most ESC/POS drivers cut at the end of the JOB, not at the end of
+ * each page. Photographed at the counter: tokens 1/3, 2/3 and 3/3 printed as
+ * one continuous strip with a single cut at the bottom.
+ *
+ * There is no raw device channel in this product (the desktop bridge is
+ * print:html / print:page / print:toPDF), so an ESC/POS cut between tokens is
+ * not available. Ending the job is, and every such driver cuts on that.
+ *
+ * ── SEQUENTIALLY, AND WHY THAT MATTERS ─────────────────────────────────────
+ * Awaited one at a time rather than fired together. Each call opens a window,
+ * loads a document and prints it; three at once would race for the printer and
+ * can interleave, which on a roll means two half-tokens. Slower and in order
+ * beats faster and shuffled when the output is physical.
+ *
+ * A failure does not stop the rest: if token 2 fails, tokens 1 and 3 have
+ * still been paid for and the hall still needs them. The PDF fallback opens
+ * for whichever ones fell back, exactly as the single-document path does.
+ */
+export async function printReceiptDocuments(htmls: string[]): Promise<void> {
+  const bridge = desktopBridge()
+  if (!bridge?.printHtml || htmls.length <= 1) {
+    // A browser cannot reliably fire N print jobs — each would need its own
+    // dialog, and a popup blocker or an impatient cancel leaves the counter
+    // with an unknown number of tokens. One document is the honest behaviour
+    // there, and the dashed cut lines are what it is for.
+    printReceiptHtml(htmls[0] ?? '')
+    return
+  }
+  for (const html of htmls) {
+    try {
+      const res = await bridge.printHtml(html)
+      if (!res?.success && res?.filePath) void bridge.openPath?.(res.filePath)
+    } catch {
+      // Keep going: see the note above about the plates already paid for.
+    }
+  }
+}
+
 export function printReceiptHtml(html: string): void {
   const bridge = desktopBridge()
   if (bridge?.printHtml) {
@@ -152,6 +197,10 @@ export function printReceiptHtml(html: string): void {
  */
 export async function printDonationReceipt(id: string, basePath = '/donations'): Promise<void> {
   const receipt = await fetchReceipt(id, basePath)
+  // Also the manual Print button's path: a reprint of a three-thali sale has to
+  // produce three tokens just as the original did.
+  const perToken = buildPlateTokenDocuments(receipt)
+  if (perToken) { await printReceiptDocuments(perToken); return }
   printReceiptHtml(buildReceiptHtml(receipt))
 }
 
@@ -186,7 +235,11 @@ export async function autoPrintSlip(id: string, basePath: string): Promise<boole
   try {
     const receipt = await fetchReceipt(id, basePath)
     if (!receipt.mandir?.slip_auto_print) return false
-    printReceiptHtml(buildReceiptHtml(receipt))
+    // One job per plate token on a roll, so the printer's end-of-job cut
+    // separates them; null for everything else, which prints as before.
+    const perToken = buildPlateTokenDocuments(receipt)
+    if (perToken) await printReceiptDocuments(perToken)
+    else printReceiptHtml(buildReceiptHtml(receipt))
     return true
   } catch {
     return false

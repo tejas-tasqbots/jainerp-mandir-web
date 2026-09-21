@@ -1624,6 +1624,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 <select className="form-select" value={form.slip_template}
                   onChange={e => set('slip_template', e.target.value)}>
                   <option value="token">{t('settings.slips.layoutToken')}</option>
+                  {/* Same token, without the running number. A trust that hands
+                      tokens out one at a time wants "1 plate" on each rather
+                      than "7 / 10", which reads as a queue position. */}
+                  <option value="plate">{t('settings.slips.layoutPlate')}</option>
                   <option value="compact">{t('settings.slips.layoutCompact')}</option>
                   <option value="receipt">{t('settings.slips.layoutReceipt')}</option>
                 </select>

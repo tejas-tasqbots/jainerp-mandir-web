@@ -2401,7 +2401,8 @@
       "paperA5": "A5 (half sheet)",
       "subheading": "Prasad, Seva and Bhojanshala tokens — printed separately from donation receipts.",
       "tokenPerPlate": "Bhojanshala: print a separate token for each plate",
-      "tokenPerPlateHelp": "A sale of 10 plates prints 10 tokens (1 / 10 … 10 / 10), so each person carries their own and the dining hall collects one per thali. The counter stub still prints once, with the total. Up to {{max}} tokens per sale; a larger sale prints one slip."
+      "tokenPerPlateHelp": "A sale of 10 plates prints 10 tokens (1 / 10 … 10 / 10), so each person carries their own and the dining hall collects one per thali. The counter stub still prints once, with the total. Up to {{max}} tokens per sale; a larger sale prints one slip.",
+      "layoutPlate": "Plate token (no 1 / 10 numbering)"
     },
     "bhojanshalaRates": {
       "heading": "Bhojanshala rates",
