@@ -139,9 +139,20 @@ export interface ReceiptData {
     // before sending (see receipt-mandir.ts). That is deliberate: this renderer
     // needs to know what to draw and on what paper, not which module asked.
     receipt_copies?: 'single' | 'both'
-    receipt_paper?: 'a4' | 'a5' | 'thermal58' | 'thermal80'
+    receipt_paper?: 'a4' | 'a5' | 'thermal58' | 'thermal80' | 'thermal112'
     receipt_language?: string
     receipt_show_upi_qr?: boolean
+    /**
+     * Roll-only print options (tenant migration 052).
+     *
+     * Separate from the A4/A5 settings because none of them mean anything on a
+     * sheet: a sheet has no cutter, no feed, and enough width that hiding a row
+     * to save space is never the question.
+     *
+     * Validated by `thermalOpts()` before use — a stored jsonb row outlives the
+     * code that wrote it, the same reason `label_overrides` is re-validated.
+     */
+    receipt_thermal?: unknown
     /**
      * The trust's own APPROVED design, when `template` is 'custom'.
      *
@@ -3072,25 +3083,155 @@ function renderBody(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
 }
 
 /**
- * 80 mm thermal roll layout (plan §16). Deliberately its own minimal renderer
- * rather than a squeezed A4 template: at 72 mm of printable width the boxed,
+ * ROLL GEOMETRY, IN ONE PLACE.
+ *
+ * The three sizes a counter actually buys, by the inch measurement printers are
+ * sold under: 2" (58 mm), 3" (80 mm) and 4" (112 mm). `printable` is narrower
+ * than the roll because a thermal head does not print to the paper edge — the
+ * margins are mechanical, not a design choice.
+ *
+ * This exists as a table because the width was previously computed in two
+ * places and hardcoded in a third, and they disagreed: a trust that chose the
+ * 58 mm roll got a receipt laid out for 80 mm, which printed off the edge of
+ * its own paper. One table, read by every roll renderer.
+ */
+/**
+ * ── WHY EVERY ROLL CARRIES AN EXPLICIT HEIGHT, AND `auto` DOES NOT WORK ─────
+ *
+ * This table used to say `size: 58mm auto`, and so did the slip renderer. That
+ * is INVALID CSS: `size` takes `auto` on its own, or one length, or two
+ * lengths — never a length paired with `auto`. Chromium discards the whole
+ * declaration and falls back to its default paper, so every thermal receipt
+ * this product has ever produced declared US Letter. Measured, from the PDF
+ * MediaBox the driver is handed: 215.9mm wide, on all three rolls.
+ *
+ * The damage is the WIDTH. A 72mm layout on 215.9mm of declared paper is
+ * clipped or scaled by whatever the driver decides, and the desktop's own PDF
+ * fallback — what it writes when a silent print times out, which is the normal
+ * case on a machine with no printer configured — came out Letter-sized with the
+ * receipt in one corner.
+ *
+ * So: two explicit lengths. The height cannot be computed, because a roll is
+ * continuous and this renderer has no way to measure itself — the desktop
+ * prints receipts with `javascript: false`, so nothing can run in the document.
+ * The heights below come from measuring the real thing at each width with
+ * ordinary and worst-case data (a 58mm roll wraps the most, so it needs the
+ * most room: 253mm measured against 190mm on the 4" roll), plus headroom.
+ *
+ * They are deliberately generous, because the two failures are not equal: a
+ * receipt SPLIT across two pages is torn in half by the cutter and has to be
+ * reprinted, while a page taller than its content only leaves a blank tail —
+ * and a continuous-feed driver in receipt mode feeds to the last printed line
+ * and trims it anyway. That is also the difference between this and the old
+ * behaviour, which declared Letter and got the width wrong as well.
+ */
+const ROLL: Record<string, { page: string; printable: string; inches: string }> = {
+  thermal58: { page: '58mm 380mm', printable: '48mm', inches: '2"' },
+  thermal80: { page: '80mm 300mm', printable: '72mm', inches: '3"' },
+  thermal112: { page: '112mm 280mm', printable: '104mm', inches: '4"' },
+}
+
+/** Every roll size, for the paper-size checks that used to list two by hand. */
+const isRoll = (paper?: string): boolean => !!paper && paper in ROLL
+
+const rollGeom = (paper?: string) => ROLL[paper ?? ''] ?? ROLL.thermal80
+
+/**
+ * The optional rows a roll may be told to leave out.
+ *
+ * A type rather than an array, because nothing here needs the values at
+ * runtime: `show()` tests membership of the trust's OWN stored list, and an
+ * unrecognised string in that list simply never matches a field name. The
+ * runtime list that IS needed — by the settings screen, to draw the checkboxes,
+ * and by the API, to refuse an unknown one — lives in
+ * mandiradmin-web/src/lib/thermalOptions.ts and in receipt-mandir.ts. This file
+ * is vendored byte-identical into devotee-api, so it carries only what the
+ * renderer itself uses.
+ */
+type ThermalField =
+  | 'mobile' | 'pan' | 'category' | 'payment_mode'
+  | 'amount_in_words' | 'registration' | 'upi_qr' | 'footer'
+
+interface ThermalOpts {
+  /** Heavier weights and pure black, for a head that has faded. */
+  bold: boolean
+  /** Blank millimetres after the last line, so the cut misses the text. */
+  feedMm: number
+  /** Break the page between copies, which is what makes a cutter fire. */
+  cutBetweenCopies: boolean
+  /** Which optional rows to print. */
+  show: (f: ThermalField) => boolean
+}
+
+/**
+ * Read the trust's roll options, defensively.
+ *
+ * Every default is the CURRENT behaviour, so a trust that has never opened
+ * these settings gets exactly the receipt it got before this existed. That is
+ * the whole contract of adding options to something already in use.
+ *
+ * ── WHY `feedMm` MATTERS AND IS NOT COSMETIC ────────────────────────────────
+ * On a thermal printer the cutter sits 15-20 mm PAST the print head. Whatever
+ * is in that gap when the cut fires is either sliced through or left hanging on
+ * the next receipt. Counters work around it by hand-feeding, which wastes paper
+ * and sometimes takes the total with it. 18 mm is the middle of the common
+ * range and is the default.
+ *
+ * ── AND WHY THERE IS NO ESC/POS HERE ────────────────────────────────────────
+ * A real auto-cut is an ESC/POS byte sequence (GS V) sent to the device. This
+ * renderer produces HTML that Chromium prints through the OS driver — there is
+ * no raw device channel anywhere in the product (the desktop bridge exposes
+ * print:html, print:page and print:toPDF, and nothing else). So `cut` here
+ * means "end the page", because an ESC/POS driver in receipt mode feeds and
+ * cuts at page end. That is a real cut, obtained the only way this stack can
+ * obtain one; claiming to send a cut command would be a lie in a comment.
+ */
+function thermalOpts(mandir: NonNullable<ReceiptData['mandir']>): ThermalOpts {
+  const raw = mandir.receipt_thermal
+  const o = (raw && typeof raw === 'object' && !Array.isArray(raw))
+    ? raw as Record<string, unknown>
+    : {}
+
+  // An explicit list means "only these"; anything else means "all of them",
+  // which is the behaviour every existing trust already has.
+  const listed = Array.isArray(o.fields)
+    ? new Set((o.fields as unknown[]).filter((f): f is string => typeof f === 'string'))
+    : null
+
+  const feed = Number(o.feed_mm)
+  return {
+    bold: o.bold === true,
+    // Clamped: a negative feed is meaningless and a huge one silently eats a
+    // roll. 0 is allowed and means the trust tears by hand.
+    feedMm: Number.isFinite(feed) ? Math.min(Math.max(feed, 0), 40) : 18,
+    cutBetweenCopies: o.cut_between_copies !== false,
+    show: (f) => (listed ? listed.has(f) : true),
+  }
+}
+
+/**
+ * Thermal roll layout (plan §16). Deliberately its own minimal renderer rather
+ * than a squeezed A4 template: at 72 mm of printable width the boxed,
  * two-column A4 designs are unreadable, and thermal printers render only
  * monochrome text well.
  */
 function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>): string {
   const row = (k: string, v: string) => `<div class="tr"><span>${k}</span><span>${v}</span></div>`
-  // The 58 mm roll printed at 80 mm: this size was hardcoded while buildSlip
-  // computed it, so a trust that chose the narrow roll got a receipt too wide
-  // for its printer. Same rule in both places now.
-  const narrow = mandir.receipt_paper === 'thermal58'
+  const geom = rollGeom(mandir.receipt_paper)
+  const t = thermalOpts(mandir)
+  // A faded head prints grey where the design asked for grey. On a roll the
+  // only reliable ink is full black, so "bold" removes the greys entirely
+  // rather than merely thickening the strokes.
+  const ink = t.bold ? '#000' : '#333'
+  const w = (normal: number, heavy: number) => (t.bold ? heavy : normal)
   return `
   <style>
-    @page { size: ${narrow ? '58mm' : '80mm'} auto; margin: 0; }
+    @page { size: ${geom.page}; margin: 0; }
     body { background:#fff; font-family:'Arial',sans-serif; }
-    .roll { width:${narrow ? '48mm' : '72mm'}; margin:0 auto; padding:6mm 2mm; color:#000; font-size:11px; line-height:1.5; }
+    .roll { width:${geom.printable}; margin:0 auto; padding:6mm 2mm; color:#000; font-size:${t.bold ? '11.5px' : '11px'}; line-height:1.5; ${t.bold ? 'font-weight:600;' : ''} }
     .roll .name { text-align:center; font-size:14px; font-weight:800; }
     .roll .addr { text-align:center; font-size:10px; margin-bottom:6px; }
-    .roll .title { text-align:center; font-weight:700; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
+    .roll .title { text-align:center; font-weight:${w(700, 800)}; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
     .tr { display:flex; justify-content:space-between; gap:8px; }
     /* The label keeps its width and the VALUE wraps. Without min-width:0 a flex
        item refuses to shrink below its content, so a long value ran off the
@@ -3098,11 +3239,14 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
        measured 236px against 219px of paper and printed off the edge, on every
        design. break-all rather than normal wrapping because these are
        identifiers with no spaces to break at. */
-    .tr span:first-child { color:#333; flex:none; }
-    .tr span:last-child { font-weight:600; text-align:right; min-width:0; word-break:break-all; }
-    .amt { text-align:center; font-size:16px; font-weight:800; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; margin:6px 0; }
+    .tr span:first-child { color:${ink}; flex:none; }
+    .tr span:last-child { font-weight:${w(600, 700)}; text-align:right; min-width:0; word-break:break-all; }
+    .amt { text-align:center; font-size:${t.bold ? '17px' : '16px'}; font-weight:800; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; margin:6px 0; }
     .words { font-size:10px; font-style:italic; text-align:center; margin-bottom:6px; }
     .note { font-size:9.5px; text-align:center; margin-top:6px; }
+    /* The mechanical gap between the print head and the cutter. Without it the
+       cut lands in the middle of the last line it printed. */
+    .feed { height:${t.feedMm}mm; }
     .voided-t { text-align:center; font-weight:800; border:1px solid #000; padding:3px; margin-bottom:6px; }
     .upi-qr { text-align:center; margin-top:8px; }
     .upi-qr img { width:32mm; height:32mm; }
@@ -3118,17 +3262,18 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     ${row(L.receiptNo, r.receipt_number ?? '—')}
     ${row(L.date, dateStr)}
     ${row(L.receivedFrom, r.donor?.name || L.anonymous)}
-    ${r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
-    ${donorPan(r) ? row(L.pan, donorPan(r)!) : ''}
-    ${row(L.category, r.category || L.generalDonation)}
-    ${row(L.paymentMode, paymentModeText(r))}
+    ${t.show('mobile') && r.donor?.mobile ? row(L.mobile, r.donor.mobile) : ''}
+    ${t.show('pan') && donorPan(r) ? row(L.pan, donorPan(r)!) : ''}
+    ${t.show('category') ? row(L.category, r.category || L.generalDonation) : ''}
+    ${t.show('payment_mode') ? row(L.paymentMode, paymentModeText(r)) : ''}
     <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
-    <div class="words">${amountInWords(r.amount_paise)}</div>
+    ${t.show('amount_in_words') ? `<div class="words">${amountInWords(r.amount_paise)}</div>` : ''}
     ${r.is_80g_eligible && mandir.show_80g ? `<div class="note">${L.valid80g}</div>` : ''}
-    ${mandir.registration_number ? row(L.registrationNo, mandir.registration_number) : ''}
-    ${mandir.darpan_number ? row(L.darpanNo, mandir.darpan_number) : ''}
-    ${upiQrBlock(r)}
-    <div class="note">${mandir.footer || L.thankYou}</div>
+    ${t.show('registration') && mandir.registration_number ? row(L.registrationNo, mandir.registration_number) : ''}
+    ${t.show('registration') && mandir.darpan_number ? row(L.darpanNo, mandir.darpan_number) : ''}
+    ${t.show('upi_qr') ? upiQrBlock(r) : ''}
+    ${t.show('footer') ? `<div class="note">${mandir.footer || L.thankYou}</div>` : ''}
+    <div class="feed"></div>
   </div>`
 }
 
@@ -3154,11 +3299,18 @@ const slipRow = (k: string, v: string) =>
   `<div class="sr"><span>${k}</span><span>${v}</span></div>`;
 
 function slipStyles(mandir: NonNullable<ReceiptData['mandir']>): string {
-  const width = mandir.receipt_paper === 'thermal58' ? '48mm' : '72mm';
-  const page = mandir.receipt_paper === 'thermal58' ? '58mm auto' : '80mm auto';
+  // Same table the receipt renderer reads, so a slip and a receipt on the same
+  // roll cannot disagree about how wide that roll is.
+  const geom = rollGeom(mandir.receipt_paper);
+  const t = thermalOpts(mandir);
+  const width = geom.printable;
+  const page = geom.page;
   return `
   <style>
     @page { size: ${page}; margin: 0; }
+    /* A slip is torn off at the window like a receipt is, so it needs the same
+       clearance past the print head. */
+    .slip .feed { height:${t.feedMm}mm; }
     body { background:#fff; font-family:'Arial',sans-serif; }
     .slip { width:${width}; margin:0 auto; padding:5mm 2mm; color:#000; font-size:11px; line-height:1.45; }
     .slip .name { text-align:center; font-size:13px; font-weight:800; }
@@ -3220,6 +3372,7 @@ function buildSlip(
     <div class="tot">₹ ${fmtRs(r.amount_paise)}</div>
     ${compact ? row(L.paymentMode, paymentModeText(r)) : ''}
     <div class="note">${mandir.footer || L.thankYou}</div>
+    <div class="feed"></div>
   </div>`;
 }
 
@@ -3433,7 +3586,9 @@ export function buildReceiptHtml(input: ReceiptData): string {
     template = 'stay_invoice'
   }
   const color = mandir.primary_color || '#0D1B2E'
-  const thermal = mandir.receipt_paper === 'thermal80' || mandir.receipt_paper === 'thermal58'
+  // `isRoll`, not a hand-written list of two: adding the 4" roll to that list
+  // and missing this line would have printed it through the A4 renderer.
+  const thermal = isRoll(mandir.receipt_paper)
   // A counter slip is chosen by TEMPLATE, not by paper: a trust may print a
   // token on A5 (a half-sheet cut in two at the window is common) and still
   // want the token layout, while another prints full receipts on an 80 mm roll.
@@ -3459,8 +3614,18 @@ export function buildReceiptHtml(input: ReceiptData): string {
 
   // "Both" prints the donor's copy and the office's file copy on one job, so
   // the counter doesn't have to run the print twice and risk a mismatch.
+  // On a ROLL the separator is a page break, not a rule.
+  //
+  // A dashed line asks the counter to tear two receipts apart by hand and
+  // usually means they come off as one long strip. Ending the page is what
+  // makes an ESC/POS driver in receipt mode feed and cut, so the donor's copy
+  // arrives separately from the office's — which is the entire point of
+  // printing both in one job.
+  const rollCut = thermal && thermalOpts(mandir).cutBetweenCopies
   let copies = mandir.receipt_copies === 'both'
-    ? one(L.donorCopy) + `<div class="copy-sep"></div>` + one(L.officeCopy)
+    ? one(L.donorCopy)
+      + (rollCut ? `<div class="roll-cut"></div>` : `<div class="copy-sep"></div>`)
+      + one(L.officeCopy)
     : one()
 
   // One token per plate (tenant migration 039). The devotee gets N tokens; the
@@ -3514,6 +3679,11 @@ export function buildReceiptHtml(input: ReceiptData): string {
   body{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1;}
   .copy-banner{text-align:center;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6b7280;padding:8px 0 0;}
   .copy-sep{border-top:1px dashed #9ca3af;margin:16px 0;}
+  /* The roll separator. Zero height, because it draws nothing: it exists only
+     to end the page, which is how a receipt-mode driver is asked to cut. On
+     screen it is invisible, which is correct - a preview of a cut is nothing
+     to look at. */
+  .roll-cut{height:0;page-break-after:always;break-after:page;}
   .upi-qr{text-align:center;padding:12px 0 18px;}
   .upi-qr img{width:120px;height:120px;}
   .upi-cap{font-size:10.5px;color:#6b7280;margin-top:4px;}

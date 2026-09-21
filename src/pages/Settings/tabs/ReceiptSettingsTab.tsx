@@ -5,6 +5,10 @@ import { api, apiErrorMessage } from '../../../lib/api'
 import { buildReceiptHtml, buildUpiQr, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
 import { parseLabelOverrides, type LabelOverrides } from '../../../lib/receiptLabels'
+import {
+  THERMAL_FIELD_KEYS, MAX_FEED_MM, isRollPaper, readThermal, rollFields, rollFieldOn,
+  type ThermalOptions,
+} from '../../../lib/thermalOptions'
 import { ReceiptWordingCard } from './ReceiptWordingCard'
 import { ReceiptDesignerCard } from './ReceiptDesignerTab'
 import type { ReceiptDefinition } from '../../../lib/receiptDefinition'
@@ -465,6 +469,11 @@ const BLANK = {
   // read through is where the override lands, so there is nothing per-design to
   // keep in sync.
   receipt_label_overrides: {} as LabelOverrides,
+  // Roll-only print options (tenant migration 052). An EMPTY object, not a
+  // filled-in default: an absent key means the renderer keeps doing what it
+  // did before this setting existed, and writing defaults here would store
+  // choices the trust never made.
+  receipt_thermal: {} as ThermalOptions,
 }
 
 /**
@@ -777,6 +786,10 @@ function buildPreviewData(
       // happen - which is exactly the "preview while updating is not updating"
       // that was reported.
       label_overrides: form.receipt_label_overrides,
+      // So the preview pane shows the feed, the bold and the hidden rows.
+      // Without this a trust unticks a field and watches nothing happen,
+      // which is the same complaint the wording overrides already fixed.
+      receipt_thermal: form.receipt_thermal,
       // A design under edit wins over the selected one. `template: 'custom'`
       // with a definition is exactly what a counter prints, so the pane is the
       // real thing and not a mock-up of it.
@@ -940,6 +953,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         // older build, or restored from a backup, must not put this editor into
         // a state the renderer will refuse.
         receipt_label_overrides: parseLabelOverrides(p.receipt_label_overrides),
+        receipt_thermal: readThermal(p.receipt_thermal),
       }))
     }).catch(() => {})
   }, [])
@@ -1009,6 +1023,19 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     return () => { live = false }
   }, [form.upi_id, form.name, form.receipt_show_upi_qr])
 
+  /** The roll options currently in the form. */
+  const thermal: ThermalOptions = form.receipt_thermal
+
+  /**
+   * Merge one roll option into the stored object.
+   *
+   * A merge rather than a replace because these are four independent settings
+   * in one column: ticking Bold must not drop the feed the trust just typed.
+   */
+  function setThermal(patch: Partial<ThermalOptions>) {
+    set('receipt_thermal', { ...form.receipt_thermal, ...patch } as ThermalOptions)
+  }
+
   function set<K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) {
     setForm(f => ({ ...f, [k]: v }))
   }
@@ -1075,6 +1102,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         slip_auto_print: form.slip_auto_print,
         slip_token_per_plate: form.slip_token_per_plate,
         receipt_label_overrides: form.receipt_label_overrides,
+        receipt_thermal: form.receipt_thermal,
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -1332,6 +1360,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   <option value="a5">{t('settings.receipts.paperA5')}</option>
                   <option value="thermal80">{t('settings.receipts.paperThermal')}</option>
                   <option value="thermal58">{t('settings.receipts.paperThermal58')}</option>
+                  <option value="thermal112">{t('settings.receipts.paperThermal112')}</option>
                 </select>
               </div>
               <div>
@@ -1358,8 +1387,75 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 {t('settings.receipts.upiQrNeedsId')}
               </p>
             )}
-            {form.receipt_paper === 'thermal80' && (
+            {isRollPaper(form.receipt_paper) && (
               <p className="text-xs text-slate-500">{t('settings.receipts.thermalNote')}</p>
+            )}
+
+            {/* ── ROLL OPTIONS ─────────────────────────────────────────────
+                Shown only for a roll, because none of it means anything on a
+                sheet: a sheet has no cutter, no feed, and enough width that
+                hiding a row to save space is never the question. */}
+            {isRollPaper(form.receipt_paper) && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 space-y-3" data-testid="roll-options">
+                <p className="text-xs font-semibold text-slate-700">{t('settings.receipts.rollOptions')}</p>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" data-testid="roll-bold"
+                    checked={thermal.bold === true}
+                    onChange={e => setThermal({ bold: e.target.checked })} />
+                  {t('settings.receipts.rollBold')}
+                </label>
+                <p className="form-hint">{t('settings.receipts.rollBoldHint')}</p>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" data-testid="roll-cut"
+                    checked={thermal.cut_between_copies !== false}
+                    onChange={e => setThermal({ cut_between_copies: e.target.checked })} />
+                  {t('settings.receipts.rollCut')}
+                </label>
+                <p className="form-hint">{t('settings.receipts.rollCutHint')}</p>
+
+                <div>
+                  <label className="form-label">{t('settings.receipts.rollFeed')}</label>
+                  <input type="number" min={0} max={MAX_FEED_MM} step={1}
+                    className="form-input w-28" data-testid="roll-feed"
+                    value={thermal.feed_mm ?? 18}
+                    onChange={e => {
+                      // Clamped here as well as in the renderer: a number input
+                      // still accepts a typed value outside min/max, and the
+                      // API refuses the save with a sentence rather than
+                      // silently storing something that cannot print.
+                      const n = Number(e.target.value)
+                      if (!Number.isFinite(n)) return
+                      setThermal({ feed_mm: Math.min(Math.max(Math.round(n), 0), MAX_FEED_MM) })
+                    }} />
+                  <p className="form-hint">{t('settings.receipts.rollFeedHint')}</p>
+                </div>
+
+                <div>
+                  <label className="form-label">{t('settings.receipts.rollFields')}</label>
+                  <p className="form-hint">{t('settings.receipts.rollFieldsHint')}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                    {THERMAL_FIELD_KEYS.map(f => (
+                      <label key={f} className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" data-testid={`roll-field-${f}`}
+                          checked={rollFieldOn(thermal, f)}
+                          onChange={e => setThermal({
+                            // An absent list means "all of them", so the first
+                            // time anything is unticked the full list has to be
+                            // written out — otherwise unticking one field would
+                            // read as "only this one is off" against a value
+                            // that does not exist yet.
+                            fields: e.target.checked
+                              ? [...rollFields(thermal), f]
+                              : rollFields(thermal).filter(x => x !== f),
+                          })} />
+                        {t(`settings.receipts.rollField_${f}`)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
