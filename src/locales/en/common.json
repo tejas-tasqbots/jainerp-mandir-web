@@ -2495,7 +2495,10 @@
       "testPrint": "Test print",
       "testing": "Printing…",
       "testSent": "Sent to {{printer}}. If the paper comes out blank, choose your receipt printer above and test again.",
-      "testFailed": "Could not print on {{printer}} ({{reason}}). It has been opened as a PDF instead."
+      "testFailed": "Could not print on {{printer}} ({{reason}}). It has been opened as a PDF instead.",
+      "receiptTestHint": "Test print sends a 3-token Bhojanshala sale, exactly as the counter prints it.",
+      "testSentTokens": "Sent {{count}} tokens to {{printer}}, each as its own print — the cutter should cut after each one.",
+      "onePerSale": "Per-plate tokens are off (Slips), so the 3 plates print as one slip."
     }
   },
   "setup": {

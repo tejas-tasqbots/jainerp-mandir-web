@@ -31,9 +31,14 @@ type Bridge = {
   openPath?: (p: string) => Promise<string>
 }
 
-export function DesktopPrintersCard({ testHtml }: {
-  /** A sample document for a test print: a roll slip, or an A4/A5 receipt. */
-  testHtml: (kind: 'receipt' | 'document') => string
+export function DesktopPrintersCard({ testDocs }: {
+  /**
+   * The documents a test print sends: for the receipt printer a three-token
+   * sale, as one document per token when per-plate tokens are on (each is its
+   * own print job, so the cutter cuts between them) or one slip when off; for
+   * the document printer, one A4/A5 receipt.
+   */
+  testDocs: (kind: 'receipt' | 'document') => string[]
 }) {
   const { t } = useTranslation()
   const bridge = (typeof window !== 'undefined' ? window.electronAPI : undefined) as Bridge | undefined
@@ -67,12 +72,24 @@ export function DesktopPrintersCard({ testHtml }: {
     setBusy(kind)
     setResult(null)
     try {
-      const r = await bridge.printHtml(testHtml(kind))
-      if (r.success) {
-        setResult({ kind, ok: true, text: t('settings.printers.testSent', { printer: r.printer ?? '' }) })
+      // One job per document, in order, exactly as printReceiptDocuments does
+      // at the counter: a page break is not a cut, the end of a job is.
+      const docs = testDocs(kind)
+      const results: Result[] = []
+      for (const doc of docs) results.push(await bridge.printHtml(doc))
+      const failed = results.find((r) => !r.success)
+      const printer = results.find((r) => r.printer)?.printer ?? ''
+      if (!failed) {
+        const text = kind === 'receipt' && docs.length > 1
+          ? t('settings.printers.testSentTokens', { count: docs.length, printer })
+          : kind === 'receipt'
+            ? `${t('settings.printers.testSent', { printer })} ${t('settings.printers.onePerSale')}`
+            : t('settings.printers.testSent', { printer })
+        setResult({ kind, ok: true, text })
       } else {
-        setResult({ kind, ok: false, text: t('settings.printers.testFailed', { printer: r.printer ?? '—', reason: r.reason ?? r.error ?? '' }) })
-        if (r.filePath) void bridge.openPath?.(r.filePath)
+        setResult({ kind, ok: false, text: t('settings.printers.testFailed', { printer: failed.printer ?? '—', reason: failed.reason ?? failed.error ?? '' }) })
+        // Only the first fallback PDF: three tokens failing should not open three windows.
+        if (failed.filePath) void bridge.openPath?.(failed.filePath)
       }
     } catch (e) {
       setResult({ kind, ok: false, text: String(e) })
@@ -112,7 +129,7 @@ export function DesktopPrintersCard({ testHtml }: {
         <p className="text-xs text-slate-500 mt-0.5">{t('settings.printers.subtitle')}</p>
       </div>
       <div className="card-body space-y-4">
-        {row('receipt', t('settings.printers.receipt'), t('settings.printers.receiptHint'))}
+        {row('receipt', t('settings.printers.receipt'), `${t('settings.printers.receiptHint')} ${t('settings.printers.receiptTestHint')}`)}
         {row('document', t('settings.printers.document'), t('settings.printers.documentHint'))}
       </div>
     </div>
