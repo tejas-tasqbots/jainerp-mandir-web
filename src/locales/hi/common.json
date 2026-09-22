@@ -2248,7 +2248,12 @@
       "rollField_amount_in_words": "राशि शब्दों में",
       "rollField_registration": "रजिस्ट्रेशन नंबर",
       "rollField_upi_qr": "यूपीआई क्यूआर कोड",
-      "rollField_footer": "फुटर संदेश"
+      "rollField_footer": "फुटर संदेश",
+      "wordingNotPrinted": "आप {{edit}} शब्द बदल रहे हैं, पर रसीदें {{print}} में छपती हैं। ये शब्द तभी छपेंगे जब रसीद {{edit}} में छपे।",
+      "printInThis": "रसीदें {{lang}} में छापें",
+      "thenSave": "फिर \"रसीद सेटिंग सहेजें\" दबाएँ।",
+      "printsIn": "रसीदें {{lang}} में छपती हैं। बदलने के लिए: प्रिंटिंग → भाषा।",
+      "previewLangBadge": "पूर्वावलोकन {{edit}} में · छपाई {{print}} में"
     },
     "save": "सहेजें",
     "saved": "सहेजा गया",

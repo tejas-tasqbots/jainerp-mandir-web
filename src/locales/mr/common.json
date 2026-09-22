@@ -2248,7 +2248,12 @@
       "rollField_amount_in_words": "रक्कम शब्दांत",
       "rollField_registration": "नोंदणी क्रमांक",
       "rollField_upi_qr": "यूपीआय क्यूआर कोड",
-      "rollField_footer": "फूटर संदेश"
+      "rollField_footer": "फूटर संदेश",
+      "wordingNotPrinted": "तुम्ही {{edit}} शब्द बदलत आहात, पण पावत्या {{print}} मध्ये छापल्या जातात. हे शब्द पावती {{edit}} मध्ये छापल्यावरच वापरले जातात.",
+      "printInThis": "पावत्या {{lang}} मध्ये छापा",
+      "thenSave": "मग \"पावती सेटिंग जतन करा\" दाबा.",
+      "printsIn": "पावत्या {{lang}} मध्ये छापल्या जातात. बदलण्यासाठी: प्रिंटिंग → भाषा.",
+      "previewLangBadge": "पूर्वावलोकन {{edit}} मध्ये · छपाई {{print}} मध्ये"
     },
     "save": "जतन करा",
     "saved": "जतन केले",

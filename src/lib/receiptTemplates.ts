@@ -333,7 +333,7 @@ function fmtDateTime(value: unknown): string {
   // `month: 'long'`, matching the document date every design already prints.
   // 'short' renders September as "Sept" under en-IN, which sits beside a
   // "19 September 2026" header looking like a typo.
-  return d.toLocaleString('en-IN', {
+  return d.toLocaleString(dateLocale, {
     day: '2-digit', month: 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
     timeZone: 'Asia/Kolkata',
@@ -353,7 +353,7 @@ function fmtDay(value: unknown): string {
   const raw = String(value).slice(0, 10)
   const [y, m, d] = raw.split('-').map(Number)
   if (!y || !m || !d) return ''
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-IN', {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(dateLocale, {
     day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
   })
 }
@@ -429,6 +429,18 @@ function docTitle(r: ReceiptData, fallback: string): string {
         : null
   return kind || r.doc_title || fallback
 }
+
+/**
+ * The locale a receipt's dates are written in: the print language's month
+ * names, Latin digits (`-u-nu-latn` — Marathi would otherwise print Devanagari
+ * numerals in the date and Latin ones everywhere else on the same receipt).
+ * Set per receipt in buildReceiptHtml, beside `L`.
+ */
+const DATE_LOCALES: Record<string, string> = {
+  hi: 'hi-IN-u-nu-latn', mr: 'mr-IN-u-nu-latn', gu: 'gu-IN-u-nu-latn',
+  kn: 'kn-IN-u-nu-latn', ta: 'ta-IN-u-nu-latn', te: 'te-IN-u-nu-latn',
+}
+let dateLocale = 'en-IN'
 
 /** A meal type as the receipt language says it; anything unknown as typed. */
 function mealName(meal: unknown): string {
@@ -3666,13 +3678,28 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // A document that has not been numbered yet arrives with receipt_number:
   // null; every template interpolates it directly, so the guest's copy read
   // "Receipt null". Substitute once here rather than at all fifteen sites.
-  const r: ReceiptData = escapeDeep({ ...input, receipt_number: input.receipt_number || '—' })
-  const dateStr = new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+  let r: ReceiptData = escapeDeep({ ...input, receipt_number: input.receipt_number || '—' })
   const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
   // The trust's own words on top of ours. One line, because every design
   // already reads every word it prints through `L` - so "Dan" becomes "Bhet"
   // on all seventeen designs and both copies at once, with no per-design work.
   L = receiptLabelsFor(mandir.receipt_language, mandir.label_overrides)
+  // Month names in the print language too: a Hindi receipt read "22 September
+  // 2026". Latin digits stay, so a number reads the same on every receipt a
+  // trust issues, whatever its language.
+  dateLocale = DATE_LOCALES[mandir.receipt_language ?? ''] ?? 'en-IN'
+  const dateStr = new Date(r.date).toLocaleDateString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric' })
+  // A Bhojanshala sale arrives with its category composed IN ENGLISH by the API
+  // ("Bhojanshala — breakfast (1 plate)"), so a token printed in Hindi still
+  // carried an English line. Say the meal and the count in the print language;
+  // the title above it already says which counter it is.
+  {
+    const meta = (r.meta ?? {}) as Record<string, unknown>
+    if (r.slip_kind === 'bhojanshala' && meta.meal_type) {
+      const n = Number(meta.tokens ?? 0)
+      r = { ...r, category: `${mealName(meta.meal_type)}${n > 0 ? ` × ${n}` : ''}` }
+    }
+  }
   let template = mandir.template || 'classic'
   // The 80G template makes a statutory tax-exemption claim, so it must never be
   // used for a donation that is not 80G-eligible — NOR for a trust that holds

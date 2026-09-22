@@ -2248,7 +2248,12 @@
       "rollField_amount_in_words": "Amount in words",
       "rollField_registration": "Registration numbers",
       "rollField_upi_qr": "UPI QR code",
-      "rollField_footer": "Footer message"
+      "rollField_footer": "Footer message",
+      "wordingNotPrinted": "You are editing the {{edit}} words, but receipts print in {{print}}. These words are used only when receipts print in {{edit}}.",
+      "printInThis": "Print receipts in {{lang}}",
+      "thenSave": "Then press Save Receipt Settings.",
+      "printsIn": "Receipts print in {{lang}}. To change it: Printing → Language.",
+      "previewLangBadge": "Preview in {{edit}} · prints in {{print}}"
     },
     "save": "Save",
     "saved": "Saved",
