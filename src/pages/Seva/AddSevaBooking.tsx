@@ -90,7 +90,7 @@ export function AddSevaBooking() {
       // navigating and not awaited: the booking is saved, and a printer that
       // does not answer must not hold the operator on this form (see
       // autoPrintSlip, which swallows its own errors for the same reason).
-      if (data?.data?.id) void autoPrintSlip(data.data.id, '/seva-bookings')
+      if (data?.data?.id) void autoPrintSlip(data.data.id, '/seva-bookings', data.data.receipt)
       navigate('/seva')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }

@@ -101,7 +101,7 @@ export function BhojanshalaCounter({
       })
       // Never awaited and never fatal: the tokens are sold either way, and a
       // printer that is out of paper must not read as a failed sale.
-      if (data?.data?.id) void autoPrintSlip(data.data.id, '/bhojanshala/sales')
+      if (data?.data?.id) void autoPrintSlip(data.data.id, '/bhojanshala/sales', data.data.receipt)
 
       // Back to the top of the queue: only the quantity and the one-off
       // details reset. Session, payment mode and the open/closed state of the

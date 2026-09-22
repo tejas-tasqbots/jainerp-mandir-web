@@ -70,7 +70,7 @@ export function PrasadCounter() {
       // devotee whether or not a printer answers, and autoPrintSlip swallows
       // its own errors precisely so a print problem can never read as a failed
       // sale. The Print button below stays for a reprint.
-      void autoPrintSlip(data.data.id, '/prasad/sales')
+      void autoPrintSlip(data.data.id, '/prasad/sales', data.data.receipt)
       setCart([])
       setReference('')
       setBuyer(null)

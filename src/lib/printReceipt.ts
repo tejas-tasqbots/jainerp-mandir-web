@@ -73,6 +73,13 @@ interface DesktopPrintBridge {
     error?: string
     filePath?: string
   }>
+  /** Desktop 2.6.4+: N documents as N jobs in one call, overlapped in the shell. */
+  printHtmlBatch?: (htmls: string[], opts?: { silent?: boolean }) => Promise<Array<{
+    success: boolean
+    reason?: string
+    error?: string
+    filePath?: string
+  }>>
   openPath?: (filePath: string) => Promise<string>
 }
 
@@ -113,11 +120,14 @@ function desktopBridge(): DesktopPrintBridge | undefined {
  * print:html / print:page / print:toPDF), so an ESC/POS cut between tokens is
  * not available. Ending the job is, and every such driver cuts on that.
  *
- * ── SEQUENTIALLY, AND WHY THAT MATTERS ─────────────────────────────────────
- * Awaited one at a time rather than fired together. Each call opens a window,
- * loads a document and prints it; three at once would race for the printer and
- * can interleave, which on a roll means two half-tokens. Slower and in order
- * beats faster and shuffled when the output is physical.
+ * ── IN ORDER, AND NOW QUICKLY ──────────────────────────────────────────────
+ * Awaited one at a time, the tokens came out in order but "1 by 1, too late":
+ * ten tokens waited for ten windows, twenty loads and ten accepted jobs in a
+ * row, on a printer that was idle most of the time. A desktop that offers
+ * `printHtmlBatch` gets the whole set in ONE call and overlaps the jobs itself
+ * — each started a moment after the one before, so they still reach the
+ * spooler in order, and still each its own job (see mandiradmin-desktop
+ * print-queue.ts). An older desktop keeps the one-at-a-time loop below.
  *
  * A failure does not stop the rest: if token 2 fails, tokens 1 and 3 have
  * still been paid for and the hall still needs them. The PDF fallback opens
@@ -149,6 +159,17 @@ export async function printReceiptDocuments(
     // document, to be cut along the dashed lines; that is what those lines are
     // for, and it is the behaviour the browser build always had.
     printReceiptHtml(combined)
+    return
+  }
+  if (bridge.printHtmlBatch) {
+    try {
+      const results = await bridge.printHtmlBatch(htmls)
+      for (const res of results ?? []) {
+        if (!res?.success && res?.filePath) void bridge.openPath?.(res.filePath)
+      }
+    } catch {
+      // The shell reports its own failures; the tokens already sent stand.
+    }
     return
   }
   for (const html of htmls) {
@@ -249,9 +270,19 @@ async function fetchReceipt(id: string, basePath: string): Promise<ReceiptData> 
  * take the money again. Returns false so the caller can mention it quietly if
  * it wants to.
  */
-export async function autoPrintSlip(id: string, basePath: string): Promise<boolean> {
+export async function autoPrintSlip(
+  id: string,
+  basePath: string,
+  /**
+   * The slip the API returned with the sale (bhojanshala, prasad and seva
+   * create responses carry it). Printing from it saves a whole round trip to
+   * the server before the first token — on a temple's connection, most of
+   * "the print is coming too late". Absent (an older API): fetched as before.
+   */
+  preloaded?: ReceiptData | null,
+): Promise<boolean> {
   try {
-    const receipt = await fetchReceipt(id, basePath)
+    const receipt = preloaded ?? await fetchReceipt(id, basePath)
     if (!receipt.mandir?.slip_auto_print) return false
     // One job per plate token on a roll, so the printer's end-of-job cut
     // separates them; null for everything else, which prints as before.

@@ -28,6 +28,7 @@ type Bridge = {
   getPrinters?: () => Promise<{ printers: PrinterInfo[]; receiptPrinter: string | null; documentPrinter: string | null }>
   setPrinter?: (kind: 'receipt' | 'document', name: string | null) => Promise<{ success: boolean }>
   printHtml?: (html: string) => Promise<Result>
+  printHtmlBatch?: (htmls: string[]) => Promise<Result[]>
   openPath?: (p: string) => Promise<string>
 }
 
@@ -72,11 +73,13 @@ export function DesktopPrintersCard({ testDocs }: {
     setBusy(kind)
     setResult(null)
     try {
-      // One job per document, in order, exactly as printReceiptDocuments does
-      // at the counter: a page break is not a cut, the end of a job is.
+      // One job per document, exactly as printReceiptDocuments does at the
+      // counter — through the same batch call when the desktop has it, so the
+      // test shows the counter's real speed as well as its real output.
       const docs = testDocs(kind)
       const results: Result[] = []
-      for (const doc of docs) results.push(await bridge.printHtml(doc))
+      if (docs.length > 1 && bridge.printHtmlBatch) results.push(...await bridge.printHtmlBatch(docs))
+      else for (const doc of docs) results.push(await bridge.printHtml(doc))
       const failed = results.find((r) => !r.success)
       const printer = results.find((r) => r.printer)?.printer ?? ''
       if (!failed) {
