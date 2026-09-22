@@ -5,6 +5,7 @@ import { BedDouble, Search, Users } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
+import { buildingNames, buildingOf, groupRooms, type RoomGroup } from '../../../lib/roomOrder'
 
 /**
  * "Which rooms are free right now, and book one."
@@ -26,6 +27,8 @@ interface RoomRow {
   room_number: string
   name: string | null
   floor: number | null
+  /** Building or wing, as the trust names it (tenant migration 053). */
+  building: string | null
   capacity_persons: number | null
   tariff_paise: number
   /** Lettable for the window asked for: no live booking, and housekeeping has released it. */
@@ -84,6 +87,8 @@ function fmtDay(iso: string): string {
     : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
+const GRID = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3'
+
 export function RoomAvailability() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -92,6 +97,8 @@ export function RoomAvailability() {
   const [q, setQ] = useState('')
   const [only, setOnly] = useState<'all' | 'free' | 'busy' | 'held'>('all')
   const [floor, setFloor] = useState<string>('all')
+  const [building, setBuilding] = useState<string>('all')
+  const [kind, setKind] = useState<string>('all')
 
   useEffect(() => { load() }, [])
 
@@ -111,6 +118,20 @@ export function RoomAvailability() {
     () => [...new Set(rooms.map(r => r.floor).filter(f => f != null))].sort((a, b) => Number(a) - Number(b)),
     [rooms],
   )
+  // Offered only when there is a choice to make: a one-building trust never
+  // sees a Building filter, a trust that has not recorded floors never sees a
+  // Floor one. A filter that can only ever say "All" is clutter.
+  const buildings = useMemo(
+    () => [...buildingNames(rooms).values()]
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })),
+    [rooms],
+  )
+  const kinds = useMemo(
+    () => [...new Set(rooms.map(r => r.name?.trim()).filter((n): n is string => !!n))]
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    [rooms],
+  )
+  const floorLabel = (f: number) => (f === 0 ? t('dharamshala.groundFloor') : t('dharamshala.floorN', { n: f }))
 
   const shown = useMemo(() => rooms.filter(r => {
     const st = roomState(r)
@@ -118,11 +139,18 @@ export function RoomAvailability() {
     if (only === 'busy' && st !== 'occupied') return false
     if (only === 'held' && st !== 'dirty' && st !== 'cleaning' && st !== 'maintenance') return false
     if (floor !== 'all' && String(r.floor) !== floor) return false
+    if (building !== 'all' && (buildingOf(r) ?? '').toLowerCase() !== building.toLowerCase()) return false
+    if (kind !== 'all' && (r.name?.trim() ?? '') !== kind) return false
     const term = q.trim().toLowerCase()
     if (!term) return true
     return r.room_number.toLowerCase().includes(term)
       || (r.name ?? '').toLowerCase().includes(term)
-  }), [rooms, q, only, floor])
+  }), [rooms, q, only, floor, building, kind])
+
+  // Building, then floor (or the numbers' own hundreds), then room number read
+  // as a number - see lib/roomOrder.ts. Headers only when there is more than
+  // one group; a trust with one short series of rooms sees a plain grid.
+  const groups = useMemo(() => groupRooms(shown), [shown])
 
   // "Total minus available" was the old occupied count, and it swept the
   // cleaning queue and next week's bookings in with the guests actually here.
@@ -135,6 +163,53 @@ export function RoomAvailability() {
     { label: t('dharamshala.reservedAhead'), value: String(count('booked')) },
     { label: t('dharamshala.heldForCleaning'), value: String(held) },
   ]
+
+  function groupLabel(g: RoomGroup<RoomRow>): string {
+    const level = g.level.kind === 'floor' ? floorLabel(g.level.floor)
+      : g.level.kind === 'series'
+        ? (g.level.from === g.level.to
+          ? t('dharamshala.roomOne', { n: g.level.from })
+          : t('dharamshala.roomRange', { from: g.level.from, to: g.level.to }))
+        : ''
+    return [g.building, level].filter(Boolean).join(' · ') || t('dharamshala.otherRooms')
+  }
+
+  const card = (r: RoomRow) => {
+    const st = roomState(r)
+    const sty = STATE_STYLE[st]
+    return (
+      <button
+        key={r.id}
+        disabled={st !== 'available'}
+        onClick={() => navigate(`/rooms/checkin?room_id=${r.id}`)}
+        title={t(`dharamshala.stateHint.${st}`)}
+        className={`card p-3 text-left transition-all ${sty.card}`}
+      >
+        <div className="flex items-start justify-between gap-1">
+          <span className="text-lg font-bold text-navy-900">{r.room_number}</span>
+          <span className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${sty.dot}`} />
+        </div>
+        <p className="text-[11px] text-slate-500 truncate">{r.name?.trim() || '—'}</p>
+        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
+          {r.capacity_persons != null && (
+            <span className="inline-flex items-center gap-0.5"><Users size={10} /> {r.capacity_persons}</span>
+          )}
+          <span className="font-medium text-slate-600">₹{fmtPaise(r.tariff_paise)}</span>
+        </div>
+        <p className={`text-[10px] font-semibold mt-1 ${sty.text}`}>
+          {t(`dharamshala.state.${st}`)}
+        </p>
+        {/* The gap being sold into. A free room with a booking on Friday
+            is a room you can let until Friday - say the date, or the
+            clerk has to open the bookings list to find it out. */}
+        {st === 'available' && r.next_booking_from && (
+          <p className="text-[10px] text-sky-700 mt-0.5">
+            {t('dharamshala.freeUntil', { date: fmtDay(r.next_booking_from) })}
+          </p>
+        )}
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -171,14 +246,30 @@ export function RoomAvailability() {
           <option value="busy">{t('dharamshala.occupiedOnly')}</option>
           <option value="held">{t('dharamshala.heldOnly')}</option>
         </select>
+        {buildings.length > 0 && (
+          <select className="form-select w-40" value={building}
+            onChange={e => setBuilding(e.target.value)}
+            aria-label={t('dharamshala.filterBuilding')}>
+            <option value="all">{t('dharamshala.allBuildings')}</option>
+            {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        )}
         {floors.length > 1 && (
           <select className="form-select w-36" value={floor}
             onChange={e => setFloor(e.target.value)}
             aria-label={t('dharamshala.filterFloor')}>
             <option value="all">{t('dharamshala.allFloors')}</option>
             {floors.map(f => (
-              <option key={String(f)} value={String(f)}>{t('dharamshala.floorN', { n: f })}</option>
+              <option key={String(f)} value={String(f)}>{floorLabel(Number(f))}</option>
             ))}
+          </select>
+        )}
+        {kinds.length > 1 && (
+          <select className="form-select w-40" value={kind}
+            onChange={e => setKind(e.target.value)}
+            aria-label={t('dharamshala.filterType')}>
+            <option value="all">{t('dharamshala.allTypes')}</option>
+            {kinds.map(k => <option key={k} value={k}>{k}</option>)}
           </select>
         )}
       </div>
@@ -194,42 +285,24 @@ export function RoomAvailability() {
           <BedDouble size={28} className="text-slate-300 mx-auto mb-2" />
           <p className="text-slate-500 text-sm">{t('dharamshala.noRoomsMatch')}</p>
         </div>
+      ) : groups.length === 1 ? (
+        <div className={GRID}>{groups[0].rooms.map(card)}</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-          {shown.map(r => {
-            const st = roomState(r)
-            const sty = STATE_STYLE[st]
+        <div className="space-y-5">
+          {groups.map(g => {
+            const free = g.rooms.filter(r => roomState(r) === 'available').length
             return (
-              <button
-                key={r.id}
-                disabled={st !== 'available'}
-                onClick={() => navigate(`/rooms/checkin?room_id=${r.id}`)}
-                title={t(`dharamshala.stateHint.${st}`)}
-                className={`card p-3 text-left transition-all ${sty.card}`}
-              >
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-lg font-bold text-navy-900">{r.room_number}</span>
-                  <span className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${sty.dot}`} />
+              <section key={g.key} aria-label={groupLabel(g)}>
+                {/* One row per floor, the way a clerk walks the building. The
+                    free count is the question they came with. */}
+                <div className="flex items-baseline justify-between gap-3 mb-2 pb-1 border-b border-slate-200">
+                  <h2 className="text-sm font-semibold text-navy-900">{groupLabel(g)}</h2>
+                  <span className="text-xs text-slate-500 whitespace-nowrap">
+                    {t('dharamshala.groupFree', { free, total: g.rooms.length })}
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">{r.name?.trim() || '—'}</p>
-                <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400">
-                  {r.capacity_persons != null && (
-                    <span className="inline-flex items-center gap-0.5"><Users size={10} /> {r.capacity_persons}</span>
-                  )}
-                  <span className="font-medium text-slate-600">₹{fmtPaise(r.tariff_paise)}</span>
-                </div>
-                <p className={`text-[10px] font-semibold mt-1 ${sty.text}`}>
-                  {t(`dharamshala.state.${st}`)}
-                </p>
-                {/* The gap being sold into. A free room with a booking on Friday
-                    is a room you can let until Friday - say the date, or the
-                    clerk has to open the bookings list to find it out. */}
-                {st === 'available' && r.next_booking_from && (
-                  <p className="text-[10px] text-sky-700 mt-0.5">
-                    {t('dharamshala.freeUntil', { date: fmtDay(r.next_booking_from) })}
-                  </p>
-                )}
-              </button>
+                <div className={GRID}>{g.rooms.map(card)}</div>
+              </section>
             )
           })}
         </div>

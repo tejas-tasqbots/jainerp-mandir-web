@@ -741,7 +741,16 @@
     "refundLessNote": "Refund less than this if the trust is keeping part of it.",
     "alreadyRefunded": "Already refunded",
     "billTotal": "Bill total",
-    "refunded": "{{amount}} refunded"
+    "refunded": "{{amount}} refunded",
+    "filterBuilding": "Building",
+    "allBuildings": "All buildings",
+    "filterType": "Room type",
+    "allTypes": "All room types",
+    "groundFloor": "Ground floor",
+    "roomRange": "Rooms {{from}} – {{to}}",
+    "roomOne": "Room {{n}}",
+    "otherRooms": "Other rooms",
+    "groupFree": "{{free}} of {{total}} free"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -1917,7 +1926,11 @@
         "fund": "Fund",
         "fundNone": "No fund (General)",
         "roomPhotos": "Room photos",
-        "hallPhotos": "Hall photos"
+        "hallPhotos": "Hall photos",
+        "building": "Building / Wing",
+        "buildingPlaceholder": "e.g. A Wing — leave blank if one building",
+        "floor": "Floor",
+        "floorPlaceholder": "0 = Ground floor"
       },
       "flags": "Flags",
       "gstRates": "GST Rates",

@@ -36,6 +36,12 @@ export interface MasterField {
   required?: boolean
   /** Default value for new rows. */
   default?: string | number | boolean
+  /**
+   * Emptying the field saves NULL. Without it an empty value is simply not
+   * sent, which is right for a required name and wrong for an optional one:
+   * a Building typed by mistake could never be removed again.
+   */
+  clearable?: boolean
 }
 
 export interface MasterEditorProps {
@@ -158,7 +164,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
         if (v !== '' && v != null) payload[field.key] = toPaise(v as string)
       } else if (field.type === 'number') {
         if (v !== '' && v != null) payload[field.key] = Number(v)
-      } else if (field.type === 'select' && field.emptyLabel !== undefined && (v === '' || v == null)) {
+      } else if (((field.type === 'select' && field.emptyLabel !== undefined) || field.clearable) && (v === '' || v == null)) {
         payload[field.key] = null
       } else {
         if (v !== '' && v != null) payload[field.key] = v

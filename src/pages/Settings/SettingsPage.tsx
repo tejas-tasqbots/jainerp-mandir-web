@@ -675,6 +675,12 @@ export function SettingsPage() {
             fields={[
               { key: 'room_number', label: t('settings.masters.fields.roomNo'), required: true, placeholder: t('settings.masters.fields.roomNoPlaceholder') as string },
               { key: 'name', label: t('settings.masters.fields.nameType'), placeholder: t('settings.masters.fields.nameTypePlaceholder') as string },
+              // Where the room is, so the room board can show it building by
+              // building and floor by floor (tenant migration 053). Both are
+              // optional: a one-building trust leaves Building empty, and the
+              // board falls back to the room numbers' own series.
+              { key: 'building', label: t('settings.masters.fields.building'), placeholder: t('settings.masters.fields.buildingPlaceholder') as string, clearable: true },
+              { key: 'floor', label: t('settings.masters.fields.floor'), type: 'number', placeholder: t('settings.masters.fields.floorPlaceholder') as string },
               { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
               { key: 'tariff_paise', label: t('settings.masters.fields.tariffPerNight'), type: 'money', placeholder: '0' },
               { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },

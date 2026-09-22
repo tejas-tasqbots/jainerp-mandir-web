@@ -32,6 +32,8 @@ interface RoomRow {
   room_number: string
   name: string | null
   floor: number | null
+  /** Building or wing (tenant migration 053) - where to send the cleaner. */
+  building: string | null
   is_available: boolean
   housekeeping_status: Status
   housekeeping_note: string | null
@@ -157,7 +159,11 @@ export function Housekeeping() {
                       {room.name ? <span className="font-normal text-slate-500"> · {room.name}</span> : null}
                     </div>
                     <div className="text-[11px] text-slate-400">
-                      {room.floor != null ? t('dharamshala.floorN', { n: room.floor }) : null}
+                      {[
+                        room.building?.trim() || null,
+                        room.floor == null ? null
+                          : room.floor === 0 ? t('dharamshala.groundFloor') : t('dharamshala.floorN', { n: room.floor }),
+                      ].filter(Boolean).join(' · ')}
                       {room.housekeeping_updated_at
                         ? ` · ${new Date(room.housekeeping_updated_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })}`
                         : ''}

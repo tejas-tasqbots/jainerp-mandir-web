@@ -186,7 +186,7 @@ export function AddRoomCheckin() {
                 const held = heldByHousekeeping(r, form.check_in_date)
                 return (
                   <option key={r.id} value={r.id} disabled={held}>
-                    {r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''}
+                    {r.building?.trim() ? `${r.building.trim()} · ` : ''}{r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''}
                     {' '}{t('dharamshala.sleepsN', { n: r.capacity_persons })} — ₹{fmtPaise(r.tariff_paise)}{t('dharamshala.perNightSuffix')}
                     {held ? ` — ${t(`housekeeping.status.${r.housekeeping_status}`)}` : ''}
                   </option>

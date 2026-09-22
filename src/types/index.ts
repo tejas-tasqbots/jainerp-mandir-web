@@ -206,6 +206,8 @@ export interface Room {
   tariff_paise: number
   gst_rate?: string | number
   floor?: string | number
+  /** Building or wing (tenant migration 053). NULL on a one-building trust. */
+  building?: string | null
   is_available?: boolean
   /** Only on the availability endpoint, for a specific date window. */
   available?: boolean

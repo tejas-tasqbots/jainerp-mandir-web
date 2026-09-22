@@ -741,7 +741,16 @@
     "refundLessNote": "ट्रस्ट काही रक्कम ठेवत असल्यास यापेक्षा कमी भरा.",
     "alreadyRefunded": "यापूर्वी परत केलेली",
     "billTotal": "बिल एकूण",
-    "refunded": "{{amount}} परत केली"
+    "refunded": "{{amount}} परत केली",
+    "filterBuilding": "इमारत",
+    "allBuildings": "सर्व इमारती",
+    "filterType": "खोलीचा प्रकार",
+    "allTypes": "सर्व प्रकार",
+    "groundFloor": "तळमजला",
+    "roomRange": "खोल्या {{from}} – {{to}}",
+    "roomOne": "खोली {{n}}",
+    "otherRooms": "इतर खोल्या",
+    "groupFree": "{{total}} पैकी {{free}} रिकाम्या"
   },
   "donationRequests": {
     "addressLabel": "पत्ता:",
@@ -1917,7 +1926,11 @@
         "fund": "निधी",
         "fundNone": "निधी नाही (सर्वसाधारण)",
         "roomPhotos": "खोलीचे फोटो",
-        "hallPhotos": "हॉलचे फोटो"
+        "hallPhotos": "हॉलचे फोटो",
+        "building": "इमारत / विंग",
+        "buildingPlaceholder": "उदा. A विंग — एकच इमारत असल्यास रिकामे ठेवा",
+        "floor": "मजला",
+        "floorPlaceholder": "0 = तळमजला"
       },
       "flags": "फ्लॅग्ज",
       "gstRates": "जीएसटी दर",

@@ -741,7 +741,16 @@
     "refundLessNote": "यदि ट्रस्ट कुछ राशि रख रहा है तो इससे कम भरें।",
     "alreadyRefunded": "पहले वापस की गई",
     "billTotal": "बिल कुल",
-    "refunded": "{{amount}} वापस की गई"
+    "refunded": "{{amount}} वापस की गई",
+    "filterBuilding": "भवन",
+    "allBuildings": "सभी भवन",
+    "filterType": "कमरे का प्रकार",
+    "allTypes": "सभी प्रकार",
+    "groundFloor": "भूतल",
+    "roomRange": "कमरे {{from}} – {{to}}",
+    "roomOne": "कमरा {{n}}",
+    "otherRooms": "अन्य कमरे",
+    "groupFree": "{{total}} में से {{free}} खाली"
   },
   "donationRequests": {
     "addressLabel": "पता:",
@@ -1917,7 +1926,11 @@
         "fund": "निधि",
         "fundNone": "कोई निधि नहीं (सामान्य)",
         "roomPhotos": "कमरे की फ़ोटो",
-        "hallPhotos": "हॉल की फ़ोटो"
+        "hallPhotos": "हॉल की फ़ोटो",
+        "building": "भवन / विंग",
+        "buildingPlaceholder": "जैसे A विंग — एक ही भवन हो तो खाली छोड़ें",
+        "floor": "मंज़िल",
+        "floorPlaceholder": "0 = भूतल"
       },
       "flags": "फ्लैग्स",
       "gstRates": "जीएसटी दरें",
