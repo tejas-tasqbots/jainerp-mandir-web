@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DesktopPrintersCard } from './DesktopPrintersCard'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
@@ -1363,6 +1364,18 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupPrinting')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupPrintingHint')}</p>
           </div>
+          {/* Desktop only: which printer this computer sends each kind of
+              document to, and a test print of each built from the trust's own
+              settings. Renders nothing in a browser. */}
+          <DesktopPrintersCard testHtml={kind => {
+            const roll = (paper: string) => paper.startsWith('thermal')
+            const data = buildPreviewData(form, kind === 'receipt' ? 'slip' : 'receipt', undefined, designPreview, previewQr)
+            const paper = kind === 'receipt'
+              ? (roll(form.slip_paper) ? form.slip_paper : roll(form.receipt_paper) ? form.receipt_paper : 'thermal80')
+              : (roll(form.receipt_paper) ? 'a4' : form.receipt_paper)
+            type Paper = NonNullable<typeof data.mandir>['receipt_paper']
+            return buildReceiptHtml({ ...data, mandir: { ...data.mandir!, receipt_paper: paper as Paper } })
+          }} />
         {/* Printing — copies, paper, receipt language, UPI QR */}
         <div className="card">
           <div className="card-header">

@@ -2483,6 +2483,19 @@
         "other": "Everything else"
       },
       "allHint": "Every word a receipt prints — all {{total}}, grouped by where it appears. Open a group, or search."
+    },
+    "printers": {
+      "title": "Printers on this computer",
+      "subtitle": "Desktop app only. Saved on this computer, so each counter can use its own printer.",
+      "receipt": "Receipt printer — roll paper (58 / 80 / 112 mm)",
+      "receiptHint": "Tokens, slips and roll receipts print here, on exactly the length of paper they need.",
+      "document": "Document printer — A4 / A5",
+      "documentHint": "Full-page receipts, bills and reports print here.",
+      "systemDefault": "Windows default ({{name}})",
+      "testPrint": "Test print",
+      "testing": "Printing…",
+      "testSent": "Sent to {{printer}}. If the paper comes out blank, choose your receipt printer above and test again.",
+      "testFailed": "Could not print on {{printer}} ({{reason}}). It has been opened as a PDF instead."
     }
   },
   "setup": {
