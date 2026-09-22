@@ -1,9 +1,11 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageSquare, History, Languages, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { useToast } from '../../../components/kit/Toast'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../../components/kit/DataTable'
+import { DailySummaryCard } from './DailySummaryCard'
+import { WhatsAppBubble } from './whatsappText'
 
 interface Template {
   key: string
@@ -54,32 +56,16 @@ const STATUS_CLASS: Record<string, string> = {
   skipped: 'badge-gray',
 }
 
-/** WhatsApp's own formatting: *bold* and _italic_, newlines kept. */
-function waText(text: string): ReactNode[] {
-  return text.split(/(\*[^*\n]+\*|_[^_\n]+_)/g).map((part, i) => {
-    if (/^\*[^*\n]+\*$/.test(part)) return <strong key={i}>{part.slice(1, -1)}</strong>
-    if (/^_[^_\n]+_$/.test(part)) return <em key={i}>{part.slice(1, -1)}</em>
-    return <Fragment key={i}>{part}</Fragment>
-  })
-}
-
 /** The message as a donor sees it: a WhatsApp bubble with header, body, footer and button. */
 function WhatsAppPreview({ tpl }: { tpl: Template }) {
   return (
-    <div className="rounded-lg p-3" style={{ background: '#EFEAE2' }}>
-      <div className="max-w-md bg-white rounded-lg shadow-sm overflow-hidden text-[13px] leading-relaxed text-slate-800">
-        <div className="px-3 pt-2.5 pb-2">
-          {tpl.header && <div className="font-semibold mb-1">{tpl.header}</div>}
-          <div className="whitespace-pre-wrap">{waText(tpl.preview)}</div>
-          <div className="text-[11px] text-slate-400 mt-1.5">{tpl.footer}</div>
+    <WhatsAppBubble header={tpl.header} body={tpl.preview} footer={tpl.footer}>
+      {tpl.button && (
+        <div className="border-t border-slate-100 py-2 text-center text-[13px] font-medium inline-flex w-full items-center justify-center gap-1.5" style={{ color: '#027EB5' }}>
+          <ExternalLink size={13} /> {tpl.button}
         </div>
-        {tpl.button && (
-          <div className="border-t border-slate-100 py-2 text-center text-[13px] font-medium inline-flex w-full items-center justify-center gap-1.5" style={{ color: '#027EB5' }}>
-            <ExternalLink size={13} /> {tpl.button}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </WhatsAppBubble>
   )
 }
 
@@ -186,6 +172,7 @@ export function MessagesTab() {
   }
 
   const groups = Array.from(new Set(templates.map(x => x.group)))
+  const dailySummary = templates.find(x => x.key === 'daily_summary')
   const selected = languages.find(l => l.code === language)
   const languageName = (code: string) => {
     const l = languages.find(x => x.code === code)
@@ -285,6 +272,13 @@ export function MessagesTab() {
           )}
         </div>
       </div>
+
+      <DailySummaryCard
+        enabled={dailySummary ? dailySummary.enabled : null}
+        onToggle={() => { if (dailySummary) void toggle(dailySummary) }}
+        saving={savingKey === 'daily_summary'}
+        languageName={languageName(savedLanguage)}
+      />
 
       <div className="flex gap-2">
         <button type="button" onClick={() => setView('templates')}
