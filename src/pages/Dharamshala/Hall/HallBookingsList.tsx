@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ban, FileText, IndianRupee, Plus, Receipt, X } from 'lucide-react'
+import { Ban, FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -22,6 +22,7 @@ import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRa
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteEntry'
 import type { HallBooking } from '../../../types'
 
 const PAGE_SIZE = 20
@@ -33,6 +34,8 @@ export function HallBookingsList() {
   const L = useReceiptLabels()
   const navigate = useNavigate()
   const toast = useToast()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
 
   const [bookings, setBookings] = useState<HallBooking[]>([])
   const [total, setTotal] = useState(0)
@@ -148,12 +151,27 @@ export function HallBookingsList() {
                 <Ban size={14} />
               </button>
             )}
+            {canDelete && (
+              <button
+                onClick={async e => {
+                  e.stopPropagation()
+                  if (await deleteEntry({
+                    kind: 'hall_booking', id: b.id, title: b.event_name, detail: b.hall_name ?? null,
+                    reference: b.invoice_no ?? null, amountPaise: b.total_paise, date: b.booking_date,
+                  })) load()
+                }}
+                className="p-1 text-slate-400 hover:text-red-600 rounded"
+                title={t('entries.delete')} aria-label={t('entries.delete')}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         )
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t])
+  ], [t, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })

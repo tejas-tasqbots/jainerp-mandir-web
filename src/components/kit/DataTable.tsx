@@ -594,7 +594,7 @@ function RowActionCell({ actions }: { actions: RowAction[] }) {
    Plan §02/§04: clicking a row opens a right-hand drawer (receipt preview,
    payment history, audit info) instead of doing nothing. */
 
-function DetailDrawer({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function DetailDrawer({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   const { t } = useTranslation()
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
@@ -605,7 +605,7 @@ function DetailDrawer({ title, onClose, children }: { title: string; onClose: ()
   return (
     <div className="fixed inset-0 z-50 flex justify-end no-print">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <aside className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-[slideIn_.15s_ease-out]">
+      <aside className={`relative w-full ${wide ? 'max-w-xl' : 'max-w-md'} bg-white h-full shadow-xl flex flex-col animate-[slideIn_.15s_ease-out]`}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
           <h3 className="font-semibold text-navy-900 text-sm truncate">{title}</h3>
           <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 rounded" aria-label={t('common.close')}>

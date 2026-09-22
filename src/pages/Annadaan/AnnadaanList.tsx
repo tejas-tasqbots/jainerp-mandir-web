@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, Receipt } from 'lucide-react'
+import { RefreshCw, Receipt, Trash2 } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
@@ -10,6 +10,7 @@ import { DataTable, type ColumnDef, type ColumnFilterState } from '../../compone
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import type { BhojanshalaSale } from '../../types'
 import {
   BhojanshalaCounter, initialSession, type Session, type SessionRates,
@@ -20,6 +21,9 @@ const MEALS = ['breakfast', 'lunch', 'dinner'] as const
 export function AnnadaanList() {
   const { t } = useTranslation()
   const toast = useToast()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
+  const [reloadTick, setReloadTick] = useState(0)
   const [sales, setSales] = useState<BhojanshalaSale[]>([])
   const [loading, setLoading] = useState(true)
   // The bhojanshala counter works one day at a time (daily summary + token
@@ -116,14 +120,30 @@ export function AnnadaanList() {
             >
               <Receipt size={14} className={receiptLoading === s.id ? 'animate-pulse' : ''} />
             </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (await deleteEntry({
+                    kind: 'bhojanshala_sale', id: s.id, title: s.buyer_name || t(`bhojanshala.${s.meal_type}`),
+                    detail: `${s.plates} × ${t(`bhojanshala.${s.meal_type}`)}`, reference: s.invoice_no ?? null,
+                    amountPaise: s.total_paise, date: s.sale_date ?? s.created_at,
+                  })) setReloadTick(n => n + 1)
+                }}
+                title={t('entries.delete')} aria-label={t('entries.delete')}
+                className="p-1 text-slate-400 hover:text-brand-red rounded"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         )
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, redeemId, redeemTokens, saving, receiptLoading])
+  ], [t, redeemId, redeemTokens, saving, receiptLoading, canDelete])
 
-  useEffect(() => { load() }, [dateFilter])
+  useEffect(() => { load() }, [dateFilter, reloadTick])
 
   async function load() {
     setLoading(true)

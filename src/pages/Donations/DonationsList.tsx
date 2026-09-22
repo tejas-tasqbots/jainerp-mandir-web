@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Upload, Receipt, Ban, Award, Pencil, FileDown, XCircle } from 'lucide-react'
+import { Plus, Upload, Receipt, Ban, Award, Pencil, FileDown, XCircle, Trash2 } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
 import { print80gCertificate } from '../../lib/print80gCertificate'
@@ -18,6 +18,7 @@ import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRange
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import { useChequeLifecycle } from '../../components/ChequeLifecycle'
+import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import type { Donation, DonationCategory } from '../../types'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
@@ -35,6 +36,8 @@ export function DonationsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
 
   const [donations, setDonations] = useState<Donation[]>([])
   const [meta, setMeta] = useState<ListMeta | null>(null)
@@ -150,6 +153,22 @@ export function DonationsList() {
       actions.push(...chequeActions(d))
       actions.push({ label: t('donations.editVoidReissue'), icon: <Pencil size={13} />, onClick: () => navigate(`/donations/${d.id}/edit`) })
       actions.push({ label: t('donations.voidDonation'), icon: <Ban size={13} />, danger: true, onClick: () => setVoidModal({ id: d.id, invoiceNo: d.invoice_no }) })
+    }
+    // Delete is separate from void: a void keeps the receipt on the register
+    // marked cancelled; a delete takes a mistaken entry out altogether (it
+    // stays restorable in the Recycle Bin). temple_admin only.
+    if (canDelete) {
+      actions.push({
+        label: t('entries.delete'), icon: <Trash2 size={13} />, danger: true,
+        onClick: async () => {
+          if (await deleteEntry({
+            kind: 'donation', id: d.id,
+            title: d.is_anonymous ? t('recycleBin.anonymous') : (d.donor_name ?? null),
+            detail: d.category_name ?? null, reference: d.invoice_no,
+            amountPaise: d.amount_paise, date: d.created_at,
+          })) void load()
+        },
+      })
     }
     return actions
   }

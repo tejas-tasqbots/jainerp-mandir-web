@@ -104,7 +104,10 @@ export function PrasadCounter() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-navy-900">{t('prasad.counterTitle')}</h1>
-        <Link to="/prasad/items" className="btn-secondary btn-sm">{t('prasad.manageItems')}</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/prasad/sales" className="btn-secondary btn-sm">{t('prasad.salesTitle')}</Link>
+          <Link to="/prasad/items" className="btn-secondary btn-sm">{t('prasad.manageItems')}</Link>
+        </div>
       </div>
 
       {lastSale && (

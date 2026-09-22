@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Receipt, Ban } from 'lucide-react'
+import { Plus, Receipt, Ban, Trash2 } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
@@ -19,6 +19,7 @@ import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { SevaBooking } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
+import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 
 const PAGE_SIZE = 20
 const STATUSES = ['booked', 'confirmed', 'completed', 'cancelled'] as const
@@ -28,6 +29,8 @@ export function SevaBookingsList() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const toast = useToast()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
 
   const [bookings, setBookings] = useState<SevaBooking[]>([])
   const [total, setTotal] = useState(0)
@@ -121,11 +124,26 @@ export function SevaBookingsList() {
               <Ban size={14} />
             </button>
           )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (await deleteEntry({
+                  kind: 'seva_booking', id: b.id, title: b.devotee_name, detail: b.seva_name ?? null,
+                  amountPaise: b.amount_paise, date: b.booking_date,
+                })) load()
+              }}
+              title={t('entries.delete')} aria-label={t('entries.delete')}
+              className="p-1 text-slate-400 hover:text-brand-red rounded"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, receiptLoading])
+  ], [t, receiptLoading, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })

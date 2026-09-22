@@ -18,7 +18,7 @@ import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRange
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Expense } from '../../types'
-import { useConfirm } from '../../components/ConfirmDialog'
+import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { ExpenseDetail } from './ExpenseDetail'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'credit']
@@ -38,7 +38,8 @@ export function ExpensesList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
-  const confirm = useConfirm()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
 
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [meta, setMeta] = useState<ListMeta | null>(null)
@@ -52,7 +53,6 @@ export function ExpensesList() {
   const [editModal, setEditModal] = useState<Expense | null>(null)
   const [editForm, setEditForm] = useState({ description: '', amount_paise: '', bill_number: '' })
   const [saving, setSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
   const { chequeActions, bounceModal } = useChequeLifecycle('expenses', () => { void load() })
 
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -192,10 +192,19 @@ export function ExpensesList() {
     }
     actions.push({ label: t('expenses.edit'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(e) })
     actions.push(...chequeActions(e))
-    actions.push({
-      label: t('expenses.delete'), icon: <Trash2 size={13} />, danger: true,
-      onClick: () => deleteExpense(e.id), disabled: deleteId === e.id,
-    })
+    // temple_admin only: the shared entry delete asks why, takes the expense
+    // out of Cash & Bank, and keeps it restorable in the Recycle Bin.
+    if (canDelete) {
+      actions.push({
+        label: t('expenses.delete'), icon: <Trash2 size={13} />, danger: true,
+        onClick: async () => {
+          if (await deleteEntry({
+            kind: 'expense', id: e.id, title: e.description, detail: e.vendor_name ?? e.category ?? null,
+            reference: e.bill_number ?? null, amountPaise: e.amount_paise, date: e.bill_date || e.created_at,
+          })) void load()
+        },
+      })
+    }
     return actions
   }
 
@@ -334,20 +343,6 @@ export function ExpensesList() {
       toast.error(e.response?.data?.error?.message || t('expenses.updateFailed'))
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function deleteExpense(id: string) {
-    if (!(await confirm({ title: t('expenses.delete'), message: t('expenses.deleteConfirm'), confirmLabel: t('expenses.delete'), danger: true }))) return
-    setDeleteId(id)
-    try {
-      await api.delete(`/expenses/${id}`)
-      toast.success(t('expenses.deleteSuccess'))
-      load()
-    } catch {
-      toast.error(t('expenses.deleteFailed'))
-    } finally {
-      setDeleteId(null)
     }
   }
 

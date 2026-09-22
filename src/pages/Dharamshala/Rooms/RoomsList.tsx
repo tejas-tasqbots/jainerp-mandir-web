@@ -21,6 +21,7 @@ import { useToast } from '../../../components/kit/Toast'
 import { useReceiptLabels } from '../../../lib/useReceiptLabels'
 import type { RoomBooking } from '../../../types'
 import { useConfirm } from '../../../components/ConfirmDialog'
+import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteEntry'
 import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
@@ -99,6 +100,8 @@ export function RoomsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
   const toast = useToast()
   /** The TRUST's printed words, for the bill. Not `t()` - see the hook. */
   const L = useReceiptLabels()
@@ -347,13 +350,13 @@ export function RoomsList() {
               <X size={14} />
             </button>
           )}
-          {/* Delete is offered only where it can succeed: the API refuses to
-              delete a booking that has an issued bill or collected money. */}
-          {b.status !== 'checked_out' && !(b.paid_paise ?? 0) && (
+          {/* temple_admin only — the shared entry delete voids whatever was
+              collected, frees the room, and is restorable from the Recycle Bin. */}
+          {canDelete && (
             <button
               onClick={() => removeBooking(b)}
               className="p-1 text-slate-400 hover:text-brand-red rounded"
-              title={t('common.delete')} aria-label={t('common.delete')}
+              title={t('entries.delete')} aria-label={t('entries.delete')}
             >
               <Trash2 size={14} />
             </button>
@@ -362,7 +365,7 @@ export function RoomsList() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t])
+  ], [t, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -691,20 +694,12 @@ export function RoomsList() {
   }
 
   async function removeBooking(b: RoomBooking) {
-    if (!(await confirm({
-      title: t('dharamshala.deleteBookingTitle'),
-      message: t('dharamshala.deleteBookingMessage', { guest: b.guest_name }),
-      confirmLabel: t('common.delete'),
-      danger: true,
-    }))) return
-    try {
-      await api.delete(`/room-bookings/${b.id}`)
-      toast.success(t('dharamshala.deleteSuccess'))
-      load()
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: { message?: string } } } }
-      toast.error(err.response?.data?.error?.message || t('dharamshala.deleteFailed'))
-    }
+    const deleted = await deleteEntry({
+      kind: 'room_booking', id: b.id, title: b.guest_name,
+      detail: b.room_number ? t('recycleBin.room', { room: b.room_number }) : null,
+      reference: b.invoice_no ?? null, amountPaise: b.total_paise || b.advance_paise || null, date: b.check_in_date,
+    })
+    if (deleted) load()
   }
 
   async function confirmCancel() {

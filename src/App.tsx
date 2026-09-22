@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfirmProvider } from './components/ConfirmDialog'
+import { DeleteEntryProvider } from './components/DeleteEntryDialog'
 import { ToastProvider } from './components/kit/Toast'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
@@ -20,6 +21,7 @@ import { HallBookingsList } from './pages/Dharamshala/Hall/HallBookingsList'
 import { AddHallBooking } from './pages/Dharamshala/Hall/AddHallBooking'
 import { PrasadCounter } from './pages/Prasad/PrasadCounter'
 import { PrasadItems } from './pages/Prasad/PrasadItems'
+import { PrasadSales } from './pages/Prasad/PrasadSales'
 import { SevaBookingsList } from './pages/Seva/SevaBookingsList'
 import { AddSevaBooking } from './pages/Seva/AddSevaBooking'
 import { AnnadaanList } from './pages/Annadaan/AnnadaanList'
@@ -116,6 +118,7 @@ export default function App() {
     <Router>
       <ToastProvider>
       <ConfirmProvider>
+      <DeleteEntryProvider>
       <Routes>
         {/* Self-serve Trust/Temple registration. Public, and declared outside
             the auth branch so it is reachable from the website and from the
@@ -151,6 +154,7 @@ export default function App() {
             {/* Prasad */}
             <Route path="/prasad" element={<PrasadCounter />} />
             <Route path="/prasad/items" element={<PrasadItems />} />
+            <Route path="/prasad/sales" element={<PrasadSales />} />
 
             {/* Seva */}
             <Route path="/seva" element={<SevaBookingsList />} />
@@ -226,6 +230,7 @@ export default function App() {
           </Route>
         )}
       </Routes>
+      </DeleteEntryProvider>
       </ConfirmProvider>
       </ToastProvider>
     </Router>
