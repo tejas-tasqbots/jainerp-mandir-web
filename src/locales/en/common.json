@@ -1850,7 +1850,8 @@
     "stillOwedHint": "₹{{amount}} of this month has been computed but not paid. It is a liability until it is.",
     "noSalaryForMonth": "No salary computed for this month yet.",
     "streamRooms": "Rooms",
-    "streamHall": "Hall"
+    "streamHall": "Hall",
+    "userCollections": "User-wise collection"
   },
   "sensitive": {
     "bannerVerified": "These details have been verified by the platform, so they can no longer be edited here. Raise a change request and we will review it.",
@@ -2542,7 +2543,11 @@
       "templateGroupStay": "Built for stays",
       "templateGroupShared": "Shared with receipts",
       "needsGstin": "needs a GSTIN",
-      "gstTemplateUnavailable": "This trust has no GSTIN on file, so it cannot issue a tax invoice (s.31 CGST). Room bills will print as a guest folio until a GSTIN is saved in Temple Profile."
+      "gstTemplateUnavailable": "This trust has no GSTIN on file, so it cannot issue a tax invoice (s.31 CGST). Room bills will print as a guest folio until a GSTIN is saved in Temple Profile.",
+      "idRetention": "Keep guest ID photos for",
+      "idRetentionYears_one": "{{count}} year after the stay",
+      "idRetentionYears_other": "{{count}} years after the stay",
+      "idRetentionHint": "After this, the ID photo and full number are deleted automatically. The ID type and last 4 digits stay in the register. Check your state police rules for guest registers (commonly 3 years)."
     },
     "wording": {
       "heading": "Your wording",
@@ -3552,7 +3557,8 @@
       "tenant_export": "Data export",
       "integrations": "Integration",
       "device_registry": "Device",
-      "user_sessions": "Signed-in device"
+      "user_sessions": "Signed-in device",
+      "guest_id_documents": "Guest ID documents"
     },
     "action": {
       "create": "Created",
@@ -3604,7 +3610,9 @@
       "set_primary_for_donations": "Set as donation account",
       "update_public_profile": "Public page edited",
       "upload_donation_proof": "Payment proof uploaded",
-      "revoke": "Signed out"
+      "revoke": "Signed out",
+      "viewed": "Viewed",
+      "purged": "Deleted (retention period)"
     },
     "group": {
       "donations": "Donations",
@@ -3722,5 +3730,82 @@
       "electron": "Desktop app",
       "desktop": "Desktop app"
     }
+  },
+  "enteredBy": {
+    "column": "Entered by",
+    "online": "Online (devotee app)",
+    "notRecorded": "Not recorded",
+    "inactive": "inactive"
+  },
+  "userCollections": {
+    "user": "User",
+    "cashIn": "Cash received",
+    "onlineIn": "Online / bank received",
+    "received": "Total received",
+    "expenses": "Expenses paid",
+    "otherOut": "Other paid out",
+    "bills_one": "{{count}} bill",
+    "bills_other": "{{count}} bills",
+    "cashBills": "Cash bills",
+    "onlineBills": "Online bills",
+    "hint": "Money is credited to the person who took it. If one user booked a room and another collected the balance, each is shown with their own part. Totals match the Day Book for the same dates."
+  },
+  "guestId": {
+    "title": "ID documents",
+    "pending": "ID pending",
+    "pendingHint": "No ID on file for this guest yet. Click to add it.",
+    "loadFailed": "Could not load the ID documents",
+    "photoFailed": "Could not read that photo. Try another image.",
+    "needNumberOrPhoto": "Enter the ID number or add a photo of the ID.",
+    "saved": "ID saved",
+    "saveFailed": "Could not save the ID",
+    "removed": "ID removed",
+    "removeFailed": "Could not remove the ID",
+    "noneYet": "No ID on file yet. Add one below when the guest provides it.",
+    "purged": "Photo and full number deleted on {{date}} (retention period ended)",
+    "hasPhoto": "Photo on file",
+    "noPhoto": "No photo",
+    "addedBy": "added by {{name}}",
+    "deletesOn": "deleted automatically on {{date}}",
+    "view": "View",
+    "remove": "Remove",
+    "add": "Add an ID",
+    "aadhaarLast4": "Aadhaar — last 4 digits",
+    "aadhaarHint": "Ask for the masked Aadhaar (only the last 4 digits visible). Only the last 4 digits are kept, never the full Aadhaar number.",
+    "retake": "Change photo",
+    "addPhoto": "Add photo of ID",
+    "photoReady": "Photo ready ({{size}}, encrypted on save)",
+    "notice": "Collected for the guest register as required by law. Stored encrypted. Only the temple admin can view it, and the photo and full number are deleted {{years}} years after the stay.",
+    "save": "Save ID",
+    "removeTitle": "Remove this ID?",
+    "removeBody": "the photo and number will be erased. This is recorded in the Activity Log.",
+    "reason": "Reason",
+    "viewFailed": "Could not open the ID",
+    "aadhaarOnlyLast4": "Only the last 4 digits are kept for Aadhaar",
+    "viewNotice": "View only. This view has been recorded in the Activity Log with your name and the time. Do not photograph or share it.",
+    "photoNotSaved": "The booking was made, but the ID photo could not be saved. Add it from the Rooms list.",
+    "photoAttached": "Photo attached",
+    "laterHint": "No ID with the guest yet? Book now and add it later from the Rooms list.",
+    "types": {
+      "aadhaar": "Aadhaar",
+      "passport": "Passport",
+      "driving_license": "Driving licence",
+      "voter_id": "Voter ID",
+      "pan": "PAN",
+      "other": "Other ID"
+    }
+  },
+  "editBooking": {
+    "title": "Edit booking",
+    "saved": "Booking updated",
+    "savedRecalculated": "Booking updated. New total ₹{{total}}",
+    "failed": "Could not update the booking",
+    "guest": "Guest",
+    "address": "Address",
+    "notes": "Notes",
+    "stay": "Stay",
+    "finalHint": "The bill is final after checkout. To correct the room, dates or rate, delete this booking and enter it again.",
+    "rate": "Rate per night (₹)",
+    "recalcHint": "Changing the room, dates or rate recalculates the bill. Payments already taken stay as they are."
   }
 }

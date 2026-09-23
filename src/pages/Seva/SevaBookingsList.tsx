@@ -20,6 +20,7 @@ import { useToast } from '../../components/kit/Toast'
 import type { SevaBooking } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
 
 const PAGE_SIZE = 20
 const STATUSES = ['booked', 'confirmed', 'completed', 'cancelled'] as const
@@ -56,6 +57,7 @@ export function SevaBookingsList() {
     cancelled: t('seva.filterCancelled'),
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<SevaBooking>[] = useMemo(() => [
     {
       key: 'devotee', label: t('seva.devotee'),
@@ -87,6 +89,7 @@ export function SevaBookingsList() {
       key: 'mode', label: t('seva.mode'),
       render: b => <span className="badge-gray">{b.payment_mode}</span>,
     },
+    enteredByColumn<SevaBooking>(t, enteredByOptions),
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -143,7 +146,7 @@ export function SevaBookingsList() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, receiptLoading, canDelete])
+  ], [t, enteredByOptions, receiptLoading, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -204,16 +207,17 @@ export function SevaBookingsList() {
           { header: t('common.amount'), type: 'money' },
           { header: t('seva.mode'), width: 10 },
           { header: t('common.status'), width: 12 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: rows.map(b => [
           new Date(b.booking_date).toLocaleDateString('en-IN'), b.devotee_name ?? '', b.devotee_mobile ?? '',
           b.seva_name ?? '', b.slot_time ?? '', b.amount_paise, b.payment_mode,
-          statusLabel[b.status] ?? b.status,
+          statusLabel[b.status] ?? b.status, enteredByText(b, t),
         ]),
         totals: [
           t('kit.total'), '', '', '', '',
           rows.filter(b => b.status !== 'cancelled').reduce((s, b) => s + b.amount_paise, 0),
-          '', '',
+          '', '', '',
         ],
       })
       toast.success(t('kit.exportReady'))

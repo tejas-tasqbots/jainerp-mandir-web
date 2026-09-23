@@ -7,12 +7,13 @@ import { useApiGet } from '../../lib/useApiGet'
 import { printCurrentView } from '../../lib/downloadReport'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
-import { DataTable, type ColumnDef, type RowAction } from '../../components/kit/DataTable'
+import { DataTable, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
+import { enteredByColumn, useEnteredByOptions } from '../../lib/enteredBy'
 
 interface SaleLine { item_id?: string; name?: string; qty?: number; amount_paise?: number }
 
@@ -52,14 +53,19 @@ export function PrasadSales() {
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('prasad-sales', 'today'))
   const [printing, setPrinting] = useState<string | null>(null)
+  const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
+  // The only filterable column is "Entered by"; its param is fixed, so the URL
+  // is built from the state alone rather than from `columns` (declared below).
+  const enteredBy = filterState.entered_by?.values?.join(',') ?? ''
 
   const url = useMemo(() => {
     const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
     if (search) p.set('q', search)
     if (range.from) p.set('from', range.from)
     if (range.to) p.set('to', range.to)
+    if (enteredBy) p.set('entered_by', enteredBy)
     return `/prasad/sales?${p}`
-  }, [page, search, range])
+  }, [page, search, range, enteredBy])
   const { data, loading, refresh } = useApiGet<{ data?: PrasadSale[]; meta?: { total?: number; total_amount_paise?: number } }>(url)
   const rows = data?.data ?? []
   const total = data?.meta?.total ?? 0
@@ -76,6 +82,7 @@ export function PrasadSales() {
     }
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<PrasadSale>[] = useMemo(() => [
     {
       key: 'time', label: t('prasad.salesWhen'),
@@ -105,8 +112,9 @@ export function PrasadSales() {
       ),
     },
     { key: 'payment_mode', label: t('seva.mode'), render: s => <span className="badge-gray">{s.payment_mode}</span> },
+    enteredByColumn<PrasadSale>(t, enteredByOptions),
     { key: 'total', label: t('common.amount'), align: 'right', render: s => <span className="font-semibold tabular-nums">₹{fmtPaise(Number(s.total_paise))}</span> },
-  ], [t])
+  ], [t, enteredByOptions])
 
   function rowActions(s: PrasadSale): RowAction[] {
     const actions: RowAction[] = [{
@@ -159,8 +167,16 @@ export function PrasadSales() {
         onSearchChange={v => { setSearch(v); setPage(1) }}
         searchPlaceholder={t('prasad.salesSearch')}
         onPrint={() => printCurrentView()}
-        filterState={{}}
-        onFilterChange={() => {}}
+        filterState={filterState}
+        onFilterChange={(key, st) => {
+          setFilterState(prev => {
+            const next = { ...prev }
+            if (st) next[key] = st
+            else delete next[key]
+            return next
+          })
+          setPage(1)
+        }}
         page={page}
         limit={PAGE_SIZE}
         total={total}

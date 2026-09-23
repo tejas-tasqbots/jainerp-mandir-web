@@ -32,7 +32,7 @@ export const ENTITY_GROUPS: Record<string, string[]> = {
     'donations', 'donors', 'bolis', 'donation_requests', 'donation_categories', 'funds',
     'certificates_80g', 'form_10bd_entries',
   ],
-  dharamshala: ['room_bookings', 'hall_bookings', 'rooms', 'halls', 'guests'],
+  dharamshala: ['room_bookings', 'hall_bookings', 'rooms', 'halls', 'guests', 'guest_id_documents'],
   counters: [
     'seva_bookings', 'sevas', 'prasad_sales', 'prasad_items', 'bhojanshala_sales',
     'annadaan_entries', 'annadaan_sponsorships',
@@ -76,8 +76,11 @@ export function actionTone(action: string): Tone {
     case 'enable': case 'disable': case 'privacy': case 'set_primary_for_donations':
       return 'blue'
     case 'delete': case 'void': case 'cancel': case 'reject': case 'cheque_bounce': case 'reverse': case 'waive':
+    case 'purged':
       return 'red'
     case 'restore': case 'withdraw':
+    // Someone looked at a guest's ID: worth seeing at a glance (DPDP access log).
+    case 'viewed': case 'id_proof_revealed':
       return 'amber'
     case 'pay': case 'payment': case 'refund': case 'repay': case 'cheque_deposit': case 'cheque_clear':
     case 'deposit_collected': case 'deposit_settled': case 'redeem': case 'checkin': case 'checkout':

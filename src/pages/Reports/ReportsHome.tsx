@@ -24,12 +24,14 @@ import { LoanScheduleReport } from './reports/LoanScheduleReport'
 import { ServiceRegisterReport } from './reports/ServiceRegisterReport'
 import { FundUtilisationReport } from './reports/FundUtilisationReport'
 import { SalaryRegisterReport } from './reports/SalaryRegisterReport'
+import { UserCollectionReport } from './reports/UserCollectionReport'
 
 type ReportKey =
   | 'daily-collection' | 'collection-summary' | 'all-transactions' | 'donation-register' | 'donation-by-category'
   | 'expense-register' | 'expense-by-category' | 'pledge-register' | 'creditor-aging'
   | 'donation-trends' | 'donation-yoy' | 'top-donors' | 'cash-flow' | 'event-collection' | 'gst-summary'
   | 'depreciation-schedule' | 'loan-schedule' | 'service-register' | 'fund-utilisation' | 'salary-register'
+  | 'user-collections'
 
 /**
  * `modules` names the entitlements a report needs — ANY one of them is enough,
@@ -43,7 +45,17 @@ type ReportKey =
  * and gating it on `seva` alone hid the Room Register from a Dharamshala trust
  * that does run rooms — the opposite failure to the one this rail fixes.
  */
-interface RailItem { key: ReportKey; labelKey: string; modules?: string[] }
+interface RailItem {
+  key: ReportKey
+  labelKey: string
+  modules?: string[]
+  /**
+   * Roles that may open it (temple_admin always may). For a report whose API
+   * is narrower than /reports itself — the User-wise collection names each
+   * cashier's takings, so a viewer is not shown a report that would 403.
+   */
+  roles?: string[]
+}
 interface RailGroup { groupKey: string; items: RailItem[] }
 
 const RAIL: RailGroup[] = [
@@ -51,6 +63,7 @@ const RAIL: RailGroup[] = [
     groupKey: 'reports.groupDaily',
     items: [
       { key: 'daily-collection', labelKey: 'reports.dailyCollection' },
+      { key: 'user-collections', labelKey: 'reports.userCollections', roles: ['accountant'] },
       { key: 'collection-summary', labelKey: 'reports.collectionSummary' },
       { key: 'all-transactions', labelKey: 'reports.allTransactions' },
       { key: 'donation-register', labelKey: 'reports.donationRegister' },
@@ -113,11 +126,13 @@ const REPORT_COMPONENTS: Record<ReportKey, React.ComponentType> = {
   'service-register': ServiceRegisterReport,
   'fund-utilisation': FundUtilisationReport,
   'salary-register': SalaryRegisterReport,
+  'user-collections': UserCollectionReport,
 }
 
 export function ReportsHome() {
   const { t } = useTranslation()
   const modules = useAuthStore(s => s.modules)
+  const roles = useAuthStore(s => s.user?.roles)
   const [selected, setSelected] = useState<ReportKey>('daily-collection')
   const [caPackLoading, setCaPackLoading] = useState(false)
 
@@ -129,7 +144,9 @@ export function ReportsHome() {
   const rail = RAIL
     .map(g => ({
       ...g,
-      items: g.items.filter(i => !i.modules || !modules || i.modules.some(m => modules.includes(m))),
+      items: g.items.filter(i =>
+        (!i.modules || !modules || i.modules.some(m => modules.includes(m))) &&
+        (!i.roles || !!roles?.includes('temple_admin') || i.roles.some(r => roles?.includes(r)))),
     }))
     .filter(g => g.items.length > 0)
 

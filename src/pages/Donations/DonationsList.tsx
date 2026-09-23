@@ -20,6 +20,7 @@ import { useToast } from '../../components/kit/Toast'
 import { useChequeLifecycle } from '../../components/ChequeLifecycle'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import type { Donation, DonationCategory } from '../../types'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
 const PAGE_SIZE = 20
@@ -71,6 +72,7 @@ export function DonationsList() {
     return map[mode] || 'badge-gray'
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<Donation>[] = useMemo(() => [
     {
       key: 'invoice', label: t('donations.invoiceNo'), sortable: true,
@@ -122,6 +124,7 @@ export function DonationsList() {
       key: 'date', label: t('common.date'), sortable: true,
       render: d => <span className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</span>,
     },
+    enteredByColumn<Donation>(t, enteredByOptions),
     {
       key: 'status', label: t('common.status'),
       render: d => d.is_voided
@@ -131,7 +134,7 @@ export function DonationsList() {
     // The actions column is rendered by the kit from `rowActions` below — the
     // print button stays visible, everything else collapses behind ⋮.
      
-  ], [t, categories])
+  ], [t, enteredByOptions, categories])
 
   function rowActions(d: Donation): RowAction[] {
     const actions: RowAction[] = [
@@ -237,14 +240,16 @@ export function DonationsList() {
           { header: t('common.amount'), type: 'money' },
           { header: t('donations.eightyG'), width: 8 },
           { header: t('common.status'), width: 10 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: rows.map(d => [
           new Date(d.created_at).toLocaleDateString('en-IN'), d.invoice_no, d.donor_name ?? '',
           d.category_name ?? '', d.payment_mode, d.amount_paise,
           d.is_80g_eligible ? t('common.yes') : t('common.no'),
           d.is_voided ? t('donations.voided') : t('common.active'),
+          enteredByText(d, t),
         ]),
-        totals: [t('kit.total'), '', '', '', '', rows.filter(d => !d.is_voided).reduce((s, d) => s + d.amount_paise, 0), '', ''],
+        totals: [t('kit.total'), '', '', '', '', rows.filter(d => !d.is_voided).reduce((s, d) => s + d.amount_paise, 0), '', '', ''],
       })
       toast.success(t('kit.exportReady'))
     } catch {

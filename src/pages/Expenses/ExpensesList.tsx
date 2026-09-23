@@ -20,6 +20,7 @@ import { useToast } from '../../components/kit/Toast'
 import type { Expense } from '../../types'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { ExpenseDetail } from './ExpenseDetail'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'credit']
 const PAGE_SIZE = 20
@@ -106,6 +107,7 @@ export function ExpensesList() {
     }
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<Expense>[] = useMemo(() => [
     {
       key: 'description', label: t('expenses.description'),
@@ -155,6 +157,7 @@ export function ExpensesList() {
       key: 'date', label: t('common.date'), sortable: true,
       render: e => <span className="text-slate-500 text-xs">{new Date(e.bill_date || e.created_at).toLocaleDateString('en-IN')}</span>,
     },
+    enteredByColumn<Expense>(t, enteredByOptions),
     {
       key: 'type', label: t('expenses.type'),
       filter: {
@@ -183,7 +186,7 @@ export function ExpensesList() {
     // other one: edit stays visible, the rest (including the cheque lifecycle)
     // collapses behind ⋮.
      
-  ], [t, categoryNames])
+  ], [t, enteredByOptions, categoryNames])
 
   function rowActions(e: Expense): RowAction[] {
     const actions: RowAction[] = []
@@ -274,18 +277,20 @@ export function ExpensesList() {
           { header: t('expenses.billNo'), width: 14 },
           { header: t('expenses.tds'), type: 'money' },
           { header: t('expenses.type'), width: 10 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: rows.map(e => [
           (e.bill_date || e.created_at || '').slice(0, 10), e.description ?? '', e.vendor_name ?? '',
           e.category ?? '', e.amount_paise, e.gst_paid_paise ?? 0, e.payment_mode,
           e.bill_number ?? '', e.tds_deducted ? (e.tds_amount_paise ?? 0) : 0,
           e.is_on_credit ? t('expenses.credit') : t('expenses.paid'),
+          enteredByText(e, t),
         ]),
         totals: [
           t('kit.total'), '', '', '',
           rows.reduce((s, e) => s + e.amount_paise, 0),
           rows.reduce((s, e) => s + (e.gst_paid_paise ?? 0), 0),
-          '', '', '', '',
+          '', '', '', '', '',
         ],
       })
       toast.success(t('kit.exportReady'))

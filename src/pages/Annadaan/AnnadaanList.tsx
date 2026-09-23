@@ -15,6 +15,7 @@ import type { BhojanshalaSale } from '../../types'
 import {
   BhojanshalaCounter, initialSession, type Session, type SessionRates,
 } from './BhojanshalaCounter'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const
 
@@ -61,13 +62,19 @@ export function AnnadaanList() {
 
   // Meal filter + buyer search apply to the loaded day's sales (small set, day-scoped API).
   const mealFilter = filterState.meal?.values ?? []
+  const byFilter = filterState.entered_by?.values ?? []
   const q = search.trim().toLowerCase()
   const visible = sales.filter(s => {
     if (mealFilter.length && !mealFilter.includes(s.meal_type)) return false
+    if (byFilter.length) {
+      const who = s as { entered_by?: string | null; entered_online?: boolean | null }
+      if (!(who.entered_by && byFilter.includes(who.entered_by)) && !(who.entered_online && byFilter.includes('online'))) return false
+    }
     if (q && !(s.buyer_name?.toLowerCase().includes(q) || s.buyer_mobile?.toLowerCase().includes(q))) return false
     return true
   })
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<BhojanshalaSale>[] = useMemo(() => [
     { key: 'buyer', label: t('bhojanshala.buyer'), render: s => <span className="font-medium">{s.buyer_name || '—'}</span> },
     {
@@ -87,6 +94,7 @@ export function AnnadaanList() {
     { key: 'rate', label: t('bhojanshala.rate'), align: 'right', render: s => <>₹{fmtPaise(s.rate_per_plate_paise)}</> },
     { key: 'total', label: t('bhojanshala.total'), align: 'right', render: s => <span className="font-semibold">₹{fmtPaise(s.total_paise)}</span> },
     { key: 'mode', label: t('bhojanshala.mode'), render: s => <span className="badge-gray">{s.payment_mode}</span> },
+    enteredByColumn<BhojanshalaSale>(t, enteredByOptions),
     {
       key: 'time', label: t('bhojanshala.time'),
       render: s => <span className="text-xs text-slate-400">{new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>,
@@ -141,7 +149,7 @@ export function AnnadaanList() {
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, redeemId, redeemTokens, saving, receiptLoading, canDelete])
+  ], [t, enteredByOptions, redeemId, redeemTokens, saving, receiptLoading, canDelete])
 
   useEffect(() => { load() }, [dateFilter, reloadTick])
 
@@ -181,17 +189,19 @@ export function AnnadaanList() {
           { header: t('bhojanshala.rate'), type: 'money' },
           { header: t('bhojanshala.total'), type: 'money' },
           { header: t('bhojanshala.mode'), width: 10 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: visible.map(s => [
           new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
           s.buyer_name ?? '', mealLabel[s.meal_type] ?? s.meal_type,
           s.plates, s.tokens_redeemed ?? 0, s.rate_per_plate_paise, s.total_paise, s.payment_mode,
+          enteredByText(s, t),
         ]),
         totals: [
           t('kit.total'), '', '',
           visible.reduce((sum, s) => sum + s.plates, 0),
           visible.reduce((sum, s) => sum + (s.tokens_redeemed ?? 0), 0),
-          '', visible.reduce((sum, s) => sum + s.total_paise, 0), '',
+          '', visible.reduce((sum, s) => sum + s.total_paise, 0), '', '',
         ],
       })
       toast.success(t('kit.exportReady'))

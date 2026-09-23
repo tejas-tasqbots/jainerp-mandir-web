@@ -249,6 +249,12 @@ export interface RoomBooking {
   guest_name: string
   guest_mobile: string
   guest_id_type?: string
+  guest_id_last4?: string | null
+  guest_email?: string | null
+  guest_address?: string | null
+  guest_gstin?: string | null
+  /** An identity document is on file for this guest (tenant migration 055). */
+  has_id_document?: boolean
   check_in_date: string
   check_out_date: string
   persons_count: number

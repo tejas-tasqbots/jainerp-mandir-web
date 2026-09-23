@@ -450,6 +450,7 @@ const BLANK = {
   // trust's stay policy (tenant migration 043).
   room_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
   housekeeping_hold_on_checkout: true, stay_house_rules: '',
+  guest_id_retention_years: 3,
   receipt_terms: '', receipt_signature_image: '',
   // Counter slips (tenant-migration 032) — prasad, seva and bhojanshala print
   // through these instead of the receipt settings above. Separate because the
@@ -931,6 +932,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: ((p.default_checkout_time as string) || '10:00').slice(0, 5),
         housekeeping_hold_on_checkout: p.housekeeping_hold_on_checkout !== false,
         stay_house_rules: (p.stay_house_rules as string) || '',
+        guest_id_retention_years: Number(p.guest_id_retention_years ?? 3) || 3,
         receipt_terms: (p.receipt_terms as string) || '',
         receipt_signature_image: (p.receipt_signature_image as string) || '',
         receipt_language: (p.receipt_language as string) || 'en',
@@ -1097,6 +1099,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: form.default_checkout_time,
         housekeeping_hold_on_checkout: form.housekeeping_hold_on_checkout,
         stay_house_rules: form.stay_house_rules,
+        guest_id_retention_years: form.guest_id_retention_years,
         receipt_terms: form.receipt_terms,
         receipt_signature_image: form.receipt_signature_image,
         receipt_language: form.receipt_language,
@@ -1603,6 +1606,24 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                   <span className="block text-[11px] text-slate-400">{t('settings.stay.housekeepingHoldHint')}</span>
                 </span>
               </label>
+
+              {/* How long guests' ID photos and full numbers are kept after
+                  their last stay (tenant migration 055). The police guest
+                  register rule differs by state; DPDP wants no longer than the
+                  purpose needs. The type and last four digits stay regardless. */}
+              <div>
+                <label className="form-label" htmlFor="stay-id-retention">{t('settings.stay.idRetention')}</label>
+                <select
+                  id="stay-id-retention" className="form-select w-48" data-testid="stay-id-retention"
+                  value={form.guest_id_retention_years}
+                  onChange={e => set('guest_id_retention_years', Number(e.target.value))}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map(y => (
+                    <option key={y} value={y}>{t('settings.stay.idRetentionYears', { count: y })}</option>
+                  ))}
+                </select>
+                <p className="form-hint">{t('settings.stay.idRetentionHint')}</p>
+              </div>
 
               <div>
                 <label className="form-label">{t('settings.receipts.terms')}</label>

@@ -24,6 +24,7 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteEntry'
 import type { HallBooking } from '../../../types'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'completed', 'cancelled'] as const
@@ -72,6 +73,7 @@ export function HallBookingsList() {
     cancelled: t('dharamshala.statusCancelled'),
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<HallBooking>[] = useMemo(() => [
     {
       key: 'event', label: t('dharamshala.event'),
@@ -97,6 +99,7 @@ export function HallBookingsList() {
       key: 'advance', label: t('dharamshala.advance'), align: 'right',
       render: b => <>₹{fmtPaise(b.advance_paise)}</>,
     },
+    enteredByColumn<HallBooking>(t, enteredByOptions),
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -171,7 +174,7 @@ export function HallBookingsList() {
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, canDelete])
+  ], [t, enteredByOptions, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -336,17 +339,18 @@ export function HallBookingsList() {
           { header: t('dharamshala.total'), type: 'money' },
           { header: t('dharamshala.advance'), type: 'money' },
           { header: t('common.status'), width: 12 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: rows.map(b => [
           new Date(b.booking_date).toLocaleDateString('en-IN'), b.event_name ?? '',
           b.hall_name ?? '', b.session_type.replace('_', ' '),
-          b.total_paise, b.advance_paise, statusLabel[b.status] ?? b.status,
+          b.total_paise, b.advance_paise, statusLabel[b.status] ?? b.status, enteredByText(b, t),
         ]),
         totals: [
           t('kit.total'), '', '', '',
           rows.reduce((s, b) => s + b.total_paise, 0),
           rows.reduce((s, b) => s + b.advance_paise, 0),
-          '',
+          '', '',
         ],
       })
       toast.success(t('kit.exportReady'))

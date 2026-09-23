@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clock, FileText, IndianRupee, Plus, Receipt, Trash2, Undo2, X, ShieldCheck } from 'lucide-react'
+import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -25,6 +25,8 @@ import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteE
 import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
+import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
+import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'checked_in', 'checked_out', 'cancelled'] as const
@@ -143,6 +145,10 @@ export function RoomsList() {
   const [collecting, setCollecting] = useState(false)
   const { profile } = useProfileStore()
   const [cancelModal, setCancelModal] = useState<{ id: string; guestName: string } | null>(null)
+  // Identity documents (any role that can see the booking adds; the temple
+  // admin alone views and removes) and the admin's edit (tenant migration 055).
+  const [idDocsFor, setIdDocsFor] = useState<RoomBooking | null>(null)
+  const [editFor, setEditFor] = useState<RoomBooking | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
@@ -173,6 +179,7 @@ export function RoomsList() {
     cancelled: t('dharamshala.filterCancelled'),
   }
 
+  const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<RoomBooking>[] = useMemo(() => [
     {
       key: 'guest', label: t('dharamshala.guest'),
@@ -180,6 +187,17 @@ export function RoomsList() {
         <div>
           <p className="font-medium">{b.guest_name}</p>
           <p className="text-xs text-slate-400">{b.guest_mobile}</p>
+          {/* "Book it now, we'll bring the ID": the booking stands, and the
+              register keeps saying the ID is still owed until it arrives. */}
+          {b.has_id_document === false && b.status !== 'cancelled' && (
+            <button
+              onClick={() => setIdDocsFor(b)}
+              className="badge-yellow mt-1 cursor-pointer hover:opacity-80"
+              title={t('guestId.pendingHint')}
+            >
+              {t('guestId.pending')}
+            </button>
+          )}
         </div>
       ),
     },
@@ -253,6 +271,7 @@ export function RoomsList() {
         )
       },
     },
+    enteredByColumn<RoomBooking>(t, enteredByOptions),
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -350,6 +369,26 @@ export function RoomsList() {
               <X size={14} />
             </button>
           )}
+          {b.status !== 'cancelled' && (
+            <button
+              onClick={() => setIdDocsFor(b)}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('guestId.title')} aria-label={t('guestId.title')}
+            >
+              <IdCard size={14} />
+            </button>
+          )}
+          {/* temple_admin only: the safe edits (guest, persons, notes; room,
+              dates and rate until checkout). */}
+          {canDelete && b.status !== 'cancelled' && (
+            <button
+              onClick={() => setEditFor(b)}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('editBooking.title')} aria-label={t('editBooking.title')}
+            >
+              <Pencil size={14} />
+            </button>
+          )}
           {/* temple_admin only — the shared entry delete voids whatever was
               collected, frees the room, and is restorable from the Recycle Bin. */}
           {canDelete && (
@@ -365,7 +404,7 @@ export function RoomsList() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, canDelete])
+  ], [t, enteredByOptions, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -415,19 +454,20 @@ export function RoomsList() {
           { header: t('dharamshala.advance'), type: 'money' },
           { header: t('dharamshala.balance'), type: 'money' },
           { header: t('common.status'), width: 13 },
+          { header: t('enteredBy.column'), width: 18 },
         ],
         rows: rows.map(b => [
           b.guest_name ?? '', b.guest_mobile ?? '', b.room_number || b.room_id,
           new Date(b.check_in_date).toLocaleDateString('en-IN'),
           new Date(b.check_out_date).toLocaleDateString('en-IN'),
           b.persons_count, b.advance_paise, b.balance_paise,
-          statusLabel[b.status] ?? b.status,
+          statusLabel[b.status] ?? b.status, enteredByText(b, t),
         ]),
         totals: [
           t('kit.total'), '', '', '', '', '',
           rows.reduce((s, b) => s + b.advance_paise, 0),
           rows.reduce((s, b) => s + b.balance_paise, 0),
-          '',
+          '', '',
         ],
       })
       toast.success(t('kit.exportReady'))
@@ -823,6 +863,13 @@ export function RoomsList() {
           RE-BILLS, which is how an extension gets charged after the guest has
           already gone - so the dialog says so before the save rather than
           surprising a cashier with a new total. */}
+      {idDocsFor && (
+        <IdDocumentsModal booking={idDocsFor} onClose={() => setIdDocsFor(null)} onChanged={() => void load()} />
+      )}
+      {editFor && (
+        <EditBookingModal booking={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); void load() }} />
+      )}
+
       {timesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">

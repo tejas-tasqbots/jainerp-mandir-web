@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, X } from 'lucide-react'
+import { Camera, Save, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { recipientGstin } from '../../../lib/statutoryIds'
+import { compressIdImage } from '../../../lib/idImage'
 import type { Room, DevoteeSelection } from '../../../types'
 
 /**
@@ -27,6 +28,9 @@ export function AddRoomCheckin() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [guest, setGuest] = useState<DevoteeSelection | null>(null)
+  // Optional photo of the ID (tenant migration 055). Filed with its number as
+  // one document after the booking exists.
+  const [idPhoto, setIdPhoto] = useState<string | null>(null)
   // Most temple trusts are NOT GST-registered, and a recipient's GSTIN is
   // meaningless on a bill that carries no tax - the trust has no standing to
   // issue a tax invoice at all (s.31 CGST). So the field is not merely optional
@@ -118,9 +122,11 @@ export function AddRoomCheckin() {
       // four digits are ever shown again. Sent inside `guest` because that is
       // where DharamshalaService.resolveGuest reads it from — the top-level
       // `guest_id_type` this form used to send reached nothing.
+      // With a photo, the ID is filed after the booking as ONE document (number
+      // + photo) rather than twice — once here without the photo and again below.
       const idFields = {
-        id_proof_type: form.guest_id_type,
-        id_proof_number: form.id_proof_number.trim() || null,
+        id_proof_type: idPhoto ? null : form.guest_id_type,
+        id_proof_number: idPhoto ? null : (form.id_proof_number.trim() || null),
         // Normalised, not as typed: the API stores what it is given, and
         // "27aaatr1234c1z0" on an invoice is not a GSTIN anybody can look up.
         gstin: gstinCheck.gstin,
@@ -137,6 +143,21 @@ export function AddRoomCheckin() {
       // cashier is told, and can take it from the rooms list, rather than
       // losing the booking they just made.
       const bookingId = created?.data?.id ?? created?.id
+      if (bookingId && idPhoto) {
+        try {
+          await api.post(`/room-bookings/${bookingId}/id-documents`, {
+            id_type: form.guest_id_type,
+            id_number: form.id_proof_number.trim() || null,
+            image: idPhoto,
+          })
+        } catch {
+          // The booking stands; the ID can be added from the Rooms list, which
+          // flags it as pending until it is.
+          setError(t('guestId.photoNotSaved'))
+          setSaving(false)
+          return
+        }
+      }
       const depositPaise = form.deposit ? parsePaise(form.deposit) : 0
       if (bookingId && depositPaise > 0) {
         try {
@@ -207,6 +228,7 @@ export function AddRoomCheckin() {
                 <option value="passport">{t('dharamshala.idPassport')}</option>
                 <option value="voter_id">{t('dharamshala.idVoter')}</option>
                 <option value="driving_license">{t('dharamshala.idDl')}</option>
+                <option value="other">{t('guestId.types.other')}</option>
               </select>
             </div>
             <div>
@@ -218,7 +240,22 @@ export function AddRoomCheckin() {
                 inputMode={form.guest_id_type === 'aadhaar' ? 'numeric' : 'text'}
                 autoComplete="off"
               />
-              <p className="text-xs text-slate-500 mt-1">{t('dharamshala.idStoredHint')}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {form.guest_id_type === 'aadhaar' ? t('guestId.aadhaarHint') : t('dharamshala.idStoredHint')}
+              </p>
+              <label className="btn-secondary btn-sm mt-2 inline-flex cursor-pointer">
+                <Camera size={14} /> {idPhoto ? t('guestId.retake') : t('guestId.addPhoto')}
+                <input
+                  type="file" accept="image/*" className="hidden"
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    try { setIdPhoto(await compressIdImage(file)) } catch { setError(t('guestId.photoFailed')) }
+                  }}
+                />
+              </label>
+              {idPhoto && <span className="text-xs text-green-700 ml-2">{t('guestId.photoAttached')}</span>}
+              <p className="text-xs text-slate-400 mt-1">{t('guestId.laterHint')}</p>
             </div>
             {/* CGST Rule 46(e): the recipient's GSTIN. Optional, because most
                 guests are individuals who have none — but without it a company
