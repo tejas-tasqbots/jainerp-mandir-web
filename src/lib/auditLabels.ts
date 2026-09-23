@@ -78,9 +78,9 @@ export function actionTone(action: string): Tone {
     case 'delete': case 'void': case 'cancel': case 'reject': case 'cheque_bounce': case 'reverse': case 'waive':
     case 'purged':
       return 'red'
-    case 'restore': case 'withdraw':
-    // Someone looked at a guest's ID: worth seeing at a glance (DPDP access log).
-    case 'viewed': case 'id_proof_revealed':
+    // Brought back — and someone looked at a guest's ID, which is worth seeing
+    // at a glance (the DPDP access log).
+    case 'restore': case 'withdraw': case 'viewed': case 'id_proof_revealed':
       return 'amber'
     case 'pay': case 'payment': case 'refund': case 'repay': case 'cheque_deposit': case 'cheque_clear':
     case 'deposit_collected': case 'deposit_settled': case 'redeem': case 'checkin': case 'checkout':
