@@ -61,11 +61,16 @@ const MODULE_ROLES: Record<string, Role[]> = {
   '/reports': ['accountant', 'viewer'],
   '/certificates': ['accountant'],
   '/registers': ['cashier', 'volunteer', 'viewer'],
-  // Restoring a deleted record needs the same permission as deleting it did.
-  '/registers/recycle-bin': ['cashier', 'accountant'],
+  // Deleting a money entry is a temple_admin action, so seeing what was
+  // deleted — and putting it back — is one too. A cashier who deletes a vendor
+  // by mistake asks an admin, the same as for a donation.
+  '/registers/recycle-bin': [],
   // Who-did-what is sensitive — narrower than the rest of Registers.
   '/registers/activity-log': ['accountant'],
   '/settings': [], // temple_admin only
+  // Everyone can see the devices THEIR OWN account is signed in on and end
+  // one; the trust-wide half of that screen checks temple_admin itself.
+  '/my-devices': ALL_STAFF,
   '/help': ALL_STAFF,
 }
 

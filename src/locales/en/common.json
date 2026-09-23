@@ -1430,7 +1430,8 @@
     "staff": "Staff",
     "staffDirectory": "Directory",
     "attendance": "Attendance",
-    "housekeeping": "Housekeeping"
+    "housekeeping": "Housekeeping",
+    "devices": "Devices"
   },
   "palette": {
     "close": "Close",
@@ -3550,7 +3551,8 @@
       "field_change_requests": "Change request",
       "tenant_export": "Data export",
       "integrations": "Integration",
-      "device_registry": "Device"
+      "device_registry": "Device",
+      "user_sessions": "Signed-in device"
     },
     "action": {
       "create": "Created",
@@ -3601,7 +3603,8 @@
       "recover_manual": "Advance recovered",
       "set_primary_for_donations": "Set as donation account",
       "update_public_profile": "Public page edited",
-      "upload_donation_proof": "Payment proof uploaded"
+      "upload_donation_proof": "Payment proof uploaded",
+      "revoke": "Signed out"
     },
     "group": {
       "donations": "Donations",
@@ -3668,6 +3671,56 @@
       "adjustment": "Adjustments",
       "expense": "Expenses",
       "other": "Other"
+    }
+  },
+  "devices": {
+    "title": "Devices & sessions",
+    "subtitle": "Every device signed in to this mandir with your account — and a way to sign one out. A session stays live until it is signed out or expires.",
+    "refresh": "Refresh",
+    "mine": "My devices",
+    "everyone": "Everyone at this trust",
+    "everyoneHelp": "Every device signed in to this mandir, whoever it belongs to. Only a temple admin sees this.",
+    "sessionCount_one": "{{count}} device",
+    "sessionCount_other": "{{count}} devices",
+    "noneMine": "No other device is signed in.",
+    "noneTrust": "Nobody is signed in at this mandir right now.",
+    "signOut": "Sign out",
+    "signOutTitle": "Sign this device out?",
+    "signOutMessage": "\"{{device}}\" will be signed out at once and will have to sign in again.",
+    "signOutUserMessage": "{{name}} will be signed out of \"{{device}}\" at once and will have to sign in again.",
+    "signedOut": "Device signed out",
+    "signOutOthers": "Sign out my other devices",
+    "signOutOthersTitle": "Sign out every other device?",
+    "signOutOthersMessage_one": "{{count}} other device will be signed out. This one stays signed in.",
+    "signOutOthersMessage_other": "{{count}} other devices will be signed out. This one stays signed in.",
+    "signedOutOthers": "Your other devices were signed out",
+    "signOutEverywhere": "Sign out everywhere",
+    "signOutEverywhereTitle": "Sign {{name}} out everywhere?",
+    "signOutEverywhereMessage_one": "{{name}} will be signed out of {{count}} device and will have to sign in again. Use this when someone has left.",
+    "signOutEverywhereMessage_other": "{{name}} will be signed out of all {{count}} devices and will have to sign in again. Use this when someone has left.",
+    "signedOutUser": "{{name}} was signed out everywhere",
+    "thisDevice": "This device",
+    "thisUser": "This user",
+    "cannotSignOutSelf": "In use now",
+    "lastUsed": "Last used {{when}}",
+    "signedInOn": "signed in {{when}}",
+    "movedNetwork": "· network changed since sign-in",
+    "never": "not used yet",
+    "justNow": "just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "unknownPlatform": "Unknown device",
+    "failed": "Could not sign that device out",
+    "platform": {
+      "web": "Browser",
+      "android": "Android app",
+      "ios": "iPhone app",
+      "electron": "Desktop app",
+      "desktop": "Desktop app"
     }
   }
 }

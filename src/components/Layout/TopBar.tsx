@@ -1,4 +1,4 @@
-import { LogOut, User, RefreshCw, Search, Keyboard, Compass, Menu } from 'lucide-react'
+import { LogOut, User, RefreshCw, Search, Keyboard, Compass, Menu, MonitorSmartphone } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -62,6 +62,17 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
             <span className="text-xs text-slate-400 capitalize">({user.roles[0].replace('_', ' ')})</span>
           )}
         </div>
+        {/* Where this account is signed in. A sign-in used to be invisible:
+            nothing said how many devices held a live session, or where. */}
+        <button
+          type="button"
+          onClick={() => navigate('/my-devices')}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+          title={t('devices.title')}
+          aria-label={t('devices.title')}
+        >
+          <MonitorSmartphone size={16} />
+        </button>
         {/* Replay the tour. The single most useful moment for a walkthrough is
             after somebody has skipped it, so it must be reachable on demand. */}
         <button

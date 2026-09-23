@@ -1430,7 +1430,8 @@
     "staff": "कर्मचारी",
     "staffDirectory": "सूची",
     "attendance": "उपस्थिति",
-    "housekeeping": "साफ़-सफ़ाई"
+    "housekeeping": "साफ़-सफ़ाई",
+    "devices": "डिवाइस"
   },
   "palette": {
     "close": "बंद करें",
@@ -3550,7 +3551,8 @@
       "field_change_requests": "परिवर्तन अनुरोध",
       "tenant_export": "डेटा निर्यात",
       "integrations": "एकीकरण",
-      "device_registry": "डिवाइस"
+      "device_registry": "डिवाइस",
+      "user_sessions": "लॉगिन डिवाइस"
     },
     "action": {
       "create": "बनाया",
@@ -3601,7 +3603,8 @@
       "recover_manual": "अग्रिम वसूला",
       "set_primary_for_donations": "दान खाता बनाया",
       "update_public_profile": "सार्वजनिक पेज बदला",
-      "upload_donation_proof": "भुगतान प्रमाण अपलोड"
+      "upload_donation_proof": "भुगतान प्रमाण अपलोड",
+      "revoke": "साइन आउट किया"
     },
     "group": {
       "donations": "दान",
@@ -3668,6 +3671,56 @@
       "adjustment": "समायोजन",
       "expense": "खर्च",
       "other": "अन्य"
+    }
+  },
+  "devices": {
+    "title": "डिवाइस व सत्र",
+    "subtitle": "आपके खाते से इस मंदिर में लॉगिन हर डिवाइस — और किसी डिवाइस को साइन आउट करने का तरीका। सत्र तब तक चालू रहता है जब तक साइन आउट न हो या समाप्त न हो जाए।",
+    "refresh": "ताज़ा करें",
+    "mine": "मेरे डिवाइस",
+    "everyone": "इस ट्रस्ट के सभी लोग",
+    "everyoneHelp": "इस मंदिर में लॉगिन हर डिवाइस, चाहे वह किसी का भी हो। यह केवल मंदिर एडमिन को दिखता है।",
+    "sessionCount_one": "{{count}} डिवाइस",
+    "sessionCount_other": "{{count}} डिवाइस",
+    "noneMine": "कोई दूसरा डिवाइस लॉगिन नहीं है।",
+    "noneTrust": "इस समय इस मंदिर में कोई लॉगिन नहीं है।",
+    "signOut": "साइन आउट",
+    "signOutTitle": "इस डिवाइस को साइन आउट करें?",
+    "signOutMessage": "\"{{device}}\" तुरंत साइन आउट हो जाएगा और उसे दोबारा लॉगिन करना होगा।",
+    "signOutUserMessage": "{{name}} \"{{device}}\" से तुरंत साइन आउट हो जाएँगे और उन्हें दोबारा लॉगिन करना होगा।",
+    "signedOut": "डिवाइस साइन आउट हो गया",
+    "signOutOthers": "मेरे अन्य डिवाइस साइन आउट करें",
+    "signOutOthersTitle": "बाकी सभी डिवाइस साइन आउट करें?",
+    "signOutOthersMessage_one": "{{count}} अन्य डिवाइस साइन आउट हो जाएगा। यह डिवाइस लॉगिन रहेगा।",
+    "signOutOthersMessage_other": "{{count}} अन्य डिवाइस साइन आउट हो जाएँगे। यह डिवाइस लॉगिन रहेगा।",
+    "signedOutOthers": "आपके अन्य डिवाइस साइन आउट कर दिए गए",
+    "signOutEverywhere": "सभी जगह से साइन आउट",
+    "signOutEverywhereTitle": "{{name}} को सभी जगह से साइन आउट करें?",
+    "signOutEverywhereMessage_one": "{{name}} {{count}} डिवाइस से साइन आउट हो जाएँगे और उन्हें दोबारा लॉगिन करना होगा। किसी के जाने पर इसका उपयोग करें।",
+    "signOutEverywhereMessage_other": "{{name}} सभी {{count}} डिवाइस से साइन आउट हो जाएँगे और उन्हें दोबारा लॉगिन करना होगा। किसी के जाने पर इसका उपयोग करें।",
+    "signedOutUser": "{{name}} को सभी जगह से साइन आउट कर दिया गया",
+    "thisDevice": "यही डिवाइस",
+    "thisUser": "यह उपयोगकर्ता",
+    "cannotSignOutSelf": "अभी उपयोग में",
+    "lastUsed": "अंतिम उपयोग {{when}}",
+    "signedInOn": "लॉगिन {{when}}",
+    "movedNetwork": "· लॉगिन के बाद नेटवर्क बदला",
+    "never": "अभी उपयोग नहीं हुआ",
+    "justNow": "अभी-अभी",
+    "minutesAgo_one": "{{count}} मिनट पहले",
+    "minutesAgo_other": "{{count}} मिनट पहले",
+    "hoursAgo_one": "{{count}} घंटे पहले",
+    "hoursAgo_other": "{{count}} घंटे पहले",
+    "daysAgo_one": "{{count}} दिन पहले",
+    "daysAgo_other": "{{count}} दिन पहले",
+    "unknownPlatform": "अज्ञात डिवाइस",
+    "failed": "वह डिवाइस साइन आउट नहीं हो सका",
+    "platform": {
+      "web": "ब्राउज़र",
+      "android": "Android ऐप",
+      "ios": "iPhone ऐप",
+      "electron": "डेस्कटॉप ऐप",
+      "desktop": "डेस्कटॉप ऐप"
     }
   }
 }

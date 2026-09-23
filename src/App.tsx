@@ -22,6 +22,7 @@ import { AddHallBooking } from './pages/Dharamshala/Hall/AddHallBooking'
 import { PrasadCounter } from './pages/Prasad/PrasadCounter'
 import { PrasadItems } from './pages/Prasad/PrasadItems'
 import { PrasadSales } from './pages/Prasad/PrasadSales'
+import { DevicesPage } from './pages/Devices/DevicesPage'
 import { SevaBookingsList } from './pages/Seva/SevaBookingsList'
 import { AddSevaBooking } from './pages/Seva/AddSevaBooking'
 import { AnnadaanList } from './pages/Annadaan/AnnadaanList'
@@ -217,6 +218,7 @@ export default function App() {
             <Route path="/registers/visitor-count" element={<VisitorCountPage />} />
             <Route path="/registers/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/registers/activity-log" element={<ActivityLogPage />} />
+            <Route path="/my-devices" element={<DevicesPage />} />
 
             {/* Settings & Help */}
             <Route path="/sant" element={<SantPage />} />
