@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, CheckCircle2, AlertTriangle, RefreshCw, Plus, Undo2 } from 'lucide-react'
-import { api, fmtPaise, parsePaise, currentFY } from '../../lib/api'
+import { api, fmtPaise, parsePaise, currentFY, todayIst } from '../../lib/api'
 import { FySelect } from '../../components/FySelect'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -43,7 +43,7 @@ export function GeneralLedger() {
 
   const [showForm, setShowForm] = useState(false)
   const [narration, setNarration] = useState('')
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10))
+  const [entryDate, setEntryDate] = useState(todayIst())
   const [lines, setLines] = useState<FormLine[]>([
     { code: '', side: 'debit', amount: '' },
     { code: '', side: 'credit', amount: '' },

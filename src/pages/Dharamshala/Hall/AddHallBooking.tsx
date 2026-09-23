@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
-import { api, parsePaise } from '../../../lib/api'
+import { api, parsePaise, todayIst } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { emptyPaymentRow, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import { SplitPaymentToggle } from '../../../components/SplitPaymentToggle'
@@ -27,7 +27,7 @@ export function AddHallBooking() {
   const [form, setForm] = useState({
     hall_id: '',
     event_name: '',
-    booking_date: new Date().toISOString().slice(0, 10),
+    booking_date: todayIst(),
     session_type: 'full_day',
     advance: '',
     payment_mode: 'cash',

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, Calculator } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise, parsePaise, currentFY } from '../../lib/api'
+import { api, fmtPaise, parsePaise, currentFY, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -29,7 +29,7 @@ export function FixedAssets() {
   const [depFy, setDepFy] = useState(currentFY())
   const [running, setRunning] = useState(false)
   const [form, setForm] = useState({
-    name: '', purchase_date: new Date().toISOString().slice(0, 10),
+    name: '', purchase_date: todayIst(),
     purchase_cost: '', useful_life_years: '5',
     depreciation_method: 'SLM', depreciation_rate: '20',
   })
@@ -94,7 +94,7 @@ export function FixedAssets() {
         depreciation_rate: parseFloat(form.depreciation_rate),
       })
       setShowForm(false)
-      setForm({ name: '', purchase_date: new Date().toISOString().slice(0, 10), purchase_cost: '', useful_life_years: '5', depreciation_method: 'SLM', depreciation_rate: '20' })
+      setForm({ name: '', purchase_date: todayIst(), purchase_cost: '', useful_life_years: '5', depreciation_method: 'SLM', depreciation_rate: '20' })
       toast.success(t('accounts.assetAdded'))
       setPage(1)
       load()

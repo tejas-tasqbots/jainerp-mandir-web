@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, Landmark, Paperclip } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
 import { exportXlsx } from '../../lib/exportXlsx'
@@ -94,7 +94,7 @@ export function ExpensesList() {
         amount_paise: payPaise,
         payment_mode: payMode,
         payment_account_id: payMode === 'cash' ? undefined : payAccountId,
-        payment_date: new Date().toISOString().slice(0, 10),
+        payment_date: todayIst(),
       })
       setPayModal(null)
       toast.success(t('creditors.paymentRecorded'))

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Save, PackageCheck } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, apiErrorMessage } from '../../lib/api'
+import { api, apiErrorMessage, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
@@ -23,7 +23,7 @@ export function LostFoundPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     description: '',
-    found_date: new Date().toISOString().slice(0, 10),
+    found_date: todayIst(),
     found_location: '',
     notes: '',
   })
@@ -109,7 +109,7 @@ export function LostFoundPage() {
         found_location: form.found_location || undefined,
         notes: form.notes || undefined,
       })
-      setForm({ description: '', found_date: new Date().toISOString().slice(0, 10), found_location: '', notes: '' })
+      setForm({ description: '', found_date: todayIst(), found_location: '', notes: '' })
       setShowForm(false)
       toast.success(t('registers.itemRecorded'))
       load()

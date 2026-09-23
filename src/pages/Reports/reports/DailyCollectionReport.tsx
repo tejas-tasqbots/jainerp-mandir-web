@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise } from '../../../lib/api'
+import { api, fmtPaise, todayIst } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef } from '../../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
@@ -18,7 +18,7 @@ interface DailyCollection extends CollectionStreams {
 export function DailyCollectionReport() {
   const { t } = useTranslation()
   const toast = useToast()
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(todayIst())
   const [data, setData] = useState<DailyCollection | null>(null)
   const [loading, setLoading] = useState(true)
 

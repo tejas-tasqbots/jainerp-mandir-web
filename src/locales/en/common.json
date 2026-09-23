@@ -3793,7 +3793,14 @@
       "voter_id": "Voter ID",
       "pan": "PAN",
       "other": "Other ID"
-    }
+    },
+    "holderName": "Name on the ID",
+    "holderPlaceholder": "Whose ID is this? (blank = the guest)",
+    "idsHeading_one": "ID documents ({{count}})",
+    "idsHeading_other": "ID documents ({{count}})",
+    "addAnother": "Add another ID",
+    "removeRow": "Remove this ID",
+    "tooManyPhotos": "Too many large photos for one booking. Book now with fewer photos and add the rest from the Rooms list."
   },
   "editBooking": {
     "title": "Edit booking",

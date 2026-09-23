@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
-import { api, parsePaise } from '../../lib/api'
+import { api, parsePaise, todayIst } from '../../lib/api'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { DevoteeSelection } from '../../types'
 
@@ -17,7 +17,7 @@ export function AddBoli() {
     boli_type: 'aarti',
     description: '',
     pledged_amount: '',
-    pledge_date: new Date().toISOString().slice(0, 10),
+    pledge_date: todayIst(),
     event_name: '',
   })
 

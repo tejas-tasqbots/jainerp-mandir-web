@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X, Paperclip, Trash2 } from 'lucide-react'
-import { api, parsePaise } from '../../lib/api'
+import { api, parsePaise, todayIst } from '../../lib/api'
 import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { compressImage } from '../../lib/imageCompress'
 
@@ -22,7 +22,7 @@ export function AddExpense() {
     payment_account_id: '',
     fund_id: '',
     bill_number: '',
-    bill_date: new Date().toISOString().slice(0, 10),
+    bill_date: todayIst(),
     utr_number: '',
     is_on_credit: false,
     gst_amount: '',
@@ -33,7 +33,7 @@ export function AddExpense() {
     is_recurring: false,
     cheque_number: '',
     cheque_bank: '',
-    cheque_date: new Date().toISOString().slice(0, 10),
+    cheque_date: todayIst(),
   })
 
   const accounts = useAccounts()

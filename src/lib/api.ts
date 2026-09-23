@@ -97,9 +97,20 @@ export function istDate(value: string | Date): string {
   return new Date(value).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 }
 
-/** Today's date in IST as YYYY-MM-DD — what the register should be keyed on. */
+/**
+ * Today's date in IST as YYYY-MM-DD — what the register should be keyed on,
+ * and what every form's date field defaults to. `new Date().toISOString()`
+ * is the UTC day, so between 00:00 and 05:29 IST a form defaulted to yesterday.
+ */
 export function todayIst(): string {
   return istDate(new Date())
+}
+
+/** The calendar day after a YYYY-MM-DD date (a default check-out). */
+export function istDayAfter(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 export function currentFY(): string {

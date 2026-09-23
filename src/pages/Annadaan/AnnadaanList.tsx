@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, Receipt, Trash2 } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise } from '../../lib/api'
+import { api, fmtPaise, todayIst } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { splitBy } from '../../lib/chartData'
@@ -29,7 +29,7 @@ export function AnnadaanList() {
   const [loading, setLoading] = useState(true)
   // The bhojanshala counter works one day at a time (daily summary + token
   // redemption are day-scoped), so this screen keeps a single-date filter.
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10))
+  const [dateFilter, setDateFilter] = useState(todayIst())
   const [search, setSearch] = useState('')
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const [saving, setSaving] = useState(false)

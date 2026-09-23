@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
+import { api, apiErrorMessage, fmtPaise, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
@@ -29,8 +29,8 @@ const eventTypeKeys: Record<typeof eventTypes[number], string> = {
 
 const emptyForm = {
   name: '', event_type: 'festival',
-  start_date: new Date().toISOString().slice(0, 10),
-  end_date: new Date().toISOString().slice(0, 10),
+  start_date: todayIst(),
+  end_date: todayIst(),
   estimated_budget: '', allow_registration: false, description: '',
 }
 

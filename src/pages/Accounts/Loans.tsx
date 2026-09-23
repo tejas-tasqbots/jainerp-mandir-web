@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IndianRupee, Plus, Save, X } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
@@ -34,12 +34,12 @@ export function Loans() {
   const [repayAmt, setRepayAmt] = useState('')
   const [repayMode, setRepayMode] = useState('cash')
   const [repayAccountId, setRepayAccountId] = useState('')
-  const [repayDate, setRepayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [repayDate, setRepayDate] = useState(todayIst())
   const [repaying, setRepaying] = useState(false)
   const [repayError, setRepayError] = useState('')
   const [form, setForm] = useState({
     type: 'taken', party_name: '', principal: '',
-    interest_rate: '0', start_date: new Date().toISOString().slice(0, 10), end_date: '',
+    interest_rate: '0', start_date: todayIst(), end_date: '',
   })
 
   // NOTE: these columns are not marked `sortable` — DataTable only sorts when
@@ -112,7 +112,7 @@ export function Loans() {
         end_date: form.end_date || undefined,
       })
       setShowForm(false)
-      setForm({ type: 'taken', party_name: '', principal: '', interest_rate: '0', start_date: new Date().toISOString().slice(0, 10), end_date: '' })
+      setForm({ type: 'taken', party_name: '', principal: '', interest_rate: '0', start_date: todayIst(), end_date: '' })
       toast.success(t('accounts.loanAdded'))
       setPage(1)
       load()
@@ -129,7 +129,7 @@ export function Loans() {
     setRepayAmt('')
     setRepayMode('cash')
     setRepayAccountId('')
-    setRepayDate(new Date().toISOString().slice(0, 10))
+    setRepayDate(todayIst())
     setRepayError('')
   }
 

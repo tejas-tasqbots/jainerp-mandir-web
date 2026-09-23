@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Landmark, CheckCircle2, XCircle as BounceIcon } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise } from '../../lib/api'
+import { api, fmtPaise, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import {
@@ -99,7 +99,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
 
   const [depositModal, setDepositModal] = useState<{ id: string; invoiceNo: string } | null>(null)
   const [depositAccountId, setDepositAccountId] = useState('')
-  const [depositDate, setDepositDate] = useState(new Date().toISOString().slice(0, 10))
+  const [depositDate, setDepositDate] = useState(todayIst())
   const [depositing, setDepositing] = useState(false)
 
   const [bounceModal, setBounceModal] = useState<{ id: string; invoiceNo: string } | null>(null)
@@ -217,7 +217,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
   function openDeposit(d: Donation) {
     setDepositModal({ id: d.id, invoiceNo: d.invoice_no })
     setDepositAccountId(bankAccounts[0]?.id ?? '')
-    setDepositDate(new Date().toISOString().slice(0, 10))
+    setDepositDate(todayIst())
   }
   async function submitDeposit(e: React.FormEvent) {
     e.preventDefault()

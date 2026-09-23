@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Landmark, Wallet, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
@@ -167,7 +167,7 @@ export function CashBank() {
     setMoving(true); setMoveError('')
     try {
       await api.post('/contra-entries', {
-        entry_date: new Date().toISOString().slice(0, 10),
+        entry_date: todayIst(),
         from_account_id: moveModal === 'deposit' ? moveOtherAccountId : selected.id,
         to_account_id: moveModal === 'deposit' ? selected.id : moveOtherAccountId,
         amount_paise: amountPaise,

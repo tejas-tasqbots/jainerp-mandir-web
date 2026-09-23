@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, RefreshCw, ShieldAlert } from 'lucide-react'
-import { api } from '../../../lib/api'
+import { api, todayIst } from '../../../lib/api'
 
 export function BackupTab() {
   const { t } = useTranslation()
@@ -18,7 +18,7 @@ export function BackupTab() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `jainerp-backup-${payload.tenant || 'mandir'}-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `jainerp-backup-${payload.tenant || 'mandir'}-${todayIst()}.json`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {

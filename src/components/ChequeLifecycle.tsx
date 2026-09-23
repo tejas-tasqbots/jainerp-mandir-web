@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Banknote, CheckCircle2, XOctagon } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, todayIst } from '../lib/api'
 import { useToast } from './kit/Toast'
 import type { RowAction } from './kit/DataTable'
 
@@ -48,7 +48,7 @@ export function useChequeLifecycle(kind: ChequeKind, reload: () => void) {
       // Account + date are optional server-side; the Cheques page offers the
       // full form when the cashier needs to pick a specific bank account.
       await api.patch(`/${kind}/${row.id}/cheque/deposit`, {
-        deposited_at: new Date().toISOString().slice(0, 10),
+        deposited_at: todayIst(),
       })
       toast.success(t('cheques.depositSuccess'))
       reload()

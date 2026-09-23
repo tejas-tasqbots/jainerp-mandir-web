@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calculator, HandCoins, Plus, RefreshCw, Save, X } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
@@ -124,7 +124,7 @@ export function PayrollPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [form, setForm] = useState({
-    employee_id: '', amount: '', advance_date: new Date().toISOString().slice(0, 10),
+    employee_id: '', amount: '', advance_date: todayIst(),
     reason: '', recovery_mode: 'instalment' as Advance['recovery_mode'],
     instalment: '', recovery_starts_on: '', payment_mode: 'cash', payment_account_id: '',
   })

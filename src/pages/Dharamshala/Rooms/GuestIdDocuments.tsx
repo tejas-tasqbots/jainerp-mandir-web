@@ -26,6 +26,7 @@ const ID_TYPES = ['aadhaar', 'passport', 'driving_license', 'voter_id', 'pan', '
 interface IdDoc {
   id: string
   id_type: string
+  holder_name: string | null
   masked: string | null
   has_image: boolean
   has_full_number: boolean
@@ -51,6 +52,7 @@ export function IdDocumentsModal({ booking, onClose, onChanged }: {
   const typeLabel = useIdTypeLabel()
   const isAdmin = !!useAuthStore(s => s.user?.roles)?.includes('temple_admin')
   const [type, setType] = useState<string>('aadhaar')
+  const [holder, setHolder] = useState('')
   const [number, setNumber] = useState('')
   const [image, setImage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -82,9 +84,12 @@ export function IdDocumentsModal({ booking, onClose, onChanged }: {
     try {
       await api.post(`/room-bookings/${booking.id}/id-documents`, {
         id_type: type, id_number: number.trim() || null, image,
+        // Blank = the booking's own guest.
+        holder_name: holder.trim() || booking.guest_name || null,
       })
       toast.success(t('guestId.saved'))
       setNumber('')
+      setHolder('')
       setImage(null)
       if (fileRef.current) fileRef.current.value = ''
       load()
@@ -140,6 +145,7 @@ export function IdDocumentsModal({ booking, onClose, onChanged }: {
               <li key={d.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-800">
+                    {d.holder_name && <span className="text-slate-900">{d.holder_name} · </span>}
                     {typeLabel(d.id_type)} <span className="font-mono text-slate-600 ml-1">{d.masked ?? ''}</span>
                   </p>
                   <p className="text-xs text-slate-400">
@@ -178,6 +184,14 @@ export function IdDocumentsModal({ booking, onClose, onChanged }: {
         <div className="mt-5 border-t border-slate-100 pt-4">
           <h4 className="text-sm font-semibold text-navy-900 mb-3">{t('guestId.add')}</h4>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="form-label" htmlFor="gid-holder">{t('guestId.holderName')}</label>
+              <input
+                id="gid-holder" className="form-input" value={holder} maxLength={120} autoComplete="off"
+                onChange={e => setHolder(e.target.value)}
+                placeholder={booking.guest_name || t('guestId.holderPlaceholder')}
+              />
+            </div>
             <div>
               <label className="form-label" htmlFor="gid-type">{t('dharamshala.idType')}</label>
               <select id="gid-type" className="form-select" value={type} onChange={e => { setType(e.target.value); setNumber('') }}>
@@ -266,7 +280,7 @@ function IdViewer({ docId, onClose }: { docId: string; onClose: () => void }) {
   const { t } = useTranslation()
   const typeLabel = useIdTypeLabel()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [doc, setDoc] = useState<{ id_type: string; masked: string | null; id_number: string | null; image: string | null; watermark: string; guest_name: string } | null>(null)
+  const [doc, setDoc] = useState<{ id_type: string; masked: string | null; id_number: string | null; image: string | null; watermark: string; guest_name: string; holder_name: string | null } | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -333,7 +347,7 @@ function IdViewer({ docId, onClose }: { docId: string; onClose: () => void }) {
       <div className="bg-white rounded-xl shadow-xl p-4 w-full max-w-4xl mx-4 max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="font-bold text-navy-900">{doc ? `${typeLabel(doc.id_type)} — ${doc.guest_name}` : t('guestId.view')}</h3>
+            <h3 className="font-bold text-navy-900">{doc ? `${typeLabel(doc.id_type)} — ${doc.holder_name || doc.guest_name}` : t('guestId.view')}</h3>
             {doc && (
               <p className="text-sm text-slate-600 font-mono">
                 {doc.id_number ?? doc.masked}

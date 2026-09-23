@@ -3,7 +3,7 @@ import { autoPrintSlip } from '../../lib/printReceipt'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X } from 'lucide-react'
-import { api, parsePaise, fmtPaise } from '../../lib/api'
+import { api, parsePaise, fmtPaise, todayIst } from '../../lib/api'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { emptyPaymentRow, toPayload, sumPaise, type PaymentRow } from '../../components/PaymentSplitInput'
 import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
@@ -27,7 +27,7 @@ export function AddSevaBooking() {
     seva_id: '',
     gotra: '',
     sankalp_names: '',
-    booking_date: new Date().toISOString().slice(0, 10),
+    booking_date: todayIst(),
     slot_time: '',
     amount: '',
     payment_mode: 'cash',

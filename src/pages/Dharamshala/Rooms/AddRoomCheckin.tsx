@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Camera, Save, X } from 'lucide-react'
-import { api, fmtPaise, parsePaise } from '../../../lib/api'
+import { Camera, Plus, Save, Trash2, X } from 'lucide-react'
+import { api, fmtPaise, parsePaise, todayIst, istDayAfter } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { recipientGstin } from '../../../lib/statutoryIds'
 import { compressIdImage } from '../../../lib/idImage'
@@ -21,6 +21,21 @@ function heldByHousekeeping(room: Room, checkInDate: string): boolean {
   return String(checkInDate).slice(0, 10) <= todayIst
 }
 
+/** One ID handed over at the counter: whose, which, the number, the photo. */
+interface IdRow {
+  key: number
+  holder_name: string
+  id_type: string
+  id_number: string
+  image: string | null
+}
+
+let idRowSeq = 0
+function newIdRow(): IdRow {
+  idRowSeq += 1
+  return { key: idRowSeq, holder_name: '', id_type: 'aadhaar', id_number: '', image: null }
+}
+
 export function AddRoomCheckin() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -28,9 +43,13 @@ export function AddRoomCheckin() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [guest, setGuest] = useState<DevoteeSelection | null>(null)
-  // Optional photo of the ID (tenant migration 055). Filed with its number as
-  // one document after the booking exists.
-  const [idPhoto, setIdPhoto] = useState<string | null>(null)
+  // Every ID handed over at the counter (tenant migrations 055/056): a family
+  // or a group shares one booking and gives one ID each, so this is a list,
+  // each row naming whose ID it is. Starts with one empty row; a row left
+  // blank is simply not sent ("no ID yet" is allowed).
+  const [idRows, setIdRows] = useState<IdRow[]>(() => [newIdRow()])
+  const setRow = (key: number, patch: Partial<IdRow>) =>
+    setIdRows(rows => rows.map(r => (r.key === key ? { ...r, ...patch } : r)))
   // Most temple trusts are NOT GST-registered, and a recipient's GSTIN is
   // meaningless on a bill that carries no tax - the trust has no standing to
   // issue a tax invoice at all (s.31 CGST). So the field is not merely optional
@@ -41,9 +60,8 @@ export function AddRoomCheckin() {
   // the first one is ever used, and it calls Date.now() to do it.
   const [form, setForm] = useState(() => ({
     room_id: '',
-    guest_id_type: 'aadhaar',
-    check_in_date: new Date().toISOString().slice(0, 10),
-    check_out_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    check_in_date: todayIst(),
+    check_out_date: istDayAfter(todayIst()),
     // Pre-filled from the trust's policy below. A booking has always had two
     // DATES and no times, so "rooms from 12, vacate by 10" lived on a board in
     // the lobby and the bill could state neither (tenant migration 043).
@@ -52,7 +70,6 @@ export function AddRoomCheckin() {
     persons_count: '1',
     advance: '',
     payment_mode: 'cash',
-    id_proof_number: '',
     guest_gstin: '',
     deposit: '',
   }))
@@ -103,12 +120,27 @@ export function AddRoomCheckin() {
     // Dropping it would produce a room bill that looks complete and is not a
     // valid tax invoice for the company that just paid for the room.
     if (gstinError) { setError(gstinError); return }
+    const idDocuments = idRows
+      .filter(r => r.id_number.trim() || r.image)
+      .map(r => ({
+        id_type: r.id_type,
+        id_number: r.id_number.trim() || null,
+        // Blank = the booking's own guest, named so the register never shows
+        // an ID without an owner.
+        holder_name: r.holder_name.trim() || guest?.name || null,
+        image: r.image,
+      }))
+    // Each photo is shrunk to ~0.2-1.4 MB, and the request carries them all.
+    const photoChars = idDocuments.reduce((s, d) => s + (d.image?.length ?? 0), 0)
+    if (photoChars > 8_500_000) { setError(t('guestId.tooManyPhotos')); return }
     setSaving(true)
     setError('')
     try {
       const payload: Record<string, unknown> = {
         room_id: form.room_id,
-        guest_id_type: form.guest_id_type,
+        // Validated by the API before the booking is made, so one bad ID
+        // refuses the booking instead of filing half of them.
+        id_documents: idDocuments,
         check_in_date: form.check_in_date,
         check_out_date: form.check_out_date,
         check_in_time: form.check_in_time,
@@ -118,15 +150,8 @@ export function AddRoomCheckin() {
         payment_mode: form.payment_mode,
       }
 
-      // The document is stored encrypted (tenant-migration 033); only the last
-      // four digits are ever shown again. Sent inside `guest` because that is
-      // where DharamshalaService.resolveGuest reads it from — the top-level
-      // `guest_id_type` this form used to send reached nothing.
-      // With a photo, the ID is filed after the booking as ONE document (number
-      // + photo) rather than twice — once here without the photo and again below.
+      // The IDs travel as `id_documents` above; only the GSTIN rides with the guest.
       const idFields = {
-        id_proof_type: idPhoto ? null : form.guest_id_type,
-        id_proof_number: idPhoto ? null : (form.id_proof_number.trim() || null),
         // Normalised, not as typed: the API stores what it is given, and
         // "27aaatr1234c1z0" on an invoice is not a GSTIN anybody can look up.
         gstin: gstinCheck.gstin,
@@ -143,21 +168,6 @@ export function AddRoomCheckin() {
       // cashier is told, and can take it from the rooms list, rather than
       // losing the booking they just made.
       const bookingId = created?.data?.id ?? created?.id
-      if (bookingId && idPhoto) {
-        try {
-          await api.post(`/room-bookings/${bookingId}/id-documents`, {
-            id_type: form.guest_id_type,
-            id_number: form.id_proof_number.trim() || null,
-            image: idPhoto,
-          })
-        } catch {
-          // The booking stands; the ID can be added from the Rooms list, which
-          // flags it as pending until it is.
-          setError(t('guestId.photoNotSaved'))
-          setSaving(false)
-          return
-        }
-      }
       const depositPaise = form.deposit ? parsePaise(form.deposit) : 0
       if (bookingId && depositPaise > 0) {
         try {
@@ -217,45 +227,82 @@ export function AddRoomCheckin() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="form-label" htmlFor="id-type">{t('dharamshala.idType')}</label>
-              <select
-                id="id-type" className="form-select" value={form.guest_id_type}
-                onChange={e => setForm(f => ({ ...f, guest_id_type: e.target.value }))}
-              >
-                <option value="aadhaar">{t('dharamshala.idAadhaar')}</option>
-                <option value="pan">{t('dharamshala.idPan')}</option>
-                <option value="passport">{t('dharamshala.idPassport')}</option>
-                <option value="voter_id">{t('dharamshala.idVoter')}</option>
-                <option value="driving_license">{t('dharamshala.idDl')}</option>
-                <option value="other">{t('guestId.types.other')}</option>
-              </select>
-            </div>
-            <div>
-              <label className="form-label" htmlFor="id-number">{t('dharamshala.idNumber')}</label>
-              <input
-                id="id-number" className="form-input" value={form.id_proof_number}
-                onChange={e => setForm(f => ({ ...f, id_proof_number: e.target.value }))}
-                placeholder={form.guest_id_type === 'aadhaar' ? '1234 5678 9012' : ''}
-                inputMode={form.guest_id_type === 'aadhaar' ? 'numeric' : 'text'}
-                autoComplete="off"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {form.guest_id_type === 'aadhaar' ? t('guestId.aadhaarHint') : t('dharamshala.idStoredHint')}
-              </p>
-              <label className="btn-secondary btn-sm mt-2 inline-flex cursor-pointer">
-                <Camera size={14} /> {idPhoto ? t('guestId.retake') : t('guestId.addPhoto')}
-                <input
-                  type="file" accept="image/*" className="hidden"
-                  onChange={async e => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
-                    try { setIdPhoto(await compressIdImage(file)) } catch { setError(t('guestId.photoFailed')) }
-                  }}
-                />
-              </label>
-              {idPhoto && <span className="text-xs text-green-700 ml-2">{t('guestId.photoAttached')}</span>}
-              <p className="text-xs text-slate-400 mt-1">{t('guestId.laterHint')}</p>
+            <div className="md:col-span-2 space-y-3" data-testid="id-rows">
+              <div className="flex items-baseline justify-between">
+                <span className="form-label mb-0">{t('guestId.idsHeading', { count: idRows.length })}</span>
+                <span className="text-xs text-slate-400">{t('guestId.laterHint')}</span>
+              </div>
+              {idRows.map((row, i) => (
+                <div key={row.key} className="rounded-lg border border-slate-200 p-3 space-y-2" data-testid="id-row">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div>
+                      <label className="form-label" htmlFor={`id-holder-${row.key}`}>{t('guestId.holderName')}</label>
+                      <input
+                        id={`id-holder-${row.key}`} className="form-input" value={row.holder_name}
+                        onChange={e => setRow(row.key, { holder_name: e.target.value })}
+                        placeholder={i === 0 ? (guest?.name || t('guestId.holderPlaceholder')) : t('guestId.holderPlaceholder')}
+                        maxLength={120} autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor={`id-type-${row.key}`}>{t('dharamshala.idType')}</label>
+                      <select
+                        id={`id-type-${row.key}`} className="form-select" value={row.id_type}
+                        onChange={e => setRow(row.key, { id_type: e.target.value, id_number: '' })}
+                      >
+                        <option value="aadhaar">{t('dharamshala.idAadhaar')}</option>
+                        <option value="pan">{t('dharamshala.idPan')}</option>
+                        <option value="passport">{t('dharamshala.idPassport')}</option>
+                        <option value="voter_id">{t('dharamshala.idVoter')}</option>
+                        <option value="driving_license">{t('dharamshala.idDl')}</option>
+                        <option value="other">{t('guestId.types.other')}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor={`id-number-${row.key}`}>{t('dharamshala.idNumber')}</label>
+                      <input
+                        id={`id-number-${row.key}`} className="form-input" value={row.id_number}
+                        onChange={e => setRow(row.key, { id_number: e.target.value })}
+                        placeholder={row.id_type === 'aadhaar' ? 'XXXX XXXX 1234' : ''}
+                        inputMode={row.id_type === 'aadhaar' ? 'numeric' : 'text'}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  {row.id_type === 'aadhaar' && (
+                    <p className="text-xs text-amber-700">{t('guestId.aadhaarHint')}</p>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="btn-secondary btn-sm inline-flex cursor-pointer">
+                      <Camera size={14} /> {row.image ? t('guestId.retake') : t('guestId.addPhoto')}
+                      <input
+                        type="file" accept="image/*" className="hidden" data-testid="id-photo"
+                        onChange={async e => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          try { setRow(row.key, { image: await compressIdImage(file) }) } catch { setError(t('guestId.photoFailed')) }
+                        }}
+                      />
+                    </label>
+                    {row.image && <span className="text-xs text-green-700">{t('guestId.photoAttached')}</span>}
+                    {idRows.length > 1 && (
+                      <button
+                        type="button" className="ml-auto p-1 text-slate-400 hover:text-brand-red rounded"
+                        onClick={() => setIdRows(rows => rows.filter(r => r.key !== row.key))}
+                        title={t('guestId.removeRow')} aria-label={t('guestId.removeRow')}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {idRows.length < 12 && (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setIdRows(rows => [...rows, newIdRow()])}>
+                  <Plus size={14} /> {t('guestId.addAnother')}
+                </button>
+              )}
+              <p className="text-xs text-slate-500">{t('dharamshala.idStoredHint')}</p>
             </div>
             {/* CGST Rule 46(e): the recipient's GSTIN. Optional, because most
                 guests are individuals who have none — but without it a company

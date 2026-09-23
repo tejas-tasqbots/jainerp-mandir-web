@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../../lib/api'
+import { api, apiErrorMessage, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printBillDoc } from '../../../lib/printBill'
@@ -154,7 +154,7 @@ export function RoomsList() {
 
 
   // Occupancy + money held, per plan §15 (Rooms: occupancy %, advances held, due-out today).
-  const todayIso = new Date().toISOString().slice(0, 10)
+  const todayIso = todayIst()
   const occupied = bookings.filter(b => b.status === 'checked_in').length
   const dueOut = bookings.filter(b => b.status === 'checked_in' && (b.check_out_date || '').slice(0, 10) === todayIso).length
   const advancesHeld = bookings.filter(b => b.status !== 'cancelled' && b.status !== 'checked_out').reduce((s2, b) => s2 + (b.advance_paise ?? 0), 0)
