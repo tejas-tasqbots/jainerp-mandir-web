@@ -311,7 +311,7 @@ export function CheckoutModal({ booking, onClose, onDone }: {
 
   return (
     <Shell title={t('dharamshala.checkoutTitle')} sub={`${booking.guest_name} · ${t('dharamshala.room')} ${booking.room_number ?? ''}`} onClose={onClose}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_1fr] gap-3">
         <div>
           <label className="form-label" htmlFor="co-departure">{t('dharamshala.departure')}</label>
           <input id="co-departure" type="datetime-local" className="form-input" value={departure}

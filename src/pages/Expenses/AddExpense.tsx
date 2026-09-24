@@ -157,7 +157,7 @@ export function AddExpense() {
 
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <VendorPicker label={t('expenses.vendorPayee')} value={vendor} onChange={setVendor} />
             {needsBillCategory && <div>
               {/* With an itemised bill each product brings its own head; this

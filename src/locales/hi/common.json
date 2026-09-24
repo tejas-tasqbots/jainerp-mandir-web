@@ -3168,7 +3168,11 @@
     "pickStateFirst": "पहले राज्य चुनें",
     "cityNotListed": "मेरा शहर सूची में नहीं है…",
     "typeCity": "अपना शहर या कस्बा लिखें",
-    "pickFromList": "सूची से चुनें"
+    "pickFromList": "सूची से चुनें",
+    "addNewGuest": "नया अतिथि जोड़ें",
+    "searchOrAddGuest": "नाम या मोबाइल से खोजें — या नया अतिथि जोड़ें",
+    "noDonorFound": "\"{{query}}\" नाम का कोई दानदाता नहीं मिला",
+    "noGuestFound": "\"{{query}}\" नाम का कोई अतिथि नहीं मिला"
   },
   "vendors": {
     "accountNoPlaceholder": "खाता संख्या",

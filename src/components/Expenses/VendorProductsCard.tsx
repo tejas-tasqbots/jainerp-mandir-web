@@ -59,30 +59,49 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
     }
   }
 
+  // On a phone each product is a small card and every box carries its own
+  // label (the column heads are desktop-only); a bare "120" and "5" meant
+  // nothing.
+  const field = (label: string, input: React.ReactNode, wide = false) => (
+    <div className={wide ? 'col-span-2 md:col-span-1' : ''}>
+      <span className="md:hidden form-label text-xs">{label}</span>
+      {input}
+    </div>
+  )
   const cells = (r: EditRow, set: (p: Partial<EditRow>) => void) => (
     <>
-      <input className="form-input" value={r.name} maxLength={200} disabled={!canEdit}
-        placeholder={t('vendorProducts.namePlaceholder')} aria-label={t('vendorProducts.name')}
-        onChange={e => set({ name: e.target.value })} />
-      <input className="form-input" value={r.unit} maxLength={30} placeholder="kg" disabled={!canEdit}
-        aria-label={t('expenseItems.unit')} onChange={e => set({ unit: e.target.value })} />
-      <input type="number" min="0" step="0.01" className="form-input" value={r.rate} placeholder="0.00" disabled={!canEdit}
-        aria-label={t('expenseItems.rate')} onChange={e => set({ rate: e.target.value })} />
-      <input type="number" min="0" max="40" step="0.01" className="form-input" value={r.gst_rate} disabled={!canEdit}
-        aria-label={t('expenseItems.gstPct')} onChange={e => set({ gst_rate: e.target.value })} />
-      <div className="space-y-1">
-        <select className="form-select" value={r.category_id} disabled={!canEdit} aria-label={t('expenses.category')}
-          onChange={e => set({ category_id: e.target.value })}>
-          <option value="">{t('vendorProducts.noCategory')}</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
-        </select>
-        {r.category_id === OTHER && (
-          <input className="form-input" maxLength={100} value={r.other_category} autoFocus
-            placeholder={t('expenseItems.newCategoryName')} aria-label={t('expenseItems.newCategoryName')}
-            onChange={e => set({ other_category: e.target.value })} />
-        )}
-      </div>
+      {field(t('vendorProducts.name'), (
+        <input className="form-input" value={r.name} maxLength={200} disabled={!canEdit}
+          placeholder={t('vendorProducts.namePlaceholder')} aria-label={t('vendorProducts.name')}
+          onChange={e => set({ name: e.target.value })} />
+      ), true)}
+      {field(t('expenseItems.unit'), (
+        <input className="form-input" value={r.unit} maxLength={30} placeholder="kg" disabled={!canEdit}
+          aria-label={t('expenseItems.unit')} onChange={e => set({ unit: e.target.value })} />
+      ))}
+      {field(t('expenseItems.rate'), (
+        <input type="number" min="0" step="0.01" className="form-input" value={r.rate} placeholder="0.00" disabled={!canEdit}
+          aria-label={t('expenseItems.rate')} onChange={e => set({ rate: e.target.value })} />
+      ))}
+      {field(t('expenseItems.gstPct'), (
+        <input type="number" min="0" max="40" step="0.01" className="form-input" value={r.gst_rate} disabled={!canEdit}
+          aria-label={t('expenseItems.gstPct')} onChange={e => set({ gst_rate: e.target.value })} />
+      ))}
+      {field(t('expenses.category'), (
+        <div className="space-y-1">
+          <select className="form-select" value={r.category_id} disabled={!canEdit} aria-label={t('expenses.category')}
+            onChange={e => set({ category_id: e.target.value })}>
+            <option value="">{t('vendorProducts.noCategory')}</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
+          </select>
+          {r.category_id === OTHER && (
+            <input className="form-input" maxLength={100} value={r.other_category} autoFocus
+              placeholder={t('expenseItems.newCategoryName')} aria-label={t('expenseItems.newCategoryName')}
+              onChange={e => set({ other_category: e.target.value })} />
+          )}
+        </div>
+      ))}
     </>
   )
 
@@ -96,10 +115,10 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
         </div>
         {rows.length === 0 && <p className="text-sm text-slate-500">{t('vendorProducts.none')}</p>}
         {rows.map(r => (
-          <div key={r.id} className="grid grid-cols-2 md:grid-cols-[1fr_5rem_6rem_4.5rem_10rem_auto_auto] gap-2 items-center" data-testid="vendor-product">
+          <div key={r.id} className="grid grid-cols-2 md:grid-cols-[1fr_5rem_6rem_4.5rem_10rem_auto_auto] gap-2 items-start md:items-center rounded-lg border border-slate-200 p-2 md:border-0 md:p-0" data-testid="vendor-product">
             {cells(r, p => setRows(list => list.map(x => (x.id === r.id ? { ...x, ...p, dirty: true } : x))))}
             {canEdit && (
-              <>
+              <div className="col-span-2 flex items-center justify-end gap-2 md:contents">
                 <button type="button" className="btn-secondary btn-sm" disabled={busy || !r.dirty}
                   onClick={() => run(() => api.patch(`/vendors/items/${r.id}`, body(r)), t('vendorProducts.saved'))}>
                   {t('common.save')}
@@ -109,14 +128,14 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
                   onClick={() => run(() => api.delete(`/vendors/items/${r.id}`))}>
                   <Trash2 size={14} />
                 </button>
-              </>
+              </div>
             )}
           </div>
         ))}
         {canEdit && (
-          <div className="grid grid-cols-2 md:grid-cols-[1fr_5rem_6rem_4.5rem_10rem_auto] gap-2 items-center pt-2 border-t border-slate-100">
+          <div className="grid grid-cols-2 md:grid-cols-[1fr_5rem_6rem_4.5rem_10rem_auto] gap-2 items-start md:items-center pt-2 border-t border-slate-100">
             {cells(draft, p => setDraft(d => ({ ...d, ...p })))}
-            <button type="button" className="btn-primary btn-sm" disabled={busy || !draft.name.trim()}
+            <button type="button" className="btn-primary btn-sm col-span-2 md:col-span-1 justify-center" disabled={busy || !draft.name.trim()}
               onClick={() => run(async () => { await api.post(`/vendors/${vendorId}/items`, body(draft)); setDraft(blank()) }, t('vendorProducts.saved'))}>
               <Plus size={14} /> {t('vendorProducts.add')}
             </button>

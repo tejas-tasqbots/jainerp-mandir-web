@@ -68,9 +68,11 @@ export function VendorPicker({ value, onChange, label }: {
       {value ? (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2" data-testid="vendor-selected">
           <Building2 size={15} className="text-green-700 shrink-0" />
-          <span className="font-medium text-navy-900">{value.name}</span>
-          {value.mobile && <span className="text-xs text-green-700">{value.mobile}</span>}
-          <button type="button" className="ml-auto text-slate-400 hover:text-brand-red" onClick={() => onChange(null)}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-navy-900">{value.name}</span>
+            {value.mobile && <span className="block text-xs text-green-700">{value.mobile}</span>}
+          </span>
+          <button type="button" className="shrink-0 text-slate-400 hover:text-brand-red" onClick={() => onChange(null)}
             aria-label={t('vendorPicker.change')} title={t('vendorPicker.change')}>
             <X size={15} />
           </button>

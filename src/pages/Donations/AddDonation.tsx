@@ -276,8 +276,10 @@ export function AddDonation() {
   }) {
     return (
       <div className="p-2.5 space-y-2">
-        <div className="grid grid-cols-[1fr_9.5rem_2rem] gap-2 items-center">
-          <select id={h.first ? 'donation-category' : undefined} className="form-select" value={h.category_id}
+        {/* On a phone the category takes the whole line and the amount sits
+            under it: side by side, the names were cut to "Aarti Daa…". */}
+        <div className="grid grid-cols-[1fr_2rem] sm:grid-cols-[1fr_9.5rem_2rem] gap-2 items-center">
+          <select id={h.first ? 'donation-category' : undefined} className="form-select col-span-2 sm:col-span-1 order-1" value={h.category_id}
             aria-label={t('donations.donationCategory')} onChange={e => h.setCategory(e.target.value)}>
             <option value="">{t('donations.selectCategory')}</option>
             {categories.map(c => (
@@ -285,23 +287,25 @@ export function AddDonation() {
             ))}
             <option value={OTHER}>{t('donations.otherCategory')}</option>
           </select>
-          <div className="relative">
+          <div className="relative order-3">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
             <input id={h.first ? 'donation-amount' : undefined} type="number" min="1" step="0.01" className="form-input pl-7"
               placeholder="0.00" aria-label={t('donations.amountLabel')} value={h.amount} onChange={e => h.setAmount(e.target.value)} />
           </div>
           {h.remove ? (
-            <button type="button" className="p-1.5 text-slate-400 hover:text-brand-red rounded" onClick={h.remove}
+            <button type="button" className="p-1.5 text-slate-400 hover:text-brand-red rounded order-3" onClick={h.remove}
               title={t('donations.removeHead')} aria-label={t('donations.removeHead')}>
               <Trash2 size={15} />
             </button>
-          ) : <span />}
+          ) : <span className="order-3" />}
+          {/* The new category's name: under its dropdown on a phone, under the
+              whole line on a wider screen. */}
+          {h.category_id === OTHER && (
+            <input className="form-input col-span-2 sm:col-span-3 order-2 sm:order-last" autoFocus maxLength={100} data-testid="other-category"
+              placeholder={t('donations.newCategoryName')} aria-label={t('donations.newCategoryName')}
+              value={h.other_name} onChange={e => h.setOther(e.target.value)} />
+          )}
         </div>
-        {h.category_id === OTHER && (
-          <input className="form-input" autoFocus maxLength={100} data-testid="other-category"
-            placeholder={t('donations.newCategoryName')} aria-label={t('donations.newCategoryName')}
-            value={h.other_name} onChange={e => h.setOther(e.target.value)} />
-        )}
       </div>
     )
   }

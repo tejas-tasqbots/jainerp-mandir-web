@@ -37,6 +37,11 @@ interface DevoteePickerProps {
   showDanPeti?: boolean    // show Daan Peti option — only on Donations (default false)
   required?: boolean
   label?: string
+  /** No label of its own: the page's section heading already names it. */
+  hideLabel?: boolean
+  /** Who is being picked, for "Add new …" and "No … found": a room guest is
+   *  not a donor. */
+  noun?: 'donor' | 'guest'
 }
 
 // The picker has just two working modes:
@@ -83,8 +88,12 @@ export function DevoteePicker({
   showDanPeti = false,
   required = false,
   label,
+  hideLabel = false,
+  noun = 'donor',
 }: DevoteePickerProps) {
   const { t } = useTranslation()
+  const guest = noun === 'guest'
+  const addNewLabel = guest ? t('ui.addNewGuest') : t('ui.addNewDonor')
   const isOnline = useIsOnline()
 
   const [mode, setMode] = useState<Mode>('search')
@@ -276,7 +285,7 @@ export function DevoteePicker({
   if (value && !value.is_anonymous && (value.global_user_id || value.is_offline || value.name)) {
     return (
       <div>
-        <label className="form-label">{fieldLabel}{required && ' *'}</label>
+        {!hideLabel && <label className="form-label">{fieldLabel}{required && ' *'}</label>}
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -310,7 +319,7 @@ export function DevoteePicker({
     const label2 = value.anonymous_category === 'dan_peti' ? 'Daan Peti (Donation Box)' : 'Anonymous / Gupt Daan'
     return (
       <div>
-        <label className="form-label">{fieldLabel}{required && ' *'}</label>
+        {!hideLabel && <label className="form-label">{fieldLabel}{required && ' *'}</label>}
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-md">
           <EyeOff size={14} className="text-slate-400 flex-shrink-0" />
           <span className="text-sm font-medium text-slate-600">{label2}</span>
@@ -328,7 +337,7 @@ export function DevoteePicker({
     const isIndia = !f.country || f.country === 'India'
     return (
       <div>
-        <label className="form-label">{fieldLabel}{required && ' *'}</label>
+        {!hideLabel && <label className="form-label">{fieldLabel}{required && ' *'}</label>}
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 space-y-2">
           <p className="text-xs text-blue-700 font-medium">{t('ui.newDonor')}</p>
 
@@ -424,13 +433,13 @@ export function DevoteePicker({
 
   return (
     <div>
-      <label className="form-label">{fieldLabel}{required && ' *'}</label>
+      {!hideLabel && <label className="form-label">{fieldLabel}{required && ' *'}</label>}
       <div className="space-y-1">
         <div className="relative" ref={dropdownRef}>
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             className="form-input pl-9"
-            placeholder={t('ui.searchOrAdd')}
+            placeholder={guest ? t('ui.searchOrAddGuest') : t('ui.searchOrAdd')}
             value={query}
             onChange={e => { setQuery(e.target.value); setDropdownOpen(true) }}
             onFocus={() => { if (query.length >= 3) setDropdownOpen(true) }}
@@ -458,13 +467,13 @@ export function DevoteePicker({
               ))}
 
               {searchDone && results.length === 0 && (
-                <div className="px-3 py-2 text-xs text-slate-400">No donor found for &quot;{query}&quot;</div>
+                <div className="px-3 py-2 text-xs text-slate-400">{t(guest ? 'ui.noGuestFound' : 'ui.noDonorFound', { query })}</div>
               )}
 
               {searchDone && (
                 <button type="button" onClick={openAddForm}
                   className="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-sm text-blue-700 border-t border-slate-100 flex items-center gap-2">
-                  <UserPlus size={14} />{t('ui.addNewDonor')}</button>
+                  <UserPlus size={14} />{addNewLabel}</button>
               )}
             </div>
           )}
@@ -474,7 +483,7 @@ export function DevoteePicker({
         <div className="flex gap-3 flex-wrap items-center pt-0.5">
           <button type="button" onClick={openAddForm}
             className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
-            <UserPlus size={12} />{t('ui.addNewDonor')}</button>
+            <UserPlus size={12} />{addNewLabel}</button>
           {showAnonymous && (
             <button type="button" onClick={() => selectAnonymous('gupt_dan')}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">

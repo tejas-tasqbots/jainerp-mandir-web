@@ -164,6 +164,7 @@ export function AddHallBooking() {
 
           <DevoteePicker
             label={t('dharamshala.bookerContact')}
+            noun="guest"
             value={booker}
             onChange={setBooker}
             showAnonymous={false}

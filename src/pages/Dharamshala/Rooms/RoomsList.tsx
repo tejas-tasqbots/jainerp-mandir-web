@@ -167,10 +167,10 @@ export function RoomsList() {
   ]
 
   function statusBadge(s: string) {
-    if (s === 'booked' || s === 'confirmed') return <span className="badge-blue">{t('dharamshala.statusBooked')}</span>
-    if (s === 'checked_in') return <span className="badge-green">{t('dharamshala.statusCheckedIn')}</span>
-    if (s === 'checked_out') return <span className="badge-gray">{t('dharamshala.statusCheckedOut')}</span>
-    return <span className="badge-red">{t('dharamshala.statusCancelled')}</span>
+    if (s === 'booked' || s === 'confirmed') return <span className="badge-blue whitespace-nowrap">{t('dharamshala.statusBooked')}</span>
+    if (s === 'checked_in') return <span className="badge-green whitespace-nowrap">{t('dharamshala.statusCheckedIn')}</span>
+    if (s === 'checked_out') return <span className="badge-gray whitespace-nowrap">{t('dharamshala.statusCheckedOut')}</span>
+    return <span className="badge-red whitespace-nowrap">{t('dharamshala.statusCancelled')}</span>
   }
 
   const statusLabel: Record<string, string> = {

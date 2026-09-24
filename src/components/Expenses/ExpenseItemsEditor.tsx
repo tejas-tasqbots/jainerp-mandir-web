@@ -29,8 +29,10 @@ export function ExpenseItemsEditor({ rows, onChange, products }: {
         const { total } = itemAmounts(row)
         return (
           <div key={row.key} className="rounded-lg border border-slate-200 p-2.5 space-y-2" data-testid="expense-item">
-            <div className="grid grid-cols-2 md:grid-cols-[1fr_4.5rem_4.5rem_6rem_4rem_auto] gap-2 items-end">
-              <div className="col-span-2 md:col-span-1 space-y-1.5">
+            {/* A phone: the product and its bin on one line, then qty, unit,
+                rate and GST side by side. */}
+            <div className="grid grid-cols-4 md:grid-cols-[1fr_4.5rem_4.5rem_6rem_4rem_auto] gap-2 items-end">
+              <div className="col-span-3 md:col-span-1">
                 <label className="form-label text-xs">{t('expenseItems.item', { n: i + 1 })}</label>
                 {/* The vendor's products first; "Other…" for anything not on the list. */}
                 <select className="form-select" aria-label={t('expenseItems.item', { n: i + 1 })}
@@ -51,12 +53,19 @@ export function ExpenseItemsEditor({ rows, onChange, products }: {
                   {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                   <option value={OTHER}>{t('expenseItems.other')}</option>
                 </select>
-                {row.other && (
-                  <input className="form-input" autoFocus maxLength={200} value={row.description}
-                    aria-label={t('expenseItems.otherName')} placeholder={t('expenseItems.itemPlaceholder')}
-                    onChange={e => set(row.key, { description: e.target.value })} />
-                )}
               </div>
+              <button type="button" className="p-2 text-slate-400 hover:text-brand-red rounded mb-0.5 justify-self-end md:order-last"
+                title={t('expenseItems.remove')} aria-label={t('expenseItems.remove')}
+                onClick={() => onChange(rows.filter(r => r.key !== row.key))}>
+                <Trash2 size={14} />
+              </button>
+              {/* The typed item: under its dropdown on a phone, on a line of its
+                  own under the row on a wider screen (labels stay level). */}
+              {row.other && (
+                <input className="form-input col-span-4 md:col-span-full md:order-last" autoFocus maxLength={200} value={row.description}
+                  aria-label={t('expenseItems.otherName')} placeholder={t('expenseItems.otherName')}
+                  onChange={e => set(row.key, { description: e.target.value })} />
+              )}
               <div>
                 <label className="form-label text-xs">{t('expenseItems.qty')}</label>
                 <input type="number" min="0.001" step="0.001" className="form-input" value={row.qty}
@@ -77,11 +86,6 @@ export function ExpenseItemsEditor({ rows, onChange, products }: {
                 <input type="number" min="0" max="40" step="0.01" className="form-input" value={row.gst_rate}
                   aria-label={t('expenseItems.gstPct')} onChange={e => set(row.key, { gst_rate: e.target.value })} />
               </div>
-              <button type="button" className="p-2 text-slate-400 hover:text-brand-red rounded mb-0.5"
-                title={t('expenseItems.remove')} aria-label={t('expenseItems.remove')}
-                onClick={() => onChange(rows.filter(r => r.key !== row.key))}>
-                <Trash2 size={14} />
-              </button>
             </div>
             {(total > 0 || row.category) && (
               <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">

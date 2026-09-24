@@ -40,9 +40,9 @@ export function ExtraChargesEditor({
         const amount = Math.round(parsePaise(row.rate || '0') * Number(row.qty || 0) * Number(row.nights || 0))
         return (
           <div key={row.key} className="rounded-lg border border-slate-200 p-2.5" data-testid="charge-row">
-            <div className={`grid gap-2 items-end ${multiRoom ? 'md:grid-cols-[8rem_1fr_4.5rem_4.5rem_6.5rem_auto]' : 'md:grid-cols-[1fr_4.5rem_4.5rem_6.5rem_auto]'} grid-cols-2`}>
+            <div className={`grid gap-2 items-end ${multiRoom ? 'md:grid-cols-[8rem_1fr_4.5rem_4.5rem_6.5rem_auto]' : 'md:grid-cols-[1fr_4.5rem_4.5rem_6.5rem_auto]'} grid-cols-[1fr_1fr_1.4fr_auto]`}>
               {multiRoom && (
-                <div>
+                <div className="col-span-4 md:col-span-1">
                   <label className="form-label text-xs">{t('roomCharges.room')}</label>
                   <select className="form-select" value={row.room_id} aria-label={t('roomCharges.room')}
                     onChange={e => set(row.key, { room_id: e.target.value })}>
@@ -50,7 +50,7 @@ export function ExtraChargesEditor({
                   </select>
                 </div>
               )}
-              <div className="col-span-2 md:col-span-1 space-y-1.5">
+              <div className="col-span-4 md:col-span-1">
                 <label className="form-label text-xs">{t('roomCharges.what')}</label>
                 {/* The trust's price list, then "Other…" for anything not on it. */}
                 <select className="form-select" aria-label={t('roomCharges.what')}
@@ -75,12 +75,14 @@ export function ExtraChargesEditor({
                   ))}
                   <option value={OTHER}>{t('roomCharges.other')}</option>
                 </select>
-                {row.other && (
-                  <input className="form-input" autoFocus maxLength={200} value={row.description}
-                    aria-label={t('roomCharges.otherName')} placeholder={t('roomCharges.whatPlaceholder')}
-                    onChange={e => set(row.key, { description: e.target.value })} />
-                )}
               </div>
+              {/* The typed charge: under its dropdown on a phone, on a line of
+                  its own under the row on a wider screen (labels stay level). */}
+              {row.other && (
+                <input className="form-input col-span-4 md:col-span-full md:order-last" autoFocus maxLength={200} value={row.description}
+                  aria-label={t('roomCharges.otherName')} placeholder={t('roomCharges.whatPlaceholder')}
+                  onChange={e => set(row.key, { description: e.target.value })} />
+              )}
               <div>
                 <label className="form-label text-xs">{t('roomCharges.qty')}</label>
                 <input type="number" min="0.01" step="0.01" className="form-input" value={row.qty}

@@ -3168,7 +3168,11 @@
     "pickStateFirst": "आधी राज्य निवडा",
     "cityNotListed": "माझे शहर यादीत नाही…",
     "typeCity": "तुमचे शहर किंवा गाव लिहा",
-    "pickFromList": "यादीतून निवडा"
+    "pickFromList": "यादीतून निवडा",
+    "addNewGuest": "नवीन पाहुणे जोडा",
+    "searchOrAddGuest": "नाव किंवा मोबाइलने शोधा — किंवा नवीन पाहुणे जोडा",
+    "noDonorFound": "\"{{query}}\" नावाचा देणगीदार सापडला नाही",
+    "noGuestFound": "\"{{query}}\" नावाचे पाहुणे सापडले नाहीत"
   },
   "vendors": {
     "accountNoPlaceholder": "खाते क्रमांक",

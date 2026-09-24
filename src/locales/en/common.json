@@ -3168,7 +3168,11 @@
     "pickStateFirst": "Pick a state first",
     "cityNotListed": "My city is not listed…",
     "typeCity": "Type your city or town",
-    "pickFromList": "Pick from list"
+    "pickFromList": "Pick from list",
+    "addNewGuest": "Add new guest",
+    "searchOrAddGuest": "Search by name or mobile — or add a new guest",
+    "noDonorFound": "No donor found for \"{{query}}\"",
+    "noGuestFound": "No guest found for \"{{query}}\""
   },
   "vendors": {
     "accountNoPlaceholder": "Account no",

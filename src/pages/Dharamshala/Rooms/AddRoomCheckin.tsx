@@ -232,7 +232,7 @@ export function AddRoomCheckin() {
           down, between the deposit and the dates. */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Section n={1} title={t('dharamshala.sectionGuest')}>
-          <DevoteePicker label={t('dharamshala.guestLabel')} value={guest} onChange={setGuest} showAnonymous={false} required />
+          <DevoteePicker label={t('dharamshala.guestLabel')} hideLabel noun="guest" value={guest} onChange={setGuest} showAnonymous={false} required />
           {/* CGST Rule 46(e): the recipient's GSTIN, only for a trust that can
               issue a tax invoice at all. Validated as it is typed. */}
           {gstRegistered && (
@@ -246,11 +246,13 @@ export function AddRoomCheckin() {
         </Section>
 
         <Section n={2} title={t('dharamshala.sectionStay')}>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {/* A phone takes one date+time pair per line: two pairs side by
+              side pushed the times off the screen. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
             <div className="md:col-span-2">
               <label className="form-label">{t('dharamshala.checkInDate')}</label>
               <div className="flex gap-2">
-                <input type="date" className="form-input" value={form.check_in_date}
+                <input type="date" className="form-input min-w-0 flex-1" value={form.check_in_date}
                   onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
                 <input type="time" className="form-input w-32" data-testid="check-in-time" aria-label={t('dharamshala.checkInTime')}
                   value={form.check_in_time} onChange={e => setForm(f => ({ ...f, check_in_time: e.target.value }))} />
@@ -259,7 +261,7 @@ export function AddRoomCheckin() {
             <div className="md:col-span-2">
               <label className="form-label">{t('dharamshala.checkOutDate')}</label>
               <div className="flex gap-2">
-                <input type="date" className="form-input" value={form.check_out_date}
+                <input type="date" className="form-input min-w-0 flex-1" value={form.check_out_date}
                   onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
                 <input type="time" className="form-input w-32" data-testid="check-out-time" aria-label={t('dharamshala.checkOutTime')}
                   value={form.check_out_time} onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))} />
@@ -268,7 +270,7 @@ export function AddRoomCheckin() {
             <div>
               <label className="form-label" htmlFor="booking-persons">{t('dharamshala.personsLabel')}</label>
               {/* The rooms' real capacity, all of them together. */}
-              <input id="booking-persons" type="number" min="1" max={capacity || 20} className="form-input"
+              <input id="booking-persons" type="number" min="1" max={capacity || 20} className="form-input max-w-[10rem]"
                 value={form.persons_count} onChange={e => setForm(f => ({ ...f, persons_count: e.target.value }))} />
             </div>
           </div>
@@ -374,21 +376,27 @@ export function AddRoomCheckin() {
         {/* The total and the button stay in view while the form scrolls. */}
         <div className="sticky bottom-0 z-10 -mx-1 px-5 py-3 bg-white/95 backdrop-blur border border-slate-200 rounded-xl shadow-sm flex items-center gap-4 flex-wrap"
           data-testid="booking-summary">
-          <div className="text-sm text-slate-600 flex-1 min-w-0">
+          {/* A phone gives the summary the whole width and the buttons a row
+              of their own; side by side it was one word per line. */}
+          <div className="text-sm text-slate-600 basis-full sm:basis-0 sm:flex-1 min-w-0">
             {bookedRooms.length === 0 ? (
               <span>{t('dharamshala.pickRoomsHint')}</span>
             ) : (
               <>
-                <span className="font-medium text-navy-900">
+                {/* Rooms on one line (cut short when there are many), the money
+                    on the next; an amount never breaks across lines. */}
+                <span className="block truncate font-medium text-navy-900">
                   {t('dharamshala.summaryRooms', { count: bookedRooms.length, rooms: bookedRooms.map(roomLabel).join(', '), nights: stayNights })}
                 </span>
-                {extrasPaise > 0 && <span className="ml-2">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</span>}
-                <span className="block font-semibold text-navy-900">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</span>
+                <span className="flex flex-wrap gap-x-3">
+                  {extrasPaise > 0 && <span className="whitespace-nowrap">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</span>}
+                  <span className="whitespace-nowrap font-semibold text-navy-900">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</span>
+                </span>
               </>
             )}
           </div>
-          <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary">{t('common.cancel')}</button>
-          <button type="submit" disabled={saving} className="btn-primary">
+          <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary flex-1 sm:flex-none justify-center">{t('common.cancel')}</button>
+          <button type="submit" disabled={saving} className="btn-primary flex-[2] sm:flex-none justify-center">
             <Save size={16} /> {saving ? t('common.saving') : t('dharamshala.confirmBooking')}
           </button>
         </div>
