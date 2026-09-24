@@ -128,6 +128,12 @@ export interface ReceiptLabels {
   guestGstin: string
   originalForRecipient: string
   gstDeclaration: string
+  // ── One bill, several lines (tenant migration 057) ───────────────────────
+  // What was given back to a guest whose advance was larger than the stay
+  // came to, what is still owed back, and the counter's remarks.
+  refunded: string
+  refundDue: string
+  remarks: string
   qty: string
   supplier: string
   recipient: string
@@ -265,6 +271,9 @@ const en: ReceiptLabels = {
   guestGstin: 'Guest GSTIN',
   originalForRecipient: 'Original for Recipient',
   gstDeclaration: 'We declare that this invoice shows the actual price of the services described and that all particulars are true and correct.',
+  refunded: 'Refunded',
+  refundDue: 'Refund Due',
+  remarks: 'Remarks',
   qty: 'Qty',
   supplier: 'Supplier',
   recipient: 'Recipient',
@@ -385,6 +394,9 @@ const hi: ReceiptLabels = {
   guestGstin: 'अतिथि GSTIN',
   originalForRecipient: 'प्राप्तकर्ता हेतु मूल प्रति',
   gstDeclaration: 'हम घोषित करते हैं कि इस बीजक में वर्णित सेवाओं का वास्तविक मूल्य दर्शाया गया है तथा सभी विवरण सत्य एवं सही हैं।',
+  refunded: 'वापस की गई राशि',
+  refundDue: 'वापसी योग्य राशि',
+  remarks: 'टिप्पणी',
   qty: 'मात्रा',
   supplier: 'प्रदाता',
   recipient: 'प्राप्तकर्ता',
@@ -505,6 +517,9 @@ const mr: ReceiptLabels = {
   guestGstin: 'पाहुणे GSTIN',
   originalForRecipient: 'प्राप्तकर्त्यासाठी मूळ प्रत',
   gstDeclaration: 'आम्ही घोषित करतो की या देयकात वर्णन केलेल्या सेवांची प्रत्यक्ष किंमत दर्शविली आहे आणि सर्व तपशील खरे व अचूक आहेत.',
+  refunded: 'परत केलेली रक्कम',
+  refundDue: 'परत देय रक्कम',
+  remarks: 'शेरा',
   qty: 'संख्या',
   supplier: 'पुरवठादार',
   recipient: 'प्राप्तकर्ता',
@@ -625,6 +640,9 @@ const gu: ReceiptLabels = {
   guestGstin: 'મહેમાન GSTIN',
   originalForRecipient: 'પ્રાપ્તકર્તા માટે મૂળ નકલ',
   gstDeclaration: 'અમે ઘોષણા કરીએ છીએ કે આ બિલમાં વર્ણવેલ સેવાઓની વાસ્તવિક કિંમત દર્શાવેલ છે અને તમામ વિગતો સાચી અને યોગ્ય છે.',
+  refunded: 'પરત કરેલ રકમ',
+  refundDue: 'પરત આપવાની રકમ',
+  remarks: 'નોંધ',
   qty: 'જથ્થો',
   supplier: 'સપ્લાયર',
   recipient: 'પ્રાપ્તકર્તા',
@@ -745,6 +763,9 @@ const kn: ReceiptLabels = {
   guestGstin: 'ಅತಿಥಿ GSTIN',
   originalForRecipient: 'ಸ್ವೀಕರಿಸುವವರಿಗೆ ಮೂಲ ಪ್ರತಿ',
   gstDeclaration: 'ಈ ಬಿಲ್‌ನಲ್ಲಿ ವಿವರಿಸಿದ ಸೇವೆಗಳ ವಾಸ್ತವಿಕ ಬೆಲೆಯನ್ನು ತೋರಿಸಲಾಗಿದೆ ಮತ್ತು ಎಲ್ಲಾ ವಿವರಗಳು ಸತ್ಯ ಮತ್ತು ಸರಿಯಾಗಿವೆ ಎಂದು ನಾವು ಘೋಷಿಸುತ್ತೇವೆ.',
+  refunded: 'ಮರುಪಾವತಿ ಮೊತ್ತ',
+  refundDue: 'ಮರುಪಾವತಿಸಬೇಕಾದ ಮೊತ್ತ',
+  remarks: 'ಟಿಪ್ಪಣಿ',
   qty: 'ಪ್ರಮಾಣ',
   supplier: 'ಸರಬರಾಜುದಾರ',
   recipient: 'ಸ್ವೀಕರಿಸುವವರು',
@@ -865,6 +886,9 @@ const ta: ReceiptLabels = {
   guestGstin: 'விருந்தினர் GSTIN',
   originalForRecipient: 'பெறுநருக்கான மூலப் பிரதி',
   gstDeclaration: 'இந்த விலைப்பட்டியலில் குறிப்பிடப்பட்ட சேவைகளின் உண்மையான விலை காட்டப்பட்டுள்ளது என்றும், அனைத்து விவரங்களும் உண்மையானவை மற்றும் சரியானவை என்றும் நாங்கள் அறிவிக்கிறோம்.',
+  refunded: 'திருப்பி அளித்த தொகை',
+  refundDue: 'திருப்பித் தர வேண்டிய தொகை',
+  remarks: 'குறிப்பு',
   qty: 'அளவு',
   supplier: 'வழங்குநர்',
   recipient: 'பெறுநர்',
@@ -985,6 +1009,9 @@ const te: ReceiptLabels = {
   guestGstin: 'అతిథి GSTIN',
   originalForRecipient: 'స్వీకర్తకు అసలు ప్రతి',
   gstDeclaration: 'ఈ ఇన్‌వాయిస్‌లో వివరించిన సేవల వాస్తవ ధర చూపబడింది మరియు అన్ని వివరాలు నిజమైనవి మరియు సరైనవి అని మేము ప్రకటిస్తున్నాము.',
+  refunded: 'వాపసు చేసిన మొత్తం',
+  refundDue: 'వాపసు ఇవ్వాల్సిన మొత్తం',
+  remarks: 'గమనిక',
   qty: 'పరిమాణం',
   supplier: 'సరఫరాదారు',
   recipient: 'స్వీకర్త',

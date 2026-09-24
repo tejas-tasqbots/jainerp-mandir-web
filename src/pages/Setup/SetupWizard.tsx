@@ -52,7 +52,8 @@ const STEPS: Array<{ key: StepKey; labelKey: string }> = [
   { key: 'done', labelKey: 'setupWizard.steps.done' },
 ]
 
-const TEMPLATES = ['classic', 'minimal', 'modern', 'traditional', 'elegant']
+// Anumodana first: it is the default design (2026-09-24).
+const TEMPLATES = ['anumodana', 'classic', 'minimal', 'modern', 'traditional', 'elegant']
 
 /** The registration numbers the tax step checks as they are typed. */
 const TAX_FIELDS = ['pan', 'reg_80g_number', 'reg_12ab_number', 'gstin'] as const

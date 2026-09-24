@@ -7,6 +7,9 @@ import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { recipientGstin } from '../../../lib/statutoryIds'
 import { compressIdImage } from '../../../lib/idImage'
 import type { Room, DevoteeSelection } from '../../../types'
+import { fetchAllPages } from '../../../lib/fetchAllPages'
+import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
+import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
 
 /**
  * Is housekeeping holding this room for the date being booked?
@@ -58,8 +61,14 @@ export function AddRoomCheckin() {
 
   // Lazy initializer: this object was rebuilt on every render even though only
   // the first one is ever used, and it calls Date.now() to do it.
+  // Several rooms for one guest in one booking ("Room Book Multiple at time
+  // with one Guest Name"). The first is `form.room_id`; these follow it, and
+  // the API books them as one group with one combined bill.
+  const [moreRooms, setMoreRooms] = useState<string[]>([])
+  const [charges, setCharges] = useState<ChargeRow[]>([])
   const [form, setForm] = useState(() => ({
     room_id: '',
+    remarks: '',
     check_in_date: todayIst(),
     check_out_date: istDayAfter(todayIst()),
     // Pre-filled from the trust's policy below. A booking has always had two
@@ -100,8 +109,10 @@ export function AddRoomCheckin() {
   }, [])
 
   useEffect(() => {
-    api.get('/rooms?is_available=true').then(r => {
-      const list = r.data.data || []
+    // EVERY room, page by page. This asked for one page with no limit, which
+    // the API answers with the first 50 - so a dharamshala with more rooms than
+    // that could not book room 51 onward from this form at all.
+    fetchAllPages<Room>('/rooms', { is_available: 'true' }).then(list => {
       setRooms(list)
       // Arriving from the availability board: ?room_id=… pre-selects it, so
       // the cashier doesn't have to find the number again in the dropdown.
@@ -136,8 +147,12 @@ export function AddRoomCheckin() {
     setSaving(true)
     setError('')
     try {
+      const roomIds = [form.room_id, ...moreRooms.filter(id => id && id !== form.room_id)]
       const payload: Record<string, unknown> = {
-        room_id: form.room_id,
+        room_ids: roomIds,
+        // Extra bed, food, other charges - each on the room it is for.
+        charges: chargesPayload(charges),
+        ...(form.remarks.trim() ? { remarks: form.remarks.trim() } : {}),
         // Validated by the API before the booking is made, so one bad ID
         // refuses the booking instead of filing half of them.
         id_documents: idDocuments,
@@ -191,6 +206,11 @@ export function AddRoomCheckin() {
   }
 
   const selectedRoom = rooms.find(r => r.id === form.room_id)
+  const bookedRooms = [form.room_id, ...moreRooms].map(id => rooms.find(r => r.id === id)).filter(Boolean) as Room[]
+  const roomLabel = (r: Room) => `${r.building?.trim() ? `${r.building.trim()} · ` : ''}${r.room_number}`
+  const stayNights = Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000))
+  const roomsPaise = bookedRooms.reduce((s, r) => s + stayNights * Number(r.tariff_paise), 0)
+  const extrasPaise = chargesTotalPaise(charges)
 
   return (
     <div className="max-w-2xl">
@@ -224,6 +244,33 @@ export function AddRoomCheckin() {
                 )
               })}
             </select>
+            {/* More rooms for the same guest. Picked one at a time from the rooms
+                not yet taken; each shows as a chip that can be removed. */}
+            {form.room_id && (
+              <div className="mt-2 space-y-2" data-testid="more-rooms">
+                {moreRooms.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {moreRooms.map(id => {
+                      const r = rooms.find(x => x.id === id)
+                      return r ? (
+                        <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-sm text-blue-800" data-testid="more-room">
+                          {roomLabel(r)} · ₹{fmtPaise(r.tariff_paise)}
+                          <button type="button" className="text-blue-400 hover:text-brand-red" aria-label={t('dharamshala.removeRoom')}
+                            onClick={() => setMoreRooms(ids => ids.filter(x => x !== id))}><X size={13} /></button>
+                        </span>
+                      ) : null
+                    })}
+                  </div>
+                )}
+                <select className="form-select" value="" aria-label={t('dharamshala.addAnotherRoom')} data-testid="add-room"
+                  onChange={e => { const v = e.target.value; if (v) setMoreRooms(ids => [...ids, v]) }}>
+                  <option value="">{t('dharamshala.addAnotherRoom')}</option>
+                  {rooms.filter(r => r.id !== form.room_id && !moreRooms.includes(r.id) && !heldByHousekeeping(r, form.check_in_date)).map(r => (
+                    <option key={r.id} value={r.id}>{roomLabel(r)}{r.name?.trim() ? ` — ${r.name.trim()}` : ''} — ₹{fmtPaise(r.tariff_paise)}{t('dharamshala.perNightSuffix')}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -398,18 +445,35 @@ export function AddRoomCheckin() {
             </div>
           </div>
 
+          {/* Extras taken with the booking - an extra bed for the third
+              person, food - and anything the counter wants on record. */}
+          <div>
+            <p className="form-label">{t('roomCharges.heading')}</p>
+            <ExtraChargesEditor rows={charges} onChange={setCharges} nights={stayNights}
+              rooms={bookedRooms.map(r => ({ id: r.id, label: roomLabel(r) }))} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="booking-remarks">{t('dharamshala.remarks')}</label>
+            <textarea id="booking-remarks" className="form-textarea" rows={2} maxLength={1000}
+              placeholder={t('dharamshala.remarksPlaceholder')}
+              value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} />
+          </div>
+
           {selectedRoom && form.check_in_date && form.check_out_date && (
-            <div className="bg-blue-50 rounded-md p-3 text-sm">
+            <div className="bg-blue-50 rounded-md p-3 text-sm" data-testid="booking-summary">
               <p className="text-blue-800 font-medium">{t('dharamshala.bookingSummary')}</p>
-              <p className="text-blue-600 mt-1">
-                {t('dharamshala.nightsSummary', {
-                  nights: Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)),
-                  tariff: fmtPaise(selectedRoom.tariff_paise),
-                  total: fmtPaise(
-                    Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000)) * selectedRoom.tariff_paise,
-                  ),
-                })}
-              </p>
+              {bookedRooms.map(r => (
+                <p key={r.id} className="text-blue-600 mt-1">
+                  {bookedRooms.length > 1 ? `${roomLabel(r)}: ` : ''}
+                  {t('dharamshala.nightsSummary', {
+                    nights: stayNights, tariff: fmtPaise(r.tariff_paise), total: fmtPaise(stayNights * Number(r.tariff_paise)),
+                  })}
+                </p>
+              ))}
+              {extrasPaise > 0 && <p className="text-blue-600 mt-1">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</p>}
+              {(bookedRooms.length > 1 || extrasPaise > 0) && (
+                <p className="text-blue-800 font-semibold mt-1">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</p>
+              )}
             </div>
           )}
 

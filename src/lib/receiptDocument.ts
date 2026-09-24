@@ -55,6 +55,41 @@ export interface ReceiptDocument {
    */
   upi_qr_data_uri?: string | null;
   is_80g_eligible: boolean;
+  /**
+   * The itemised lines, when the document has them — the heads of a multi-head
+   * donation ("Ahaar Daan ₹1,000 · Gau Seva ₹5,000 ..."), a room and its extra
+   * bed, a hall, a prasad sale (tenant migration 057). Printed as a table
+   * above the amount; the single "Purpose" row is dropped when they are.
+   */
+  items?: Array<{ label: string; qty?: string | null; amount_paise: number }> | null;
+  /** The table's two column headings, already in the receipt language. */
+  items_labels?: { description: string; amount: string } | null;
+  /**
+   * Facts about what was bought — room, check-in, check-out, nights, persons;
+   * a hall and its date. Pairs, already in the receipt language; printed as a
+   * compact grid under the payer.
+   */
+  facts?: Array<[string, string]> | null;
+  /**
+   * The money under the items — subtotal, each tax head, then advance, paid,
+   * refunded, balance due — as [label, formatted value, emphasised]. Composed
+   * by the caller, which owns the tax and stay rules; this sheet only lays
+   * them out.
+   */
+  summary?: Array<[string, string, boolean]> | null;
+  /**
+   * The settlement AFTER the total - paid, refunded, still due. Separate from
+   * `summary` so it prints below the total it settles, not above it (a bill
+   * that lists "Amount paid ₹3,360" before its ₹1,736 total reads backwards).
+   */
+  settlement?: Array<[string, string, boolean]> | null;
+  /**
+   * What the big figure is called, when not "Amount" - "Total" under an
+   * itemised table, where "Amount" is already the column's heading.
+   */
+  amount_label?: string | null;
+  /** The counter's remarks on the booking, with its label. */
+  remarks?: { label: string; text: string } | null;
   mandir: {
     name?: string | null;
     address?: string | null;
@@ -467,6 +502,15 @@ export function receiptParts(
     })
     : '';
 
+  const items = (r.items ?? []).filter((it) => it && typeof it.label === 'string');
+  const facts = (r.facts ?? []).filter((f) => Array.isArray(f) && f[1]);
+  const summary = r.summary ?? [];
+  const settlement = r.settlement ?? [];
+  // A bill with tax or settlement rows is read to the paisa, so its lines are
+  // too; a gift's heads stay in whole rupees like its amount.
+  const lineAmount = (p: number) => (summary.length || settlement.length
+    ? (Number(p) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : rupees(p));
   const css = `
   ${ownPage ? '@page { size: A5 portrait; margin: 0; }' : ''}
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -522,6 +566,32 @@ export function receiptParts(
   .amount .words { font-size: 8pt; font-style: italic; color: #4A3B2E; margin-top: .8mm; line-height: 1.4; }
   .amount .fig { font-size: 19pt; font-weight: 800; color: ${color}; white-space: nowrap; }
   .details { margin-top: 2.4mm; width: 100%; border-collapse: collapse; font-size: 8pt; }
+  /* Facts about the stay or the hall: label / value pairs, two to a row, so a
+     room bill's six facts cost three lines, not six. */
+  .facts { margin-top: 2mm; display: grid; grid-template-columns: max-content 1fr max-content 1fr;
+    column-gap: 2.4mm; row-gap: .6mm; font-size: 7.6pt; line-height: 1.35;
+    border: .25mm solid #EFE3CF; border-radius: 1.5mm; padding: 1.6mm 2.4mm; background: #FFFBF3; }
+  .facts .k { color: #7A6550; white-space: nowrap; }
+  .facts .v { font-weight: 600; color: #2B2118; }
+  .facts .v:last-child:nth-child(2n) { grid-column: span 3; }
+  /* The lines: what was given or bought, each with its amount. The trust's
+     colour heads the table, as the ribbon does the sheet. */
+  .items { margin-top: 2.6mm; width: 100%; border-collapse: collapse; font-size: 8pt; }
+  .items th { background: ${color}; color: #FFF; font-size: 6.8pt; font-weight: 700; letter-spacing: .8px;
+    text-transform: uppercase; padding: 1.1mm 2mm; text-align: left; }
+  .items th:last-child, .items td:last-child { text-align: right; white-space: nowrap; }
+  .items td { padding: 1.1mm 2mm; border-bottom: .25mm solid #F0E6D6; vertical-align: top; }
+  .items td .q { color: #7A6550; font-size: 7pt; }
+  .items tr:nth-child(even) td { background: #FFFBF3; }
+  /* The money under the lines, in a narrow block under the amount column -
+     where every invoice a reader has seen puts it. */
+  .sum { margin: 0 0 0 auto; width: 58%; border-collapse: collapse; font-size: 7.8pt; }
+  .sum td { padding: .7mm 2mm; }
+  .sum td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+  .sum tr.strong td { font-size: 9pt; font-weight: 800; color: ${color}; border-top: .35mm solid ${gold}; }
+  .sum.settle { margin-top: 1.4mm; }
+  .remarks { margin-top: 1.8mm; font-size: 7.4pt; color: #4A3B2E; line-height: 1.45; }
+  .remarks .k { color: #7A6550; }
   .details td { padding: 1.15mm 1mm; border-bottom: .25mm solid #F0E6D6; vertical-align: top; }
   .details td:first-child { color: #7A6550; width: 36%; }
   .details td:last-child { font-weight: 600; }
@@ -619,18 +689,26 @@ export function receiptParts(
       <div class="name serif">${esc(r.donor?.name || L.anonymous)}</div>
       ${donorBits || r.donor?.address ? `<div class="sub">${donorBits}${donorBits && r.donor?.address ? '<br/>' : ''}${esc(r.donor?.address ?? '')}</div>` : ''}
     </div>
+    ${facts.length ? `<div class="facts">${facts.map(([k, v]) => `<span class="k">${esc(k)}</span><span class="v">${esc(v)}</span>`).join('')}</div>` : ''}
+    ${items.length ? `<table class="items">
+      <thead><tr><th>${esc(r.items_labels?.description ?? L.purpose)}</th><th>${esc(r.items_labels?.amount ?? L.amount)}</th></tr></thead>
+      <tbody>${items.map((it) => `<tr><td>${esc(it.label)}${it.qty ? ` <span class="q">· ${esc(it.qty)}</span>` : ''}</td><td>₹ ${lineAmount(it.amount_paise)}</td></tr>`).join('')}</tbody>
+    </table>
+    ${summary.length ? `<table class="sum">${summary.map(([k, v, strong]) => `<tr${strong ? ' class="strong"' : ''}><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>` : ''}` : ''}
     <div class="amount">
       <div>
-        <div class="k">${esc(L.amount)}</div>
+        <div class="k">${r.amount_label ? esc(r.amount_label) : esc(L.amount)}</div>
         <div class="words">${esc(amountInWords(r.amount_paise))}</div>
       </div>
       <div class="fig">₹ ${rupees(r.amount_paise)}</div>
     </div>
+    ${settlement.length ? `<table class="sum settle">${settlement.map(([k, v, strong]) => `<tr${strong ? ' class="strong"' : ''}><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>` : ''}
     <table class="details">
-      <tr><td>${esc(r.detail_label || L.purpose)}</td><td>${esc(r.category || '—')}</td></tr>
+      ${items.length ? '' : `<tr><td>${esc(r.detail_label || L.purpose)}</td><td>${esc(r.category || '—')}</td></tr>`}
       <tr><td>${esc(L.paymentMode)}</td><td>${mode}</td></tr>
       ${donation ? `<tr><td>${esc(L.eligible80g)}</td><td><span class="badge ${r.is_80g_eligible ? 'yes' : 'no'}">${esc(r.is_80g_eligible ? L.yes : L.no)}</span></td></tr>` : ''}
     </table>
+    ${r.remarks?.text ? `<div class="remarks"><span class="k">${esc(r.remarks.label)}:</span> ${esc(r.remarks.text)}</div>` : ''}
     ${show80gCert ? `<div class="cert">${esc(L.certified80g)}<br/>80G: <b>${esc(m.reg_80g_number)}</b>${m.reg_80g_urn ? ` &nbsp;·&nbsp; URN: <b>${esc(m.reg_80g_urn)}</b>` : ''}${validUpto && !Number.isNaN(validUpto.getTime()) ? ` &nbsp;·&nbsp; ${esc(L.validUpto)}: <b>${esc(validUpto.toLocaleDateString('en-IN'))}</b>` : ''}</div>` : ''}
     ${r.is_voided ? "" : `<div class="blessing">
       ${lotus(gold)}

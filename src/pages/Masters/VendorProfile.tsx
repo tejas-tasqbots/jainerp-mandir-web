@@ -7,6 +7,9 @@ import { api, fmtPaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { VendorProductsCard } from '../../components/Expenses/VendorProductsCard'
+import { useAuthStore } from '../../store/authStore'
+import { canSeeRoles } from '../../lib/rbac'
 
 interface VendorDetail {
   id: string
@@ -64,6 +67,7 @@ export function VendorProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState<Profile | null>(null)
+  const canEditProducts = canSeeRoles(['accountant'], useAuthStore(st => st.user?.roles))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -196,6 +200,10 @@ export function VendorProfile() {
           </div>
         </div>
       )}
+
+      {/* What this vendor sells (tenant migration 057). The accountant or the
+          temple admin keeps the list; everyone entering a bill reads it. */}
+      {id && <VendorProductsCard vendorId={id} canEdit={canEditProducts} />}
 
       {/* Expense history */}
       <div>

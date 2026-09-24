@@ -14,6 +14,7 @@ import { ReceiptWordingCard } from './ReceiptWordingCard'
 import { ReceiptDesignerCard } from './ReceiptDesignerTab'
 import type { ReceiptDefinition } from '../../../lib/receiptDefinition'
 import { useToast } from '../../../components/kit/Toast'
+import { RoomChargeItemsCard } from '../../../components/RoomCharges/RoomChargeItemsCard'
 
 /**
  * The steps, in the order a trust works through them.
@@ -102,7 +103,8 @@ const TEMPLATES: TemplateDef[] = [
     // older designs.
     id: 'anumodana',
     label: 'Anumodana',
-    badge: 'New',
+    // The default design since 2026-09-24.
+    badge: 'Default',
     thumb: (color: string) => `
       <div style="font-family:Georgia,serif;font-size:6px;background:#FFFDF8;border:3px double ${color};padding:2px">
         <div style="border:1px solid #B8862B;padding:5px 6px;text-align:center">
@@ -440,7 +442,7 @@ const TEMPLATES: TemplateDef[] = [
 
 const BLANK = {
   logo_cdn_url: '', logo_base64: '', show_logo_on_receipts: true,
-  receipt_template: 'classic', primary_color: '#0D1B2E',
+  receipt_template: 'anumodana', primary_color: '#0D1B2E',
   show_gstin_on_header: true, show_80g_on_receipt: true,
   upi_id: '', bank_account_name: '', bank_account_no: '',
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
@@ -915,7 +917,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         logo_cdn_url: (p.logo_cdn_url as string) || '',
         logo_base64: (p.logo_base64 as string) || '',
         show_logo_on_receipts: p.show_logo_on_receipts !== false,
-        receipt_template: (p.receipt_template as string) || 'classic',
+        receipt_template: (p.receipt_template as string) || 'anumodana',
         primary_color: (p.primary_color as string) || '#0D1B2E',
         show_gstin_on_header: p.show_gstin_on_header !== false,
         show_80g_on_receipt: Boolean(p.show_80g_on_receipt),
@@ -1534,6 +1536,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupStay')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupStayHint')}</p>
           </div>
+
+          {/* The price list of stay extras (tenant migration 057). Saved on its
+              own, row by row - it is a master, not part of this form. */}
+          <RoomChargeItemsCard />
 
           <div className="card">
             <div className="card-header">

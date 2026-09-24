@@ -146,6 +146,8 @@ export interface Boli {
 // Field names mirror the API response (expenses list returns `category` and
 // `vendor_name`, not `category_name`).
 export interface Expense {
+  /** How many items an itemised bill has (tenant migration 057); 0 for a one-line expense. */
+  item_count?: number
   id: string
   vendor_id?: string
   vendor_name?: string
@@ -246,6 +248,13 @@ export interface RoomBooking {
   checked_out_at?: string | null
   /** Money already given back on this booking (tenant migration 047). */
   refunded_paise?: number
+  /** Rooms booked together for one guest share this (tenant migration 057). */
+  group_id?: string | null
+  /** The live sum of the stay's extra charges, before tax (tenant migration 057). */
+  charges_paise?: number
+  /** Remarks entered at booking, check-in or checkout. */
+  notes?: string | null
+  nights?: number
   guest_name: string
   guest_mobile: string
   guest_id_type?: string

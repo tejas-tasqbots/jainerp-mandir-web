@@ -234,8 +234,8 @@ export function printReceiptHtml(html: string): void {
  * different `basePath` (e.g. '/seva-bookings') for other receipt-bearing
  * resources whose `/:id/receipt` returns a shape-compatible payload.
  */
-export async function printDonationReceipt(id: string, basePath = '/donations'): Promise<void> {
-  const receipt = await fetchReceipt(id, basePath)
+export async function printDonationReceipt(id: string, basePath = '/donations', doc = 'receipt'): Promise<void> {
+  const receipt = await fetchReceipt(id, basePath, doc)
   // Also the manual Print button's path: a reprint of a three-thali sale has to
   // produce three tokens just as the original did.
   const perToken = buildPlateTokenDocuments(receipt)
@@ -244,8 +244,12 @@ export async function printDonationReceipt(id: string, basePath = '/donations'):
 }
 
 /** The fetch every print/download/share path shares, QR included. */
-async function fetchReceipt(id: string, basePath: string): Promise<ReceiptData> {
-  const { data } = await api.get(`${basePath}/${id}/receipt`)
+/**
+ * `doc` names the document under the record: `receipt` everywhere, and
+ * `group-receipt` for one bill covering every room booked together.
+ */
+async function fetchReceipt(id: string, basePath: string, doc = 'receipt'): Promise<ReceiptData> {
+  const { data } = await api.get(`${basePath}/${id}/${doc}`)
   const receipt: ReceiptData = data.data
   receipt.upi_qr_data_uri = await buildUpiQr(receipt)
   return receipt

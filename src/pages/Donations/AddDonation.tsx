@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, X, Landmark } from 'lucide-react'
+import { Save, X, Landmark, Plus, Trash2 } from 'lucide-react'
 import { api, parsePaise, fmtPaise } from '../../lib/api'
 import { printDonationReceipt } from '../../lib/printReceipt'
 import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDropdownOptions'
@@ -17,6 +17,15 @@ const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const CASH_80G_LIMIT_PAISE = 2000 * 100
 
 interface Fund { id: string; name: string; fund_type: string }
+
+/**
+ * A further head on the same receipt (tenant migration 057): "Ahaar Daan
+ * 1,000, Gau Seva 5,000, Aarti 1,000, Shantidhara 2,000 - one bill of 9,000".
+ * The first head is the form's own category and amount; these follow it.
+ */
+interface ExtraHead { key: string; category_id: string; amount: string }
+const MAX_HEADS = 20
+const newHead = (): ExtraHead => ({ key: Math.random().toString(36).slice(2), category_id: '', amount: '' })
 
 // The "Donor wants updates about this mandir's events" tick is switched off
 // for now (founder request, 2026-09-17). Nothing new is recorded as consent
@@ -48,6 +57,7 @@ export function AddDonation() {
   // overlapping questions on every receipt is how a corpus gift ended up
   // counted as income because a dropdown was left on "General".
   const [funds, setFunds] = useState<Fund[]>([])
+  const [extraHeads, setExtraHeads] = useState<ExtraHead[]>([])
   // When correcting: what the original was filed under. The API keeps it
   // unless the category changes.
   const [original, setOriginal] = useState<{ category_id: string; fund_id: string | null; fund_type: string | null } | null>(null)
@@ -90,6 +100,15 @@ export function AddDonation() {
         note: d.notes ?? '',
       })
       setOriginal({ category_id: d.category_id ?? '', fund_id: d.fund_id ?? null, fund_type: d.fund_type ?? null })
+      // A multi-head receipt opens with every head: the first in the form's
+      // own fields, the rest as rows under it.
+      const heads = Array.isArray(d.lines) ? d.lines : []
+      if (heads.length > 1) {
+        setForm(f => ({ ...f, category_id: heads[0].category_id, amount: String(Number(heads[0].amount_paise) / 100) }))
+        setExtraHeads(heads.slice(1).map((l: { category_id: string; amount_paise: number }) => ({
+          ...newHead(), category_id: l.category_id, amount: String(Number(l.amount_paise) / 100),
+        })))
+      }
       // A receipt settled in several modes opens with its split. Re-issuing it
       // from the single-mode fields turned 400 cash + 1,000 cheque into one
       // 1,400 cheque, and the cash book lost the 400.
@@ -134,9 +153,12 @@ export function AddDonation() {
   // Only the CASH part counts against the ₹2,000 limit — the API decides it
   // that way, so ₹1,000 cash + ₹9,000 UPI stays eligible. Derived, not written
   // into the form: switching the mode back to UPI brings the tick back.
+  // The receipt's total: the first head plus every further one.
+  const multiHead = extraHeads.length > 0
+  const totalPaise = parsePaise(form.amount || '0') + extraHeads.reduce((s, h) => s + parsePaise(h.amount || '0'), 0)
   const cashPartPaise = splitMode
     ? cashPaise(payRows)
-    : form.payment_mode === 'cash' ? parsePaise(form.amount || '0') : 0
+    : form.payment_mode === 'cash' ? totalPaise : 0
   const cashOver80gLimit = cashPartPaise > CASH_80G_LIMIT_PAISE
 
   const selectedCategory = categories.find(c => c.id === form.category_id)
@@ -151,11 +173,13 @@ export function AddDonation() {
     e.preventDefault()
     if (!form.category_id) { setError('Select a donation category'); return }
     if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+    const badHead = extraHeads.findIndex(h => !h.category_id || !h.amount || parseFloat(h.amount) <= 0)
+    if (badHead >= 0) { setError(t('donations.headIncomplete', { n: badHead + 2 })); return }
     // Catch a mismatched split here rather than round-tripping to the API.
-    if (splitMode && sumPaise(payRows) !== parsePaise(form.amount)) {
+    if (splitMode && sumPaise(payRows) !== totalPaise) {
       setError(t('donations.splitMismatch', {
         split: (sumPaise(payRows) / 100).toLocaleString('en-IN'),
-        total: parseFloat(form.amount).toLocaleString('en-IN'),
+        total: (totalPaise / 100).toLocaleString('en-IN'),
       }))
       return
     }
@@ -164,7 +188,7 @@ export function AddDonation() {
     try {
       const payload: Record<string, unknown> = {
         category_id: form.category_id,
-        amount_paise: parsePaise(form.amount),
+        amount_paise: totalPaise,
         payment_mode: form.payment_mode,
         is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked && !cashOver80gLimit,
         // No fund_id / fund_type: the API takes them from the category (a new
@@ -193,6 +217,12 @@ export function AddDonation() {
         if (form.payment_account_id) payload.payment_account_id = form.payment_account_id
         if (form.utr_number) payload.utr_number = form.utr_number
         if (form.cheque_number) payload.cheque_number = form.cheque_number
+      }
+      if (multiHead) {
+        payload.lines = [
+          { category_id: form.category_id, amount_paise: parsePaise(form.amount) },
+          ...extraHeads.map(h => ({ category_id: h.category_id, amount_paise: parsePaise(h.amount) })),
+        ]
       }
       if (form.note) payload.notes = form.note
       // Only sent when the donor actually said yes, and never for an anonymous
@@ -310,11 +340,51 @@ export function AddDonation() {
             )}
           </div>
 
+          {/* Further heads on the same receipt. Each is a category and its
+              amount; the receipt's total is all of them, and it prints every
+              head as its own line. */}
+          <div className="space-y-2" data-testid="donation-heads">
+            {extraHeads.map((h, i) => (
+              <div key={h.key} className="grid grid-cols-[1fr_9rem_auto] gap-2 items-end" data-testid="donation-head">
+                <div>
+                  <label className="form-label">{t('donations.headN', { n: i + 2 })}</label>
+                  <select className="form-select" value={h.category_id} aria-label={t('donations.headN', { n: i + 2 })}
+                    onChange={e => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, category_id: e.target.value } : x))}>
+                    <option value="">{t('donations.selectCategory')}</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">{t('donations.amountLabel')}</label>
+                  <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00" value={h.amount}
+                    aria-label={`${t('donations.headN', { n: i + 2 })} ${t('donations.amountLabel')}`}
+                    onChange={e => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, amount: e.target.value } : x))} />
+                </div>
+                <button type="button" className="btn-secondary btn-sm mb-0.5" aria-label={t('donations.removeHead')}
+                  onClick={() => setExtraHeads(hs => hs.filter(x => x.key !== h.key))}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3">
+              <button type="button" className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 disabled:opacity-40"
+                disabled={extraHeads.length + 1 >= MAX_HEADS}
+                onClick={() => setExtraHeads(hs => [...hs, newHead()])}>
+                <Plus size={14} /> {t('donations.addHead')}
+              </button>
+              {multiHead && (
+                <p className="text-sm font-semibold text-navy-900" data-testid="donation-heads-total">
+                  {t('donations.headsTotal', { count: extraHeads.length + 1, amount: (totalPaise / 100).toLocaleString('en-IN') })}
+                </p>
+              )}
+            </div>
+          </div>
+
           <SplitPaymentToggle
             enabled={splitMode} onEnabledChange={setSplitMode}
             rows={payRows} onRowsChange={setPayRows}
-            totalPaise={parsePaise(form.amount || '0')}
-            seedMode={form.payment_mode} seedAmount={form.amount}
+            totalPaise={totalPaise}
+            seedMode={form.payment_mode} seedAmount={multiHead ? String(totalPaise / 100) : form.amount}
             seedRef={form.utr_number || form.cheque_number}
             seedAccountId={form.payment_account_id}
           />

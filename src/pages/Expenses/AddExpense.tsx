@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, X, Paperclip, Trash2 } from 'lucide-react'
-import { api, parsePaise, todayIst } from '../../lib/api'
+import { api, parsePaise, todayIst, fmtPaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { compressImage } from '../../lib/imageCompress'
+import { ExpenseItemsEditor } from '../../components/Expenses/ExpenseItemsEditor'
+import { itemsPayload, itemsTotals, newItemRow, type ItemRow, type VendorItem } from '../../components/Expenses/expenseItems'
 
 export function AddExpense() {
   const { t } = useTranslation()
@@ -61,16 +63,38 @@ export function AddExpense() {
   ])
   const paymentModes = usePaymentModes()
 
+  // An itemised bill (tenant migration 057): several products from one
+  // vendor, each qty x rate with its own GST. The amount and GST boxes then
+  // show the items' sums instead of being typed.
+  const [itemised, setItemised] = useState(false)
+  const [items, setItems] = useState<ItemRow[]>(() => [newItemRow()])
+  const [products, setProducts] = useState<VendorItem[]>([])
+  const matchedVendor = vendors.find(v => v.name.toLowerCase() === form.vendor_name.trim().toLowerCase())
+  useEffect(() => {
+    if (!matchedVendor) { setProducts([]); return }
+    api.get(`/vendors/${matchedVendor.id}/items`).then(r => setProducts(r.data.data ?? [])).catch(() => setProducts([]))
+  }, [matchedVendor?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const totals = itemsTotals(items)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.description) { setError('Enter expense description'); return }
-    if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+    const itemList = itemised ? itemsPayload(items, form.category) : []
+    if (itemised) {
+      if (!itemList.length || totals.total <= 0) { setError(t('expenseItems.needOne')); return }
+      const bad = itemList.findIndex(it => !it.description || it.rate_paise <= 0)
+      if (bad >= 0) { setError(t('expenseItems.incomplete', { n: bad + 1 })); return }
+    } else {
+      if (!form.description) { setError('Enter expense description'); return }
+      if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+    }
     setSaving(true)
     setError('')
     try {
       const payload: Record<string, unknown> = {
-        description: form.description,
-        amount_paise: parsePaise(form.amount),
+        // An itemised bill's description defaults to its items, summarised by
+        // the API ("Ghee 5 kg, Cement 2 bag ...").
+        ...(form.description ? { description: form.description } : {}),
+        ...(itemised ? { items: itemList, amount_paise: totals.total } : { amount_paise: parsePaise(form.amount) }),
         payment_mode: form.payment_mode,
         payment_account_id: form.payment_account_id || undefined,
         is_on_credit: form.is_on_credit,
@@ -96,7 +120,7 @@ export function AddExpense() {
         if (form.cheque_bank) payload.cheque_bank = form.cheque_bank
         payload.cheque_date = form.cheque_date
       }
-      if (form.gst_amount) payload.gst_paid_paise = parsePaise(form.gst_amount)
+      if (form.gst_amount && !itemised) payload.gst_paid_paise = parsePaise(form.gst_amount)
       if (form.tds_deducted) {
         payload.tds_deducted = true
         if (form.tds_amount) payload.tds_amount_paise = parsePaise(form.tds_amount)
@@ -156,12 +180,31 @@ export function AddExpense() {
             </div>
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={itemised} onChange={e => setItemised(e.target.checked)}
+              className="w-4 h-4 accent-brand-blue" data-testid="itemised-toggle" />
+            {t('expenseItems.toggle')}
+            {matchedVendor && products.length > 0 && (
+              <span className="text-xs text-slate-500">· {t('expenseItems.vendorHas', { count: products.length })}</span>
+            )}
+          </label>
+
+          {itemised && (
+            <ExpenseItemsEditor rows={items} onChange={setItems} products={products} categories={expenseCategories} />
+          )}
+
           <div>
-            <label className="form-label">{t('expenses.descriptionRequired')}</label>
+            <label className="form-label">{itemised ? t('expenseItems.descriptionOptional') : t('expenses.descriptionRequired')}</label>
             <input className="form-input" placeholder={t('expenses.descriptionRequiredPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
 
+          {itemised ? (
+            <div className="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 p-3 text-sm" data-testid="items-totals">
+              <div><span className="text-slate-500">{t('expenses.amountLabel')}</span><p className="font-semibold text-navy-900 text-base">₹{fmtPaise(totals.total)}</p></div>
+              <div><span className="text-slate-500">{t('expenses.gstAmount')}</span><p className="font-semibold">₹{fmtPaise(totals.gst)}</p></div>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="form-label">{t('expenses.amountLabel')}</label>
@@ -174,6 +217,7 @@ export function AddExpense() {
                 value={form.gst_amount} onChange={e => setForm(f => ({ ...f, gst_amount: e.target.value }))} />
             </div>
           </div>
+          )}
 
           {(() => {
             const isCash = form.payment_mode === 'cash'

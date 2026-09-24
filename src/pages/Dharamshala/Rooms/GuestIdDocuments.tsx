@@ -6,6 +6,7 @@ import { compressIdImage } from '../../../lib/idImage'
 import { useApiGet } from '../../../lib/useApiGet'
 import { useAuthStore } from '../../../store/authStore'
 import { useToast } from '../../../components/kit/Toast'
+import { fetchAllPages } from '../../../lib/fetchAllPages'
 import type { RoomBooking } from '../../../types'
 
 /**
@@ -401,7 +402,7 @@ export function EditBookingModal({ booking, onClose, onSaved }: {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/rooms?limit=500').then(r => setRooms(r.data.data ?? [])).catch(() => setRooms([]))
+    fetchAllPages<{ id: string; room_number: string; name?: string | null }>('/rooms').then(setRooms).catch(() => setRooms([]))
   }, [])
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>

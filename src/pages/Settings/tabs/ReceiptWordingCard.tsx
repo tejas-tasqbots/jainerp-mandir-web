@@ -60,12 +60,12 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
     id: 'money',
     keys: ['amount', 'amountInr', 'donationAmount', 'amountInWords',
       'subtotal', 'total', 'amountPaid', 'balanceDue', 'advance',
-      'securityDeposit', 'realizedAmount'],
+      'securityDeposit', 'realizedAmount', 'refunded', 'refundDue'],
   },
   {
     id: 'doc',
     keys: ['date', 'receiptNo', 'transactionId', 'status', 'received',
-      'category', 'purpose', 'purposeOfDonation', 'description'],
+      'category', 'purpose', 'purposeOfDonation', 'description', 'remarks'],
   },
   {
     id: 'blessing',

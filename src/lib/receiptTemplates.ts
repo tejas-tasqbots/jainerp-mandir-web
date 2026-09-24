@@ -27,7 +27,7 @@ import {
   type LocalisedText,
   type ReceiptDefinition,
 } from './receiptDefinition'
-import { receiptParts } from './receiptDocument'
+import { receiptParts, type ReceiptDocument } from './receiptDocument'
 
 /**
  * Labels for the receipt currently being built. Module-level rather than a
@@ -492,6 +492,39 @@ function escapeDeep<T>(v: T): T {
 }
 
 /**
+ * `escapeDeep` backwards, for the one design that escapes for itself.
+ *
+ * Anumodana is drawn by receiptDocument.ts, which escapes every value it
+ * interpolates - it is vendored into devotee-api and cannot trust its caller.
+ * Handing it this file's already-escaped payload escaped everything twice, so a
+ * donor named D'Souza printed as `D&#39;Souza` and "Jain Mandir & Trust" as
+ * `Jain Mandir &amp; Trust` - on the design a donor receives by WhatsApp.
+ * The five entities escapeDeep writes are reversed here, and only those, in
+ * the opposite order; receiptDocument then escapes each value exactly once.
+ */
+function unescapeHtml(v: string): string {
+  return v
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&amp;/g, '&')
+}
+
+function unescapeDeep<T>(v: T): T {
+  if (typeof v === 'string') return unescapeHtml(v) as unknown as T
+  if (Array.isArray(v)) return v.map(unescapeDeep) as unknown as T
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      out[k] = k === 'label_overrides' ? x : unescapeDeep(x)
+    }
+    return out as T
+  }
+  return v
+}
+
+/**
  * The affirmative palette, derived from the trust's own colour.
  *
  * "80G ELIGIBLE" used to print in a fixed leaf green (#15803d on #dcfce7) in
@@ -750,7 +783,7 @@ function stayBlock(r: ReceiptData, color: string, opts: { compact?: boolean } = 
   const cells = rows
     .map(([k, v]) => `<div style="display:flex;gap:5px;min-width:0"><span style="color:#5b6472;flex:none">${k}</span><b style="color:#111827">${v}</b></div>`)
     .join('')
-  const rules = mandirHouseRules(r)
+  const rules = mandirHouseRules(r) + remarksLine(r)
   return `<div class="stay" style="flex:1;margin-top:9px;border:1px solid ${color}22;border-left:2px solid ${color};border-radius:3px;padding:${opts.compact ? '5px 8px' : '7px 10px'};background:${color}05">
     <div style="font-size:8px;letter-spacing:.8px;text-transform:uppercase;color:${color};font-weight:700;margin-bottom:3px">${L.stayDetails}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px 12px;font-size:${size};line-height:1.4">${cells}</div>
@@ -764,6 +797,24 @@ function stayBlock(r: ReceiptData, color: string, opts: { compact?: boolean } = 
  * The API decides: `house_rules` is populated only for an accommodation
  * document, so a design does not have to know what it is drawing.
  */
+/** The counter's remarks on a booking ("late arrival, ground floor"). */
+function remarksLine(r: ReceiptData): string {
+  const text = (r.meta as Record<string, unknown> | null | undefined)?.remarks
+  if (typeof text !== 'string' || !text.trim()) return ''
+  return `<div style="margin-top:4px;font-size:8.5px;line-height:1.35;color:#374151"><b>${L.remarks}:</b> ${text}</div>`
+}
+
+/**
+ * The money AFTER the total on a bill — advance, paid, refunded, still due —
+ * for the designs whose itemised table ends at the total. The stay designs
+ * print `stayMoneyRows` in their own panel and pass `total: false`, so this is
+ * never printed twice.
+ */
+function moneyAfterTotal(r: ReceiptData): Array<[string, string, boolean]> {
+  if (isDonationDoc(r)) return []
+  return stayMoneyRows(r).filter(([label]) => label !== L.total)
+}
+
 function mandirHouseRules(r: ReceiptData): string {
   const text = r.mandir?.house_rules
   if (!text) return ''
@@ -1359,6 +1410,10 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
         ${r.is_80g_eligible && mandir.show_80g ? `<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:3px;font-size:10px;color:#92400e"><b>${L.eligible80g}</b> — Tax exemption certificate available</div>` : ''}
       </div>
     </div>
+    ${/* Every head of a multi-head donation, every extra on a bill (tenant
+          migration 057): the two columns above name the purpose once, this
+          says what each part was. */''}
+    ${r.lines?.length ? `<div style="padding:0 20px">${itemsBlock(r, color)}</div>` : ''}
     ${mandir.footer ? `<div class="notes-section"><div style="font-size:10px;font-weight:700;margin-bottom:6px">Please Note:</div><ul><li>${mandir.footer}</li></ul></div>` : ''}
     <div class="footer-row">
       <div style="font-size:11px;color:#374151;max-width:300px;font-style:italic">${r.is_80g_eligible && mandir.show_80g ? L.valid80g : L.thankYou}</div>
@@ -1620,7 +1675,16 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
            placeholders for "Bank" and "IFS Code" on a trust that had an
            account number and nothing else. The amount now always renders the
            same way and the bank details are the shared block. -->
-      ${r.lines?.length ? '' : `<div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>`}
+      ${/* The lines first, then the design's own large amount as their total.
+            With lines this row used to step aside for an itemised table that
+            this design never drew, so a room bill or a multi-head donation
+            printed no amount at all. */''}
+      ${r.lines?.length ? itemsBlock(r, color, { total: false }) : ''}
+      ${r.lines?.length
+        // Under an itemised table the total closes it: right-aligned under the
+        // amount column and set large, the way every invoice ends.
+        ? `<div class="field-row" style="justify-content:space-between"><span class="lbl">${L.total}</span><span class="val big" style="font-size:22px;text-align:right">₹ ${fmtRs(r.amount_paise)}</span></div>`
+        : `<div class="field-row"><span class="lbl">${L.amount}</span><span class="val big">₹ ${fmtRs(r.amount_paise)}</span></div>`}
       <div class="field-row"><span class="lbl">${L.modeOfPayment}</span><span class="val">${paymentModeText(r)}</span></div>
       ${paymentFooter(r, color)}
       <div class="sig-row">
@@ -1857,6 +1921,7 @@ function itemsBlock(r: ReceiptData, color: string, opts: { total?: boolean } = {
     gstShown && (tax?.sgst_paise ?? 0) > 0 ? sumRow('SGST', `₹ ${fmtRs(tax!.sgst_paise!)}`) : '',
     gstShown && (tax?.igst_paise ?? 0) > 0 ? sumRow('IGST', `₹ ${fmtRs(tax!.igst_paise!)}`) : '',
     opts.total === false ? '' : sumRow(L.total, `₹ ${fmtRs(r.amount_paise)}`, true),
+    ...(opts.total === false ? [] : moneyAfterTotal(r).map(([k, v]) => sumRow(k, v))),
   ].join('')
 
   return `
@@ -1920,7 +1985,31 @@ function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir'
   const detail = lines.length
     ? lines.map(l => `${l.label}${l.qty ? ` × ${l.qty}` : ''}`).join(', ')
     : r.category
-  const { css, body } = receiptParts({
+  // What the sheet prints beyond a gift's one purpose (tenant migration 057):
+  // every head of a multi-head donation, a room and its extras, a hall; the
+  // stay or hall facts; and the money after the lines. Composed HERE because
+  // this file owns the tax and stay rules - receiptDocument only lays them out.
+  const meta = (r.meta ?? {}) as Record<string, unknown>
+  const tax = r.tax ?? null
+  const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0)
+  const gstShown = taxTotal > 0 && !!mandir.gst_enabled
+  const facts: Array<[string, string]> = isDonationDoc(r) ? [] : [
+    ...(meta.room_number || meta.check_in_date ? stayFacts(r) : []),
+    ...(meta.event_name ? [[L.eventName, String(meta.event_name)] as [string, string]] : []),
+    ...(meta.booking_date ? [[L.date, fmtDay(meta.booking_date)] as [string, string]] : []),
+  ]
+  const summary: Array<[string, string, boolean]> = lines.length ? [
+    ...(gstShown ? [
+      [L.subtotal, `₹ ${fmtRs(r.amount_paise - taxTotal)}`, false] as [string, string, boolean],
+      ...(['cgst', 'sgst', 'igst'] as const)
+        .filter((k) => (tax?.[`${k}_paise`] ?? 0) > 0)
+        .map((k) => [k.toUpperCase() + (tax?.rate_pct ? ` @ ${k === 'igst' ? tax.rate_pct : tax.rate_pct / 2}%` : ''), `₹ ${fmtRs(tax![`${k}_paise`]!)}`, false] as [string, string, boolean]),
+    ] : []),
+  ] : []
+  // Paid, refunded, still due: printed under the total they settle.
+  const settlement = moneyAfterTotal(r)
+  // Everything below reaches receiptDocument, which escapes it once itself.
+  const doc: ReceiptDocument = unescapeDeep({
     // A gift or a sale — the payload says so now; a title is the old signal.
     kind: isDonationDoc(r) ? 'donation' : 'sale',
     // "Donation Receipt · Donor Copy", the way a carbon receipt book prints it.
@@ -1940,6 +2029,18 @@ function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir'
     amount_paise: r.amount_paise,
     detail_label: lines.length ? L.description : null,
     category: detail,
+    // A single line that only restates the purpose ("General Donation ₹1,500")
+    // adds a table that says nothing the purpose row does not, so one line
+    // with no quantity stays the classic one-purpose sheet.
+    items: lines.length > 1 || lines.some((l) => l.qty) ? lines : null,
+    items_labels: { description: L.description, amount: L.amountInr },
+    // Under a table whose column already reads "Amount", the figure in the
+    // box is the total, and saying so keeps one heading from printing twice.
+    amount_label: lines.length > 1 || lines.some((l) => l.qty) ? L.total : null,
+    facts,
+    summary,
+    settlement,
+    remarks: typeof meta.remarks === 'string' && meta.remarks.trim() ? { label: L.remarks, text: meta.remarks } : null,
     payment_mode: paymentModeText(r),
     // The instant the money arrived, and the trust's QR — both new to this
     // design, and both already in the payload the other twelve now render.
@@ -1950,7 +2051,8 @@ function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir'
     // buildReceiptHtml owns the @page rule for every design. Without this the
     // A5 rule in this design's own CSS — emitted from the BODY, so later in
     // the cascade — overrode the trust's chosen paper for the whole document.
-  }, { ownPage: false })
+  })
+  const { css, body } = receiptParts(doc, { ownPage: false })
   return `<style>${css}</style>${body}`
 }
 
@@ -2019,6 +2121,9 @@ function buildStatement(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
     ${itemsBlock(r, color, { total: false })}
     <div class="totals"><div class="box">
       <div class="row grand"><span>${L.total}</span><span>₹ ${fmtRs(r.amount_paise)}</span></div>
+      ${/* Paid, refunded, still due - a bill that stops at its total leaves
+            the guest working out where their advance went. */''}
+      ${moneyAfterTotal(r).map(([k, v, strong]) => `<div class="row"${strong ? ' style="font-weight:700"' : ''}><span>${k}</span><span>${v}</span></div>`).join('')}
     </div></div>
     <div class="words">${amountInWords(r.amount_paise)}</div>
     ${paymentFooter(r, color)}
@@ -2123,6 +2228,13 @@ function stayMoneyRows(r: ReceiptData): Array<[string, string, boolean]> {
   // whole of it — otherwise the same money appears on two lines.
   if (advance > 0 && advance !== paid) rows.push([L.advance, `₹ ${fmtRs(advance)}`, false])
   if (paid > 0) rows.push([L.amountPaid, `₹ ${fmtRs(paid)}`, false])
+  // An advance larger than the stay came to (tenant migration 057): what was
+  // given back, and what is still owed back. Both, so the guest sees where
+  // every rupee of the advance went.
+  const refunded = Number(meta.refunded_paise ?? 0)
+  const refundDue = Number(meta.refund_due_paise ?? 0)
+  if (refunded > 0) rows.push([L.refunded, `₹ ${fmtRs(refunded)}`, false])
+  if (refundDue > 0) rows.push([L.refundDue, `₹ ${fmtRs(refundDue)}`, true])
   if (due > 0) rows.push([L.balanceDue, `₹ ${fmtRs(due)}`, true])
   // Held, not earned: it is not part of the bill and must never be added into
   // the total (tenant migration 034 made the same point in the ledger).
@@ -2568,6 +2680,10 @@ function buildRoomGst(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
       ${sgst > 0 ? taxLine('SGST', ratePct(sgst, taxable, tax?.rate_pct != null ? tax.rate_pct / 2 : null), sgst) : ''}
       ${igst > 0 ? taxLine('IGST', ratePct(igst, taxable, tax?.rate_pct), igst) : ''}` : ''}
       <tr class="grand"><td colspan="${span}" class="r">${L.total}</td><td class="r">₹ ${fmtRs(r.amount_paise)}</td></tr>
+      ${/* After the invoice total: what was paid, what was given back, what is
+            still due. Not part of the tax invoice's value - the rows follow the
+            total rather than feed it. */''}
+      ${moneyAfterTotal(r).map(([k, v, strong]) => `<tr><td colspan="${span}" class="r"${strong ? ' style="font-weight:700"' : ''}>${k}</td><td class="r"${strong ? ' style="font-weight:700"' : ''}>${v}</td></tr>`).join('')}
     </table>
     <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
     <div class="body">
@@ -2894,6 +3010,10 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
       <div class="who">${r.donor?.name || L.anonymous}<span>${[r.donor?.mobile, `${L.paymentMode}: ${paymentModeText(r)}`].filter(Boolean).join(' · ')}</span></div>
       <table>
         ${facts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+        ${/* The lines, when there is more than the room: an extra bed, a meal,
+              or every room of a group booking (tenant migration 057). One line
+              is just the room, which the facts above already state. */''}
+        ${(r.lines?.length ?? 0) > 1 ? r.lines!.map((l) => `<tr style="font-size:9.5px"><td style="font-size:9.5px">${l.label}${l.qty ? ` <span style="color:#6b7280">· ${l.qty}</span>` : ''}</td><td style="font-size:9.5px">₹ ${fmtRs(l.amount_paise)}</td></tr>`).join('') : ''}
         ${money.map(([k, v, strong]) => `<tr class="${strong ? 'strong' : ''}"><td>${k}</td><td>${v}</td></tr>`).join('')}
       </table>
       ${paymentFooter(r, color, { compact: true, stay: false })}
@@ -3679,7 +3799,7 @@ export function buildReceiptHtml(input: ReceiptData): string {
   // null; every template interpolates it directly, so the guest's copy read
   // "Receipt null". Substitute once here rather than at all fifteen sites.
   let r: ReceiptData = escapeDeep({ ...input, receipt_number: input.receipt_number || '—' })
-  const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'classic', primary_color: '#0D1B2E' }
+  const mandir = r.mandir ?? { name: 'Mandir', address: '', template: 'anumodana', primary_color: '#0D1B2E' }
   // The trust's own words on top of ours. One line, because every design
   // already reads every word it prints through `L` - so "Dan" becomes "Bhet"
   // on all seventeen designs and both copies at once, with no per-design work.
@@ -3700,7 +3820,9 @@ export function buildReceiptHtml(input: ReceiptData): string {
       r = { ...r, category: `${mealName(meta.meal_type)}${n > 0 ? ` × ${n}` : ''}` }
     }
   }
-  let template = mandir.template || 'classic'
+  // Anumodana is the default design (founder decision 2026-09-24): a trust
+  // that never chose one prints the sheet its donors are sent on WhatsApp.
+  let template = mandir.template || 'anumodana'
   // The 80G template makes a statutory tax-exemption claim, so it must never be
   // used for a donation that is not 80G-eligible — NOR for a trust that holds
   // no 80G registration at all. The second condition is new: a trust could

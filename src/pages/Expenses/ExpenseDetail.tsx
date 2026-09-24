@@ -9,6 +9,15 @@ export function ExpenseDetail({ expense }: { expense: Expense }) {
   const { t } = useTranslation()
   const [photo, setPhoto] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // The bill's items (tenant migration 057), read only when the row says it
+  // has some - a one-line expense costs no extra request.
+  const [items, setItems] = useState<Array<{ id: string; description: string; qty: number; unit: string | null; rate_paise: number; gst_rate: number; amount_paise: number; category: string | null }>>([])
+  useEffect(() => {
+    if (!expense.item_count) { setItems([]); return }
+    let alive = true
+    api.get(`/expenses/${expense.id}`).then(r => { if (alive) setItems(r.data.data?.items ?? []) }).catch(() => {})
+    return () => { alive = false }
+  }, [expense.id, expense.item_count])
 
   useEffect(() => {
     if (!expense.has_bill_photo) { setPhoto(null); return }
@@ -55,6 +64,27 @@ export function ExpenseDetail({ expense }: { expense: Expense }) {
         ))}
         {expense.notes && <p className="text-xs text-slate-500 border-t border-slate-100 pt-2">{expense.notes}</p>}
       </div>
+
+      {items.length > 0 && (
+        <div data-testid="expense-detail-items">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">{t('expenseItems.heading', { count: items.length })}</h4>
+          <table className="w-full text-sm">
+            <tbody>
+              {items.map(i => (
+                <tr key={i.id} className="border-b border-slate-100">
+                  <td className="py-1.5">
+                    {i.description}
+                    <span className="block text-xs text-slate-400">
+                      {i.qty}{i.unit ? ` ${i.unit}` : ''} × ₹{fmtPaise(i.rate_paise)}{i.gst_rate ? ` + GST ${i.gst_rate}%` : ''}{i.category ? ` · ${i.category}` : ''}
+                    </span>
+                  </td>
+                  <td className="py-1.5 text-right font-semibold whitespace-nowrap">₹{fmtPaise(i.amount_paise)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div>
         <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">

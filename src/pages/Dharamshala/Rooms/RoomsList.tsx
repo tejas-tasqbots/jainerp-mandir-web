@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck } from 'lucide-react'
+import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck, PackagePlus, Files } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -20,13 +20,13 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import { useReceiptLabels } from '../../../lib/useReceiptLabels'
 import type { RoomBooking } from '../../../types'
-import { useConfirm } from '../../../components/ConfirmDialog'
 import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteEntry'
 import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
+import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'checked_in', 'checked_out', 'cancelled'] as const
@@ -101,7 +101,6 @@ function refundable(b: RoomBooking): number {
 export function RoomsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const confirm = useConfirm()
   const canDelete = useCanDeleteEntries()
   const deleteEntry = useDeleteEntry()
   const toast = useToast()
@@ -116,9 +115,6 @@ export function RoomsList() {
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('rooms'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
-  const [checkoutModal, setCheckoutModal] = useState<{ booking: RoomBooking; duePaise: number } | null>(null)
-  const [checkoutRows, setCheckoutRows] = useState<PaymentRow[]>([emptyPaymentRow()])
-  const [checkingOut, setCheckingOut] = useState(false)
   const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
   const [collectModal, setCollectModal] = useState<{ booking: RoomBooking; bill: Record<string, any> } | null>(null)
   // Settling a deposit is its own action, not part of checkout: a guest can
@@ -149,6 +145,11 @@ export function RoomsList() {
   // admin alone views and removes) and the admin's edit (tenant migration 055).
   const [idDocsFor, setIdDocsFor] = useState<RoomBooking | null>(null)
   const [editFor, setEditFor] = useState<RoomBooking | null>(null)
+  // The desk dialogs (tenant migration 057): check-in with edits and extras,
+  // extras during the stay, checkout with a live bill and the refund.
+  const [checkinFor, setCheckinFor] = useState<RoomBooking | null>(null)
+  const [extrasFor, setExtrasFor] = useState<RoomBooking | null>(null)
+  const [checkoutFor, setCheckoutFor] = useState<RoomBooking | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
@@ -282,10 +283,30 @@ export function RoomsList() {
       render: b => (
         <div className="flex gap-1">
           {(b.status === 'confirmed' || b.status === 'booked') && (
-            <button onClick={() => checkin(b.id)} className="btn-success btn-sm">{t('dharamshala.checkInAction')}</button>
+            <button onClick={() => setCheckinFor(b)} className="btn-success btn-sm">{t('dharamshala.checkInAction')}</button>
           )}
           {b.status === 'checked_in' && (
-            <button onClick={() => openCheckout(b)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
+            <button onClick={() => setCheckoutFor(b)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
+          )}
+          {/* An extra bed, a meal, laundry - on the bill while the stay is open. */}
+          {(b.status === 'confirmed' || b.status === 'booked' || b.status === 'checked_in') && (
+            <button
+              onClick={() => setExtrasFor(b)}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('roomCharges.title')} aria-label={t('roomCharges.title')}
+            >
+              <PackagePlus size={14} />
+            </button>
+          )}
+          {/* Several rooms booked together print on one combined bill. */}
+          {b.group_id && b.status !== 'cancelled' && (
+            <button
+              onClick={() => printDonationReceipt(b.id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed')))}
+              className="p-1 text-slate-400 hover:text-navy-700 rounded"
+              title={t('dharamshala.printGroupBill')} aria-label={t('dharamshala.printGroupBill')}
+            >
+              <Files size={14} />
+            </button>
           )}
           {/* A checked-out row used to render an EMPTY actions cell — the bill
               it just generated was unreachable. The bill is the whole point of
@@ -473,52 +494,6 @@ export function RoomsList() {
       toast.success(t('kit.exportReady'))
     } catch {
       toast.error(t('kit.exportFailed'))
-    }
-  }
-
-  async function checkin(id: string) {
-    if (!(await confirm({ title: t('dharamshala.confirmCheckinTitle'), message: t('dharamshala.confirmCheckinMessage'), confirmLabel: t('dharamshala.checkInButton') }))) return
-    try {
-      await api.patch(`/room-bookings/${id}/checkin`, {})
-      toast.success(t('dharamshala.checkinSuccess'))
-      load()
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: { message?: string } } } }
-      toast.error(err.response?.data?.error?.message || t('dharamshala.checkinFailed'))
-    }
-  }
-
-  /**
-   * Opens the settlement dialog. Checkout used to POST an empty body, so no
-   * money was ever recorded and the bill showed 0 taken — the cashier now
-   * enters the tender(s) here before the bill is issued.
-   */
-  function openCheckout(b: RoomBooking) {
-    const due = Math.max(0, (b.total_paise ?? 0) - (b.paid_paise ?? 0))
-    setCheckoutModal({ booking: b, duePaise: due })
-    setCheckoutRows([{ ...emptyPaymentRow(), amount: due ? String(due / 100) : '' }])
-  }
-
-  async function confirmCheckout() {
-    if (!checkoutModal) return
-    setCheckingOut(true)
-    try {
-      const { data } = await api.patch(`/room-bookings/${checkoutModal.booking.id}/checkout`, {
-        payments: toPayload(checkoutRows),
-      })
-      const res = data?.data ?? data
-      setCheckoutModal(null)
-      toast.success(
-        res?.invoice_no
-          ? `${t('dharamshala.checkoutSuccess')} — ${res.invoice_no}`
-          : t('dharamshala.checkoutSuccess'),
-      )
-      load()
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: { message?: string } } } }
-      toast.error(err.response?.data?.error?.message || t('dharamshala.checkoutFailed'))
-    } finally {
-      setCheckingOut(false)
     }
   }
 
@@ -808,53 +783,6 @@ export function RoomsList() {
       />
 
       {/* Checkout settlement — collect the tender(s), then issue the bill. */}
-      {checkoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl mx-4">
-            <h3 className="font-bold text-navy-900 mb-1">{t('dharamshala.checkoutTitle')}</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              {checkoutModal.booking.guest_name} · {t('dharamshala.room')} {checkoutModal.booking.room_number}
-            </p>
-
-            <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-slate-500 text-xs">{t('dharamshala.total')}</p>
-                <p className="font-semibold">₹{fmtPaise(checkoutModal.booking.total_paise ?? 0)}</p>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-slate-500 text-xs">{t('dharamshala.alreadyPaid')}</p>
-                <p className="font-semibold">₹{fmtPaise(checkoutModal.booking.paid_paise ?? checkoutModal.booking.advance_paise ?? 0)}</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-3">
-                <p className="text-amber-700 text-xs">{t('dharamshala.dueNow')}</p>
-                <p className="font-semibold text-amber-800">₹{fmtPaise(checkoutModal.duePaise)}</p>
-              </div>
-            </div>
-
-            <label className="form-label">{t('dharamshala.collectPayment')}</label>
-            <PaymentSplitInput
-              rows={checkoutRows}
-              onChange={setCheckoutRows}
-              totalPaise={checkoutModal.duePaise}
-              disabled={checkingOut}
-            />
-            <p className="text-xs text-slate-400 mt-2">{t('dharamshala.partialPaymentHint')}</p>
-
-            <div className="flex gap-3 justify-end mt-5">
-              <button onClick={() => setCheckoutModal(null)} className="btn-secondary" disabled={checkingOut}>
-                {t('common.cancel')}
-              </button>
-              <button onClick={confirmCheckout} disabled={checkingOut} className="btn-primary">
-                {checkingOut
-                  ? t('common.saving')
-                  : sumPaise(checkoutRows) === 0
-                    ? t('dharamshala.checkoutWithoutPayment')
-                    : t('dharamshala.checkOutButton')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Collect an outstanding balance, including on a checked-out stay. */}
       {/* ── Correcting the stay times ──────────────────────────────────────
@@ -865,6 +793,30 @@ export function RoomsList() {
           surprising a cashier with a new total. */}
       {idDocsFor && (
         <IdDocumentsModal booking={idDocsFor} onClose={() => setIdDocsFor(null)} onChanged={() => void load()} />
+      )}
+      {checkinFor && (
+        <CheckinModal booking={checkinFor} onClose={() => setCheckinFor(null)}
+          onDone={() => { setCheckinFor(null); load() }} />
+      )}
+      {extrasFor && (
+        <ExtrasModal booking={extrasFor} onClose={() => { setExtrasFor(null); load() }} onDone={load} />
+      )}
+      {checkoutFor && (
+        <CheckoutModal booking={checkoutFor} onClose={() => setCheckoutFor(null)}
+          onDone={res => {
+            const b = checkoutFor
+            setCheckoutFor(null)
+            toast.success(
+              [
+                res?.invoice_no ? `${t('dharamshala.checkoutSuccess')} — ${res.invoice_no}` : t('dharamshala.checkoutSuccess'),
+                res?.refunded_paise ? t('dharamshala.refundedAtCheckout', { amount: fmtPaise(res.refunded_paise) }) : '',
+              ].filter(Boolean).join(' · '),
+            )
+            load()
+            // The proper bill, straight away - a stay ends with the guest
+            // holding it.
+            if (b) printDonationReceipt(b.id, '/room-bookings', b.group_id ? 'group-receipt' : 'receipt').catch(() => {})
+          }} />
       )}
       {editFor && (
         <EditBookingModal booking={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); void load() }} />
