@@ -64,9 +64,9 @@ export function EventDetail() {
       await api.post(`/events/${id}/announce`, { message: announcement, channels: ['push', 'sms'] })
       setAnnouncement('')
       setShowAnnounce(false)
-      toast.success('Announcement sent!')
+      toast.success(t('msg.announcementSent'))
     } catch {
-      toast.error('Failed to send announcement')
+      toast.error(t('msg.announcementFailed'))
     } finally {
       setAnnouncing(false)
     }

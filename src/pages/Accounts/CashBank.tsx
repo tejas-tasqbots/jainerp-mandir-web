@@ -283,20 +283,20 @@ export function CashBank() {
             </p>
             <form onSubmit={submitMove} className="space-y-4">
               <div>
-                <label className="form-label">{moveModal === 'deposit' ? t('accounts.fromAccount') : t('accounts.toAccount')}</label>
-                <select className="form-select" value={moveOtherAccountId} onChange={e => setMoveOtherAccountId(e.target.value)} required>
+                <label className="form-label" htmlFor="cash-bank-moveOtherAccountId">{moveModal === 'deposit' ? t('accounts.fromAccount') : t('accounts.toAccount')}</label>
+                <select id="cash-bank-moveOtherAccountId" className="form-select" value={moveOtherAccountId} onChange={e => setMoveOtherAccountId(e.target.value)} required>
                   <option value="">{t('accounts.select')}</option>
                   {otherAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('accounts.amount')}</label>
-                <input type="number" min="0.01" step="0.01" className="form-input" autoFocus required
+                <label className="form-label" htmlFor="cash-bank-moveAmount">{t('accounts.amount')}</label>
+                <input id="cash-bank-moveAmount" type="number" min="0.01" step="0.01" className="form-input" autoFocus required
                   value={moveAmount} onChange={e => { setMoveAmount(e.target.value); setMoveError('') }} />
               </div>
               <div>
-                <label className="form-label">{t('accounts.narration')}</label>
-                <input className="form-input" value={moveNarration} onChange={e => setMoveNarration(e.target.value)} />
+                <label className="form-label" htmlFor="cash-bank-moveNarration">{t('accounts.narration')}</label>
+                <input id="cash-bank-moveNarration" className="form-input" value={moveNarration} onChange={e => setMoveNarration(e.target.value)} />
               </div>
               {moveError && <p className="text-sm text-red-600">{moveError}</p>}
               <div className="flex gap-3 justify-end">

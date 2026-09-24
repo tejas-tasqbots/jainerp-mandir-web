@@ -27,6 +27,7 @@ import { GalleryTab } from './tabs/GalleryTab'
 import { TrusteesTab } from './tabs/TrusteesTab'
 import { MyAccountTab } from './tabs/MyAccountTab'
 import { SetupMeter } from '../../components/SetupChecklist'
+import { statusLabel } from '../../lib/statusLabel'
 
 /**
  * Plan limit columns store -1 to mean "no cap" (that is how the Enterprise plan
@@ -442,28 +443,28 @@ export function SettingsPage() {
                     field="name" pending={sens.pendingFor('name')} onRequest={sens.openRequest} />
                 ) : (
                   <>
-                    <label className="form-label">{t('settings.profile.templeName')}</label>
-                    <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                    <label className="form-label" htmlFor="settings-page-name">{t('settings.profile.templeName')}</label>
+                    <input id="settings-page-name" className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                   </>
                 )}
               </div>
               <div>
-                <label className="form-label">{t('settings.profile.mobile')}</label>
-                <input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
+                <label className="form-label" htmlFor="settings-page-mobile">{t('settings.profile.mobile')}</label>
+                <input id="settings-page-mobile" type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} />
               </div>
             </div>
             <div>
-              <label className="form-label">{t('settings.profile.address')}</label>
-              <input className="form-input" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} />
+              <label className="form-label" htmlFor="settings-page-address-line1">{t('settings.profile.address')}</label>
+              <input id="settings-page-address-line1" className="form-input" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><label className="form-label">{t('settings.profile.state')}</label>
                 <StateSelect value={form.state} onChange={s => setForm(f => ({ ...f, state: s, city: '' }))} />
               </div>
-              <div><label className="form-label">{t('settings.profile.city')}</label>
+              <div><label className="form-label" htmlFor="settings-page-pincode">{t('settings.profile.city')}</label>
                 <CitySelect state={form.state} value={form.city} onChange={c => setForm(f => ({ ...f, city: c }))} />
               </div>
-              <div><label className="form-label">{t('settings.profile.pincode')}</label><input className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
+              <div><label className="form-label">{t('settings.profile.pincode')}</label><input id="settings-page-pincode" className="form-input" value={form.pincode} onChange={e => setForm(f => ({ ...f, pincode: e.target.value }))} /></div>
             </div>
             {/* Locality in the words people use. Devotees searching for
                 accommodation type "Ghatkopar West" or "near Palitana taluka" —
@@ -471,8 +472,8 @@ export function SettingsPage() {
                 findable in the devotee app's stay search. Mirrored to
                 public.tenants.area on save (migration 033). */}
             <div>
-              <label className="form-label">{t('settings.profile.area', 'Area / locality')}</label>
-              <input
+              <label className="form-label" htmlFor="settings-page-area">{t('settings.profile.area', 'Area / locality')}</label>
+              <input id="settings-page-area"
                 className="form-input"
                 placeholder="e.g. Ghatkopar West, near Palitana taluka"
                 value={form.area}
@@ -482,8 +483,8 @@ export function SettingsPage() {
             </div>
             <LocationPicker lat={form.lat} lng={form.lng} onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))} />
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="form-label">{t('settings.profile.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-              <div><label className="form-label">{t('settings.profile.website')}</label><input type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
+              <div><label className="form-label" htmlFor="settings-page-website">{t('settings.profile.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><label className="form-label">{t('settings.profile.website')}</label><input id="settings-page-website" type="url" className="form-input" placeholder="https://" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} /></div>
             </div>
             <ComplianceSection
               values={compliance}
@@ -569,9 +570,14 @@ export function SettingsPage() {
                   <p className="font-medium text-sm">{t('settings.privacy.syncLabel')}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{t('settings.privacy.syncHelp')}</p>
                 </div>
+                {/* A switch, said as one: role, state and name for a screen
+                    reader, and a visible ring for the keyboard (the outline
+                    was removed with nothing in its place). */}
                 <button
+                  type="button" role="switch" aria-checked={!!form.global_sync_enabled}
+                  aria-label={t('settings.privacy.syncLabel')}
                   onClick={toggleSync}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer focus:outline-none ${form.global_sync_enabled ? 'bg-green-600' : 'bg-slate-200'}`}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 ${form.global_sync_enabled ? 'bg-green-600' : 'bg-slate-200'}`}
                 >
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${form.global_sync_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
@@ -707,7 +713,7 @@ export function SettingsPage() {
                         <td className="font-mono text-xs">{inv.invoice_number || inv.id.slice(0, 8)}</td>
                         <td className="text-xs text-slate-500">{inv.period_start ? new Date(inv.period_start).toLocaleDateString('en-IN') : '—'} – {inv.period_end ? new Date(inv.period_end).toLocaleDateString('en-IN') : '—'}</td>
                         <td className="font-semibold">{inv.total_paise ? `₹${fmtPaise(inv.total_paise)}` : '—'}</td>
-                        <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{inv.status}</span></td>
+                        <td><span className={inv.status === 'paid' ? 'badge-green' : 'badge-yellow'}>{statusLabel(t, inv.status)}</span></td>
                         <td className="text-xs text-slate-500">{invoiceDetail(inv.id)?.payment_method?.replace(/_/g, ' ') || '—'}</td>
                         <td className="text-xs text-slate-500">
                           {(invoiceDetail(inv.id)?.download_count ?? 0) > 0

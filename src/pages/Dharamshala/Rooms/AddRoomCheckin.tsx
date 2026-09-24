@@ -126,8 +126,8 @@ export function AddRoomCheckin() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.room_id) { setError('Select a room'); return }
-    if (!guest?.name && !guest?.global_user_id) { setError('Enter guest name'); return }
+    if (!form.room_id) { setError(t('msg.selectRoom')); return }
+    if (!guest?.name && !guest?.global_user_id) { setError(t('msg.enterGuestName')); return }
     // A malformed GSTIN stops the booking rather than being dropped silently.
     // Dropping it would produce a room bill that looks complete and is not a
     // valid tax invoice for the company that just paid for the room.
@@ -250,18 +250,18 @@ export function AddRoomCheckin() {
               side pushed the times off the screen. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
             <div className="md:col-span-2">
-              <label className="form-label">{t('dharamshala.checkInDate')}</label>
+              <label className="form-label" htmlFor="booking-check-in-date">{t('dharamshala.checkInDate')}</label>
               <div className="flex gap-2">
-                <input type="date" className="form-input min-w-0 flex-1" value={form.check_in_date}
+                <input id="booking-check-in-date" type="date" className="form-input min-w-0 flex-1" value={form.check_in_date}
                   onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
                 <input type="time" className="form-input w-32" data-testid="check-in-time" aria-label={t('dharamshala.checkInTime')}
                   value={form.check_in_time} onChange={e => setForm(f => ({ ...f, check_in_time: e.target.value }))} />
               </div>
             </div>
             <div className="md:col-span-2">
-              <label className="form-label">{t('dharamshala.checkOutDate')}</label>
+              <label className="form-label" htmlFor="booking-check-out-date">{t('dharamshala.checkOutDate')}</label>
               <div className="flex gap-2">
-                <input type="date" className="form-input min-w-0 flex-1" value={form.check_out_date}
+                <input id="booking-check-out-date" type="date" className="form-input min-w-0 flex-1" value={form.check_out_date}
                   onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
                 <input type="time" className="form-input w-32" data-testid="check-out-time" aria-label={t('dharamshala.checkOutTime')}
                   value={form.check_out_time} onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))} />

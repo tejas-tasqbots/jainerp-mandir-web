@@ -1287,8 +1287,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.colourHeading')}</h3></div>
           <div className="card-body space-y-3">
             <div className="flex items-center gap-3">
-              <label className="form-label mb-0 w-28">{t('settings.receipts.primaryColour')}</label>
-              <input type="color" value={form.primary_color} onChange={e => set('primary_color', e.target.value)}
+              <label className="form-label mb-0 w-28" htmlFor="receipt-settings-tab-primary-color">{t('settings.receipts.primaryColour')}</label>
+              <input id="receipt-settings-tab-primary-color" type="color" value={form.primary_color} onChange={e => set('primary_color', e.target.value)}
                 className="h-9 w-16 rounded border border-slate-200 cursor-pointer" />
               <span className="text-xs font-mono text-slate-500">{form.primary_color}</span>
             </div>
@@ -1337,8 +1337,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             {logoUploading && <p className="text-xs text-blue-600 animate-pulse">{t('settings.receipts.processingLogo')}</p>}
 
             <div>
-              <label className="form-label">{t('settings.receipts.orEnterUrl')}</label>
-              <input className="form-input" placeholder="https://yourdomain.com/logo.png"
+              <label className="form-label" htmlFor="receipt-settings-tab-logo-cdn-url">{t('settings.receipts.orEnterUrl')}</label>
+              <input id="receipt-settings-tab-logo-cdn-url" className="form-input" placeholder="https://yourdomain.com/logo.png"
                 value={form.logo_cdn_url}
                 onChange={e => { set('logo_cdn_url', e.target.value); if (e.target.value) set('logo_base64', '') }} />
             </div>
@@ -1426,16 +1426,16 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           <div className="card-body space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="form-label">{t('settings.receipts.copies')}</label>
-                <select className="form-select" value={form.receipt_copies}
+                <label className="form-label" htmlFor="receipt-settings-tab-receipt-copies">{t('settings.receipts.copies')}</label>
+                <select id="receipt-settings-tab-receipt-copies" className="form-select" value={form.receipt_copies}
                   onChange={e => set('receipt_copies', e.target.value)}>
                   <option value="single">{t('settings.receipts.copiesSingle')}</option>
                   <option value="both">{t('settings.receipts.copiesBoth')}</option>
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('settings.receipts.paper')}</label>
-                <select className="form-select" value={form.receipt_paper}
+                <label className="form-label" htmlFor="receipt-settings-tab-receipt-paper">{t('settings.receipts.paper')}</label>
+                <select id="receipt-settings-tab-receipt-paper" className="form-select" value={form.receipt_paper}
                   onChange={e => set('receipt_paper', e.target.value)}>
                   {/* A5 and 58 mm were built into the renderer and never
                       offered here, so a trust that wanted half-sheet receipts
@@ -1448,8 +1448,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('settings.receipts.language')}</label>
-                <select className="form-select" value={form.receipt_language}
+                <label className="form-label" htmlFor="receipt-settings-tab-receipt-language">{t('settings.receipts.language')}</label>
+                <select id="receipt-settings-tab-receipt-language" className="form-select" value={form.receipt_language}
                   onChange={e => set('receipt_language', e.target.value)}>
                   <option value="en">English</option>
                   <option value="hi">हिंदी</option>
@@ -1500,8 +1500,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 <p className="form-hint">{t('settings.receipts.rollCutHint')}</p>
 
                 <div>
-                  <label className="form-label">{t('settings.receipts.rollFeed')}</label>
-                  <input type="number" min={0} max={MAX_FEED_MM} step={1}
+                  <label className="form-label" htmlFor="receipt-settings-tab-thermal">{t('settings.receipts.rollFeed')}</label>
+                  <input id="receipt-settings-tab-thermal" type="number" min={0} max={MAX_FEED_MM} step={1}
                     className="form-input w-28" data-testid="roll-feed"
                     value={thermal.feed_mm ?? 18}
                     onChange={e => {
@@ -1569,8 +1569,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             </div>
             <div className="card-body space-y-4">
               <div>
-                <label className="form-label">{t('settings.stay.template')}</label>
-                <select
+                <label className="form-label" htmlFor="receipt-settings-tab-room-invoice-template">{t('settings.stay.template')}</label>
+                <select id="receipt-settings-tab-room-invoice-template"
                   className="form-select" data-testid="stay-template"
                   value={form.room_invoice_template}
                   onChange={e => set('room_invoice_template', e.target.value)}
@@ -1604,16 +1604,16 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">{t('settings.stay.checkinTime')}</label>
-                  <input
+                  <label className="form-label" htmlFor="receipt-settings-tab-default-checkin-time">{t('settings.stay.checkinTime')}</label>
+                  <input id="receipt-settings-tab-default-checkin-time"
                     type="time" className="form-input" data-testid="stay-checkin-time"
                     value={form.default_checkin_time}
                     onChange={e => set('default_checkin_time', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="form-label">{t('settings.stay.checkoutTime')}</label>
-                  <input
+                  <label className="form-label" htmlFor="receipt-settings-tab-default-checkout-time">{t('settings.stay.checkoutTime')}</label>
+                  <input id="receipt-settings-tab-default-checkout-time"
                     type="time" className="form-input" data-testid="stay-checkout-time"
                     value={form.default_checkout_time}
                     onChange={e => set('default_checkout_time', e.target.value)}
@@ -1653,8 +1653,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               </div>
 
               <div>
-                <label className="form-label">{t('settings.receipts.terms')}</label>
-                <textarea
+                <label className="form-label" htmlFor="receipt-settings-tab-receipt-terms">{t('settings.receipts.terms')}</label>
+                <textarea id="receipt-settings-tab-receipt-terms"
                   className="form-input" rows={3} data-testid="receipt-terms"
                   value={form.receipt_terms}
                   onChange={e => set('receipt_terms', e.target.value)}
@@ -1688,8 +1688,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               </div>
 
               <div>
-                <label className="form-label">{t('settings.stay.houseRules')}</label>
-                <textarea
+                <label className="form-label" htmlFor="receipt-settings-tab-stay-house-rules">{t('settings.stay.houseRules')}</label>
+                <textarea id="receipt-settings-tab-stay-house-rules"
                   className="form-input" rows={3} data-testid="stay-house-rules"
                   value={form.stay_house_rules}
                   onChange={e => set('stay_house_rules', e.target.value)}
@@ -1722,8 +1722,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           <div className="card-body space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className="form-label">{t('settings.slips.layout')}</label>
-                <select className="form-select" value={form.slip_template}
+                <label className="form-label" htmlFor="receipt-settings-tab-slip-template">{t('settings.slips.layout')}</label>
+                <select id="receipt-settings-tab-slip-template" className="form-select" value={form.slip_template}
                   onChange={e => set('slip_template', e.target.value)}>
                   <option value="token">{t('settings.slips.layoutToken')}</option>
                   {/* Same token, without the running number. A trust that hands
@@ -1754,8 +1754,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('settings.receipts.copies')}</label>
-                <select className="form-select" value={form.slip_copies}
+                <label className="form-label" htmlFor="receipt-settings-tab-slip-copies">{t('settings.receipts.copies')}</label>
+                <select id="receipt-settings-tab-slip-copies" className="form-select" value={form.slip_copies}
                   onChange={e => set('slip_copies', e.target.value)}>
                   <option value="single">{t('settings.slips.copiesSingle')}</option>
                   <option value="both">{t('settings.slips.copiesBoth')}</option>

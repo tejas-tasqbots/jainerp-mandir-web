@@ -179,16 +179,16 @@ export function PublicProfileTab() {
 
         <div className="mt-4 space-y-4">
           <div>
-            <label className="form-label">{t('settings.publicProfile.about', 'About this trust')}</label>
-            <textarea className="form-input" rows={5} value={form.about}
+            <label className="form-label" htmlFor="public-profile-tab-about">{t('settings.publicProfile.about', 'About this trust')}</label>
+            <textarea id="public-profile-tab-about" className="form-input" rows={5} value={form.about}
               placeholder="A Digambar Jain trust serving pilgrims since 1893…"
               onChange={e => setForm(f => ({ ...f, about: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('settings.publicProfile.foundedYear', 'Founded in')}</label>
-              <input className="form-input" type="number" value={form.founded_year}
+              <label className="form-label" htmlFor="public-profile-tab-founded-year">{t('settings.publicProfile.foundedYear', 'Founded in')}</label>
+              <input id="public-profile-tab-founded-year" className="form-input" type="number" value={form.founded_year}
                 placeholder="1893"
                 onChange={e => setForm(f => ({ ...f, founded_year: e.target.value }))} />
             </div>
@@ -211,8 +211,8 @@ export function PublicProfileTab() {
           />
 
           <div>
-            <label className="form-label">{t('settings.publicProfile.languages', 'Languages spoken')}</label>
-            <input className="form-input" value={form.languages}
+            <label className="form-label" htmlFor="public-profile-tab-languages">{t('settings.publicProfile.languages', 'Languages spoken')}</label>
+            <input id="public-profile-tab-languages" className="form-input" value={form.languages}
               placeholder="Hindi, Gujarati, English"
               onChange={e => setForm(f => ({ ...f, languages: e.target.value }))} />
           </div>

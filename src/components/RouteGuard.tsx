@@ -1,7 +1,9 @@
 import { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
-import { canSee, isHiddenForNow, moduleForPath, ROLE_LABELS } from '../lib/rbac'
+import { canSee, isHiddenForNow, moduleForPath } from '../lib/rbac'
+import { roleLabel } from '../lib/roleLabel'
 
 /**
  * Route-level gate for BOTH questions: may this role do it, and did this trust
@@ -13,6 +15,7 @@ import { canSee, isHiddenForNow, moduleForPath, ROLE_LABELS } from '../lib/rbac'
  * server enforces its own @Roles / @RequiresModule guards regardless.
  */
 export function RouteGuard({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const location = useLocation()
   const roles = useAuthStore(s => s.user?.roles)
   const modules = useAuthStore(s => s.modules)
@@ -34,9 +37,9 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   const missingModule = moduleForPath(location.pathname)
   const isModuleGate = !!missingModule && !!modules && !modules.includes(missingModule)
 
-  const roleLabel = (roles ?? [])
-    .map(r => ROLE_LABELS[r] ?? r)
-    .join(', ') || 'your role'
+  const roleNames = (roles ?? [])
+    .map(r => roleLabel(t, r, true))
+    .join(', ') || t('common.yourRole', { defaultValue: 'your role' })
 
   return (
     <Navigate
@@ -45,7 +48,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
       state={
         isModuleGate
           ? { deniedPath: location.pathname, deniedReason: 'module', deniedModule: missingModule }
-          : { deniedPath: location.pathname, deniedReason: 'role', roleLabel }
+          : { deniedPath: location.pathname, deniedReason: 'role', roleLabel: roleNames }
       }
     />
   )

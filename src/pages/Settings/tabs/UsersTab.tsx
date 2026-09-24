@@ -135,8 +135,8 @@ export function UsersTab() {
               <div><label className="form-label">{t('common.name')} *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
               <div><label className="form-label">{t('common.mobile')} *</label><PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} required /></div>
               <div>
-                <label className="form-label">{t('settings.users.roleCol')}</label>
-                <select className="form-select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                <label className="form-label" htmlFor="users-tab-role">{t('settings.users.roleCol')}</label>
+                <select id="users-tab-role" className="form-select" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
                   {ASSIGNABLE_ROLE_IDS.map(r => <option key={r} value={r}>{t(`settings.users.roleLabels.${r}`)}</option>)}
                 </select>
               </div>

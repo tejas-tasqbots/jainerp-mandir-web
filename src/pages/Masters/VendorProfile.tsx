@@ -10,6 +10,7 @@ import { useToast } from '../../components/kit/Toast'
 import { VendorProductsCard } from '../../components/Expenses/VendorProductsCard'
 import { useAuthStore } from '../../store/authStore'
 import { canSeeRoles } from '../../lib/rbac'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 interface VendorDetail {
   id: string
@@ -226,7 +227,7 @@ export function VendorProfile() {
                       {!!e.gst_paid_paise && <span className="block text-xs text-slate-400 font-normal">+GST ₹{fmtPaise(e.gst_paid_paise)}</span>}
                     </td>
                     <td>{e.tds_deducted ? <span className="badge-blue">₹{fmtPaise(e.tds_amount_paise ?? 0)}</span> : <span className="text-slate-300">—</span>}</td>
-                    <td><span className="badge-gray">{e.payment_mode}</span></td>
+                    <td><span className="badge-gray">{paymentModeLabel(t, e.payment_mode)}</span></td>
                     <td>{e.is_on_credit ? <span className="badge-red">{t('vendors.credit')}</span> : <span className="badge-green">{t('vendors.statusPaid')}</span>}</td>
                   </tr>
                 ))}

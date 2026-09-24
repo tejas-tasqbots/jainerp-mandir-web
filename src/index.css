@@ -68,6 +68,12 @@
   }
   .data-table td { @apply px-4 py-3 text-sm border-b border-slate-100; }
   .data-table tr:hover td { background-color: var(--color-brand-blue-light); }
+  /* The row's actions stay in view: on a wide table at a normal desktop width
+     the Actions column sat past the right edge, delete and all. Solid so rows
+     do not show through; the hover rule above is more specific and still wins. */
+  .data-table .col-actions { position: sticky; right: 0; z-index: 1; background-color: #fff; box-shadow: -8px 0 8px -8px rgba(15, 23, 42, 0.18); }
+  .data-table thead th.col-actions { z-index: 11; background-color: #0D1B2E; }
+  .data-table tr.bg-slate-50 td.col-actions { background-color: rgb(248 250 252); }
 
   /* ── Form Fields ────────────────────────────────────────────────────────── */
   .form-label { @apply block text-sm font-medium text-slate-700 mb-1; }

@@ -276,8 +276,8 @@ export function BankReconciliation() {
 
       <div className="flex items-end gap-3 flex-wrap no-print">
         <div>
-          <label className="form-label !text-xs !mb-0.5">{t('accounts.select')}</label>
-          <select className="form-select !py-1.5 !text-xs w-56" value={accountId} onChange={e => setAccountId(e.target.value)}>
+          <label className="form-label !text-xs !mb-0.5" htmlFor="bank-reconciliation-accountId">{t('accounts.select')}</label>
+          <select id="bank-reconciliation-accountId" className="form-select !py-1.5 !text-xs w-56" value={accountId} onChange={e => setAccountId(e.target.value)}>
             {accounts.length === 0 && <option value="">{t('accounts.noAccountsFound')}</option>}
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>

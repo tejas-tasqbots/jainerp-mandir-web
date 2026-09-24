@@ -263,8 +263,8 @@ export function InventoryPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">{t('inventory.category')}</label><input className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} /></div>
                 <div>
-                  <label className="form-label">{t('inventory.unit')}</label>
-                  <select className="form-select" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
+                  <label className="form-label" htmlFor="inventory-page-unit">{t('inventory.unit')}</label>
+                  <select id="inventory-page-unit" className="form-select" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
                     <option value="piece">{t('inventory.unitPiece')}</option><option value="kg">{t('inventory.unitKg')}</option><option value="gram">{t('inventory.unitGram')}</option>
                     <option value="litre">{t('inventory.unitLitre')}</option><option value="pack">{t('inventory.unitPack')}</option><option value="box">{t('inventory.unitBox')}</option>
                     <option value="set">{t('inventory.unitSet')}</option><option value="pair">{t('inventory.unitPair')}</option>
@@ -272,9 +272,9 @@ export function InventoryPage() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="form-label">{t('inventory.currentStock')}</label><input type="number" min="0" className="form-input" value={form.current_stock} onChange={e => setForm(f => ({ ...f, current_stock: e.target.value }))} /></div>
-                <div><label className="form-label">{t('inventory.reorderAt')}</label><input type="number" min="0" className="form-input" value={form.reorder_level} onChange={e => setForm(f => ({ ...f, reorder_level: e.target.value }))} /></div>
-                <div><label className="form-label">{t('inventory.unitPriceAmount')}</label><input type="number" step="0.01" min="0" className="form-input" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="inventory-page-reorder-level">{t('inventory.currentStock')}</label><input type="number" min="0" className="form-input" value={form.current_stock} onChange={e => setForm(f => ({ ...f, current_stock: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="inventory-page-unit-price">{t('inventory.reorderAt')}</label><input id="inventory-page-reorder-level" type="number" min="0" className="form-input" value={form.reorder_level} onChange={e => setForm(f => ({ ...f, reorder_level: e.target.value }))} /></div>
+                <div><label className="form-label">{t('inventory.unitPriceAmount')}</label><input id="inventory-page-unit-price" type="number" step="0.01" min="0" className="form-input" value={form.unit_price} onChange={e => setForm(f => ({ ...f, unit_price: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">{t('common.cancel')}</button>

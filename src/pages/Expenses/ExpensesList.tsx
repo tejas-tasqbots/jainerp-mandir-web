@@ -21,6 +21,8 @@ import type { Expense } from '../../types'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { ExpenseDetail } from './ExpenseDetail'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { tPdf } from '../../lib/i18n'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'credit']
 const PAGE_SIZE = 20
@@ -141,7 +143,7 @@ export function ExpensesList() {
     {
       key: 'mode', label: t('expenses.mode'),
       filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`, m) })) },
-      render: e => <span className="badge-gray">{e.payment_mode}</span>,
+      render: e => <span className="badge-gray">{paymentModeLabel(t, e.payment_mode)}</span>,
     },
     {
       key: 'bill_number', label: t('expenses.billNo'), sortable: true,
@@ -246,7 +248,9 @@ export function ExpensesList() {
       label: t('expenses.totalAmount'),
       value: `₹${fmtPaise(meta.total_amount_paise)}`,
       deltaPct: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise),
-      sub: t('kit.vsPrevPeriodSub'),
+      // Only beside a percentage: with nothing in the previous period there
+      // is no change to show, and the line stood alone under the total.
+      sub: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise) != null ? t('kit.vsPrevPeriodSub') : undefined,
       tone: 'expense',
       invert: true,
     },
@@ -312,7 +316,7 @@ export function ExpensesList() {
           e.bill_number ?? '', e.tds_deducted ? rsFmt(e.tds_amount_paise ?? 0) : '', e.is_on_credit ? 'Yes' : 'No',
         ]),
         {
-          subtitle: rangeCaption(range, t('dateRange.all')),
+          subtitle: rangeCaption(range, tPdf('dateRange.all')),
           landscape: true,
           totals: ['Total', '', '', '', rsFmt(total), '', '', '', '', ''],
         })
@@ -422,18 +426,18 @@ export function ExpensesList() {
             <h3 className="font-bold text-navy-900 mb-4">{t('expenses.editExpense')}</h3>
             <form onSubmit={saveEdit} className="space-y-4">
               <div>
-                <label className="form-label">{t('expenses.descriptionRequired')}</label>
-                <input className="form-input" value={editForm.description}
+                <label className="form-label" htmlFor="expenses-list-editForm">{t('expenses.descriptionRequired')}</label>
+                <input id="expenses-list-editForm" className="form-input" value={editForm.description}
                   onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('expenses.amountLabel')}</label>
-                <input type="number" step="0.01" min="0" className="form-input" value={editForm.amount_paise}
+                <label className="form-label" htmlFor="expenses-list-editForm-2">{t('expenses.amountLabel')}</label>
+                <input id="expenses-list-editForm-2" type="number" step="0.01" min="0" className="form-input" value={editForm.amount_paise}
                   onChange={e => setEditForm(f => ({ ...f, amount_paise: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('expenses.billReceiptNo')}</label>
-                <input className="form-input" value={editForm.bill_number}
+                <label className="form-label" htmlFor="expenses-list-editForm-2-2">{t('expenses.billReceiptNo')}</label>
+                <input id="expenses-list-editForm-2-2" className="form-input" value={editForm.bill_number}
                   onChange={e => setEditForm(f => ({ ...f, bill_number: e.target.value }))} />
               </div>
               <div className="flex gap-3 justify-end">
@@ -453,8 +457,8 @@ export function ExpensesList() {
             <p className="text-sm text-slate-500 mb-4">{t('creditors.outstandingLabel', { amount: fmtPaise(payModal.outstanding) })}</p>
             <form onSubmit={submitPay} className="space-y-4">
               <div>
-                <label className="form-label">{t('creditors.paymentAmount')}</label>
-                <input
+                <label className="form-label" htmlFor="expenses-list-payAmt">{t('creditors.paymentAmount')}</label>
+                <input id="expenses-list-payAmt"
                   type="number" step="0.01" min="0.01" max={(payModal.outstanding / 100).toFixed(2)}
                   className="form-input" placeholder="0.00" autoFocus required
                   value={payAmt} onChange={e => { setPayAmt(e.target.value); setPayError('') }}
@@ -465,8 +469,8 @@ export function ExpensesList() {
                 </button>
               </div>
               <div>
-                <label className="form-label">{t('creditors.paymentMode')}</label>
-                <select className="form-input" value={payMode} onChange={e => { setPayMode(e.target.value as PayMode); setPayError('') }}>
+                <label className="form-label" htmlFor="expenses-list-payMode">{t('creditors.paymentMode')}</label>
+                <select id="expenses-list-payMode" className="form-input" value={payMode} onChange={e => { setPayMode(e.target.value as PayMode); setPayError('') }}>
                   <option value="cash">{t('common.cash')}</option>
                   <option value="upi">{t('common.upi')}</option>
                   <option value="cheque">{t('common.cheque')}</option>
@@ -475,8 +479,8 @@ export function ExpensesList() {
               </div>
               {payMode !== 'cash' && (
                 <div>
-                  <label className="form-label">{t('creditors.bankAccount')}</label>
-                  <select className="form-input" value={payAccountId} onChange={e => { setPayAccountId(e.target.value); setPayError('') }}>
+                  <label className="form-label" htmlFor="expenses-list-payAccountId">{t('creditors.bankAccount')}</label>
+                  <select id="expenses-list-payAccountId" className="form-input" value={payAccountId} onChange={e => { setPayAccountId(e.target.value); setPayError('') }}>
                     <option value="">{t('creditors.selectAccount')}</option>
                     {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>

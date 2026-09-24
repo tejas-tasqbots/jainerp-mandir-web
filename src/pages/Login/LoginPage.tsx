@@ -330,8 +330,8 @@ export function LoginPage() {
               </div>
             )}
             <div>
-              <label className="form-label">{t('login.otpLabel')}</label>
-              <input
+              <label className="form-label" htmlFor="login-page-field-1">{t('login.otpLabel')}</label>
+              <input id="login-page-field-1"
                 type="text"
                 inputMode="numeric"
                 maxLength={6}

@@ -672,8 +672,8 @@ function DetailsStep({
             />
           </div>
           <div>
-            <label className="form-label">Type</label>
-            <select className="form-input" value={form.temple_type} onChange={(e) => set('temple_type')(e.target.value)}>
+            <label className="form-label" htmlFor="register-page-temple-type">Type</label>
+            <select id="register-page-temple-type" className="form-input" value={form.temple_type} onChange={(e) => set('temple_type')(e.target.value)}>
               {TEMPLE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
@@ -682,8 +682,8 @@ function DetailsStep({
           {/* Sampradaya is Jain-specific — the API refuses it for any other type. */}
           {form.temple_type === 'jain' && (
             <div>
-              <label className="form-label">Sampradaya</label>
-              <select className="form-input" value={form.sect} onChange={(e) => set('sect')(e.target.value)}>
+              <label className="form-label" htmlFor="register-page-sect">Sampradaya</label>
+              <select id="register-page-sect" className="form-input" value={form.sect} onChange={(e) => set('sect')(e.target.value)}>
                 <option value="">Prefer not to say</option>
                 <option value="digambar">Digambar</option>
                 <option value="shwetambar">Shwetambar</option>

@@ -10,6 +10,7 @@ import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryS
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { paymentModeLabel } from '../../../lib/paymentModeLabel'
 
 /**
  * The type chips this trust should be offered. The API names them in
@@ -90,7 +91,7 @@ export function AllTransactionsReport() {
     { key: 'party', label: t('reports.party'), render: r => <span className="font-medium">{r.party || '—'}</span> },
     { key: 'head', label: t('reports.head'), render: r => <span className="text-slate-600">{r.head || '—'}</span> },
     { key: 'reference', label: t('accounts.reference'), render: r => <span className="font-mono text-xs text-slate-400">{r.reference || '—'}</span> },
-    { key: 'mode', label: t('donations.mode'), render: r => r.payment_mode ? <span className="badge-gray">{r.payment_mode}</span> : <span className="text-slate-300">—</span> },
+    { key: 'mode', label: t('donations.mode'), render: r => r.payment_mode ? <span className="badge-gray">{paymentModeLabel(t, r.payment_mode)}</span> : <span className="text-slate-300">—</span> },
     {
       key: 'amount', label: t('common.amount'), align: 'right',
       render: r => (

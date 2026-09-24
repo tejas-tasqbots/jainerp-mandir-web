@@ -288,8 +288,8 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     if (field.type === 'select') {
       return (
         <div>
-          <label className="form-label">{field.label}{field.required && ' *'}</label>
-          <select
+          <label className="form-label" htmlFor="master-editor-field-1">{field.label}{field.required && ' *'}</label>
+          <select id="master-editor-field-1"
             className="form-select"
             value={(v as string) ?? ''}
             aria-label={field.label}
@@ -303,8 +303,8 @@ export function MasterEditor({ resource, title, description, fields, listParams,
     }
     return (
       <div>
-        <label className="form-label">{field.label}{field.required && ' *'}</label>
-        <input
+        <label className="form-label" htmlFor="master-editor-field-2">{field.label}{field.required && ' *'}</label>
+        <input id="master-editor-field-2"
           className="form-input"
           type={field.type === 'number' || field.type === 'money' ? 'number' : 'text'}
           step={field.type === 'money' ? '0.01' : undefined}

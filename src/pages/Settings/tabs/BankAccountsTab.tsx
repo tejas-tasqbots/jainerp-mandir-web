@@ -109,12 +109,12 @@ export function BankAccountsTab() {
             <form onSubmit={save} className="bg-slate-50 border border-slate-200 rounded-md p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">{t('settings.accounts.accountName')}</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('settings.accounts.accountNamePlaceholder') as string} />
+                  <label className="form-label" htmlFor="bank-accounts-tab-name">{t('settings.accounts.accountName')}</label>
+                  <input id="bank-accounts-tab-name" className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('settings.accounts.accountNamePlaceholder') as string} />
                 </div>
                 <div>
-                  <label className="form-label">{t('settings.accounts.type')}</label>
-                  <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                  <label className="form-label" htmlFor="bank-accounts-tab-type">{t('settings.accounts.type')}</label>
+                  <select id="bank-accounts-tab-type" className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                     <option value="cash">{t('settings.accounts.cash')}</option>
                     <option value="bank">{t('settings.accounts.bank')}</option>
                   </select>
@@ -122,9 +122,9 @@ export function BankAccountsTab() {
               </div>
               {form.type === 'bank' && (
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="form-label">{t('settings.accounts.accountNo')}</label><input className="form-input" value={form.account_no} onChange={e => setForm(f => ({ ...f, account_no: e.target.value }))} /></div>
-                  <div><label className="form-label">{t('settings.accounts.bankName')}</label><input className="form-input" value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
-                  <div><label className="form-label">{t('settings.accounts.ifsc')}</label><input className="form-input uppercase" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value.toUpperCase() }))} /></div>
+                  <div><label className="form-label" htmlFor="bank-accounts-tab-bank-name">{t('settings.accounts.accountNo')}</label><input className="form-input" value={form.account_no} onChange={e => setForm(f => ({ ...f, account_no: e.target.value }))} /></div>
+                  <div><label className="form-label" htmlFor="bank-accounts-tab-ifsc">{t('settings.accounts.bankName')}</label><input id="bank-accounts-tab-bank-name" className="form-input" value={form.bank_name} onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
+                  <div><label className="form-label">{t('settings.accounts.ifsc')}</label><input id="bank-accounts-tab-ifsc" className="form-input uppercase" value={form.ifsc} onChange={e => setForm(f => ({ ...f, ifsc: e.target.value.toUpperCase() }))} /></div>
                 </div>
               )}
               {form.type === 'cash' && (
@@ -177,7 +177,7 @@ export function BankAccountsTab() {
                         {a.is_active ? t('common.active') : t('common.inactive')}
                       </button>
                     </td>
-                    <td className="text-right"><button onClick={() => openEdit(a)} className="btn-icon"><Pencil size={14} /></button></td>
+                    <td className="text-right"><button type="button" onClick={() => openEdit(a)} className="btn-icon" aria-label={t('common.edit')} title={t('common.edit')}><Pencil size={14} /></button></td>
                   </tr>
                 ))}
               </tbody>

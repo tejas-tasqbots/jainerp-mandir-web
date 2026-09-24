@@ -281,8 +281,8 @@ export function ConnectedDevoteesPage() {
               {t('devoteesPage.inviteHint')}
             </p>
             <div>
-              <label className="form-label">{t('devoteesPage.mobileNumber')}</label>
-              <input
+              <label className="form-label" htmlFor="connected-devotees-page-field-1">{t('devoteesPage.mobileNumber')}</label>
+              <input id="connected-devotees-page-field-1"
                 type="tel"
                 className="form-input"
                 placeholder={t('devoteesPage.mobilePlaceholder')}

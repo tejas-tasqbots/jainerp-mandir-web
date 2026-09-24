@@ -11,6 +11,7 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 
 import { buildStreamRows, type CollectionStreams, type StreamRow } from './collectionStreams'
+import { paymentModeLabel } from '../../../lib/paymentModeLabel'
 
 interface ModeRow { payment_mode: string; count: number; amount_paise: number }
 
@@ -56,7 +57,7 @@ export function CollectionSummaryReport() {
   ]
 
   const modeColumns: ColumnDef<ModeRow>[] = [
-    { key: 'mode', label: t('donations.mode'), render: r => <span className="badge-gray capitalize">{r.payment_mode}</span> },
+    { key: 'mode', label: t('donations.mode'), render: r => <span className="badge-gray capitalize">{paymentModeLabel(t, r.payment_mode)}</span> },
     { key: 'count', label: t('reports.receipts'), align: 'right', render: r => <span className="text-slate-500">{r.count}</span> },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
   ]

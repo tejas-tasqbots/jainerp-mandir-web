@@ -207,8 +207,8 @@ export function DevoteePicker({
   // Save the donor. If online with a valid mobile, persist to the global
   // directory (unverified) so nothing is lost; otherwise record on the txn only.
   async function saveDonor() {
-    if (!f.name.trim()) { setError('Name is required'); return }
-    if (f.mobile && !isValidPhone(f.mobile)) { setError('Enter a valid mobile number'); return }
+    if (!f.name.trim()) { setError(t('msg.nameRequired')); return }
+    if (f.mobile && !isValidPhone(f.mobile)) { setError(t('msg.validMobile')); return }
     // Store the MASKED PAN on the selection — the raw PAN goes to the API in the
     // register/donation payload but must never be surfaced back in the UI chip.
     const panMasked = (!f.noPan) ? maskPanForDisplay(f.pan) : undefined
@@ -239,8 +239,8 @@ export function DevoteePicker({
 
   // Optional OTP: send, then verify. Verifying marks the donor Verified + linked.
   async function sendOtp() {
-    if (!isValidPhone(f.mobile)) { setError('Enter a valid mobile number to verify'); return }
-    if (!f.name.trim()) { setError('Name is required'); return }
+    if (!isValidPhone(f.mobile)) { setError(t('msg.validMobileToVerify')); return }
+    if (!f.name.trim()) { setError(t('msg.nameRequired')); return }
     setOtpSending(true); setError('')
     try {
       const resp = await api.post('/devotees/register', registerPayload())
@@ -259,7 +259,7 @@ export function DevoteePicker({
   }
 
   async function verifyOtp() {
-    if (otp.length !== 6) { setError('Enter the 6-digit OTP'); return }
+    if (otp.length !== 6) { setError(t('msg.enterOtp')); return }
     setOtpVerifying(true); setError('')
     try {
       const resp = await api.post('/devotees/verify-otp', { user_id: otpUserId, otp })

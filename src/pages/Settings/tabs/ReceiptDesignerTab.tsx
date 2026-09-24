@@ -360,16 +360,16 @@ export function ReceiptDesignerCard({
               <fieldset className="space-y-4 min-w-0" disabled={frozen}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="form-label">{t('designer.name')}</label>
-                    <input
+                    <label className="form-label" htmlFor="receipt-designer-tab-name">{t('designer.name')}</label>
+                    <input id="receipt-designer-tab-name"
                       className="form-input" value={name} maxLength={80}
                       data-testid="design-name"
                       onChange={e => setName(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.forDocument')}</label>
-                    <select
+                    <label className="form-label" htmlFor="receipt-designer-tab-docKind">{t('designer.forDocument')}</label>
+                    <select id="receipt-designer-tab-docKind"
                       className="form-select" value={docKind} data-testid="design-doc-kind"
                       disabled={!!current}
                       onChange={e => setDocKind(e.target.value as (typeof DOC_KINDS)[number])}
@@ -393,8 +393,8 @@ export function ReceiptDesignerCard({
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.font')}</label>
-                    <select
+                    <label className="form-label" htmlFor="receipt-designer-tab-def">{t('designer.font')}</label>
+                    <select id="receipt-designer-tab-def"
                       className="form-select" value={def.font}
                       onChange={e => setDef({ ...def, font: e.target.value as ReceiptDefinition['font'] })}
                     >
@@ -402,8 +402,8 @@ export function ReceiptDesignerCard({
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.frame')}</label>
-                    <select
+                    <label className="form-label" htmlFor="receipt-designer-tab-def-2">{t('designer.frame')}</label>
+                    <select id="receipt-designer-tab-def-2"
                       className="form-select" value={def.frame}
                       onChange={e => setDef({ ...def, frame: e.target.value as ReceiptDefinition['frame'] })}
                     >
@@ -411,8 +411,8 @@ export function ReceiptDesignerCard({
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.density')}</label>
-                    <select
+                    <label className="form-label" htmlFor="receipt-designer-tab-def-2-2">{t('designer.density')}</label>
+                    <select id="receipt-designer-tab-def-2-2"
                       className="form-select" value={def.density}
                       onChange={e => setDef({ ...def, density: e.target.value as ReceiptDefinition['density'] })}
                     >
@@ -498,8 +498,8 @@ export function ReceiptDesignerCard({
                     vocabulary here would mean a trust maintaining two. */}
                 <div className="space-y-3 rounded-md bg-slate-50 p-3">
                   <div className="flex items-center gap-2">
-                    <label className="form-label mb-0">{t('designer.yourWords')}</label>
-                    <select
+                    <label className="form-label mb-0" htmlFor="receipt-designer-tab-lang">{t('designer.yourWords')}</label>
+                    <select id="receipt-designer-tab-lang"
                       className="form-select w-auto text-xs" value={lang}
                       onChange={e => setLang(e.target.value)} data-testid="design-lang"
                     >
@@ -509,8 +509,8 @@ export function ReceiptDesignerCard({
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.titleOverride')}</label>
-                    <input
+                    <label className="form-label" htmlFor="receipt-designer-tab-field-7">{t('designer.titleOverride')}</label>
+                    <input id="receipt-designer-tab-field-7"
                       className="form-input" maxLength={MAX_TEXT_LEN}
                       value={(def.title as Record<string, string>)[lang] ?? ''}
                       data-testid="design-title"
@@ -520,8 +520,8 @@ export function ReceiptDesignerCard({
                     <p className="form-hint">{t('designer.titleHint')}</p>
                   </div>
                   <div>
-                    <label className="form-label">{t('designer.ownLine')}</label>
-                    <textarea
+                    <label className="form-label" htmlFor="receipt-designer-tab-field-8">{t('designer.ownLine')}</label>
+                    <textarea id="receipt-designer-tab-field-8"
                       className="form-input" rows={2} maxLength={MAX_TEXT_LEN}
                       value={(def.custom_text as Record<string, string>)[lang] ?? ''}
                       data-testid="design-custom-text"

@@ -6,6 +6,8 @@ import { downloadRowsPdf } from '../../lib/pdfTable'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { FySelect } from '../../components/FySelect'
 import { useToast } from '../../components/kit/Toast'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { statusLabel } from '../../lib/statusLabel'
 
 // ── Authenticated download helpers ───────────────────────────────────────────
 // The compliance endpoints require a Bearer token, so opening them in a new
@@ -331,8 +333,8 @@ export function CertificatesPage() {
                         <td className="font-mono text-xs">{e.pan_masked || '—'}</td>
                         <td className="font-semibold">₹{fmtPaise(e.amount_paise)}</td>
                         <td className="text-xs text-slate-500">{new Date(e.donation_date).toLocaleDateString('en-IN')}</td>
-                        <td><span className="badge-gray">{e.payment_mode}</span></td>
-                        <td><span className={e.status === 'draft' ? 'badge-yellow' : 'badge-green'}>{e.status}</span></td>
+                        <td><span className="badge-gray">{paymentModeLabel(t, e.payment_mode)}</span></td>
+                        <td><span className={e.status === 'draft' ? 'badge-yellow' : 'badge-green'}>{statusLabel(t, e.status)}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -350,8 +352,8 @@ export function CertificatesPage() {
             <div className="card-body">
               <div className="flex items-end gap-4">
                 <div>
-                  <label className="form-label">{t('certificates.quarterOptional')}</label>
-                  <select className="form-select" value={tdsQuarter} onChange={e => setTdsQuarter(e.target.value)}>
+                  <label className="form-label" htmlFor="certificates-page-tdsQuarter">{t('certificates.quarterOptional')}</label>
+                  <select id="certificates-page-tdsQuarter" className="form-select" value={tdsQuarter} onChange={e => setTdsQuarter(e.target.value)}>
                     <option value="">{t('certificates.fullYear')}</option>
                     <option value="1">{t('certificates.q1')}</option>
                     <option value="2">{t('certificates.q2')}</option>

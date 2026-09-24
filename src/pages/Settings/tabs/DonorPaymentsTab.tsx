@@ -101,8 +101,8 @@ export function DonorPaymentsTab() {
             {sens.isLocked('upi_id') ? (
               <LockedField label={t('settings.donorPayments.upiId') as string} value={form.upi_id}
                 field="upi_id" pending={sens.pendingFor('upi_id')} onRequest={sens.openRequest} />
-            ) : (<><label className="form-label">{t('settings.donorPayments.upiId')}</label>
-            <input type="text" className="form-input font-mono" placeholder="templename@sbi"
+            ) : (<><label className="form-label" htmlFor="donor-payments-tab-upi-id">{t('settings.donorPayments.upiId')}</label>
+            <input id="donor-payments-tab-upi-id" type="text" className="form-input font-mono" placeholder="templename@sbi"
               value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))} />
             <p className="text-xs text-slate-400 mt-1">{t('settings.donorPayments.upiIdHelp')}</p></>)}
           

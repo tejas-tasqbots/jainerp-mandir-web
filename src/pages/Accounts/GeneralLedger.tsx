@@ -5,6 +5,7 @@ import { api, fmtPaise, parsePaise, currentFY, todayIst } from '../../lib/api'
 import { FySelect } from '../../components/FySelect'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { statusLabel } from '../../lib/statusLabel'
 
 interface TBRow { code: string; account_name: string; kind: string; group?: string; debit_paise: number; credit_paise: number }
 interface TB { fy: string; rows: TBRow[]; totals: { debit_paise: number; credit_paise: number; difference_paise: number; balanced: boolean } }
@@ -192,22 +193,22 @@ export function GeneralLedger() {
             </div>
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-6"><label className="form-label !text-xs">{t('ledger.account')}</label>
-                  <select className="form-select" value={l.code}
+                <div className="col-span-6"><label className="form-label !text-xs" htmlFor={`journal-line-${i}-account`}>{t('ledger.account')}</label>
+                  <select id={`journal-line-${i}-account`} className="form-select" value={l.code}
                     onChange={e => setLines(ls => ls.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} required>
                     <option value="">{t('accounts.selectAccount')}</option>
                     {accounts.map(a => <option key={a.id} value={a.code}>{a.code} — {a.name}</option>)}
                   </select>
                 </div>
-                <div className="col-span-3"><label className="form-label !text-xs">{t('ledger.side')}</label>
-                  <select className="form-select" value={l.side}
+                <div className="col-span-3"><label className="form-label !text-xs" htmlFor={`journal-line-${i}-side`}>{t('ledger.side')}</label>
+                  <select id={`journal-line-${i}-side`} className="form-select" value={l.side}
                     onChange={e => setLines(ls => ls.map((x, j) => j === i ? { ...x, side: e.target.value as 'debit' | 'credit' } : x))}>
                     <option value="debit">{t('accounts.debit')}</option>
                     <option value="credit">{t('accounts.credit')}</option>
                   </select>
                 </div>
-                <div className="col-span-3"><label className="form-label !text-xs">{t('accounts.amount')}</label>
-                  <input type="number" step="0.01" className="form-input" value={l.amount}
+                <div className="col-span-3"><label className="form-label !text-xs" htmlFor={`journal-line-${i}-amount`}>{t('accounts.amount')}</label>
+                  <input id={`journal-line-${i}-amount`} type="number" step="0.01" className="form-input" value={l.amount}
                     onChange={e => setLines(ls => ls.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))} required /></div>
               </div>
             ))}
@@ -257,7 +258,7 @@ export function GeneralLedger() {
                 <tr key={r.code} className="border-b border-slate-100">
                   <td className="px-3 py-1.5 font-mono text-xs text-slate-400">{r.code}</td>
                   <td className="px-3 py-1.5 font-medium">{r.account_name}</td>
-                  <td className="px-3 py-1.5 text-xs text-slate-500">{r.kind}</td>
+                  <td className="px-3 py-1.5 text-xs text-slate-500">{statusLabel(t, r.kind)}</td>
                   <td className="px-3 py-1.5 text-right font-mono tabular-nums">{r.debit_paise ? `₹${fmtPaise(r.debit_paise)}` : '—'}</td>
                   <td className="px-3 py-1.5 text-right font-mono tabular-nums">{r.credit_paise ? `₹${fmtPaise(r.credit_paise)}` : '—'}</td>
                 </tr>

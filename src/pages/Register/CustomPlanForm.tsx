@@ -139,29 +139,29 @@ export function CustomPlanForm({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="form-label">Trust/Temple Name <span className="text-brand-red">*</span></label>
-                  <input className="form-input" value={f.trust_name} onChange={(e) => set('trust_name')(e.target.value)} />
+                  <label className="form-label" htmlFor="custom-plan-form-trust-name">Trust/Temple Name <span className="text-brand-red">*</span></label>
+                  <input id="custom-plan-form-trust-name" className="form-input" value={f.trust_name} onChange={(e) => set('trust_name')(e.target.value)} />
                 </div>
                 <div>
-                  <label className="form-label">Contact person <span className="text-brand-red">*</span></label>
-                  <input className="form-input" value={f.contact_name} onChange={(e) => set('contact_name')(e.target.value)} />
+                  <label className="form-label" htmlFor="custom-plan-form-contact-name">Contact person <span className="text-brand-red">*</span></label>
+                  <input id="custom-plan-form-contact-name" className="form-input" value={f.contact_name} onChange={(e) => set('contact_name')(e.target.value)} />
                 </div>
                 <div>
                   <label className="form-label">Mobile <span className="text-brand-red">*</span></label>
                   <PhoneInput value={f.mobile} onChange={set('mobile') as (v: string) => void} />
                 </div>
                 <div>
-                  <label className="form-label">Email</label>
-                  <input className="form-input" type="email" value={f.email} onChange={(e) => set('email')(e.target.value)} />
+                  <label className="form-label" htmlFor="custom-plan-form-email">Email</label>
+                  <input id="custom-plan-form-email" className="form-input" type="email" value={f.email} onChange={(e) => set('email')(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="form-label">City</label>
-                    <input className="form-input" value={f.city} onChange={(e) => set('city')(e.target.value)} />
+                    <label className="form-label" htmlFor="custom-plan-form-city">City</label>
+                    <input id="custom-plan-form-city" className="form-input" value={f.city} onChange={(e) => set('city')(e.target.value)} />
                   </div>
                   <div>
-                    <label className="form-label">State</label>
-                    <input className="form-input" value={f.state} onChange={(e) => set('state')(e.target.value)} />
+                    <label className="form-label" htmlFor="custom-plan-form-state">State</label>
+                    <input id="custom-plan-form-state" className="form-input" value={f.state} onChange={(e) => set('state')(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -218,23 +218,23 @@ export function CustomPlanForm({
 
               <div className="grid gap-4">
                 <div>
-                  <label className="form-label">Integrations you need</label>
-                  <input
+                  <label className="form-label" htmlFor="custom-plan-form-integrations">Integrations you need</label>
+                  <input id="custom-plan-form-integrations"
                     className="form-input" placeholder="Tally, bank statements, an existing website…"
                     value={f.integrations} onChange={(e) => set('integrations')(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="form-label">Special requirements</label>
-                  <textarea
+                  <label className="form-label" htmlFor="custom-plan-form-special-requirements">Special requirements</label>
+                  <textarea id="custom-plan-form-special-requirements"
                     className="form-input" rows={3}
                     placeholder="e.g. We have 5 Mandirs and require a centralized system with consolidated reporting."
                     value={f.special_requirements} onChange={(e) => set('special_requirements')(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="form-label">Anything else</label>
-                  <textarea
+                  <label className="form-label" htmlFor="custom-plan-form-notes">Anything else</label>
+                  <textarea id="custom-plan-form-notes"
                     className="form-input" rows={2}
                     value={f.notes} onChange={(e) => set('notes')(e.target.value)}
                   />

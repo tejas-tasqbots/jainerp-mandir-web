@@ -332,8 +332,8 @@ export function CreditorList() {
                 <p className="text-slate-500">{t('creditors.outstandingLabel', { amount: fmtPaise(payModal.outstanding) })}</p>
               </div>
               <div>
-                <label className="form-label">{t('creditors.paymentAmount')}</label>
-                <input
+                <label className="form-label" htmlFor="creditor-list-field-1">{t('creditors.paymentAmount')}</label>
+                <input id="creditor-list-field-1"
                   type="number" step="0.01" min="0.01"
                   max={(payModal.outstanding / 100).toFixed(2)}
                   className="form-input" placeholder="0.00"
@@ -347,8 +347,8 @@ export function CreditorList() {
                 </button>
               </div>
               <div>
-                <label className="form-label">{t('creditors.paymentMode')}</label>
-                <select className="form-input" value={payMode}
+                <label className="form-label" htmlFor="creditor-list-payMode">{t('creditors.paymentMode')}</label>
+                <select id="creditor-list-payMode" className="form-input" value={payMode}
                   onChange={e => { setPayMode(e.target.value as PayMode); setError('') }}>
                   <option value="cash">{t('common.cash')}</option>
                   <option value="upi">{t('common.upi')}</option>
@@ -361,8 +361,8 @@ export function CreditorList() {
               </div>
               {payMode !== 'cash' && (
                 <div>
-                  <label className="form-label">{t('creditors.bankAccount')}</label>
-                  <select className="form-input" value={payAccountId}
+                  <label className="form-label" htmlFor="creditor-list-payAccountId">{t('creditors.bankAccount')}</label>
+                  <select id="creditor-list-payAccountId" className="form-input" value={payAccountId}
                     onChange={e => { setPayAccountId(e.target.value); setError('') }}>
                     <option value="">{t('creditors.selectAccount')}</option>
                     {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -393,23 +393,23 @@ export function CreditorList() {
             </div>
             <form onSubmit={submitAdd} className="p-6 space-y-4">
               <div>
-                <label className="form-label">{t('creditors.vendorPayeeName')}</label>
-                <input className="form-input" value={addModal.vendor_name}
+                <label className="form-label" htmlFor="creditor-list-addModal">{t('creditors.vendorPayeeName')}</label>
+                <input id="creditor-list-addModal" className="form-input" value={addModal.vendor_name}
                   onChange={e => setAddModal(a => ({ ...a, vendor_name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('creditors.description')} *</label>
-                <input className="form-input" value={addModal.description} placeholder={t('creditors.descriptionPlaceholder')}
+                <label className="form-label" htmlFor="creditor-list-addModal-2">{t('creditors.description')} *</label>
+                <input id="creditor-list-addModal-2" className="form-input" value={addModal.description} placeholder={t('creditors.descriptionPlaceholder')}
                   onChange={e => setAddModal(a => ({ ...a, description: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('creditors.amountLabel')}</label>
-                <input type="number" step="0.01" min="1" className="form-input" value={addModal.amount}
+                <label className="form-label" htmlFor="creditor-list-addModal-2-2">{t('creditors.amountLabel')}</label>
+                <input id="creditor-list-addModal-2-2" type="number" step="0.01" min="1" className="form-input" value={addModal.amount}
                   onChange={e => setAddModal(a => ({ ...a, amount: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('creditors.dueDate')}</label>
-                <input type="date" className="form-input" value={addModal.due_date}
+                <label className="form-label" htmlFor="creditor-list-addModal-2-2-2">{t('creditors.dueDate')}</label>
+                <input id="creditor-list-addModal-2-2-2" type="date" className="form-input" value={addModal.due_date}
                   onChange={e => setAddModal(a => ({ ...a, due_date: e.target.value }))} />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}

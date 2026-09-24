@@ -7,6 +7,7 @@ import { useToast } from '../../components/kit/Toast'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { useIsOnline } from '../../lib/useIsOnline'
 import { printDonationReceipt, shareReceiptPdf } from '../../lib/printReceipt'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 type RequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -282,7 +283,7 @@ export function DonationRequestsPage() {
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800 tabular-nums">₹{fmtPaise(r.amount_paise)}</td>
                   <td className="px-4 py-3">
-                    <span className="uppercase text-xs font-medium text-slate-600">{r.payment_mode}</span>
+                    <span className="uppercase text-xs font-medium text-slate-600">{paymentModeLabel(t, r.payment_mode)}</span>
                     <div className="text-xs text-slate-400">{r.category || 'General'}</div>
                   </td>
                   <td className="px-4 py-3">
@@ -431,8 +432,8 @@ export function DonationRequestsPage() {
             <h2 className="text-base font-bold text-navy-900">{t('donationRequests.rejectDonationRequest')}</h2>
             <p className="text-sm text-slate-500">{t('donationRequests.rejectSubtitle')}</p>
             <div>
-              <label className="form-label">{t('common.reason')} *</label>
-              <textarea
+              <label className="form-label" htmlFor="donation-requests-page-field-1">{t('common.reason')} *</label>
+              <textarea id="donation-requests-page-field-1"
                 className="form-textarea"
                 rows={3}
                 placeholder={t('donationRequests.rejectReasonPlaceholder')}

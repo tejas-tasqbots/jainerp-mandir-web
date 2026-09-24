@@ -292,15 +292,15 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
             <p className="text-sm text-slate-500 mb-4">{t('cheques.depositSubtitle', { invoiceNo: depositModal.invoiceNo })}</p>
             <form onSubmit={submitDeposit} className="space-y-4">
               <div>
-                <label className="form-label">{t('cheques.depositTo')}</label>
-                <select className="form-select" value={depositAccountId} onChange={e => setDepositAccountId(e.target.value)} required>
+                <label className="form-label" htmlFor="cheques-depositAccountId">{t('cheques.depositTo')}</label>
+                <select id="cheques-depositAccountId" className="form-select" value={depositAccountId} onChange={e => setDepositAccountId(e.target.value)} required>
                   <option value="">{t('creditors.selectAccount')}</option>
                   {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('cheques.depositDate')}</label>
-                <input type="date" className="form-input" value={depositDate} onChange={e => setDepositDate(e.target.value)} required />
+                <label className="form-label" htmlFor="cheques-depositDate">{t('cheques.depositDate')}</label>
+                <input id="cheques-depositDate" type="date" className="form-input" value={depositDate} onChange={e => setDepositDate(e.target.value)} required />
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setDepositModal(null)} className="btn-secondary">{t('common.cancel')}</button>
@@ -317,8 +317,8 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
             <h3 className="font-bold text-navy-900 mb-1">{t('cheques.bounceTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('cheques.bounceWarning', { invoiceNo: bounceModal.invoiceNo })}</p>
             <div className="mb-4">
-              <label className="form-label">{t('donations.reasonForVoiding')}</label>
-              <textarea className="form-input" rows={3} value={bounceReason} onChange={e => setBounceReason(e.target.value)} placeholder={t('cheques.bounceReasonPlaceholder')} />
+              <label className="form-label" htmlFor="cheques-bounceReason">{t('donations.reasonForVoiding')}</label>
+              <textarea id="cheques-bounceReason" className="form-input" rows={3} value={bounceReason} onChange={e => setBounceReason(e.target.value)} placeholder={t('cheques.bounceReasonPlaceholder')} />
             </div>
             <div className="flex gap-3 justify-end">
               <button type="button" onClick={() => setBounceModal(null)} className="btn-secondary">{t('common.cancel')}</button>
@@ -498,8 +498,8 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
             <h3 className="font-bold text-navy-900 mb-1">{t('cheques.bounceTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('cheques.issuedBounceWarning', { description: bounceModal.description })}</p>
             <div className="mb-4">
-              <label className="form-label">{t('cheques.bounceReasonOptional')}</label>
-              <textarea className="form-input" rows={3} value={bounceReason} onChange={e => setBounceReason(e.target.value)} placeholder={t('cheques.bounceReasonPlaceholder')} />
+              <label className="form-label" htmlFor="cheques-bounceReason-2">{t('cheques.bounceReasonOptional')}</label>
+              <textarea id="cheques-bounceReason-2" className="form-input" rows={3} value={bounceReason} onChange={e => setBounceReason(e.target.value)} placeholder={t('cheques.bounceReasonPlaceholder')} />
             </div>
             <div className="flex gap-3 justify-end">
               <button type="button" onClick={() => setBounceModal(null)} className="btn-secondary">{t('common.cancel')}</button>

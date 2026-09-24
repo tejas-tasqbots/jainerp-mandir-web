@@ -41,3 +41,11 @@ useAuthStore.subscribe((state, prev) => {
 })
 
 export default i18n
+
+/**
+ * English, whatever the screen's language - for text drawn into a jsPDF PDF.
+ * Its built-in Helvetica has no Devanagari, so a Hindi screen's export printed
+ * its title and "All dates" as garbage (UI audit, 2026-09-25). The PDFs'
+ * column headings were already English; now their titles are too.
+ */
+export const tPdf = i18n.getFixedT('en')

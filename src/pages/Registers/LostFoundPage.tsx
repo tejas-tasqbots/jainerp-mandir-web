@@ -167,23 +167,23 @@ export function LostFoundPage() {
           <form onSubmit={submit} className="card-body space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="form-label">{t('registers.description')}</label>
-                <input className="form-input" placeholder={t('registers.descriptionPlaceholder')} value={form.description}
+                <label className="form-label" htmlFor="lost-found-page-description">{t('registers.description')}</label>
+                <input id="lost-found-page-description" className="form-input" placeholder={t('registers.descriptionPlaceholder')} value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('registers.foundDate')}</label>
-                <input type="date" className="form-input" value={form.found_date}
+                <label className="form-label" htmlFor="lost-found-page-found-date">{t('registers.foundDate')}</label>
+                <input id="lost-found-page-found-date" type="date" className="form-input" value={form.found_date}
                   onChange={e => setForm(f => ({ ...f, found_date: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('registers.locationFound')}</label>
-                <input className="form-input" placeholder={t('registers.locationPlaceholder')} value={form.found_location}
+                <label className="form-label" htmlFor="lost-found-page-found-location">{t('registers.locationFound')}</label>
+                <input id="lost-found-page-found-location" className="form-input" placeholder={t('registers.locationPlaceholder')} value={form.found_location}
                   onChange={e => setForm(f => ({ ...f, found_location: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('registers.notes')}</label>
-                <input className="form-input" value={form.notes}
+                <label className="form-label" htmlFor="lost-found-page-notes">{t('registers.notes')}</label>
+                <input id="lost-found-page-notes" className="form-input" value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
             </div>
@@ -234,13 +234,13 @@ export function LostFoundPage() {
             <h3 className="font-bold text-navy-900 mb-4">{t('registers.markClaimed')}</h3>
             <form onSubmit={submitClaim} className="space-y-4">
               <div>
-                <label className="form-label">{t('registers.claimantName')} *</label>
-                <input className="form-input" autoFocus value={claimForm.name}
+                <label className="form-label" htmlFor="lost-found-page-claimForm">{t('registers.claimantName')} *</label>
+                <input id="lost-found-page-claimForm" className="form-input" autoFocus value={claimForm.name}
                   onChange={e => setClaimForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('registers.claimantMobile')}</label>
-                <input type="tel" className="form-input" value={claimForm.mobile}
+                <label className="form-label" htmlFor="lost-found-page-claimForm-2">{t('registers.claimantMobile')}</label>
+                <input id="lost-found-page-claimForm-2" type="tel" className="form-input" value={claimForm.mobile}
                   onChange={e => setClaimForm(f => ({ ...f, mobile: e.target.value }))} />
               </div>
               <div className="flex gap-3 justify-end">

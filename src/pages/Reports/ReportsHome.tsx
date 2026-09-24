@@ -161,8 +161,31 @@ export function ReportsHome() {
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 xl:items-start">
+      {/* Below xl the rail stacked ABOVE the report: on a phone the report you
+          picked sat under twenty-odd links, a long scroll down (UI audit,
+          2026-09-25). There it is one grouped picker instead. */}
+      <div className="xl:hidden space-y-3 no-print">
+        <h1 className="text-xl font-bold text-navy-900">{t('reports.title')}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="report-picker" className="sr-only">{t('reports.title')}</label>
+          <select id="report-picker" className="form-select flex-1 min-w-[12rem]" value={selected}
+            onChange={e => setSelected(e.target.value as typeof selected)}>
+            {rail.map(group => (
+              <optgroup key={group.groupKey} label={t(group.groupKey)}>
+                {group.items.map(item => <option key={item.key} value={item.key}>{t(item.labelKey)}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <button type="button" onClick={downloadCaPack} disabled={caPackLoading}
+            className="btn-secondary btn-sm" title={t('reports.caPackLabel')}>
+            {caPackLoading ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+            {t('reports.caPackShort')}
+          </button>
+        </div>
+      </div>
+
       {/* Rail */}
-      <nav className="w-56 flex-shrink-0 space-y-5 no-print">
+      <nav className="hidden xl:block w-56 flex-shrink-0 space-y-5 no-print">
         <h1 className="text-xl font-bold text-navy-900">{t('reports.title')}</h1>
         {rail.map(group => (
           <div key={group.groupKey}>

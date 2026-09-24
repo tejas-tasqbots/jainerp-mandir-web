@@ -9,6 +9,7 @@ import { emptyPaymentRow, toPayload, sumPaise, type PaymentRow } from '../../com
 import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { Seva, DevoteeSelection } from '../../types'
+import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 
 export function AddSevaBooking() {
   const { t } = useTranslation()
@@ -50,7 +51,7 @@ export function AddSevaBooking() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.seva_id) { setError('Select a seva'); return }
+    if (!form.seva_id) { setError(t('msg.selectSeva')); return }
     if (!devotee && true) { /* devotee optional — anonymous allowed */ }
     setSaving(true)
     setError('')
@@ -110,8 +111,8 @@ export function AddSevaBooking() {
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div>
-            <label className="form-label">{t('seva.sevaPoojaLabel')}</label>
-            <select className="form-select" value={form.seva_id}
+            <label className="form-label" htmlFor="add-seva-booking-seva-id">{t('seva.sevaPoojaLabel')}</label>
+            <select id="add-seva-booking-seva-id" className="form-select" value={form.seva_id}
               onChange={e => setForm(f => ({ ...f, seva_id: e.target.value }))}>
               <option value="">{t('seva.selectSeva')}</option>
               {sevas.map(s => (
@@ -131,26 +132,26 @@ export function AddSevaBooking() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('seva.gotra')}</label>
-              <input className="form-input" placeholder={t('seva.gotraPlaceholder')} value={form.gotra}
+              <label className="form-label" htmlFor="add-seva-booking-gotra">{t('seva.gotra')}</label>
+              <input id="add-seva-booking-gotra" className="form-input" placeholder={t('seva.gotraPlaceholder')} value={form.gotra}
                 onChange={e => setForm(f => ({ ...f, gotra: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('seva.sankalpNames')}</label>
-              <input className="form-input" placeholder={t('seva.sankalpPlaceholder')} value={form.sankalp_names}
+              <label className="form-label" htmlFor="add-seva-booking-sankalp-names">{t('seva.sankalpNames')}</label>
+              <input id="add-seva-booking-sankalp-names" className="form-input" placeholder={t('seva.sankalpPlaceholder')} value={form.sankalp_names}
                 onChange={e => setForm(f => ({ ...f, sankalp_names: e.target.value }))} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('seva.bookingDate')}</label>
-              <input type="date" className="form-input" value={form.booking_date}
+              <label className="form-label" htmlFor="add-seva-booking-booking-date">{t('seva.bookingDate')}</label>
+              <input id="add-seva-booking-booking-date" type="date" className="form-input" value={form.booking_date}
                 onChange={e => setForm(f => ({ ...f, booking_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('seva.slotTime')}</label>
-              <input type="time" className="form-input" value={form.slot_time}
+              <label className="form-label" htmlFor="add-seva-booking-slot-time">{t('seva.slotTime')}</label>
+              <input id="add-seva-booking-slot-time" type="time" className="form-input" value={form.slot_time}
                 onChange={e => setForm(f => ({ ...f, slot_time: e.target.value }))} />
             </div>
           </div>
@@ -161,24 +162,24 @@ export function AddSevaBooking() {
             return (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">{t('seva.amountLabel')}</label>
-                  <input type="number" min="1" step="0.01" className="form-input" value={form.amount}
+                  <label className="form-label" htmlFor="add-seva-booking-amount">{t('seva.amountLabel')}</label>
+                  <input id="add-seva-booking-amount" type="number" min="1" step="0.01" className="form-input" value={form.amount}
                     onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>
                 {/* With split on, the rows below are the payment. */}
                 {!splitMode && (
                   <div>
-                    <label className="form-label">{t('seva.paymentMode')}</label>
-                    <select className="form-select" value={form.payment_mode}
+                    <label className="form-label" htmlFor="add-seva-booking-payment-mode">{t('seva.paymentMode')}</label>
+                    <select id="add-seva-booking-payment-mode" className="form-select" value={form.payment_mode}
                       onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
-                      {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                      {paymentModes.map(m => <option key={m.code} value={m.code}>{paymentModeOptionLabel(t, m)}</option>)}
                     </select>
                   </div>
                 )}
                 {!splitMode && relevantAccounts.length > 0 && (
                   <div className="col-span-2">
-                    <label className="form-label">{t('seva.receivedInAccount')}</label>
-                    <select className="form-select" value={form.payment_account_id}
+                    <label className="form-label" htmlFor="add-seva-booking-payment-account-id">{t('seva.receivedInAccount')}</label>
+                    <select id="add-seva-booking-payment-account-id" className="form-select" value={form.payment_account_id}
                       onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
                       <option value="">{t('seva.selectAccount')}</option>
                       {relevantAccounts.map(a => (

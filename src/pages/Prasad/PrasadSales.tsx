@@ -14,6 +14,7 @@ import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { enteredByColumn, useEnteredByOptions } from '../../lib/enteredBy'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 interface SaleLine { item_id?: string; name?: string; qty?: number; amount_paise?: number }
 
@@ -111,7 +112,7 @@ export function PrasadSales() {
         </span>
       ),
     },
-    { key: 'payment_mode', label: t('seva.mode'), render: s => <span className="badge-gray">{s.payment_mode}</span> },
+    { key: 'payment_mode', label: t('seva.mode'), render: s => <span className="badge-gray">{paymentModeLabel(t, s.payment_mode)}</span> },
     enteredByColumn<PrasadSale>(t, enteredByOptions),
     { key: 'total', label: t('common.amount'), align: 'right', render: s => <span className="font-semibold tabular-nums">₹{fmtPaise(Number(s.total_paise))}</span> },
   ], [t, enteredByOptions])

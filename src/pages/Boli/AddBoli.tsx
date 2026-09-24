@@ -23,7 +23,7 @@ export function AddBoli() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.pledged_amount || parseFloat(form.pledged_amount) <= 0) { setError('Enter valid pledged amount'); return }
+    if (!form.pledged_amount || parseFloat(form.pledged_amount) <= 0) { setError(t('msg.validPledgeAmount')); return }
     setSaving(true)
     setError('')
     try {
@@ -76,8 +76,8 @@ export function AddBoli() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('pledges.boliType')}</label>
-              <select className="form-select" value={form.boli_type}
+              <label className="form-label" htmlFor="add-boli-boli-type">{t('pledges.boliType')}</label>
+              <select id="add-boli-boli-type" className="form-select" value={form.boli_type}
                 onChange={e => setForm(f => ({ ...f, boli_type: e.target.value }))}>
                 <option value="aarti">{t('ui.aarti')}</option>
                 <option value="pratistha">{t('ui.pratistha')}</option>
@@ -87,27 +87,27 @@ export function AddBoli() {
               </select>
             </div>
             <div>
-              <label className="form-label">{t('pledges.pledgedAmount')}</label>
-              <input type="number" min="1" step="0.01" className="form-input" value={form.pledged_amount}
+              <label className="form-label" htmlFor="add-boli-pledged-amount">{t('pledges.pledgedAmount')}</label>
+              <input id="add-boli-pledged-amount" type="number" min="1" step="0.01" className="form-input" value={form.pledged_amount}
                 onChange={e => setForm(f => ({ ...f, pledged_amount: e.target.value }))} />
             </div>
           </div>
 
           <div>
-            <label className="form-label">{t('pledges.description')}</label>
-            <input className="form-input" placeholder={t('pledges.descriptionPlaceholder')} value={form.description}
+            <label className="form-label" htmlFor="add-boli-description">{t('pledges.description')}</label>
+            <input id="add-boli-description" className="form-input" placeholder={t('pledges.descriptionPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('pledges.pledgeDate')}</label>
-              <input type="date" className="form-input" value={form.pledge_date}
+              <label className="form-label" htmlFor="add-boli-pledge-date">{t('pledges.pledgeDate')}</label>
+              <input id="add-boli-pledge-date" type="date" className="form-input" value={form.pledge_date}
                 onChange={e => setForm(f => ({ ...f, pledge_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('pledges.event2')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
-              <input className="form-input" placeholder={t('pledges.eventPlaceholder')} value={form.event_name}
+              <label className="form-label" htmlFor="add-boli-event-name">{t('pledges.event2')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
+              <input id="add-boli-event-name" className="form-input" placeholder={t('pledges.eventPlaceholder')} value={form.event_name}
                 onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
             </div>
           </div>

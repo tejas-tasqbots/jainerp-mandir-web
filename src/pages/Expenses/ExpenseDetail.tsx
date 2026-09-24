@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Paperclip, ExternalLink } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import type { Expense } from '../../types'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 /** Row detail drawer for an expense — bill details plus the scanned attachment (plan §05). */
 export function ExpenseDetail({ expense }: { expense: Expense }) {
@@ -40,7 +41,7 @@ export function ExpenseDetail({ expense }: { expense: Expense }) {
     [t('common.amount'), <span className="font-semibold">₹{fmtPaise(expense.amount_paise)}</span>],
     ...(expense.gst_paid_paise ? [[`GST`, `₹${fmtPaise(expense.gst_paid_paise)}`] as [string, React.ReactNode]] : []),
     ...(expense.tds_deducted ? [[t('expenses.tds'), `₹${fmtPaise(expense.tds_amount_paise ?? 0)}`] as [string, React.ReactNode]] : []),
-    [t('expenses.mode'), <span className="badge-gray">{expense.payment_mode}</span>],
+    [t('expenses.mode'), <span className="badge-gray">{paymentModeLabel(t, expense.payment_mode)}</span>],
     [t('expenses.billNo'), expense.bill_number || '—'],
     [t('common.date'), new Date(expense.bill_date || expense.created_at).toLocaleDateString('en-IN')],
     [t('expenses.type'), expense.is_on_credit

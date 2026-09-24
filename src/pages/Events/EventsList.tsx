@@ -267,38 +267,38 @@ export function EventsList() {
         <div className="card no-print">
           <div className="card-header flex items-center justify-between">
             <h3 className="font-semibold text-sm">{editId ? t('events.editEvent') : t('events.createNewEvent')}</h3>
-            <button onClick={closeForm} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            <button type="button" onClick={closeForm} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}><X size={16} /></button>
           </div>
           <form onSubmit={submitForm} className="card-body space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">{t('events.eventName')}</label>
-                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                <label className="form-label" htmlFor="events-list-name">{t('events.eventName')}</label>
+                <input id="events-list-name" className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('events.type')}</label>
-                <select className="form-select" value={form.event_type} onChange={e => setForm(f => ({ ...f, event_type: e.target.value }))}>
+                <label className="form-label" htmlFor="events-list-event-type">{t('events.type')}</label>
+                <select id="events-list-event-type" className="form-select" value={form.event_type} onChange={e => setForm(f => ({ ...f, event_type: e.target.value }))}>
                   {eventTypes.map(et => <option key={et} value={et}>{t(eventTypeKeys[et])}</option>)}
                 </select>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="form-label">{t('events.startDate')}</label>
-                <input type="date" className="form-input" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+                <label className="form-label" htmlFor="events-list-start-date">{t('events.startDate')}</label>
+                <input id="events-list-start-date" type="date" className="form-input" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('events.endDate')}</label>
-                <input type="date" className="form-input" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                <label className="form-label" htmlFor="events-list-end-date">{t('events.endDate')}</label>
+                <input id="events-list-end-date" type="date" className="form-input" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('events.budget')}</label>
-                <input type="number" className="form-input" value={form.estimated_budget} onChange={e => setForm(f => ({ ...f, estimated_budget: e.target.value }))} />
+                <label className="form-label" htmlFor="events-list-estimated-budget">{t('events.budget')}</label>
+                <input id="events-list-estimated-budget" type="number" className="form-input" value={form.estimated_budget} onChange={e => setForm(f => ({ ...f, estimated_budget: e.target.value }))} />
               </div>
             </div>
             <div>
-              <label className="form-label">{t('events.description')}</label>
-              <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              <label className="form-label" htmlFor="events-list-description">{t('events.description')}</label>
+              <textarea id="events-list-description" className="form-input" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" id="reg" checked={form.allow_registration} onChange={e => setForm(f => ({ ...f, allow_registration: e.target.checked }))} className="w-4 h-4" />

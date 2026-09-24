@@ -12,6 +12,7 @@ import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryS
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { paymentModeLabel } from '../../../lib/paymentModeLabel'
 
 interface ExpenseRow {
   date: string
@@ -45,7 +46,7 @@ export function ExpenseRegisterReport() {
     },
     { key: 'category', label: t('expenses.category'), render: r => <span className="text-slate-500">{r.category || '—'}</span> },
     { key: 'bill', label: t('expenses.billNo'), render: r => <span className="font-mono text-xs">{r.bill_number || '—'}</span> },
-    { key: 'mode', label: t('expenses.mode'), render: r => <span className="badge-gray">{r.payment_mode}</span> },
+    { key: 'mode', label: t('expenses.mode'), render: r => <span className="badge-gray">{paymentModeLabel(t, r.payment_mode)}</span> },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
     { key: 'gst', label: 'GST', align: 'right', render: r => <>{r.gst_paid_paise ? `₹${fmtPaise(r.gst_paid_paise)}` : '—'}</> },
     { key: 'tds', label: t('expenses.tds'), align: 'right', render: r => <>{r.tds_amount_paise ? `₹${fmtPaise(r.tds_amount_paise)}` : '—'}</> },

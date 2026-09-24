@@ -900,7 +900,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     </span>
                   </th>
                 ))}
-                {hasRowMenu && <th className="!text-right w-px whitespace-nowrap">{t('common.actions')}</th>}
+                {hasRowMenu && <th className="col-actions !text-right w-px whitespace-nowrap">{t('common.actions')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -912,7 +912,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                         <div className="h-3.5 bg-slate-100 rounded animate-pulse" style={{ width: `${55 + ((i * 17 + col.key.length * 7) % 40)}%` }} />
                       </td>
                     ))}
-                    {hasRowMenu && <td />}
+                    {hasRowMenu && <td className="col-actions" />}
                   </tr>
                 ))
               ) : props.rows.length === 0 ? (
@@ -965,7 +965,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                         </td>
                       ))}
                       {hasRowMenu && (
-                        <td className="text-right whitespace-nowrap">
+                        <td className="col-actions text-right whitespace-nowrap">
                           <RowActionCell actions={props.rowActions!(row, i)} />
                         </td>
                       )}
@@ -980,7 +980,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                         </td>
                       ))}
                       {hasRowMenu && (
-                        <td className="text-right whitespace-nowrap">
+                        <td className="col-actions text-right whitespace-nowrap">
                           <RowActionCell actions={props.rowActions!(sub, j)} />
                         </td>
                       )}

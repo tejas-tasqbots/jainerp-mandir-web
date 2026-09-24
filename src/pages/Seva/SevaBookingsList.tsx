@@ -21,6 +21,8 @@ import type { SevaBooking } from '../../types'
 import { useConfirm } from '../../components/ConfirmDialog'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { tPdf } from '../../lib/i18n'
 
 const PAGE_SIZE = 20
 const STATUSES = ['booked', 'confirmed', 'completed', 'cancelled'] as const
@@ -87,7 +89,7 @@ export function SevaBookingsList() {
     },
     {
       key: 'mode', label: t('seva.mode'),
-      render: b => <span className="badge-gray">{b.payment_mode}</span>,
+      render: b => <span className="badge-gray">{paymentModeLabel(t, b.payment_mode)}</span>,
     },
     enteredByColumn<SevaBooking>(t, enteredByOptions),
     {
@@ -237,7 +239,7 @@ export function SevaBookingsList() {
           b.booking_date, b.devotee_name ?? '', b.devotee_mobile ?? '',
           b.seva_name ?? '', b.slot_time ?? '', rsFmt(b.amount_paise), b.payment_mode, b.status,
         ]),
-        { subtitle: rangeCaption(range, t('dateRange.all')), totals: ['Total', '', '', '', '', rsFmt(totalAmt), '', ''] })
+        { subtitle: rangeCaption(range, tPdf('dateRange.all')), totals: ['Total', '', '', '', '', rsFmt(totalAmt), '', ''] })
     } catch {
       toast.error(t('kit.exportFailed'))
     }

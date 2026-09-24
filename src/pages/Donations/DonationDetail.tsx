@@ -5,6 +5,7 @@ import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
 import { useToast } from '../../components/kit/Toast'
 import type { Donation } from '../../types'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 interface AuditRow {
   id: number
@@ -55,7 +56,7 @@ export function DonationDetail({ donation, onChanged }: { donation: Donation; on
     [t('donors.mobile'), donation.donor_mobile || '—'],
     [t('donations.category'), donation.category_name || '—'],
     [t('common.amount'), <span className="font-semibold">₹{fmtPaise(donation.amount_paise)}</span>],
-    [t('donations.mode'), <span className="badge-gray">{donation.payment_mode}</span>],
+    [t('donations.mode'), <span className="badge-gray">{paymentModeLabel(t, donation.payment_mode)}</span>],
     [t('donations.eightyG'), donation.is_80g_eligible ? t('common.yes') : t('common.no')],
     [t('common.date'), new Date(donation.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })],
     [t('common.status'), donation.is_voided

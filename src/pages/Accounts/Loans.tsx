@@ -209,16 +209,16 @@ export function Loans() {
           <div className="card-header"><h3 className="font-semibold text-sm">{t('accounts.recordLoan')}</h3></div>
           <form onSubmit={submit} className="card-body space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="form-label">{t('accounts.type')}</label>
-                <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+              <div><label className="form-label" htmlFor="loans-type">{t('accounts.type')}</label>
+                <select id="loans-type" className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                   <option value="taken">{t('accounts.loanTaken')}</option><option value="given">{t('accounts.loanGiven')}</option>
                 </select>
               </div>
-              <div><label className="form-label">{t('accounts.partyName')}</label><input className="form-input" value={form.party_name} onChange={e => setForm(f => ({ ...f, party_name: e.target.value }))} required /></div>
-              <div><label className="form-label">{t('accounts.principal')}</label><input type="number" className="form-input" value={form.principal} onChange={e => setForm(f => ({ ...f, principal: e.target.value }))} required /></div>
-              <div><label className="form-label">{t('accounts.interestRate')}</label><input type="number" step="0.01" className="form-input" value={form.interest_rate} onChange={e => setForm(f => ({ ...f, interest_rate: e.target.value }))} /></div>
-              <div><label className="form-label">{t('accounts.startDate')}</label><input type="date" className="form-input" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
-              <div><label className="form-label">{t('accounts.endDate')}</label><input type="date" className="form-input" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+              <div><label className="form-label" htmlFor="loans-principal">{t('accounts.partyName')}</label><input className="form-input" value={form.party_name} onChange={e => setForm(f => ({ ...f, party_name: e.target.value }))} required /></div>
+              <div><label className="form-label" htmlFor="loans-interest-rate">{t('accounts.principal')}</label><input id="loans-principal" type="number" className="form-input" value={form.principal} onChange={e => setForm(f => ({ ...f, principal: e.target.value }))} required /></div>
+              <div><label className="form-label" htmlFor="loans-start-date">{t('accounts.interestRate')}</label><input id="loans-interest-rate" type="number" step="0.01" className="form-input" value={form.interest_rate} onChange={e => setForm(f => ({ ...f, interest_rate: e.target.value }))} /></div>
+              <div><label className="form-label" htmlFor="loans-end-date">{t('accounts.startDate')}</label><input id="loans-start-date" type="date" className="form-input" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
+              <div><label className="form-label">{t('accounts.endDate')}</label><input id="loans-end-date" type="date" className="form-input" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
             </div>
             <div className="flex gap-3">
               <button type="submit" disabled={saving} className="btn-primary btn-sm"><Save size={14} /> {saving ? t('common.saving') : t('common.save')}</button>
@@ -268,8 +268,8 @@ export function Loans() {
                 <p className="text-slate-500">{t('accounts.outstanding')}: ₹{fmtPaise(repayModal.outstanding)}</p>
               </div>
               <div>
-                <label className="form-label">{t('accounts.amount')}</label>
-                <input type="number" step="0.01" min="0.01" max={(repayModal.outstanding / 100).toFixed(2)}
+                <label className="form-label" htmlFor="loans-repayAmt">{t('accounts.amount')}</label>
+                <input id="loans-repayAmt" type="number" step="0.01" min="0.01" max={(repayModal.outstanding / 100).toFixed(2)}
                   className="form-input" placeholder="0.00" value={repayAmt}
                   onChange={e => { setRepayAmt(e.target.value); setRepayError('') }} autoFocus required />
                 <button type="button" className="mt-1 text-xs text-brand-red hover:underline"
@@ -278,13 +278,13 @@ export function Loans() {
                 </button>
               </div>
               <div>
-                <label className="form-label">{t('accounts.paymentDate')}</label>
-                <input type="date" className="form-input" value={repayDate}
+                <label className="form-label" htmlFor="loans-repayDate">{t('accounts.paymentDate')}</label>
+                <input id="loans-repayDate" type="date" className="form-input" value={repayDate}
                   onChange={e => { setRepayDate(e.target.value); setRepayError('') }} required />
               </div>
               <div>
-                <label className="form-label">{t('accounts.paymentMode')}</label>
-                <select className="form-input" value={repayMode}
+                <label className="form-label" htmlFor="loans-repayMode">{t('accounts.paymentMode')}</label>
+                <select id="loans-repayMode" className="form-input" value={repayMode}
                   onChange={e => { setRepayMode(e.target.value); setRepayError('') }}>
                   <option value="cash">{t('common.cash')}</option>
                   <option value="upi">{t('common.upi')}</option>
@@ -294,8 +294,8 @@ export function Loans() {
               </div>
               {repayMode !== 'cash' && (
                 <div>
-                  <label className="form-label">{t('accounts.bankAccount')}</label>
-                  <select className="form-input" value={repayAccountId}
+                  <label className="form-label" htmlFor="loans-repayAccountId">{t('accounts.bankAccount')}</label>
+                  <select id="loans-repayAccountId" className="form-input" value={repayAccountId}
                     onChange={e => { setRepayAccountId(e.target.value); setRepayError('') }}>
                     <option value="">{t('accounts.selectAccount')}</option>
                     {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}

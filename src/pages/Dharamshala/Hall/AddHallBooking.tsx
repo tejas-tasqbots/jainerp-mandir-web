@@ -59,8 +59,8 @@ export function AddHallBooking() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.hall_id) { setError('Select a hall'); return }
-    if (!form.event_name) { setError('Enter event name'); return }
+    if (!form.hall_id) { setError(t('msg.selectHall')); return }
+    if (!form.event_name) { setError(t('msg.enterEventName')); return }
     // Stops the booking rather than dropping the number: a hall invoice that
     // looks complete and is not a valid tax invoice is the worse outcome.
     if (gstinError) { setError(gstinError); return }
@@ -111,8 +111,8 @@ export function AddHallBooking() {
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div>
-            <label className="form-label">{t('dharamshala.hallLabel')}</label>
-            <select className="form-select" value={form.hall_id}
+            <label className="form-label" htmlFor="add-hall-booking-hall-id">{t('dharamshala.hallLabel')}</label>
+            <select id="add-hall-booking-hall-id" className="form-select" value={form.hall_id}
               onChange={e => setForm(f => ({ ...f, hall_id: e.target.value }))}>
               <option value="">{t('dharamshala.selectHall')}</option>
               {halls.map(h => (
@@ -122,8 +122,8 @@ export function AddHallBooking() {
           </div>
 
           <div>
-            <label className="form-label">{t('dharamshala.eventName')}</label>
-            <input className="form-input" placeholder={t('dharamshala.eventNamePlaceholder')} value={form.event_name}
+            <label className="form-label" htmlFor="add-hall-booking-event-name">{t('dharamshala.eventName')}</label>
+            <input id="add-hall-booking-event-name" className="form-input" placeholder={t('dharamshala.eventNamePlaceholder')} value={form.event_name}
               onChange={e => setForm(f => ({ ...f, event_name: e.target.value }))} />
           </div>
 
@@ -146,13 +146,13 @@ export function AddHallBooking() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('dharamshala.bookingDate')}</label>
-              <input type="date" className="form-input" value={form.booking_date}
+              <label className="form-label" htmlFor="add-hall-booking-booking-date">{t('dharamshala.bookingDate')}</label>
+              <input id="add-hall-booking-booking-date" type="date" className="form-input" value={form.booking_date}
                 onChange={e => setForm(f => ({ ...f, booking_date: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('dharamshala.sessionLabel')}</label>
-              <select className="form-select" value={form.session_type}
+              <label className="form-label" htmlFor="add-hall-booking-session-type">{t('dharamshala.sessionLabel')}</label>
+              <select id="add-hall-booking-session-type" className="form-select" value={form.session_type}
                 onChange={e => setForm(f => ({ ...f, session_type: e.target.value }))}>
                 <option value="morning">{t('dharamshala.sessionMorning')}</option>
                 <option value="evening">{t('dharamshala.sessionEvening')}</option>
@@ -172,15 +172,15 @@ export function AddHallBooking() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('dharamshala.advanceAmount')}</label>
-              <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
+              <label className="form-label" htmlFor="add-hall-booking-advance">{t('dharamshala.advanceAmount')}</label>
+              <input id="add-hall-booking-advance" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
             {/* With split on, the rows below are the payment. */}
             {!splitMode && (
               <div>
-                <label className="form-label">{t('dharamshala.paymentMode')}</label>
-                <select className="form-select" value={form.payment_mode}
+                <label className="form-label" htmlFor="add-hall-booking-payment-mode">{t('dharamshala.paymentMode')}</label>
+                <select id="add-hall-booking-payment-mode" className="form-select" value={form.payment_mode}
                   onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
                   <option value="cash">{t('common.cash')}</option>
                   <option value="upi">{t('common.upi')}</option>

@@ -17,6 +17,8 @@ import { CitySelect, CountrySelect, StateSelect } from '../../components/GeoSele
 import { isValidPhone, PhoneInput } from '../../components/PhoneInput'
 import type { Donor } from '../../types'
 import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { tPdf } from '../../lib/i18n'
 
 interface LedgerRow {
   id: string
@@ -253,7 +255,7 @@ export function DonorProfile() {
     {
       key: 'mode', label: t('donors.mode'),
       filter: { kind: 'enum', param: 'payment_mode', options: paymentModes.map(m => ({ value: m, label: m })) },
-      render: tx => tx.payment_mode ? <span className="badge-gray">{tx.payment_mode}</span> : <span className="text-slate-300">—</span>,
+      render: tx => tx.payment_mode ? <span className="badge-gray">{paymentModeLabel(t, tx.payment_mode)}</span> : <span className="text-slate-300">—</span>,
     },
     { key: 'date', label: t('donors.date'), render: tx => <span className="text-xs text-slate-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</span> },
     {
@@ -304,14 +306,14 @@ export function DonorProfile() {
   function exportPdf() {
     downloadRowsPdf(
       `${donor?.name || 'donor'}-statement.pdf`,
-      t('donors.statementTitle', { name: donor?.name ?? '' }),
+      tPdf('donors.statementTitle', { name: donor?.name ?? '' }),
       exportHeaders,
       visible.map(tx => [
         txnLabel(tx), tx.invoice_no || '', tx.detail || '',
         `₹${fmtPaise(tx.amount_paise)}`, tx.payment_mode || '',
         new Date(tx.created_at).toLocaleDateString('en-IN'),
       ]),
-      { subtitle: rangeCaption(range, t('dateRange.all')) },
+      { subtitle: rangeCaption(range, tPdf('dateRange.all')) },
     )
   }
 
@@ -341,20 +343,20 @@ export function DonorProfile() {
           <div className="card-body space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="form-label">{t('donors.fullName')}</label>
-                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                <label className="form-label" htmlFor="donor-profile-name">{t('donors.fullName')}</label>
+                <input id="donor-profile-name" className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
                 <label className="form-label">{t('donors.mobile')}</label>
                 <PhoneInput value={form.mobile} onChange={v => setForm(f => ({ ...f, mobile: v }))} />
               </div>
               <div>
-                <label className="form-label">{t('donors.email')}</label>
-                <input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                <label className="form-label" htmlFor="donor-profile-email">{t('donors.email')}</label>
+                <input id="donor-profile-email" type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('donors.gotra')}</label>
-                <input className="form-input" value={form.gotra} onChange={e => setForm(f => ({ ...f, gotra: e.target.value }))} />
+                <label className="form-label" htmlFor="donor-profile-gotra">{t('donors.gotra')}</label>
+                <input id="donor-profile-gotra" className="form-input" value={form.gotra} onChange={e => setForm(f => ({ ...f, gotra: e.target.value }))} />
               </div>
               <div>
                 <label className="form-label">{t('donors.country')}</label>
@@ -374,18 +376,18 @@ export function DonorProfile() {
               ) : (
                 <>
                   <div>
-                    <label className="form-label">{t('donors.stateProvince')}</label>
-                    <input className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
+                    <label className="form-label" htmlFor="donor-profile-state">{t('donors.stateProvince')}</label>
+                    <input id="donor-profile-state" className="form-input" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="form-label">{t('donors.city')}</label>
-                    <input className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+                    <label className="form-label" htmlFor="donor-profile-city">{t('donors.city')}</label>
+                    <input id="donor-profile-city" className="form-input" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
                   </div>
                 </>
               )}
               <div className="col-span-2">
-                <label className="form-label">{t('donors.address')}</label>
-                <input className="form-input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+                <label className="form-label" htmlFor="donor-profile-address">{t('donors.address')}</label>
+                <input id="donor-profile-address" className="form-input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </div>
             </div>
             <div className="flex gap-3">

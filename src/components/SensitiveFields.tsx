@@ -113,8 +113,8 @@ export function useSensitiveFields() {
         <p className="text-sm text-slate-500 mb-4">{t('sensitive.requestSubtitle')}</p>
         <div className="space-y-3">
           <div>
-            <label className="form-label">{target.label}</label>
-            <input className="form-input bg-slate-50" disabled
+            <label className="form-label" htmlFor="sensitive-fields-field-1">{target.label}</label>
+            <input id="sensitive-fields-field-1" className="form-input bg-slate-50" disabled
               value={(isDate ? formatCalendarDate(target.current) : target.current) || '—'} />
           </div>
           <div>
@@ -138,8 +138,8 @@ export function useSensitiveFields() {
             )}
           </div>
           <div>
-            <label className="form-label">{t('sensitive.reason')}</label>
-            <textarea className="form-input" rows={3} value={reason}
+            <label className="form-label" htmlFor="sensitive-fields-reason">{t('sensitive.reason')}</label>
+            <textarea id="sensitive-fields-reason" className="form-input" rows={3} value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder={t('sensitive.reasonPlaceholder')} />
           </div>

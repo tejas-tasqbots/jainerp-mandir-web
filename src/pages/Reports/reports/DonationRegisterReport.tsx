@@ -12,6 +12,7 @@ import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryS
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { paymentModeLabel } from '../../../lib/paymentModeLabel'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
 
@@ -48,7 +49,7 @@ export function DonationRegisterReport() {
     {
       key: 'mode', label: t('donations.mode'),
       filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`) })) },
-      render: r => <span className="badge-gray">{r.payment_mode}</span>,
+      render: r => <span className="badge-gray">{paymentModeLabel(t, r.payment_mode)}</span>,
     },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
     {

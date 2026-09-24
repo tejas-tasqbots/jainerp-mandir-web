@@ -126,16 +126,16 @@ export function MulnayakPicker({
   if (!jain) {
     return (
       <div>
-        <label className="form-label">{label}</label>
-        <input className="form-input" value={value} onChange={e => onChange(e.target.value)} />
+        <label className="form-label" htmlFor="mulnayak-picker-value">{label}</label>
+        <input id="mulnayak-picker-value" className="form-input" value={value} onChange={e => onChange(e.target.value)} />
       </div>
     )
   }
 
   return (
     <div>
-      <label className="form-label">{label}</label>
-      <select
+      <label className="form-label" htmlFor="mulnayak-picker-other">{label}</label>
+      <select id="mulnayak-picker-other"
         className="form-input"
         value={other ? OTHER : (matched ? tirthankarTitle(matched.name) : '')}
         onChange={e => {

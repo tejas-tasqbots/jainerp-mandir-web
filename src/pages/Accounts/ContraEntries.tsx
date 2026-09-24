@@ -162,16 +162,16 @@ export function ContraEntries() {
           <form onSubmit={submit} className="card-body space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">{t('accounts.fromAccount')}</label>
-                <select className="form-select" value={form.from_account_id}
+                <label className="form-label" htmlFor="contra-entries-from-account-id">{t('accounts.fromAccount')}</label>
+                <select id="contra-entries-from-account-id" className="form-select" value={form.from_account_id}
                   onChange={e => setForm(f => ({ ...f, from_account_id: e.target.value }))} required>
                   <option value="">{t('accounts.select')}</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('accounts.toAccount')}</label>
-                <select className="form-select" value={form.to_account_id}
+                <label className="form-label" htmlFor="contra-entries-to-account-id">{t('accounts.toAccount')}</label>
+                <select id="contra-entries-to-account-id" className="form-select" value={form.to_account_id}
                   onChange={e => setForm(f => ({ ...f, to_account_id: e.target.value }))} required>
                   <option value="">{t('accounts.select')}</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
@@ -180,13 +180,13 @@ export function ContraEntries() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="form-label">{t('accounts.amount')}</label>
-                <input type="number" min="1" step="0.01" className="form-input" value={form.amount}
+                <label className="form-label" htmlFor="contra-entries-amount">{t('accounts.amount')}</label>
+                <input id="contra-entries-amount" type="number" min="1" step="0.01" className="form-input" value={form.amount}
                   onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('accounts.narration')}</label>
-                <input className="form-input" value={form.narration}
+                <label className="form-label" htmlFor="contra-entries-narration">{t('accounts.narration')}</label>
+                <input id="contra-entries-narration" className="form-input" value={form.narration}
                   onChange={e => setForm(f => ({ ...f, narration: e.target.value }))} />
               </div>
             </div>

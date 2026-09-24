@@ -339,13 +339,13 @@ export function BoliList() {
             </p>
             <form onSubmit={recordPayment} className="space-y-4">
               <div>
-                <label className="form-label">{t('donations.amountLabel')}</label>
-                <input type="number" step="0.01" min="0.01" className="form-input" autoFocus
+                <label className="form-label" htmlFor="boli-list-payForm">{t('donations.amountLabel')}</label>
+                <input id="boli-list-payForm" type="number" step="0.01" min="0.01" className="form-input" autoFocus
                   value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('donations.paymentMode')}</label>
-                <select className="form-select" value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
+                <label className="form-label" htmlFor="boli-list-payForm-2">{t('donations.paymentMode')}</label>
+                <select id="boli-list-payForm-2" className="form-select" value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
                   <option value="cash">{t('common.cash')}</option>
                   <option value="upi">{t('common.upi')}</option>
                   <option value="cheque">{t('common.cheque')}</option>
@@ -371,8 +371,8 @@ export function BoliList() {
             </p>
             <form onSubmit={waive} className="space-y-4">
               <div>
-                <label className="form-label">{t('common.reason')} *</label>
-                <textarea className="form-input" rows={3} value={waiveReason}
+                <label className="form-label" htmlFor="boli-list-waiveReason">{t('common.reason')} *</label>
+                <textarea id="boli-list-waiveReason" className="form-input" rows={3} value={waiveReason}
                   onChange={e => setWaiveReason(e.target.value)} placeholder={t('pledges.waiveReasonPlaceholder')} required />
               </div>
               <div className="flex gap-3 justify-end">

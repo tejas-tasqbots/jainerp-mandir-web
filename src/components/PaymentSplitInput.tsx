@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { usePaymentModes, useAccounts, autoSelectAccount } from '../lib/useDropdownOptions'
+import { paymentModeOptionLabel } from '../lib/paymentModeLabel'
 
 /**
  * Collects one or more TENDERS for a bill.
@@ -145,7 +146,7 @@ export function PaymentSplitInput({ rows, onChange, totalPaise = 0, paidPaise = 
             })}
             aria-label={`Payment mode ${i + 1}`}
           >
-            {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+            {paymentModes.map(m => <option key={m.code} value={m.code}>{paymentModeOptionLabel(t, m)}</option>)}
           </select>
 
           <input

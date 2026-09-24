@@ -139,18 +139,18 @@ export function VisitorCountPage() {
         <form onSubmit={save} className="card-body">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="form-label">{t('registers.morningCount')}</label>
-              <input type="number" min="0" className="form-input" placeholder="0"
+              <label className="form-label" htmlFor="visitor-count-page-morning-count">{t('registers.morningCount')}</label>
+              <input id="visitor-count-page-morning-count" type="number" min="0" className="form-input" placeholder="0"
                 value={form.morning_count} onChange={e => setForm(f => ({ ...f, morning_count: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('registers.eveningCount')}</label>
-              <input type="number" min="0" className="form-input" placeholder="0"
+              <label className="form-label" htmlFor="visitor-count-page-evening-count">{t('registers.eveningCount')}</label>
+              <input id="visitor-count-page-evening-count" type="number" min="0" className="form-input" placeholder="0"
                 value={form.evening_count} onChange={e => setForm(f => ({ ...f, evening_count: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('registers.notes')}</label>
-              <input className="form-input" placeholder={t('registers.notesOptional')} value={form.notes}
+              <label className="form-label" htmlFor="visitor-count-page-notes">{t('registers.notes')}</label>
+              <input id="visitor-count-page-notes" className="form-input" placeholder={t('registers.notesOptional')} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
           </div>

@@ -199,13 +199,13 @@ export function PriestsPage() {
             <form onSubmit={submit} className="space-y-3">
               <div><label className="form-label">{t('priests.nameRequired')}</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">{t('priests.mobile')}</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} /></div>
-                <div><label className="form-label">{t('priests.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="priests-page-email">{t('priests.mobile')}</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="priests-page-specialization">{t('priests.email')}</label><input id="priests-page-email" type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               </div>
-              <div><label className="form-label">{t('priests.specialization')}</label><input className="form-input" placeholder={t('priests.specializationPlaceholder')} value={form.specialization} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} /></div>
+              <div><label className="form-label">{t('priests.specialization')}</label><input id="priests-page-specialization" className="form-input" placeholder={t('priests.specializationPlaceholder')} value={form.specialization} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">{t('priests.monthlyStipendAmount')}</label><input type="number" className="form-input" value={form.monthly_stipend} onChange={e => setForm(f => ({ ...f, monthly_stipend: e.target.value }))} /></div>
-                <div><label className="form-label">{t('priests.joiningDate')}</label><input type="date" className="form-input" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="priests-page-joining-date">{t('priests.monthlyStipendAmount')}</label><input type="number" className="form-input" value={form.monthly_stipend} onChange={e => setForm(f => ({ ...f, monthly_stipend: e.target.value }))} /></div>
+                <div><label className="form-label">{t('priests.joiningDate')}</label><input id="priests-page-joining-date" type="date" className="form-input" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">{t('common.cancel')}</button>

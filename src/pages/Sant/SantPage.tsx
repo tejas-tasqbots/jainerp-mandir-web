@@ -184,7 +184,7 @@ function ProposeModal({ maharaj, onClose, onDone }: {
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[88vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy-900">{t('maharaj.proposeLocationTitle', { name: maharaj.name })}</h3>
-          <button onClick={onClose}><X size={18} className="text-slate-400" /></button>
+          <button type="button" onClick={onClose} aria-label={t('common.close')}><X size={18} className="text-slate-400" /></button>
         </div>
         <p className="text-xs text-slate-400 mb-3">{t('maharaj.proposeLocationHint')}</p>
         <div className="space-y-3">
@@ -198,10 +198,10 @@ function ProposeModal({ maharaj, onClose, onDone }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><label className="form-label">{t('maharaj.from')}</label><input type="date" className="form-input" value={f.from_date} onChange={e => setF({ ...f, from_date: e.target.value })} /></div>
-            <div><label className="form-label">{t('maharaj.to')}</label><input type="date" className="form-input" value={f.to_date} onChange={e => setF({ ...f, to_date: e.target.value })} /></div>
+            <div><label className="form-label" htmlFor="sant-page-to-date">{t('maharaj.from')}</label><input type="date" className="form-input" value={f.from_date} onChange={e => setF({ ...f, from_date: e.target.value })} /></div>
+            <div><label className="form-label" htmlFor="sant-page-notes">{t('maharaj.to')}</label><input id="sant-page-to-date" type="date" className="form-input" value={f.to_date} onChange={e => setF({ ...f, to_date: e.target.value })} /></div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={f.chaturmas} onChange={e => setF({ ...f, chaturmas: e.target.checked })} className="accent-brand-red" /> {t('maharaj.chaturmas')}</label>
+          <label className="flex items-center gap-2 text-sm text-slate-700"><input id="sant-page-notes" type="checkbox" checked={f.chaturmas} onChange={e => setF({ ...f, chaturmas: e.target.checked })} className="accent-brand-red" /> {t('maharaj.chaturmas')}</label>
           <LocationPicker lat={f.lat} lng={f.lng} onChange={(lat, lng) => setF({ ...f, lat, lng })} height={200} />
           <div><label className="form-label">{t('maharaj.notes')}</label><textarea className="form-textarea" rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
           {err && <p className="text-red-600 text-sm">{err}</p>}

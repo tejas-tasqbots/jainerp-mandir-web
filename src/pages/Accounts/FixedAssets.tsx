@@ -176,12 +176,12 @@ export function FixedAssets() {
           <div className="card-header"><h3 className="font-semibold text-sm">{t('accounts.addFixedAsset')}</h3></div>
           <form onSubmit={submit} className="card-body space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="form-label">{t('accounts.assetName')}</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
-              <div><label className="form-label">{t('accounts.purchaseDate')}</label><input type="date" className="form-input" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} /></div>
-              <div><label className="form-label">{t('accounts.cost')}</label><input type="number" className="form-input" value={form.purchase_cost} onChange={e => setForm(f => ({ ...f, purchase_cost: e.target.value }))} required /></div>
-              <div><label className="form-label">{t('accounts.usefulLife')}</label><input type="number" min="1" className="form-input" value={form.useful_life_years} onChange={e => setForm(f => ({ ...f, useful_life_years: e.target.value }))} /></div>
-              <div><label className="form-label">{t('accounts.method')}</label>
-                <select className="form-select" value={form.depreciation_method} onChange={e => setForm(f => ({ ...f, depreciation_method: e.target.value }))}>
+              <div><label className="form-label" htmlFor="fixed-assets-purchase-date">{t('accounts.assetName')}</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
+              <div><label className="form-label" htmlFor="fixed-assets-purchase-cost">{t('accounts.purchaseDate')}</label><input id="fixed-assets-purchase-date" type="date" className="form-input" value={form.purchase_date} onChange={e => setForm(f => ({ ...f, purchase_date: e.target.value }))} /></div>
+              <div><label className="form-label" htmlFor="fixed-assets-useful-life-years">{t('accounts.cost')}</label><input id="fixed-assets-purchase-cost" type="number" className="form-input" value={form.purchase_cost} onChange={e => setForm(f => ({ ...f, purchase_cost: e.target.value }))} required /></div>
+              <div><label className="form-label">{t('accounts.usefulLife')}</label><input id="fixed-assets-useful-life-years" type="number" min="1" className="form-input" value={form.useful_life_years} onChange={e => setForm(f => ({ ...f, useful_life_years: e.target.value }))} /></div>
+              <div><label className="form-label" htmlFor="fixed-assets-depreciation-method">{t('accounts.method')}</label>
+                <select id="fixed-assets-depreciation-method" className="form-select" value={form.depreciation_method} onChange={e => setForm(f => ({ ...f, depreciation_method: e.target.value }))}>
                   <option value="SLM">SLM</option><option value="WDV">WDV</option>
                 </select>
               </div>

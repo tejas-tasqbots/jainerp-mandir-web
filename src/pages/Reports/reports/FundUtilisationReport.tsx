@@ -10,6 +10,7 @@ import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryS
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
+import { statusLabel } from '../../../lib/statusLabel'
 
 interface FundRow {
   fund: string
@@ -81,7 +82,7 @@ export function FundUtilisationReport() {
         </div>
       ),
     },
-    { key: 'type', label: t('reports.fundType'), render: r => <span className="text-xs text-slate-500">{r.fund_type}</span> },
+    { key: 'type', label: t('reports.fundType'), render: r => <span className="text-xs text-slate-500">{statusLabel(t, r.fund_type)}</span> },
     { key: 'received', label: t('reports.received'), align: 'right', render: r => <span className="text-green-700">₹{fmtPaise(r.received_paise)}</span> },
     { key: 'applied', label: t('reports.applied'), align: 'right', render: r => <span className="text-red-600">₹{fmtPaise(r.applied_paise)}</span> },
     {

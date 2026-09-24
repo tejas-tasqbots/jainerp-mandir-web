@@ -1225,8 +1225,8 @@ export function RoomsList() {
               {t('dharamshala.cancelBookingWarning', { name: cancelModal.guestName })}
             </p>
             <div className="mb-4">
-              <label className="form-label">{t('dharamshala.reasonOptional')}</label>
-              <input className="form-input" value={cancelReason}
+              <label className="form-label" htmlFor="rooms-list-cancelReason">{t('dharamshala.reasonOptional')}</label>
+              <input id="rooms-list-cancelReason" className="form-input" value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)} placeholder={t('dharamshala.reasonPlaceholder')} />
             </div>
             <div className="flex gap-3 justify-end">

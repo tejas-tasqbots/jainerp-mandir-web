@@ -94,7 +94,7 @@ export function PrasadCounter() {
     try {
       await printDonationReceipt(lastSale.id, '/prasad/sales')
     } catch {
-      toast.error('Could not load receipt')
+      toast.error(t('msg.loadReceiptFailed'))
     } finally {
       setReceiptLoading(false)
     }

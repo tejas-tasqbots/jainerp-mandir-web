@@ -164,7 +164,7 @@ export function DonorList() {
   async function addDonor(e: React.FormEvent) {
     e.preventDefault()
     if (form.mobile && !isValidPhone(form.mobile)) {
-      setError('Enter a valid mobile number')
+      setError(t('msg.validMobile'))
       return
     }
     setSaving(true)
@@ -269,24 +269,24 @@ export function DonorList() {
             <form onSubmit={addDonor} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="form-label">{t('donors.fullName')}</label>
-                  <input className="form-input" value={form.name} onChange={e => f('name', e.target.value)} required />
+                  <label className="form-label" htmlFor="donor-list-name">{t('donors.fullName')}</label>
+                  <input id="donor-list-name" className="form-input" value={form.name} onChange={e => f('name', e.target.value)} required />
                 </div>
                 <div>
                   <label className="form-label">{t('donors.mobile')}</label>
                   <PhoneInput value={form.mobile} onChange={v => f('mobile', v)} />
                 </div>
                 <div>
-                  <label className="form-label">{t('donors.email')}</label>
-                  <input type="email" className="form-input" value={form.email} onChange={e => f('email', e.target.value)} />
+                  <label className="form-label" htmlFor="donor-list-email">{t('donors.email')}</label>
+                  <input id="donor-list-email" type="email" className="form-input" value={form.email} onChange={e => f('email', e.target.value)} />
                 </div>
                 <div>
-                  <label className="form-label">{t('donors.gotra')}</label>
-                  <input className="form-input" value={form.gotra} onChange={e => f('gotra', e.target.value)} />
+                  <label className="form-label" htmlFor="donor-list-gotra">{t('donors.gotra')}</label>
+                  <input id="donor-list-gotra" className="form-input" value={form.gotra} onChange={e => f('gotra', e.target.value)} />
                 </div>
                 <div>
-                  <label className="form-label">{t('donors.pan')}</label>
-                  <input className="form-input uppercase" placeholder="ABCDE1234F" value={form.pan}
+                  <label className="form-label" htmlFor="donor-list-pan">{t('donors.pan')}</label>
+                  <input id="donor-list-pan" className="form-input uppercase" placeholder="ABCDE1234F" value={form.pan}
                     onChange={e => f('pan', e.target.value.toUpperCase())} maxLength={10} />
                 </div>
                 <div>
@@ -307,18 +307,18 @@ export function DonorList() {
                 ) : (
                   <>
                     <div>
-                      <label className="form-label">{t('donors.stateProvince')}</label>
-                      <input className="form-input" value={form.state} onChange={e => f('state', e.target.value)} />
+                      <label className="form-label" htmlFor="donor-list-state">{t('donors.stateProvince')}</label>
+                      <input id="donor-list-state" className="form-input" value={form.state} onChange={e => f('state', e.target.value)} />
                     </div>
                     <div>
-                      <label className="form-label">{t('donors.city')}</label>
-                      <input className="form-input" value={form.city} onChange={e => f('city', e.target.value)} />
+                      <label className="form-label" htmlFor="donor-list-city">{t('donors.city')}</label>
+                      <input id="donor-list-city" className="form-input" value={form.city} onChange={e => f('city', e.target.value)} />
                     </div>
                   </>
                 )}
                 <div className="col-span-2">
-                  <label className="form-label">{t('donors.address')}</label>
-                  <input className="form-input" value={form.address} onChange={e => f('address', e.target.value)} />
+                  <label className="form-label" htmlFor="donor-list-address">{t('donors.address')}</label>
+                  <input id="donor-list-address" className="form-input" value={form.address} onChange={e => f('address', e.target.value)} />
                 </div>
               </div>
               <div className="flex gap-3 justify-end pt-2">

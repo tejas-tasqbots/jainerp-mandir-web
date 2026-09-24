@@ -11,6 +11,7 @@ import { VendorPicker, type VendorRef } from '../../components/Expenses/VendorPi
 /** The category dropdown's "Other…": type a category the trust has not set up yet. */
 const OTHER = '__other__'
 import { itemsPayload, itemsTotals, newItemRow, type ItemRow, type VendorItem } from '../../components/Expenses/expenseItems'
+import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 
 export function AddExpense() {
   const { t } = useTranslation()
@@ -104,8 +105,8 @@ export function AddExpense() {
       const bad = itemList.findIndex(it => !it.description || it.rate_paise <= 0)
       if (bad >= 0) { setError(t('expenseItems.incomplete', { n: bad + 1 })); return }
     } else {
-      if (!form.description) { setError('Enter expense description'); return }
-      if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+      if (!form.description) { setError(t('msg.enterExpenseDescription')); return }
+      if (!form.amount || parseFloat(form.amount) <= 0) { setError(t('msg.validAmount')); return }
     }
     setSaving(true)
     setError('')
@@ -216,8 +217,8 @@ export function AddExpense() {
           )}
 
           <div>
-            <label className="form-label">{itemised ? t('expenseItems.descriptionOptional') : t('expenses.descriptionRequired')}</label>
-            <input className="form-input" placeholder={t('expenses.descriptionRequiredPlaceholder')} value={form.description}
+            <label className="form-label" htmlFor="add-expense-description">{itemised ? t('expenseItems.descriptionOptional') : t('expenses.descriptionRequired')}</label>
+            <input id="add-expense-description" className="form-input" placeholder={t('expenses.descriptionRequiredPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
 
@@ -229,13 +230,13 @@ export function AddExpense() {
           ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('expenses.amountLabel')}</label>
-              <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
+              <label className="form-label" htmlFor="add-expense-amount">{t('expenses.amountLabel')}</label>
+              <input id="add-expense-amount" type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
                 value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('expenses.gstAmount')}</label>
-              <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
+              <label className="form-label" htmlFor="add-expense-gst-amount">{t('expenses.gstAmount')}</label>
+              <input id="add-expense-gst-amount" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.gst_amount} onChange={e => setForm(f => ({ ...f, gst_amount: e.target.value }))} />
             </div>
           </div>
@@ -247,22 +248,22 @@ export function AddExpense() {
             return (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">{t('expenses.paymentMode')}</label>
-                  <select className="form-select" value={form.payment_mode}
+                  <label className="form-label" htmlFor="add-expense-payment-mode">{t('expenses.paymentMode')}</label>
+                  <select id="add-expense-payment-mode" className="form-select" value={form.payment_mode}
                     onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}
                     disabled={form.is_on_credit}>
-                    {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                    {paymentModes.map(m => <option key={m.code} value={m.code}>{paymentModeOptionLabel(t, m)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">{t('expenses.billDate')}</label>
-                  <input type="date" className="form-input" value={form.bill_date}
+                  <label className="form-label" htmlFor="add-expense-bill-date">{t('expenses.billDate')}</label>
+                  <input id="add-expense-bill-date" type="date" className="form-input" value={form.bill_date}
                     onChange={e => setForm(f => ({ ...f, bill_date: e.target.value }))} />
                 </div>
                 {!form.is_on_credit && relevantAccounts.length > 0 && (
                   <div className="col-span-2">
-                    <label className="form-label">{t('expenses.paidFromAccount')}</label>
-                    <select className="form-select" value={form.payment_account_id}
+                    <label className="form-label" htmlFor="add-expense-payment-account-id">{t('expenses.paidFromAccount')}</label>
+                    <select id="add-expense-payment-account-id" className="form-select" value={form.payment_account_id}
                       onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
                       <option value="">{t('expenses.selectAccount')}</option>
                       {relevantAccounts.map(a => (
@@ -279,14 +280,14 @@ export function AddExpense() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label">{t('expenses.billInvoiceNumber')}</label>
-              <input className="form-input" placeholder={t('expenses.billNoPlaceholder')} value={form.bill_number}
+              <label className="form-label" htmlFor="add-expense-bill-number">{t('expenses.billInvoiceNumber')}</label>
+              <input id="add-expense-bill-number" className="form-input" placeholder={t('expenses.billNoPlaceholder')} value={form.bill_number}
                 onChange={e => setForm(f => ({ ...f, bill_number: e.target.value }))} />
             </div>
             {(form.payment_mode !== 'cash' && form.payment_mode !== 'cheque') && (
               <div>
-                <label className="form-label">{t('expenses.utrReference')}</label>
-                <input className="form-input" placeholder={t('expenses.utrPlaceholder')} value={form.utr_number}
+                <label className="form-label" htmlFor="add-expense-utr-number">{t('expenses.utrReference')}</label>
+                <input id="add-expense-utr-number" className="form-input" placeholder={t('expenses.utrPlaceholder')} value={form.utr_number}
                   onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
               </div>
             )}
@@ -295,18 +296,18 @@ export function AddExpense() {
           {form.payment_mode === 'cheque' && (
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="form-label">{t('cheques.chequeNo')}</label>
-                <input className="form-input" value={form.cheque_number}
+                <label className="form-label" htmlFor="add-expense-cheque-number">{t('cheques.chequeNo')}</label>
+                <input id="add-expense-cheque-number" className="form-input" value={form.cheque_number}
                   onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('cheques.bank')}</label>
-                <input className="form-input" value={form.cheque_bank}
+                <label className="form-label" htmlFor="add-expense-cheque-bank">{t('cheques.bank')}</label>
+                <input id="add-expense-cheque-bank" className="form-input" value={form.cheque_bank}
                   onChange={e => setForm(f => ({ ...f, cheque_bank: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('cheques.chequeDate')}</label>
-                <input type="date" className="form-input" value={form.cheque_date}
+                <label className="form-label" htmlFor="add-expense-cheque-date">{t('cheques.chequeDate')}</label>
+                <input id="add-expense-cheque-date" type="date" className="form-input" value={form.cheque_date}
                   onChange={e => setForm(f => ({ ...f, cheque_date: e.target.value }))} />
               </div>
             </div>

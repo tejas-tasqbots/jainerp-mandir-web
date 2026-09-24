@@ -6,7 +6,7 @@ import { MANDIR_TOUR, Walkthrough, hasSeenTour } from '../../components/Walkthro
 import { fetchSetup } from '../../components/SetupChecklist'
 import { hasBeenOfferedWizard, markWizardOffered } from '../Setup/SetupWizard'
 import {
-  IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, AlertTriangle,
+  IndianRupee, TrendingUp, TrendingDown, Hotel, Plus, CalendarDays,
   Users, ShoppingBag, Bell, Lock, Footprints, Briefcase
 } from 'lucide-react'
 import {
@@ -252,7 +252,7 @@ export function Dashboard() {
           <div className={overview.bolis && showsTile('bolis') ? 'card col-span-2' : 'card col-span-3'}>
             <div className="card-header">
               <h3 className="font-semibold text-sm text-navy-900 flex items-center gap-2">
-                <AlertTriangle size={15} className="text-blue-400" /> {t('dashboard.upcomingEvents')}
+                <CalendarDays size={15} className="text-blue-400" /> {t('dashboard.upcomingEvents')}
               </h3>
               <span className="badge-blue">{overview.events.upcoming.length}</span>
             </div>

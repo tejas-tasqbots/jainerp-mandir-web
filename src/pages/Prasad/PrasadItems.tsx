@@ -125,39 +125,39 @@ export function PrasadItems() {
           <form onSubmit={addItem} className="card-body space-y-3">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="form-label">{t('prasad.itemName')}</label>
-                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                <label className="form-label" htmlFor="prasad-items-name">{t('prasad.itemName')}</label>
+                <input id="prasad-items-name" className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('prasad.nameHindi')}</label>
-                <input className="form-input" value={form.name_hindi} onChange={e => setForm(f => ({ ...f, name_hindi: e.target.value }))} placeholder={t('prasad.optional')} />
+                <label className="form-label" htmlFor="prasad-items-name-hindi">{t('prasad.nameHindi')}</label>
+                <input id="prasad-items-name-hindi" className="form-input" value={form.name_hindi} onChange={e => setForm(f => ({ ...f, name_hindi: e.target.value }))} placeholder={t('prasad.optional')} />
               </div>
               <div>
-                <label className="form-label">{t('prasad.unit')}</label>
-                <input className="form-input" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder={t('prasad.unitPlaceholder')} />
+                <label className="form-label" htmlFor="prasad-items-unit">{t('prasad.unit')}</label>
+                <input id="prasad-items-unit" className="form-input" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder={t('prasad.unitPlaceholder')} />
               </div>
             </div>
             <div className="grid grid-cols-4 gap-3">
               <div>
-                <label className="form-label">{t('prasad.priceLabel')}</label>
-                <input type="number" min="0" step="0.01" className="form-input" value={form.price}
+                <label className="form-label" htmlFor="prasad-items-price">{t('prasad.priceLabel')}</label>
+                <input id="prasad-items-price" type="number" min="0" step="0.01" className="form-input" value={form.price}
                   onChange={e => setForm(f => ({ ...f, price: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label">{t('prasad.gstRate')}</label>
-                <select className="form-select" value={form.gst_rate} onChange={e => setForm(f => ({ ...f, gst_rate: e.target.value }))}>
+                <label className="form-label" htmlFor="prasad-items-gst-rate">{t('prasad.gstRate')}</label>
+                <select id="prasad-items-gst-rate" className="form-select" value={form.gst_rate} onChange={e => setForm(f => ({ ...f, gst_rate: e.target.value }))}>
                   <option value="0">0%</option><option value="5">5%</option>
                   <option value="12">12%</option><option value="18">18%</option>
                 </select>
               </div>
               <div>
-                <label className="form-label">{t('prasad.openingStock')}</label>
-                <input type="number" min="0" className="form-input" value={form.initial_stock}
+                <label className="form-label" htmlFor="prasad-items-initial-stock">{t('prasad.openingStock')}</label>
+                <input id="prasad-items-initial-stock" type="number" min="0" className="form-input" value={form.initial_stock}
                   onChange={e => setForm(f => ({ ...f, initial_stock: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">{t('prasad.lowStockAlert')}</label>
-                <input type="number" min="0" className="form-input" value={form.low_stock_threshold}
+                <label className="form-label" htmlFor="prasad-items-low-stock-threshold">{t('prasad.lowStockAlert')}</label>
+                <input id="prasad-items-low-stock-threshold" type="number" min="0" className="form-input" value={form.low_stock_threshold}
                   onChange={e => setForm(f => ({ ...f, low_stock_threshold: e.target.value }))} />
               </div>
             </div>
@@ -235,35 +235,35 @@ export function PrasadItems() {
             <form onSubmit={saveEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">{t('prasad.itemName')}</label>
-                  <input className="form-input" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
+                  <label className="form-label" htmlFor="prasad-items-editForm">{t('prasad.itemName')}</label>
+                  <input id="prasad-items-editForm" className="form-input" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="form-label">{t('prasad.nameHindi')}</label>
-                  <input className="form-input" value={editForm.name_hindi} onChange={e => setEditForm(f => ({ ...f, name_hindi: e.target.value }))} />
+                  <label className="form-label" htmlFor="prasad-items-editForm-2">{t('prasad.nameHindi')}</label>
+                  <input id="prasad-items-editForm-2" className="form-input" value={editForm.name_hindi} onChange={e => setEditForm(f => ({ ...f, name_hindi: e.target.value }))} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="form-label">{t('prasad.unit')}</label>
-                  <input className="form-input" value={editForm.unit} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />
+                  <label className="form-label" htmlFor="prasad-items-editForm-2-2">{t('prasad.unit')}</label>
+                  <input id="prasad-items-editForm-2-2" className="form-input" value={editForm.unit} onChange={e => setEditForm(f => ({ ...f, unit: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="form-label">{t('prasad.priceLabel')}</label>
-                  <input type="number" min="0" step="0.01" className="form-input" value={editForm.price}
+                  <label className="form-label" htmlFor="prasad-items-editForm-2-2-2">{t('prasad.priceLabel')}</label>
+                  <input id="prasad-items-editForm-2-2-2" type="number" min="0" step="0.01" className="form-input" value={editForm.price}
                     onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))} required />
                 </div>
                 <div>
-                  <label className="form-label">{t('prasad.gstRate')}</label>
-                  <select className="form-select" value={editForm.gst_rate} onChange={e => setEditForm(f => ({ ...f, gst_rate: e.target.value }))}>
+                  <label className="form-label" htmlFor="prasad-items-editForm-2-2-2-2">{t('prasad.gstRate')}</label>
+                  <select id="prasad-items-editForm-2-2-2-2" className="form-select" value={editForm.gst_rate} onChange={e => setEditForm(f => ({ ...f, gst_rate: e.target.value }))}>
                     <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">{t('prasad.sortOrder')}</label>
-                  <input type="number" min="0" className="form-input" value={editForm.sort_order}
+                  <label className="form-label" htmlFor="prasad-items-editForm-2-2-2-2-2">{t('prasad.sortOrder')}</label>
+                  <input id="prasad-items-editForm-2-2-2-2-2" type="number" min="0" className="form-input" value={editForm.sort_order}
                     onChange={e => setEditForm(f => ({ ...f, sort_order: e.target.value }))} />
                 </div>
                 <div className="flex items-center gap-3 mt-5">
@@ -292,15 +292,15 @@ export function PrasadItems() {
             </p>
             <form onSubmit={adjustStock} className="space-y-4">
               <div>
-                <label className="form-label">{t('prasad.quantityAdjustment')}</label>
-                <input type="number" className="form-input" autoFocus value={stockAdj.qty}
+                <label className="form-label" htmlFor="prasad-items-stockAdj">{t('prasad.quantityAdjustment')}</label>
+                <input id="prasad-items-stockAdj" type="number" className="form-input" autoFocus value={stockAdj.qty}
                   onChange={e => setStockAdj(f => ({ ...f, qty: e.target.value }))}
                   placeholder={t('prasad.qtyPlaceholder')} required />
                 <p className="text-xs text-slate-400 mt-1">{t('prasad.qtyHint')}</p>
               </div>
               <div>
-                <label className="form-label">{t('prasad.noteOptional')}</label>
-                <input className="form-input" value={stockAdj.note}
+                <label className="form-label" htmlFor="prasad-items-stockAdj-2">{t('prasad.noteOptional')}</label>
+                <input id="prasad-items-stockAdj-2" className="form-input" value={stockAdj.note}
                   onChange={e => setStockAdj(f => ({ ...f, note: e.target.value }))}
                   placeholder={t('prasad.notePlaceholder')} />
               </div>

@@ -219,18 +219,18 @@ export function EmployeesPage() {
             <form onSubmit={submit} className="space-y-3">
               <div><label className="form-label">{t('employees.nameRequired')}</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">{t('employees.mobileRequired')}</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} required /></div>
-                <div><label className="form-label">{t('employees.email')}</label><input type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="employees-page-email">{t('employees.mobileRequired')}</label><input type="tel" className="form-input" value={form.mobile} onChange={e => setForm(f => ({ ...f, mobile: e.target.value }))} required /></div>
+                <div><label className="form-label">{t('employees.email')}</label><input id="employees-page-email" type="email" className="form-input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
               </div>
               {tab === 'employees' && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="form-label">{t('employees.designationRequired')}</label><input className="form-input" value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} required /></div>
-                  <div><label className="form-label">{t('employees.department')}</label><input className="form-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
+                  <div><label className="form-label" htmlFor="employees-page-department">{t('employees.designationRequired')}</label><input className="form-input" value={form.designation} onChange={e => setForm(f => ({ ...f, designation: e.target.value }))} required /></div>
+                  <div><label className="form-label">{t('employees.department')}</label><input id="employees-page-department" className="form-input" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">{t('employees.monthlySalary')}</label><input type="number" className="form-input" value={form.monthly_salary} onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))} /></div>
-                <div><label className="form-label">{t('employees.joiningDate')}</label><input type="date" className="form-input" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} /></div>
+                <div><label className="form-label" htmlFor="employees-page-joining-date">{t('employees.monthlySalary')}</label><input type="number" className="form-input" value={form.monthly_salary} onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))} /></div>
+                <div><label className="form-label">{t('employees.joiningDate')}</label><input id="employees-page-joining-date" type="date" className="form-input" value={form.joining_date} onChange={e => setForm(f => ({ ...f, joining_date: e.target.value }))} /></div>
               </div>
               {error && <p className="text-sm text-brand-red">{error}</p>}
               <div className="flex gap-3 justify-end pt-2">

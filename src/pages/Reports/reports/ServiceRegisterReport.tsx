@@ -11,6 +11,7 @@ import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
 import { useToast } from '../../../components/kit/Toast'
 import { trendByDay } from '../../../lib/chartData'
 import { useAuthStore } from '../../../store/authStore'
+import { statusLabel } from '../../../lib/statusLabel'
 
 type RegisterType = 'seva' | 'room' | 'hall' | 'prasad' | 'bhojanshala' | 'annadaan'
 
@@ -162,7 +163,7 @@ export function ServiceRegisterReport() {
       { key: 'service', label: t('reports.seva'), render: r => r.service || '—' },
       { key: 'party', label: t('reports.devotee'), render: partyCell },
       { key: 'detail', label: t('reports.slot'), render: r => r.detail || '—' },
-      { key: 'status', label: t('common.status'), render: r => <span className="badge-gray">{r.status}</span> },
+      { key: 'status', label: t('common.status'), render: r => <span className="badge-gray">{statusLabel(t, r.status)}</span> },
       { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">{money(r.amount_paise)}</span> },
     ],
     room: [

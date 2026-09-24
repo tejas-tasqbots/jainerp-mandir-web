@@ -16,6 +16,7 @@ import {
   BhojanshalaCounter, initialSession, type Session, type SessionRates,
 } from './BhojanshalaCounter'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const
 
@@ -93,7 +94,7 @@ export function AnnadaanList() {
     },
     { key: 'rate', label: t('bhojanshala.rate'), align: 'right', render: s => <>₹{fmtPaise(s.rate_per_plate_paise)}</> },
     { key: 'total', label: t('bhojanshala.total'), align: 'right', render: s => <span className="font-semibold">₹{fmtPaise(s.total_paise)}</span> },
-    { key: 'mode', label: t('bhojanshala.mode'), render: s => <span className="badge-gray">{s.payment_mode}</span> },
+    { key: 'mode', label: t('bhojanshala.mode'), render: s => <span className="badge-gray">{paymentModeLabel(t, s.payment_mode)}</span> },
     enteredByColumn<BhojanshalaSale>(t, enteredByOptions),
     {
       key: 'time', label: t('bhojanshala.time'),

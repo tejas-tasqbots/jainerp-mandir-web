@@ -10,6 +10,7 @@ import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStri
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { tPdf } from '../../lib/i18n'
 
 interface Entry {
   date: string
@@ -112,7 +113,7 @@ export function DayBook() {
     downloadRowsPdf(`day-book-${range.from}_${range.to}.pdf`, 'Day Book',
       ['Date', 'Type', 'Description', 'Reference', 'Debit', 'Credit'],
       filtered.map(e => [new Date(e.date).toLocaleDateString('en-IN'), e.type.replace(/_/g, ' '), e.description, e.reference ?? '', rsFmt(e.debit_paise), rsFmt(e.credit_paise)]),
-      { subtitle: rangeCaption(range, t('dateRange.all')), totals: ['Total', '', '', '', rsFmt(totalDebit), rsFmt(totalCredit)] })
+      { subtitle: rangeCaption(range, tPdf('dateRange.all')), totals: ['Total', '', '', '', rsFmt(totalDebit), rsFmt(totalCredit)] })
   }
 
   return (

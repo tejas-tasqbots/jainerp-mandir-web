@@ -10,6 +10,7 @@ import { emptyPaymentRow, toPayload, sumPaise, cashPaise, type PaymentRow } from
 import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { useProfileStore } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
+import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
@@ -140,7 +141,7 @@ export function AddDonation() {
       } else if (d.donor_id) {
         setDevotee({ name: d.donor_name, mobile: d.donor_mobile, pan_masked: d.donor_pan_masked ?? undefined, is_offline: true })
       }
-    }).catch(() => setError('Could not load donation to edit'))
+    }).catch(() => setError(t('msg.loadDonationFailed')))
   }, [editId])
 
   useEffect(() => {
@@ -187,7 +188,7 @@ export function AddDonation() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.category_id || (form.category_id === OTHER && !form.other_name.trim())) { setError(t('donations.selectCategory')); return }
-    if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
+    if (!form.amount || parseFloat(form.amount) <= 0) { setError(t('msg.validAmount')); return }
     const badHead = extraHeads.findIndex(h => !h.category_id || (h.category_id === OTHER && !h.other_name.trim()) || !h.amount || parseFloat(h.amount) <= 0)
     if (badHead >= 0) { setError(t('donations.headIncomplete', { n: badHead + 2 })); return }
     // Catch a mismatched split here rather than round-tripping to the API.
@@ -409,7 +410,7 @@ export function AddDonation() {
                 <label htmlFor="payment-mode" className="form-label">{t('donations.paymentModeLabel')}</label>
                 <select id="payment-mode" className="form-select" value={form.payment_mode}
                   onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value, payment_account_id: '' }))}>
-                  {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
+                  {paymentModes.map(m => <option key={m.code} value={m.code}>{paymentModeOptionLabel(t, m)}</option>)}
                 </select>
               </div>
               {relevantAccounts.length > 0 && (
@@ -441,15 +442,15 @@ export function AddDonation() {
           {/* UTR / Cheque — single-mode only; split rows carry their own reference. */}
           {!splitMode && (form.payment_mode === 'upi' || form.payment_mode === 'netbanking' || form.payment_mode === 'online') && (
             <div>
-              <label className="form-label">{t('donations.utrNumber')}</label>
-              <input className="form-input" placeholder={t('ui.transactionReference')} value={form.utr_number}
+              <label className="form-label" htmlFor="add-donation-utr-number">{t('donations.utrNumber')}</label>
+              <input id="add-donation-utr-number" className="form-input" placeholder={t('ui.transactionReference')} value={form.utr_number}
                 onChange={e => setForm(f => ({ ...f, utr_number: e.target.value }))} />
             </div>
           )}
           {!splitMode && form.payment_mode === 'cheque' && (
             <div>
-              <label className="form-label">{t('donations.chequeNumber')}</label>
-              <input className="form-input" placeholder={t('ui.chequeNumber')} value={form.cheque_number}
+              <label className="form-label" htmlFor="add-donation-cheque-number">{t('donations.chequeNumber')}</label>
+              <input id="add-donation-cheque-number" className="form-input" placeholder={t('ui.chequeNumber')} value={form.cheque_number}
                 onChange={e => setForm(f => ({ ...f, cheque_number: e.target.value }))} />
             </div>
           )}
@@ -518,8 +519,8 @@ export function AddDonation() {
 
           {/* Note */}
           <div>
-            <label className="form-label">{t('donations.note')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
-            <textarea className="form-textarea" rows={2} placeholder={t('donations.notePlaceholder')}
+            <label className="form-label" htmlFor="add-donation-note">{t('donations.note')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
+            <textarea id="add-donation-note" className="form-textarea" rows={2} placeholder={t('donations.notePlaceholder')}
               value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
           </div>
 

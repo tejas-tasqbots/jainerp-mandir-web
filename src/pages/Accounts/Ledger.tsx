@@ -12,6 +12,7 @@ import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRange
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
 import type { Account, LedgerEntry } from '../../types'
+import { tPdf } from '../../lib/i18n'
 
 export function Ledger() {
   const { t } = useTranslation()
@@ -112,7 +113,7 @@ export function Ledger() {
     downloadRowsPdf(`ledger-${range.from}_${range.to}.pdf`, 'Account Ledger',
       ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
       filtered.map(e => [new Date(e.date).toLocaleDateString('en-IN'), e.description, e.reference ?? '', rsFmt(e.debit_paise), rsFmt(e.credit_paise), rsFmt(e.balance_paise)]),
-      { subtitle: `${account?.name ?? ''} — ${rangeCaption(range, t('dateRange.all'))}`, totals: ['Total', '', '', rsFmt(totalDebit), rsFmt(totalCredit), rsFmt(closingBalance)] })
+      { subtitle: `${account?.name ?? ''} — ${rangeCaption(range, tPdf('dateRange.all'))}`, totals: ['Total', '', '', rsFmt(totalDebit), rsFmt(totalCredit), rsFmt(closingBalance)] })
   }
 
   return (
@@ -125,8 +126,8 @@ export function Ledger() {
 
       <div className="flex items-end gap-3 flex-wrap no-print">
         <div>
-          <label className="form-label !text-xs !mb-0.5">{t('accounts.account')}</label>
-          <select
+          <label className="form-label !text-xs !mb-0.5" htmlFor="ledger-accountId">{t('accounts.account')}</label>
+          <select id="ledger-accountId"
             className="form-select !py-1.5 !text-xs w-64"
             value={accountId}
             onChange={e => {

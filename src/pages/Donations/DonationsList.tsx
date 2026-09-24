@@ -21,6 +21,7 @@ import { useChequeLifecycle } from '../../components/ChequeLifecycle'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import type { Donation, DonationCategory } from '../../types'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
 
 const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
 const PAGE_SIZE = 20
@@ -105,7 +106,7 @@ export function DonationsList() {
     {
       key: 'mode', label: t('donations.mode'),
       filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`) })) },
-      render: d => <span className={paymentModeBadge(d.payment_mode)}>{d.payment_mode}</span>,
+      render: d => <span className={paymentModeBadge(d.payment_mode)}>{paymentModeLabel(t, d.payment_mode)}</span>,
     },
     {
       key: 'eightyG', label: t('donations.eightyG'),
@@ -211,7 +212,9 @@ export function DonationsList() {
       label: t('donations.title'),
       value: `₹${fmtPaise(meta.total_amount_paise)}`,
       deltaPct: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise),
-      sub: t('kit.vsPrevPeriodSub'),
+      // Only beside a percentage: with nothing in the previous period there
+      // is no change to show, and the line stood alone under the total.
+      sub: deltaPct(meta.total_amount_paise, meta.prev_period_amount_paise) != null ? t('kit.vsPrevPeriodSub') : undefined,
       tone: 'income',
     },
     { label: t('kit.receipts'), value: String(meta.total) },
@@ -378,8 +381,8 @@ export function DonationsList() {
               {t('donations.voidModalWarning', { invoiceNo: voidModal.invoiceNo })}
             </p>
             <div className="mb-4">
-              <label className="form-label">{t('donations.reasonForVoiding')}</label>
-              <textarea
+              <label className="form-label" htmlFor="donations-list-voidReason">{t('donations.reasonForVoiding')}</label>
+              <textarea id="donations-list-voidReason"
                 className="form-input"
                 rows={3}
                 value={voidReason}
