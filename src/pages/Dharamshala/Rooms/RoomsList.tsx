@@ -488,7 +488,24 @@ export function RoomsList() {
     setLoading(true)
     try {
       const { data } = await api.get(`/room-bookings?${buildParams(PAGE_SIZE, page)}`)
-      setBookings(data.data || [])
+      const rows: RoomBooking[] = data.data || []
+      // A group booking that the page cut in two - its first or last row on
+      // this page, the rest on the next - is completed here, so the register
+      // still shows it as ONE entry. Only the groups at the page's edges can
+      // be cut; the rest of the page is whole.
+      const edgeGroups = [...new Set([rows[0]?.group_id, rows[rows.length - 1]?.group_id].filter(Boolean))] as string[]
+      for (const gid of edgeGroups) {
+        try {
+          const r = await api.get('/room-bookings', { params: { group_id: gid, limit: 100 } })
+          const have = new Set(rows.map(x => x.id))
+          const missing: RoomBooking[] = (r.data.data || []).filter((x: RoomBooking) => !have.has(x.id))
+          if (missing.length) {
+            const at = rows.findIndex(x => x.group_id === gid)
+            rows.splice(at + rows.filter(x => x.group_id === gid).length, 0, ...missing)
+          }
+        } catch { /* the page still shows what it has */ }
+      }
+      setBookings(rows)
       setTotal(data.meta?.total || 0)
     } catch {
       setBookings([])
