@@ -2377,7 +2377,7 @@
       "statutoryHeading": "Statutory Details on Receipts",
       "statutoryHelp": "These values are managed in <bold>Temple Profile</bold> and are shown here so you can confirm what prints on receipts.",
       "statutorySource": "from Temple Profile",
-      "subheading": "Design the donation receipts your temple issues. Changes preview live on the right.",
+      "subheading": "Design the receipts, bills and counter slips your temple issues. Every change shows at once in the preview.",
       "templateHeading": "Template",
       "thermalNote": "The thermal layout is a compact text-only receipt; the design templates below apply to A4 only.",
       "upiId": "UPI ID",
@@ -2397,9 +2397,9 @@
       "previewStay": "Room bill",
       "groupStay": "Accommodation",
       "groupStayHint": "What a guest is handed at checkout",
-      "groupBrand": "BRAND",
+      "groupBrand": "Brand",
       "groupBrandHint": "your colour and logo on every document",
-      "groupWording": "WORDING",
+      "groupWording": "Wording",
       "groupWordingHint": "your words instead of ours",
       "step": {
         "design": "Design",
@@ -2446,7 +2446,15 @@
       "printInThis": "Print receipts in {{lang}}",
       "thenSave": "Then press Save Receipt Settings.",
       "printsIn": "Receipts print in {{lang}}. To change it: Printing → Language.",
-      "previewLangBadge": "Preview in {{edit}} · prints in {{print}}"
+      "previewLangBadge": "Preview in {{edit}} · prints in {{print}}",
+      "badge": {
+        "a5": "A5",
+        "default": "Default",
+        "gst": "GST",
+        "new": "New",
+        "rule_46": "Rule 46",
+        "statutory": "Statutory"
+      }
     },
     "save": "Save",
     "saved": "Saved",
@@ -3658,7 +3666,12 @@
       "integrations": "Integration",
       "device_registry": "Device",
       "user_sessions": "Signed-in device",
-      "guest_id_documents": "Guest ID documents"
+      "guest_id_documents": "Guest ID documents",
+      "vendor_items": "Vendor products",
+      "room_charge_items": "Extra charges price list",
+      "room_booking_charges": "Stay extras",
+      "expense_items": "Expense items",
+      "donation_lines": "Donation heads"
     },
     "action": {
       "create": "Created",

@@ -32,12 +32,12 @@ export const ENTITY_GROUPS: Record<string, string[]> = {
     'donations', 'donors', 'bolis', 'donation_requests', 'donation_categories', 'funds',
     'certificates_80g', 'form_10bd_entries',
   ],
-  dharamshala: ['room_bookings', 'hall_bookings', 'rooms', 'halls', 'guests', 'guest_id_documents'],
+  dharamshala: ['room_bookings', 'hall_bookings', 'rooms', 'halls', 'guests', 'guest_id_documents', 'room_charge_items', 'room_booking_charges'],
   counters: [
     'seva_bookings', 'sevas', 'prasad_sales', 'prasad_items', 'bhojanshala_sales',
     'annadaan_entries', 'annadaan_sponsorships',
   ],
-  expenses: ['expenses', 'vendors', 'creditors', 'expense_categories', 'tds_records'],
+  expenses: ['expenses', 'vendors', 'creditors', 'expense_categories', 'tds_records', 'vendor_items', 'expense_items'],
   accounts: [
     'accounts', 'account_opening_balances', 'contra_entries', 'bank_reconciliations', 'journal_entries',
     'loans', 'fixed_assets', 'depreciation', 'investments', 'specified_persons', 'gst_rates',

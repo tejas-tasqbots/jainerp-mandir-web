@@ -495,11 +495,19 @@ export function receiptParts(
   if (m.bank_ifsc) pay.push([esc(L.ifsc), esc(m.bank_ifsc)]);
   if (m.bank_name) pay.push([esc(L.bank), esc(m.bank_name)]);
   const paidOn = r.paid_on ? new Date(String(r.paid_on)) : null;
+  // A tender dated without a time ('2026-09-24', or that day at midnight UTC,
+  // which is how a DATE column serialises) prints as the date alone. It used
+  // to read "05:30 am" - midnight UTC in IST - a time nobody took the money at.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z)?$/.test(String(r.paid_on ?? ''));
   const paidOnStr = paidOn && !Number.isNaN(paidOn.getTime())
-    ? paidOn.toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
-    })
+    ? dateOnly
+      ? new Date(String(r.paid_on).slice(0, 10) + 'T00:00:00Z').toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC',
+      })
+      : paidOn.toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+      })
     : '';
 
   const items = (r.items ?? []).filter((it) => it && typeof it.label === 'string');
@@ -573,7 +581,11 @@ export function receiptParts(
     border: .25mm solid #EFE3CF; border-radius: 1.5mm; padding: 1.6mm 2.4mm; background: #FFFBF3; }
   .facts .k { color: #7A6550; white-space: nowrap; }
   .facts .v { font-weight: 600; color: #2B2118; }
-  .facts .v:last-child:nth-child(2n) { grid-column: span 3; }
+  /* An odd last fact (a value in the row's first pair) takes the rest of the
+     row. It was nth-child(2n) - every value - so with two facts the second
+     value was pushed onto a line of its own: "Event Hall booking  Date" /
+     "11 April 2027". */
+  .facts .v:last-child:nth-child(4n+2) { grid-column: span 3; }
   /* The lines: what was given or bought, each with its amount. The trust's
      colour heads the table, as the ribbon does the sheet. */
   .items { margin-top: 2.6mm; width: 100%; border-collapse: collapse; font-size: 8pt; }

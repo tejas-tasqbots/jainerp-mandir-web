@@ -629,6 +629,19 @@ const STAY_TEMPLATES: TemplateDef[] = [
 
 export type PreviewMode = 'receipt' | 'stay' | '80g' | 'slip'
 
+/**
+ * The sample's number, in the series the document really prints under and in
+ * THIS financial year (April-March, in India). It was a fixed
+ * 'DON/2025-26/000001' on every preview - a donation number on the room bill
+ * and the counter slip, a year behind the date printed beside it.
+ */
+function sampleNumber(mode: PreviewMode): string {
+  const now = new Date(Date.now() + 330 * 60_000)
+  const y = now.getUTCMonth() >= 3 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
+  const series = mode === 'stay' ? 'ROOM' : mode === 'slip' ? 'PRS' : 'DON'
+  return `${series}/${y}-${String((y + 1) % 100).padStart(2, '0')}/000001`
+}
+
 function buildPreviewData(
   form: typeof BLANK,
   mode: PreviewMode = 'receipt',
@@ -661,7 +674,7 @@ function buildPreviewData(
   const has80g = form.reg_80g_number.trim().length > 0
 
   return {
-    receipt_number: 'DON/2025-26/000001',
+    receipt_number: sampleNumber(mode),
     date: new Date().toISOString(),
     is_voided: false,
     // The encoded QR, when the screen has one. Every design draws it from here;
@@ -860,8 +873,20 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const [logoUploading, setLogoUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  /** A design's badge in the screen's language ('New', 'Default', 'Statutory'...). */
+  const badgeLabel = (b: string) => t(`settings.receipts.badge.${b.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { defaultValue: b }) as string
   const [previewMode, setPreviewMode] = useState<PreviewMode>('receipt')
   const [step, setStep] = useState<Step>('design')
+  // The preview shows what the step is about: on Stay the room bill, on Slips
+  // a counter slip. It stayed on the donation receipt, so a trust choosing
+  // its room bill design was looking at a donation. Leaving those steps goes
+  // back to the receipt; a mode picked by hand elsewhere is left alone.
+  const goToStep = (next: Step) => {
+    setStep(next)
+    if (next === 'stay') setPreviewMode('stay')
+    else if (next === 'slips') setPreviewMode('slip')
+    else setPreviewMode((m) => (m === 'stay' || m === 'slip' ? 'receipt' : m))
+  }
   /**
    * The language the WORDING step is editing, which is also the language the
    * preview renders in while that step is open.
@@ -1192,7 +1217,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           {STEPS.map((sid, i) => (
             <button
               key={sid} type="button" role="tab" aria-selected={step === sid}
-              onClick={() => setStep(sid)} data-testid={`receipt-step-${sid}`}
+              onClick={() => goToStep(sid)} data-testid={`receipt-step-${sid}`}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 step === sid
                   ? 'bg-navy-900 text-white'
@@ -1215,21 +1240,22 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length })}</span>
           </div>
           <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {TEMPLATES.map(t => {
-              const active = form.receipt_template === t.id
+            {TEMPLATES.map(tpl => {
+              const active = form.receipt_template === tpl.id
               return (
-                <button type="button" key={t.id} onClick={() => set('receipt_template', t.id)}
+                <button type="button" key={tpl.id} onClick={() => set('receipt_template', tpl.id)}
+                  aria-pressed={active} data-testid="design-card" data-design={tpl.id}
                   className={`relative text-left border rounded-lg p-2.5 transition-all ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'}`}>
                   {active && (
                     <span className="absolute top-2 right-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-navy-900 text-white">
                       <Check size={12} />
                     </span>
                   )}
-                  <div className="rounded-md overflow-hidden bg-white" dangerouslySetInnerHTML={{ __html: t.thumb(form.primary_color) }} />
+                  <div className="rounded-md overflow-hidden bg-white" dangerouslySetInnerHTML={{ __html: tpl.thumb(form.primary_color) }} />
                   <div className="flex items-center gap-1.5 mt-2">
-                    <p className="font-semibold text-sm text-slate-800">{t.label}</p>
-                    {t.badge && (
-                      <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{t.badge}</span>
+                    <p className="font-semibold text-sm text-slate-800">{tpl.label}</p>
+                    {tpl.badge && (
+                      <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{badgeLabel(tpl.badge)}</span>
                     )}
                   </div>
                 </button>
@@ -1860,7 +1886,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         {/* Sticky, because this form is four sections long: the Save button
             used to sit past the end of a very tall scroll, so a trust that
             changed the template at the top had to find its way back down. */}
-        <div className="sticky bottom-0 z-10 -mx-1 px-1 pt-3 pb-3 bg-gradient-to-t from-white via-white to-white/0">
+        {/* Its own bar: over a white-to-clear gradient the button floated on
+            top of the design cards and the word list it was saving. */}
+        <div className="sticky bottom-0 z-10 -mx-1 px-3 py-3 bg-white/95 backdrop-blur border-t border-slate-200 rounded-b-lg shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
           <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto justify-center">
             {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
             {saving ? t('settings.saving') : t('settings.receipts.saveButton')}
@@ -1887,7 +1915,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               {previewMode === 'receipt' ? (selected?.label || 'Classic')
                 : previewMode === 'stay' ? (stayDesign?.label || selected?.label || 'Classic')
                   : previewMode === '80g' ? '80G' : t('settings.slips.heading')}
-              {previewMode === 'receipt' && selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{selected.badge}</span>}
+              {previewMode === 'receipt' && selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{badgeLabel(selected.badge)}</span>}
             </span>
             {/* Three documents print from this screen; all three are previewable. */}
             <div className="w-full flex gap-1">

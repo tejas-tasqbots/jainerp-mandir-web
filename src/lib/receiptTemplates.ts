@@ -326,10 +326,24 @@ function paymentModeText(r: ReceiptData): string {
  * the PDF abroad, would otherwise read a different time than the receipt was
  * issued at.
  */
+/** A tender dated without a time ('2026-09-24', or that day at midnight UTC as a DATE column serialises). */
+function isDateOnly(value: unknown): boolean {
+  const s = String(value ?? '')
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(s)
+}
+
 function fmtDateTime(value: unknown): string {
   if (!value) return ''
   const d = new Date(String(value))
   if (Number.isNaN(d.getTime())) return ''
+  // A date with no time (a backdated cheque, an imported register) prints as
+  // the date alone. It used to print midnight UTC as "05:30 am" - a time the
+  // money was never taken at.
+  if (isDateOnly(value)) {
+    return new Date(String(value).slice(0, 10) + 'T00:00:00Z').toLocaleDateString(dateLocale, {
+      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
+    })
+  }
   // `month: 'long'`, matching the document date every design already prints.
   // 'short' renders September as "Sept" under en-IN, which sits beside a
   // "19 September 2026" header looking like a typo.
@@ -1323,7 +1337,7 @@ function buildElegant(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
 function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
   // The registration numbers keep this footer alive for a trust that shows no
   // 80G at all — they identify the issuer and are not part of the 80G claim.
-  const hasReg = (mandir.show_80g && (mandir.reg_80g_number || mandir.pan))
+  const hasReg = (mandir.show_80g && (mandir.reg_80g_number || mandir.pan)) || (mandir.show_gstin && mandir.gstin)
     || !!mandir.pan || !!mandir.registration_number || !!mandir.darpan_number
   return `
   <style>
@@ -1371,8 +1385,9 @@ function buildTemple(r: ReceiptData, dateStr: string, mandir: NonNullable<Receip
     </div>
     <div class="orange-line"></div>
     ${hasReg ? `<div class="tax-row">
-      <span>Income Tax Exemption (80-G) Number: <b>${mandir.reg_80g_number || '—'}</b></span>
+      ${isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number ? `<span>Income Tax Exemption (80-G) Number: <b>${mandir.reg_80g_number}</b></span>` : ''}
       ${mandir.pan ? `<span>PAN: <b>${mandir.pan}</b></span>` : ''}
+      ${mandir.show_gstin && mandir.gstin ? `<span>GSTIN: <b>${mandir.gstin}</b></span>` : ''}
       ${mandir.registration_number ? `<span>${L.registrationNo}: <b>${mandir.registration_number}</b></span>` : ''}
       ${mandir.darpan_number ? `<span>${L.darpanNo}: <b>${mandir.darpan_number}</b></span>` : ''}
     </div>` : ''}
@@ -1515,6 +1530,9 @@ function buildTabular(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
 
 // ── TEMPLATE 8: Acknowledgement (Tirumala / Formal letter style) ─────────────
 function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullable<ReceiptData['mandir']>, color: string): string {
+  // Identity with the GSTIN: this design has no reg block, so a room bill
+  // printed on it named no GSTIN at all.
+  const identity = [identityLine(mandir), mandir.show_gstin && mandir.gstin ? `GSTIN ${mandir.gstin}` : ''].filter(Boolean).join(' &nbsp;|&nbsp; ')
   return `
   <style>
     /* line-height 1.7 over ~25 lines of body copy was most of this design's
@@ -1557,7 +1575,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
     <div class="header">
       ${mandir.show_logo ? logoTag(mandir) : ''}
       <h1>${mandir.name}</h1>
-      ${(mandir.show_80g && mandir.reg_80g_number) ? `<h2>${mandir.reg_80g_number}</h2>` : ''}
+      ${(isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number) ? `<h2>${mandir.reg_80g_number}</h2>` : ''}
       <div class="addr">${mandir.address}${mandir.mobile ? '<br>Phone: '+mandir.mobile : ''}${mandir.email ? '<br>Email: '+mandir.email : ''}</div>
     </div>
     <div class="txn-row">
@@ -1603,7 +1621,7 @@ function buildAcknowledgement(r: ReceiptData, dateStr: string, mandir: NonNullab
         </div>
       </div>
     </div>
-    ${identityLine(mandir) ? `<div class="footer-note" style="font-style:normal">${identityLine(mandir)}</div>` : ''}
+    ${identity ? `<div class="footer-note" style="font-style:normal">${identity}</div>` : ''}
     <div class="footer-note">PLEASE SEE OVERLEAF FOR PARTICULARS OF THE TRUST</div>
   </div>`
 }
@@ -1652,6 +1670,7 @@ function buildJainTirth(r: ReceiptData, dateStr: string, mandir: NonNullable<Rec
       <div class="reg-bar">
         ${isDonationDoc(r) && mandir.show_80g && mandir.reg_80g_number ? `Reg. No: <b>${mandir.reg_80g_number}</b><br>` : ''}
         ${mandir.pan ? `PAN No: <b>${mandir.pan}</b><br>` : ''}
+        ${mandir.show_gstin && mandir.gstin ? `GSTIN: <b>${mandir.gstin}</b><br>` : ''}
         ${mandir.registration_number ? `${L.registrationNo}: <b>${mandir.registration_number}</b><br>` : ''}
         ${mandir.darpan_number ? `${L.darpanNo}: <b>${mandir.darpan_number}</b><br>` : ''}
         ${L.date}: <b>${dateStr}</b>
@@ -2032,11 +2051,14 @@ function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir'
     // A single line that only restates the purpose ("General Donation ₹1,500")
     // adds a table that says nothing the purpose row does not, so one line
     // with no quantity stays the classic one-purpose sheet.
-    items: lines.length > 1 || lines.some((l) => l.qty) ? lines : null,
+    // ...unless tax was charged: a GST bill must show its taxable value and
+    // each tax, and they are laid out under the lines (a hall booking is one
+    // line of ₹25,000 + 18% GST and printed only "₹29,500").
+    items: lines.length > 1 || lines.some((l) => l.qty) || gstShown ? lines : null,
     items_labels: { description: L.description, amount: L.amountInr },
     // Under a table whose column already reads "Amount", the figure in the
     // box is the total, and saying so keeps one heading from printing twice.
-    amount_label: lines.length > 1 || lines.some((l) => l.qty) ? L.total : null,
+    amount_label: lines.length > 1 || lines.some((l) => l.qty) || gstShown ? L.total : null,
     facts,
     summary,
     settlement,
@@ -2175,7 +2197,6 @@ function buildHeritage(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
     <div class="name">${mandir.name}</div>
     <div class="addr">${mandir.address}${mandir.mobile ? ' · ' + mandir.mobile : ''}</div>
     ${regBlock(mandir, r)}
-    <div class="regs">${[mandir.pan ? `PAN ${mandir.pan}` : '', mandir.show_gstin && mandir.gstin ? `GSTIN ${mandir.gstin}` : ''].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>
     <div class="kind"><span>${docTitle(r, L.donationReceipt)}</span></div>
     <div class="meta"><span>${L.receiptNo}: <b>${r.receipt_number}</b></span><span>${L.date}: <b>${dateStr}</b></span></div>
     <div class="to-cap">${L.receivedWithThanks}</div>
@@ -3000,6 +3021,7 @@ function buildStaySlip(r: ReceiptData, dateStr: string, mandir: NonNullable<Rece
       ${logoTag(mandir)}
       <div class="trust">${mandir.name}</div>
       <div class="addr">${[mandir.address, mandir.mobile].filter(Boolean).join(' · ')}</div>
+      ${mandir.show_gstin && mandir.gstin ? `<div class="addr">GSTIN ${mandir.gstin}</div>` : ''}
       <div class="kind">${docTitle(r, L.guestFolio)}</div>
     </div>
     <div class="meta">
@@ -3432,6 +3454,11 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .upi-cap { font-size:9.5px; }
     .upi-id { font-family:monospace; }
     .copy-banner { text-align:center; font-size:10px; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+    /* A bill line: the DESCRIPTION wraps and the amount keeps its width - the
+       reverse of a label row. "Room 101 · 2 nights × ₹1500" in Hindi ran 29px
+       off a 58mm roll with the label held on one line. */
+    .lines .tr span:first-child { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+    .lines .tr span:last-child { flex:none; word-break:normal; white-space:nowrap; }
   </style>
   <div class="roll">
     <div class="name">${mandir.name}</div>
@@ -3445,15 +3472,42 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     ${t.show('pan') && donorPan(r) ? row(L.pan, donorPan(r)!) : ''}
     ${t.show('category') ? row(L.category, r.category || L.generalDonation) : ''}
     ${t.show('payment_mode') ? row(L.paymentMode, paymentModeText(r)) : ''}
+    ${thermalLines(r, mandir, row)}
     <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
     ${t.show('amount_in_words') ? `<div class="words">${amountInWords(r.amount_paise)}</div>` : ''}
     ${r.is_80g_eligible && mandir.show_80g ? `<div class="note">${L.valid80g}</div>` : ''}
     ${t.show('registration') && mandir.registration_number ? row(L.registrationNo, mandir.registration_number) : ''}
     ${t.show('registration') && mandir.darpan_number ? row(L.darpanNo, mandir.darpan_number) : ''}
     ${t.show('upi_qr') ? upiQrBlock(r) : ''}
-    ${t.show('footer') ? `<div class="note">${mandir.footer || L.thankYou}</div>` : ''}
+    ${t.show('footer') ? `<div class="note">${mandir.footer || (isDonationDoc(r) ? L.thankYou : L.thanks)}</div>` : ''}
     <div class="feed"></div>
   </div>`
+}
+
+/**
+ * A bill's lines and its GST on the roll. The roll printed only the total, so
+ * a prasad sale of ₹787.50 on an 80 mm printer never said it was ₹750 of
+ * ladoo and ₹37.50 of GST - the one thing a GST bill has to say - and a
+ * multi-head gift never listed its heads. One row per line (with its quantity),
+ * then the taxable value and each tax, only when tax was actually charged by a
+ * trust registered to charge it.
+ */
+function thermalLines(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir']>, row: (k: string, v: string) => string): string {
+  const lines = (r.lines ?? []).filter((l) => l && typeof l.label === 'string')
+  const tax = r.tax ?? null
+  const taxTotal = (tax?.cgst_paise ?? 0) + (tax?.sgst_paise ?? 0) + (tax?.igst_paise ?? 0)
+  const gst = taxTotal > 0 && !!mandir.gst_enabled
+  const itemised = lines.length > 1 || lines.some((l) => l.qty) || gst
+  if (!itemised || !lines.length) return ''
+  const out = lines.map((l) => row(`${l.label}${l.qty ? ` × ${l.qty}` : ''}`, `₹${fmtRs(Number(l.amount_paise))}`))
+  if (gst) {
+    out.push(row(L.subtotal, `₹${fmtRs(r.amount_paise - taxTotal)}`))
+    for (const k of ['cgst', 'sgst', 'igst'] as const) {
+      const v = tax?.[`${k}_paise`] ?? 0
+      if (v > 0) out.push(row(k.toUpperCase() + (tax?.rate_pct ? ` @ ${k === 'igst' ? tax.rate_pct : tax.rate_pct / 2}%` : ''), `₹${fmtRs(v)}`))
+    }
+  }
+  return `<div class="lines" style="border-top:1px dashed #000;margin-top:4px;padding-top:4px">${out.join('')}</div>`
 }
 
 /**
