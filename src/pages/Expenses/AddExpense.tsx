@@ -6,6 +6,10 @@ import { api, parsePaise, todayIst, fmtPaise } from '../../lib/api'
 import { useAccounts, usePaymentModes, useResourceNames, autoSelectAccount } from '../../lib/useDropdownOptions'
 import { compressImage } from '../../lib/imageCompress'
 import { ExpenseItemsEditor } from '../../components/Expenses/ExpenseItemsEditor'
+import { VendorPicker, type VendorRef } from '../../components/Expenses/VendorPicker'
+
+/** The category dropdown's "Other…": type a category the trust has not set up yet. */
+const OTHER = '__other__'
 import { itemsPayload, itemsTotals, newItemRow, type ItemRow, type VendorItem } from '../../components/Expenses/expenseItems'
 
 export function AddExpense() {
@@ -15,9 +19,12 @@ export function AddExpense() {
   const [error, setError] = useState('')
 
   const [funds, setFunds] = useState<{ id: string; name: string }[]>([])
+  // The vendor, picked from Vendors / Suppliers or added on the spot.
+  const [vendor, setVendor] = useState<VendorRef | null>(null)
   const [form, setForm] = useState({
     vendor_name: '',
     category: '',
+    other_category: '',
     description: '',
     amount: '',
     payment_mode: 'cash',
@@ -47,12 +54,10 @@ export function AddExpense() {
   // Vendors master → autocomplete the Vendor/Payee field so an expense links to
   // an existing vendor (vendor_id) instead of silently creating a duplicate on
   // every typo. Typing a new name still works (backend find-or-creates).
-  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([])
   // Scanned bill (plan §05) — compressed client-side, stored inline.
   const [billPhoto, setBillPhoto] = useState<string>('')
   const [billName, setBillName] = useState('')
   useEffect(() => {
-    api.get('/vendors?limit=500').then(r => setVendors(r.data.data || [])).catch(() => {})
     api.get('/funds', { params: { is_active: 'true', limit: '100' } })
     .then(r => setFunds(r.data.data ?? [])).catch(() => setFunds([]))
 }, [])
@@ -69,16 +74,21 @@ export function AddExpense() {
   const [itemised, setItemised] = useState(false)
   const [items, setItems] = useState<ItemRow[]>(() => [newItemRow()])
   const [products, setProducts] = useState<VendorItem[]>([])
-  const matchedVendor = vendors.find(v => v.name.toLowerCase() === form.vendor_name.trim().toLowerCase())
   useEffect(() => {
-    if (!matchedVendor) { setProducts([]); return }
-    api.get(`/vendors/${matchedVendor.id}/items`).then(r => setProducts(r.data.data ?? [])).catch(() => setProducts([]))
-  }, [matchedVendor?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!vendor) { setProducts([]); return }
+    api.get(`/vendors/${vendor.id}/items`).then(r => setProducts(r.data.data ?? [])).catch(() => setProducts([]))
+  }, [vendor?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const billCategory = form.category === OTHER ? form.other_category.trim() : form.category
+  // Every product on the vendor's list brings its own category, so the bill's
+  // category is asked only when something has none: a one-amount bill, an
+  // "Other…" item, or a product with no head of its own.
+  const needsBillCategory = !itemised || items.some(r => r.other || (!!r.vendor_item_id && !r.category))
   const totals = itemsTotals(items)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const itemList = itemised ? itemsPayload(items, form.category) : []
+    if (form.category === OTHER && !form.other_category.trim()) { setError(t('expenses.selectCategory')); return }
+    const itemList = itemised ? itemsPayload(items, billCategory) : []
     if (itemised) {
       if (!itemList.length || totals.total <= 0) { setError(t('expenseItems.needOne')); return }
       const bad = itemList.findIndex(it => !it.description || it.rate_paise <= 0)
@@ -102,14 +112,13 @@ export function AddExpense() {
         is_recurring: form.is_recurring,
         recurrence_rule: form.is_recurring ? 'monthly' : undefined,
       }
-      if (form.vendor_name) {
-        payload.vendor_name = form.vendor_name
-        // Link to the existing vendor when the name matches the master, so we
-        // don't create a duplicate vendor row for the same supplier.
-        const matched = vendors.find(v => v.name.toLowerCase() === form.vendor_name.trim().toLowerCase())
-        if (matched) payload.vendor_id = matched.id
+      if (vendor) {
+        payload.vendor_id = vendor.id
+        payload.vendor_name = vendor.name
       }
-      if (form.category) payload.category = form.category
+      // "Other…" sends the typed name; the API files it under that category,
+      // creating it the first time.
+      if (billCategory) payload.category = billCategory
       // Which fund paid for this. Without it the fund utilisation report
       // can only ever show what a fund received (tenant-migration 036).
       if (form.fund_id) payload.fund_id = form.fund_id
@@ -149,23 +158,25 @@ export function AddExpense() {
       <form onSubmit={handleSubmit} className="card">
         <div className="card-body space-y-5">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">{t('expenses.vendorPayee')}</label>
-              <input className="form-input" placeholder={t('expenses.vendorPlaceholder')} value={form.vendor_name}
-                list="vendor-options" autoComplete="off"
-                onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} />
-              <datalist id="vendor-options">
-                {vendors.map(v => <option key={v.id} value={v.name} />)}
-              </datalist>
-            </div>
-            <div>
-              <label className="form-label">{t('expenses.category')}</label>
-              <select className="form-select" value={form.category}
+            <VendorPicker label={t('expenses.vendorPayee')} value={vendor} onChange={setVendor} />
+            {needsBillCategory && <div>
+              {/* With an itemised bill each product brings its own head; this
+                  one is for anything typed under "Other…". */}
+              <label className="form-label" htmlFor="expense-category">
+                {itemised ? t('expenseItems.billCategory') : t('expenses.category')}
+              </label>
+              <select id="expense-category" className="form-select" value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 <option value="">{t('expenses.selectCategory')}</option>
                 {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
               </select>
-            </div>
+              {form.category === OTHER && (
+                <input className="form-input mt-1.5" autoFocus maxLength={100} data-testid="other-expense-category"
+                  placeholder={t('expenseItems.newCategoryName')} aria-label={t('expenseItems.newCategoryName')}
+                  value={form.other_category} onChange={e => setForm(f => ({ ...f, other_category: e.target.value }))} />
+              )}
+            </div>}
 
             <div>
               <label className="form-label" htmlFor="expense-fund">{t('expenses.fund')}</label>
@@ -184,13 +195,13 @@ export function AddExpense() {
             <input type="checkbox" checked={itemised} onChange={e => setItemised(e.target.checked)}
               className="w-4 h-4 accent-brand-blue" data-testid="itemised-toggle" />
             {t('expenseItems.toggle')}
-            {matchedVendor && products.length > 0 && (
+            {vendor && products.length > 0 && (
               <span className="text-xs text-slate-500">· {t('expenseItems.vendorHas', { count: products.length })}</span>
             )}
           </label>
 
           {itemised && (
-            <ExpenseItemsEditor rows={items} onChange={setItems} products={products} categories={expenseCategories} />
+            <ExpenseItemsEditor rows={items} onChange={setItems} products={products} />
           )}
 
           <div>

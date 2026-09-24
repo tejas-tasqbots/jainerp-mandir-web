@@ -11,7 +11,7 @@ import { useProfileStore } from '../../../store/profileStore'
 import { trendByDay } from '../../../lib/chartData'
 import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
-  DataTable, filterStateToParams,
+  DataTable, filterStateToParams, type RowAction,
   type ColumnDef, type ColumnFilterState,
 } from '../../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../../components/kit/DateRangePicker'
@@ -203,8 +203,15 @@ export function RoomsList() {
       ),
     },
     {
+      // The persons ride under the room number: a column of its own for one
+      // small figure was part of what pushed the actions off the screen.
       key: 'room', label: t('dharamshala.room'),
-      render: b => <span className="text-slate-600">{b.room_number || b.room_id}</span>,
+      render: b => (
+        <div>
+          <span className="text-slate-700">{b.room_number || b.room_id}</span>
+          <span className="block text-xs text-slate-400">{t('dharamshala.personsN', { count: b.persons_count })}</span>
+        </div>
+      ),
     },
     {
       // EXPECTED on top, ACTUAL underneath when they differ.
@@ -217,16 +224,19 @@ export function RoomsList() {
       //
       // Only shown when they DISAGREE. A stay that went to plan is the common
       // case and a second identical line under every row is noise.
-      key: 'check_in', label: t('dharamshala.checkInExpected'),
-      render: b => <StayTime planned={b.planned_check_in_at} date={b.check_in_date} actual={b.checked_in_at} />,
-    },
-    {
-      key: 'check_out', label: t('dharamshala.checkOutExpected'),
-      render: b => <StayTime planned={b.planned_check_out_at} date={b.check_out_date} actual={b.checked_out_at} />,
-    },
-    {
-      key: 'persons', label: t('dharamshala.persons'),
-      render: b => <span className="block text-center">{b.persons_count}</span>,
+      //
+      // Arrival and departure share ONE column, arrival above departure. As two
+      // columns under three-line headings they made the register wider than a
+      // laptop screen and pushed the actions off its right edge.
+      key: 'stay', label: t('dharamshala.stayColumn'),
+      render: b => (
+        <div className="space-y-1 min-w-[8.5rem]">
+          <div className="flex gap-1.5"><span className="text-[10px] uppercase tracking-wide text-slate-400 w-7 shrink-0 pt-0.5">{t('dharamshala.inShort')}</span>
+            <StayTime planned={b.planned_check_in_at} date={b.check_in_date} actual={b.checked_in_at} /></div>
+          <div className="flex gap-1.5"><span className="text-[10px] uppercase tracking-wide text-slate-400 w-7 shrink-0 pt-0.5">{t('dharamshala.outShort')}</span>
+            <StayTime planned={b.planned_check_out_at} date={b.check_out_date} actual={b.checked_out_at} /></div>
+        </div>
+      ),
     },
     {
       // Everything actually collected (advance + every tender at checkout),
@@ -243,8 +253,12 @@ export function RoomsList() {
         // status. The API now zeroes the bill (tenant migration 047 backfills
         // the rows that were cancelled before it did), and what the trust is
         // HOLDING shows as a refund due instead, which is the actionable half.
+        // Refunds already given back are not held any more (tenant migration
+        // 057 refunds at checkout): a stay paid 1,200, billed 600 and refunded
+        // 600 is settled, not "-600".
+        const refunded = b.refunded_paise ?? 0
         if (b.status === 'cancelled') {
-          const held = b.paid_paise ?? 0
+          const held = (b.paid_paise ?? 0) - refunded
           return held > 0
             ? (
               <span className="text-brand-blue font-semibold" title={t('dharamshala.refundDueHint')}>
@@ -257,7 +271,7 @@ export function RoomsList() {
         // A guest who leaves early is billed for fewer nights, so what they
         // already paid can EXCEED the final total. Show that as a refund due
         // rather than a silent 0 — the counter has to hand money back.
-        const over = (b.paid_paise ?? 0) - (b.total_paise ?? 0)
+        const over = (b.paid_paise ?? 0) - refunded - (b.total_paise ?? 0)
         if (due <= 0 && over > 0) {
           return (
             <span className="text-brand-blue font-semibold" title={t('dharamshala.refundDueHint')}>
@@ -278,154 +292,58 @@ export function RoomsList() {
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
       render: b => statusBadge(b.status),
     },
-    {
-      key: 'actions', label: t('common.actions'),
-      render: b => (
-        <div className="flex gap-1">
-          {(b.status === 'confirmed' || b.status === 'booked') && (
-            <button onClick={() => setCheckinFor(b)} className="btn-success btn-sm">{t('dharamshala.checkInAction')}</button>
-          )}
-          {b.status === 'checked_in' && (
-            <button onClick={() => setCheckoutFor(b)} className="btn-secondary btn-sm">{t('dharamshala.checkOutAction')}</button>
-          )}
-          {/* An extra bed, a meal, laundry - on the bill while the stay is open. */}
-          {(b.status === 'confirmed' || b.status === 'booked' || b.status === 'checked_in') && (
-            <button
-              onClick={() => setExtrasFor(b)}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('roomCharges.title')} aria-label={t('roomCharges.title')}
-            >
-              <PackagePlus size={14} />
-            </button>
-          )}
-          {/* Several rooms booked together print on one combined bill. */}
-          {b.group_id && b.status !== 'cancelled' && (
-            <button
-              onClick={() => printDonationReceipt(b.id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed')))}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('dharamshala.printGroupBill')} aria-label={t('dharamshala.printGroupBill')}
-            >
-              <Files size={14} />
-            </button>
-          )}
-          {/* A checked-out row used to render an EMPTY actions cell — the bill
-              it just generated was unreachable. The bill is the whole point of
-              checking out, so it is always available afterwards. */}
-          {b.status === 'checked_out' && (
-            <button
-              onClick={() => viewBill(b.id)}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('dharamshala.viewBill')} aria-label={t('dharamshala.viewBill')}
-            >
-              <FileText size={14} />
-            </button>
-          )}
-          {/* Correcting the times. A clerk who writes up an arrival an hour late,
-              or types the wrong day, had no way back - and on a checked-out stay
-              this re-bills, which is how an extension gets charged after the
-              fact. */}
-          {b.status !== 'cancelled' && (
-            <button
-              onClick={() => openTimes(b)}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('dharamshala.editTimes')} aria-label={t('dharamshala.editTimes')}
-            >
-              <Clock size={14} />
-            </button>
-          )}
-          {/* Giving money back. A cancelled booking that took an advance left the
-              trust holding money with nothing to do about it: "what if the
-              booking of room is cancel how to refund". Also covers a guest
-              overcharged at checkout, which is the same transaction. */}
-          {refundable(b) > 0 && (
-            <button
-              onClick={() => openRefund(b)}
-              className="p-1 text-slate-400 hover:text-brand-blue rounded"
-              title={t('dharamshala.refund')} aria-label={t('dharamshala.refund')}
-            >
-              <Undo2 size={14} />
-            </button>
-          )}
-          {/* A guest can leave owing money — checkout does not require the bill
-              to be settled. Without this the balance was simply stranded: the
-              row showed ₹1,300 due and offered no way to take it. Available on
-              any live booking with a balance, checked out or not. */}
-          {b.status !== 'cancelled' && depositHeld(b) > 0 && (
-            <button
-              onClick={() => { setDepositModal(b); setForfeitAmt(''); setSettleError('') }}
-              className="p-1 text-slate-400 hover:text-amber-600 rounded"
-              title={t('dharamshala.settleDeposit')} aria-label={t('dharamshala.settleDeposit')}
-            >
-              <ShieldCheck size={14} />
-            </button>
-          )}
-          {b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0 && (
-            <button
-              onClick={() => openCollect(b)}
-              className="p-1 text-slate-400 hover:text-brand-green rounded"
-              title={t('dharamshala.collectPayment')} aria-label={t('dharamshala.collectPayment')}
-            >
-              <IndianRupee size={14} />
-            </button>
-          )}
-          {/* The guest-facing document, as opposed to the bill above: it carries
-              the gapless ROOM/FY number and the GST split, and renders through
-              the same client-side templates every other receipt uses. */}
-          {b.status === 'checked_out' && b.invoice_no && (
-            <button
-              onClick={() => printDonationReceipt(b.id, '/room-bookings').catch(() => {})}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('common.printReceipt', { defaultValue: 'Print receipt' })}
-              aria-label={t('common.printReceipt', { defaultValue: 'Print receipt' })}
-            >
-              <Receipt size={14} />
-            </button>
-          )}
-          {(b.status === 'confirmed' || b.status === 'booked') && (
-            <button
-              onClick={() => setCancelModal({ id: b.id, guestName: b.guest_name })}
-              className="p-1 text-slate-400 hover:text-brand-red rounded"
-              title={t('dharamshala.cancelBooking')} aria-label={t('dharamshala.cancelBooking')}
-            >
-              <X size={14} />
-            </button>
-          )}
-          {b.status !== 'cancelled' && (
-            <button
-              onClick={() => setIdDocsFor(b)}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('guestId.title')} aria-label={t('guestId.title')}
-            >
-              <IdCard size={14} />
-            </button>
-          )}
-          {/* temple_admin only: the safe edits (guest, persons, notes; room,
-              dates and rate until checkout). */}
-          {canDelete && b.status !== 'cancelled' && (
-            <button
-              onClick={() => setEditFor(b)}
-              className="p-1 text-slate-400 hover:text-navy-700 rounded"
-              title={t('editBooking.title')} aria-label={t('editBooking.title')}
-            >
-              <Pencil size={14} />
-            </button>
-          )}
-          {/* temple_admin only — the shared entry delete voids whatever was
-              collected, frees the room, and is restorable from the Recycle Bin. */}
-          {canDelete && (
-            <button
-              onClick={() => removeBooking(b)}
-              className="p-1 text-slate-400 hover:text-brand-red rounded"
-              title={t('entries.delete')} aria-label={t('entries.delete')}
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      ),
-    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, enteredByOptions, canDelete])
+
+  /**
+   * The row's actions, through the table kit: the next step of the stay
+   * (Check-In / Check-Out) stays visible with its words, and everything else is
+   * a labelled item in the ⋮ menu. The row used to draw up to eleven bare icons
+   * side by side, which ran out of the table on an ordinary laptop screen and
+   * left the clerk guessing what each icon was.
+   */
+  function rowActions(b: RoomBooking): RowAction[] {
+    const open = b.status === 'confirmed' || b.status === 'booked'
+    const out: RowAction[] = []
+    if (open) out.push({ label: t('dharamshala.checkInAction'), onClick: () => setCheckinFor(b), primary: true })
+    if (b.status === 'checked_in') out.push({ label: t('dharamshala.checkOutAction'), onClick: () => setCheckoutFor(b), primary: true })
+    if (b.status === 'checked_out' && b.invoice_no) {
+      out.push({
+        label: t('common.printReceipt', { defaultValue: 'Print receipt' }), icon: <Receipt size={14} />, primary: true,
+        onClick: () => { printDonationReceipt(b.id, '/room-bookings').catch(() => {}) },
+      })
+    }
+    if (open || b.status === 'checked_in') {
+      out.push({ label: t('roomCharges.title'), icon: <PackagePlus size={14} />, onClick: () => setExtrasFor(b) })
+    }
+    if (b.group_id && b.status !== 'cancelled') {
+      out.push({
+        label: t('dharamshala.printGroupBill'), icon: <Files size={14} />,
+        onClick: () => { printDonationReceipt(b.id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed'))) },
+      })
+    }
+    if (b.status === 'checked_out') out.push({ label: t('dharamshala.viewBill'), icon: <FileText size={14} />, onClick: () => viewBill(b.id) })
+    if (b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0) {
+      out.push({ label: t('dharamshala.collectPayment'), icon: <IndianRupee size={14} />, onClick: () => openCollect(b) })
+    }
+    if (refundable(b) > 0) out.push({ label: t('dharamshala.refund'), icon: <Undo2 size={14} />, onClick: () => openRefund(b) })
+    if (b.status !== 'cancelled' && depositHeld(b) > 0) {
+      out.push({
+        label: t('dharamshala.settleDeposit'), icon: <ShieldCheck size={14} />,
+        onClick: () => { setDepositModal(b); setForfeitAmt(''); setSettleError('') },
+      })
+    }
+    if (b.status !== 'cancelled') {
+      out.push({ label: t('guestId.title'), icon: <IdCard size={14} />, onClick: () => setIdDocsFor(b) })
+      out.push({ label: t('dharamshala.editTimes'), icon: <Clock size={14} />, onClick: () => openTimes(b) })
+    }
+    if (canDelete && b.status !== 'cancelled') out.push({ label: t('editBooking.title'), icon: <Pencil size={14} />, onClick: () => setEditFor(b) })
+    if (open) {
+      out.push({ label: t('dharamshala.cancelBooking'), icon: <X size={14} />, onClick: () => setCancelModal({ id: b.id, guestName: b.guest_name }), danger: true })
+    }
+    if (canDelete) out.push({ label: t('entries.delete'), icon: <Trash2 size={14} />, onClick: () => removeBooking(b), danger: true })
+    return out
+  }
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -756,6 +674,7 @@ export function RoomsList() {
         columns={columns}
         rows={bookings}
         rowKey={b => b.id}
+        rowActions={b => rowActions(b)}
         loading={loading}
         graphData={trendByDay(bookings, 'check_in_date', 'advance_paise')}
         searchValue={search}

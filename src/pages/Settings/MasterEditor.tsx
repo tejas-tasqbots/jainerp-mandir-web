@@ -327,7 +327,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   )
 
   return (
-    <div className="card">
+    <div className="card" data-testid={`master-${resource}`}>
       <div className="card-header flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-sm">{title}</h3>

@@ -649,6 +649,22 @@ export function SettingsPage() {
             ]}
           />
 
+          {/* The stay extras' price list (tenant migration 057), with the other
+              masters rather than inside the receipt settings: it is a list of
+              things the counter picks from, like the categories above. */}
+          <MasterEditor
+            resource="room-charge-items"
+            title={t('roomCharges.priceList')}
+            description={t('roomCharges.priceListHint')}
+            listParams={{ all: 'true' }}
+            fields={[
+              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('roomCharges.newItemPlaceholder') as string },
+              { key: 'default_rate_paise', label: t('roomCharges.rate'), type: 'money', placeholder: '0.00' },
+              { key: 'per_night', label: t('roomCharges.perNight'), type: 'checkbox' },
+              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+            ]}
+          />
+
           <MasterEditor
             resource="halls"
             title={t('settings.masters.halls')}

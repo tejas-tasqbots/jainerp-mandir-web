@@ -23,14 +23,24 @@ interface Fund { id: string; name: string; fund_type: string }
  * 1,000, Gau Seva 5,000, Aarti 1,000, Shantidhara 2,000 - one bill of 9,000".
  * The first head is the form's own category and amount; these follow it.
  */
-interface ExtraHead { key: string; category_id: string; amount: string }
+interface ExtraHead { key: string; category_id: string; other_name: string; amount: string }
+/** The category dropdown's "Other…" choice: type a category the trust has not set up yet. */
+const OTHER = '__other__'
 const MAX_HEADS = 20
-const newHead = (): ExtraHead => ({ key: Math.random().toString(36).slice(2), category_id: '', amount: '' })
+const newHead = (): ExtraHead => ({ key: Math.random().toString(36).slice(2), category_id: '', other_name: '', amount: '' })
 
 // The "Donor wants updates about this mandir's events" tick is switched off
 // for now (founder request, 2026-09-17). Nothing new is recorded as consent
 // while it is off.
 const SHOW_EVENT_UPDATES_CONSENT = false as boolean
+
+/** A head as the API takes it: an existing category by id, or a new one by name. */
+function headPayload(categoryId: string, otherName: string, amount: string) {
+  return {
+    ...(categoryId === OTHER ? { category: otherName.trim() } : { category_id: categoryId }),
+    amount_paise: parsePaise(amount),
+  }
+}
 
 export function AddDonation() {
   const { t } = useTranslation()
@@ -63,6 +73,8 @@ export function AddDonation() {
   const [original, setOriginal] = useState<{ category_id: string; fund_id: string | null; fund_type: string | null } | null>(null)
   const [form, setForm] = useState({
     category_id: '',
+    // A new category typed after choosing "Other…" in the dropdown.
+    other_name: '',
     amount: '',
     payment_mode: 'cash',
     payment_account_id: '',
@@ -90,6 +102,7 @@ export function AddDonation() {
       const d = r.data.data
       setForm({
         category_id: d.category_id ?? '',
+        other_name: '',
         amount: d.amount_paise ? String(fmtPaise(d.amount_paise)).replace(/,/g, '') : '',
         payment_mode: d.payment_mode ?? 'cash',
         payment_account_id: d.payment_account_id ?? '',
@@ -161,7 +174,9 @@ export function AddDonation() {
     : form.payment_mode === 'cash' ? totalPaise : 0
   const cashOver80gLimit = cashPartPaise > CASH_80G_LIMIT_PAISE
 
-  const selectedCategory = categories.find(c => c.id === form.category_id)
+  const selectedCategory = form.category_id === OTHER
+    ? ({ id: OTHER, name: form.other_name, is_80g_eligible: true } as DonationCategory)
+    : categories.find(c => c.id === form.category_id)
   // Where this gift will be filed. Correcting under the same category keeps
   // the original's fund; a new or changed category takes the category's.
   const keepsOriginalFund = !!original && form.category_id === original.category_id
@@ -171,9 +186,9 @@ export function AddDonation() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.category_id) { setError('Select a donation category'); return }
+    if (!form.category_id || (form.category_id === OTHER && !form.other_name.trim())) { setError(t('donations.selectCategory')); return }
     if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter valid amount'); return }
-    const badHead = extraHeads.findIndex(h => !h.category_id || !h.amount || parseFloat(h.amount) <= 0)
+    const badHead = extraHeads.findIndex(h => !h.category_id || (h.category_id === OTHER && !h.other_name.trim()) || !h.amount || parseFloat(h.amount) <= 0)
     if (badHead >= 0) { setError(t('donations.headIncomplete', { n: badHead + 2 })); return }
     // Catch a mismatched split here rather than round-tripping to the API.
     if (splitMode && sumPaise(payRows) !== totalPaise) {
@@ -187,7 +202,9 @@ export function AddDonation() {
     setError('')
     try {
       const payload: Record<string, unknown> = {
-        category_id: form.category_id,
+        // "Other…" sends the typed name; the API files it under that category,
+        // creating it on first use, exactly as bulk import does.
+        ...(form.category_id === OTHER ? { category: form.other_name.trim() } : { category_id: form.category_id }),
         amount_paise: totalPaise,
         payment_mode: form.payment_mode,
         is_80g_eligible: form.is_80g_eligible && !panBlocked && !temple80gBlocked && !cashOver80gLimit,
@@ -220,8 +237,8 @@ export function AddDonation() {
       }
       if (multiHead) {
         payload.lines = [
-          { category_id: form.category_id, amount_paise: parsePaise(form.amount) },
-          ...extraHeads.map(h => ({ category_id: h.category_id, amount_paise: parsePaise(h.amount) })),
+          headPayload(form.category_id, form.other_name, form.amount),
+          ...extraHeads.map(h => headPayload(h.category_id, h.other_name, h.amount)),
         ]
       }
       if (form.note) payload.notes = form.note
@@ -251,6 +268,44 @@ export function AddDonation() {
     }
   }
 
+  /** One category + amount row. The first row carries the form's ids. */
+  function headRow(h: {
+    category_id: string; other_name: string; amount: string; first?: boolean
+    setCategory: (v: string) => void; setOther: (v: string) => void; setAmount: (v: string) => void
+    remove?: () => void
+  }) {
+    return (
+      <div className="p-2.5 space-y-2">
+        <div className="grid grid-cols-[1fr_9.5rem_2rem] gap-2 items-center">
+          <select id={h.first ? 'donation-category' : undefined} className="form-select" value={h.category_id}
+            aria-label={t('donations.donationCategory')} onChange={e => h.setCategory(e.target.value)}>
+            <option value="">{t('donations.selectCategory')}</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
+            ))}
+            <option value={OTHER}>{t('donations.otherCategory')}</option>
+          </select>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+            <input id={h.first ? 'donation-amount' : undefined} type="number" min="1" step="0.01" className="form-input pl-7"
+              placeholder="0.00" aria-label={t('donations.amountLabel')} value={h.amount} onChange={e => h.setAmount(e.target.value)} />
+          </div>
+          {h.remove ? (
+            <button type="button" className="p-1.5 text-slate-400 hover:text-brand-red rounded" onClick={h.remove}
+              title={t('donations.removeHead')} aria-label={t('donations.removeHead')}>
+              <Trash2 size={15} />
+            </button>
+          ) : <span />}
+        </div>
+        {h.category_id === OTHER && (
+          <input className="form-input" autoFocus maxLength={100} data-testid="other-category"
+            placeholder={t('donations.newCategoryName')} aria-label={t('donations.newCategoryName')}
+            value={h.other_name} onChange={e => h.setOther(e.target.value)} />
+        )}
+      </div>
+    )
+  }
+
   const isCash = form.payment_mode === 'cash'
   const relevantAccounts = accounts.filter(a => a.type === (isCash ? 'cash' : 'bank'))
   const fundTypeLabel = fundType === 'corpus'
@@ -278,22 +333,57 @@ export function AddDonation() {
             showDanPeti
           />
 
-          {/* Category — the only classification the counter makes. */}
-          <div>
-            <label htmlFor="donation-category" className="form-label">{t('donations.donationCategory')}</label>
-            <select id="donation-category" className="form-select" value={form.category_id}
-              onChange={e => {
-                const cat = categories.find(c => c.id === e.target.value)
-                setForm(f => ({ ...f, category_id: e.target.value, is_80g_eligible: cat?.is_80g_eligible ?? true }))
-              }}>
-              <option value="">{t('donations.selectCategory')}</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
+          {/* WHAT THE GIFT IS FOR: one list of category + amount rows. One row is
+              an ordinary donation; "Add another category" makes it a receipt
+              with several heads (Ahaar Daan 1,000 + Gau Seva 5,000 ...), each
+              printed as its own line. The first row keeps the ids the rest of
+              the app and its tests address. */}
+          <div data-testid="donation-heads">
+            <div className="flex items-baseline justify-between gap-3">
+              <label htmlFor="donation-category" className="form-label">{t('donations.donationFor')}</label>
+              {multiHead && (
+                <span className="text-sm font-semibold text-navy-900" data-testid="donation-heads-total">
+                  {t('donations.headsTotal', { count: extraHeads.length + 1, amount: (totalPaise / 100).toLocaleString('en-IN') })}
+                </span>
+              )}
+            </div>
+            <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
+              {headRow({
+                category_id: form.category_id, other_name: form.other_name, amount: form.amount,
+                first: true,
+                setCategory: v => {
+                  const cat = categories.find(c => c.id === v)
+                  setForm(f => ({ ...f, category_id: v, is_80g_eligible: cat?.is_80g_eligible ?? true }))
+                },
+                setOther: v => setForm(f => ({ ...f, other_name: v })),
+                setAmount: v => setForm(f => ({ ...f, amount: v })),
+                // Removing the first row promotes the next one into it.
+                remove: multiHead ? () => {
+                  const [next, ...rest] = extraHeads
+                  setForm(f => ({ ...f, category_id: next.category_id, other_name: next.other_name, amount: next.amount }))
+                  setExtraHeads(rest)
+                } : undefined,
+              })}
+              {extraHeads.map(h => (
+                <div key={h.key} data-testid="donation-head">
+                  {headRow({
+                    category_id: h.category_id, other_name: h.other_name, amount: h.amount,
+                    setCategory: v => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, category_id: v } : x)),
+                    setOther: v => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, other_name: v } : x)),
+                    setAmount: v => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, amount: v } : x)),
+                    remove: () => setExtraHeads(hs => hs.filter(x => x.key !== h.key)),
+                  })}
+                </div>
               ))}
-            </select>
-            {/* Said, not asked. Only when the gift goes somewhere other than
-                general income — that is the case a cashier should notice. */}
-            {form.category_id && (fund || fundType !== 'general') && (
+            </div>
+            <button type="button" className="mt-2 text-sm text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 disabled:opacity-40"
+              disabled={extraHeads.length + 1 >= MAX_HEADS}
+              onClick={() => setExtraHeads(hs => [...hs, newHead()])}>
+              <Plus size={14} /> {t('donations.addHead')}
+            </button>
+            {/* Said, not asked. Only when a one-category gift goes somewhere
+                other than general income — the case a cashier should notice. */}
+            {!multiHead && form.category_id && form.category_id !== OTHER && (fund || fundType !== 'general') && (
               <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500" data-testid="donation-fund-hint">
                 <Landmark size={13} className="mt-px shrink-0 text-slate-400" />
                 <span>
@@ -306,16 +396,11 @@ export function AddDonation() {
             )}
           </div>
 
-          {/* Amount + payment. With split on, the rows below ARE the payment:
+          {/* How it was paid. With split on, the rows below ARE the payment:
               the single mode / account boxes go away rather than sitting there
               meaning nothing. */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="donation-amount" className="form-label">{t('donations.amountLabel')}</label>
-              <input id="donation-amount" type="number" min="1" step="0.01" className="form-input" placeholder="0.00"
-                value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-            </div>
-            {!splitMode && (
+          {!splitMode && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="payment-mode" className="form-label">{t('donations.paymentModeLabel')}</label>
                 <select id="payment-mode" className="form-select" value={form.payment_mode}
@@ -323,62 +408,22 @@ export function AddDonation() {
                   {paymentModes.map(m => <option key={m.code} value={m.code}>{m.name}</option>)}
                 </select>
               </div>
-            )}
-            {!splitMode && relevantAccounts.length > 0 && (
-              <div className="col-span-2">
-                <label htmlFor="payment-account" className="form-label">{t('donations.receivedInAccount')}</label>
-                <select id="payment-account" className="form-select" value={form.payment_account_id}
-                  onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
-                  <option value="">{t('donations.selectAccount')}</option>
-                  {relevantAccounts.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Further heads on the same receipt. Each is a category and its
-              amount; the receipt's total is all of them, and it prints every
-              head as its own line. */}
-          <div className="space-y-2" data-testid="donation-heads">
-            {extraHeads.map((h, i) => (
-              <div key={h.key} className="grid grid-cols-[1fr_9rem_auto] gap-2 items-end" data-testid="donation-head">
+              {relevantAccounts.length > 0 && (
                 <div>
-                  <label className="form-label">{t('donations.headN', { n: i + 2 })}</label>
-                  <select className="form-select" value={h.category_id} aria-label={t('donations.headN', { n: i + 2 })}
-                    onChange={e => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, category_id: e.target.value } : x))}>
-                    <option value="">{t('donations.selectCategory')}</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <label htmlFor="payment-account" className="form-label">{t('donations.receivedInAccount')}</label>
+                  <select id="payment-account" className="form-select" value={form.payment_account_id}
+                    onChange={e => setForm(f => ({ ...f, payment_account_id: e.target.value }))}>
+                    <option value="">{t('donations.selectAccount')}</option>
+                    {relevantAccounts.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}{a.bank_name ? ` — ${a.bank_name}` : ''}{a.account_number ? ` (${a.account_number})` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
-                <div>
-                  <label className="form-label">{t('donations.amountLabel')}</label>
-                  <input type="number" min="1" step="0.01" className="form-input" placeholder="0.00" value={h.amount}
-                    aria-label={`${t('donations.headN', { n: i + 2 })} ${t('donations.amountLabel')}`}
-                    onChange={e => setExtraHeads(hs => hs.map(x => x.key === h.key ? { ...x, amount: e.target.value } : x))} />
-                </div>
-                <button type="button" className="btn-secondary btn-sm mb-0.5" aria-label={t('donations.removeHead')}
-                  onClick={() => setExtraHeads(hs => hs.filter(x => x.key !== h.key))}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between gap-3">
-              <button type="button" className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 disabled:opacity-40"
-                disabled={extraHeads.length + 1 >= MAX_HEADS}
-                onClick={() => setExtraHeads(hs => [...hs, newHead()])}>
-                <Plus size={14} /> {t('donations.addHead')}
-              </button>
-              {multiHead && (
-                <p className="text-sm font-semibold text-navy-900" data-testid="donation-heads-total">
-                  {t('donations.headsTotal', { count: extraHeads.length + 1, amount: (totalPaise / 100).toLocaleString('en-IN') })}
-                </p>
               )}
             </div>
-          </div>
+          )}
 
           <SplitPaymentToggle
             enabled={splitMode} onEnabledChange={setSplitMode}
@@ -423,24 +468,27 @@ export function AddDonation() {
 
           {/* 80G toggle */}
           <div className="space-y-2">
-            <div className="flex items-center gap-3 flex-wrap">
+            {/* Checkbox and its label on one line, the reasons it is off
+                underneath - with flex-wrap a long reason pushed the whole label
+                below the box, leaving a lone checkbox on its own line. */}
+            <div className="flex items-start gap-3">
               <input type="checkbox" id="is_80g" checked={form.is_80g_eligible && !devotee?.is_anonymous && !panBlocked && !temple80gBlocked && !cashOver80gLimit}
                 onChange={e => setForm(f => ({ ...f, is_80g_eligible: e.target.checked }))}
                 disabled={!!devotee?.is_anonymous || !selectedCategory?.is_80g_eligible || cashOver80gLimit || panBlocked || temple80gBlocked}
                 className="w-4 h-4 accent-green-600" />
-              <label htmlFor="is_80g" className="text-sm text-slate-700">
+              <label htmlFor="is_80g" className="text-sm text-slate-700 flex-1 -mt-0.5">
                 {t('donations.eightyGEligible')}
                 {temple80gBlocked && (
-                  <span className="text-orange-500 ml-2 text-xs">{t('donations.templeNo80g')}</span>
+                  <span className="block text-orange-600 text-xs mt-0.5">{t('donations.templeNo80g')}</span>
                 )}
                 {devotee?.is_anonymous && (
-                  <span className="text-orange-500 ml-2 text-xs">{t('donations.anonymousNo80g')}</span>
+                  <span className="block text-orange-600 text-xs mt-0.5">{t('donations.anonymousNo80g')}</span>
                 )}
                 {!devotee?.is_anonymous && cashOver80gLimit && (
-                  <span className="text-orange-500 ml-2 text-xs" data-testid="cash-80g-warning">{t('donations.cashLimitNo80g')}</span>
+                  <span className="block text-orange-600 text-xs mt-0.5" data-testid="cash-80g-warning">{t('donations.cashLimitNo80g')}</span>
                 )}
                 {panBlocked && (
-                  <span className="text-orange-500 ml-2 text-xs">{t('donations.panBlockedWarning')}</span>
+                  <span className="block text-orange-600 text-xs mt-0.5">{t('donations.panBlockedWarning')}</span>
                 )}
               </label>
               {panBlocked && !showPanField && (

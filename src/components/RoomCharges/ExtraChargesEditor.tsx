@@ -3,6 +3,8 @@ import { Plus, Trash2 } from 'lucide-react'
 import { fmtPaise, parsePaise } from '../../lib/api'
 import { newChargeRow, useChargeItems, type ChargeRow } from './chargeRows'
 
+const OTHER = '__other__'
+
 /**
  * Extra charges on a stay (tenant migration 057): an extra bed for the third
  * person, food, laundry, damage, "other charges".
@@ -38,7 +40,7 @@ export function ExtraChargesEditor({
         const amount = Math.round(parsePaise(row.rate || '0') * Number(row.qty || 0) * Number(row.nights || 0))
         return (
           <div key={row.key} className="rounded-lg border border-slate-200 p-2.5" data-testid="charge-row">
-            <div className={`grid gap-2 items-end ${multiRoom ? 'md:grid-cols-[8rem_1fr_4rem_4rem_6rem_auto]' : 'md:grid-cols-[1fr_4rem_4rem_6rem_auto]'} grid-cols-2`}>
+            <div className={`grid gap-2 items-end ${multiRoom ? 'md:grid-cols-[8rem_1fr_4.5rem_4.5rem_6.5rem_auto]' : 'md:grid-cols-[1fr_4.5rem_4.5rem_6.5rem_auto]'} grid-cols-2`}>
               {multiRoom && (
                 <div>
                   <label className="form-label text-xs">{t('roomCharges.room')}</label>
@@ -48,26 +50,36 @@ export function ExtraChargesEditor({
                   </select>
                 </div>
               )}
-              <div className="col-span-2 md:col-span-1">
+              <div className="col-span-2 md:col-span-1 space-y-1.5">
                 <label className="form-label text-xs">{t('roomCharges.what')}</label>
-                <input
-                  className="form-input" list={`charge-items-${row.key}`} value={row.description}
-                  aria-label={t('roomCharges.what')} placeholder={t('roomCharges.whatPlaceholder')} maxLength={200}
+                {/* The trust's price list, then "Other…" for anything not on it. */}
+                <select className="form-select" aria-label={t('roomCharges.what')}
+                  value={row.other ? OTHER : row.charge_item_id}
                   onChange={e => {
                     const v = e.target.value
-                    const item = items.find(i => i.name === v)
+                    if (v === OTHER) { set(row.key, { other: true, charge_item_id: '', description: '' }); return }
+                    const item = items.find(i => i.id === v)
                     set(row.key, item
                       ? {
-                        description: item.name, charge_item_id: item.id,
+                        other: false, charge_item_id: item.id, description: item.name,
                         rate: item.default_rate_paise ? String(item.default_rate_paise / 100) : row.rate,
                         nights: item.per_night ? String(Math.max(1, nights)) : '1',
                       }
-                      : { description: v, charge_item_id: '' })
-                  }}
-                />
-                <datalist id={`charge-items-${row.key}`}>
-                  {items.map(i => <option key={i.id} value={i.name} />)}
-                </datalist>
+                      : { other: false, charge_item_id: '', description: '' })
+                  }}>
+                  <option value="">{t('roomCharges.choose')}</option>
+                  {items.map(i => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}{i.default_rate_paise ? ` — ₹${fmtPaise(i.default_rate_paise)}${i.per_night ? t('dharamshala.perNightSuffix') : ''}` : ''}
+                    </option>
+                  ))}
+                  <option value={OTHER}>{t('roomCharges.other')}</option>
+                </select>
+                {row.other && (
+                  <input className="form-input" autoFocus maxLength={200} value={row.description}
+                    aria-label={t('roomCharges.otherName')} placeholder={t('roomCharges.whatPlaceholder')}
+                    onChange={e => set(row.key, { description: e.target.value })} />
+                )}
               </div>
               <div>
                 <label className="form-label text-xs">{t('roomCharges.qty')}</label>

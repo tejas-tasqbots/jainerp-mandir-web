@@ -800,7 +800,23 @@
     "refundNow": "अतिथि को अभी ₹{{amount}} वापस करें",
     "refundLaterHint": "अतिरिक्त राशि बुकिंग पर रहेगी। बाद में कमरों की सूची से वापस करें।",
     "roomNights_one": "कमरा · {{count}} रात × ₹{{rate}}",
-    "roomNights_other": "कमरा · {{count}} रातें × ₹{{rate}}"
+    "roomNights_other": "कमरा · {{count}} रातें × ₹{{rate}}",
+    "findRoom": "कमरा खोजें",
+    "noRoomsFree": "कोई खाली कमरा नहीं मिला।",
+    "pickRoomsHint": "ऊपर एक या अधिक कमरे चुनें।",
+    "roomsLabel": "कमरे",
+    "roomsSelected_one": "{{count}} कमरा चुना",
+    "roomsSelected_other": "{{count}} कमरे चुने",
+    "sectionGuest": "अतिथि",
+    "sectionStay": "प्रवास और कमरे",
+    "sectionPayment": "भुगतान और टिप्पणी",
+    "summaryRooms_one": "कमरा {{rooms}} · {{nights}} रात",
+    "summaryRooms_other": "{{count}} कमरे ({{rooms}}) · {{nights}} रात",
+    "stayColumn": "प्रवास",
+    "inShort": "आगमन",
+    "outShort": "प्रस्थान",
+    "personsN_one": "{{count}} व्यक्ति",
+    "personsN_other": "{{count}} व्यक्ति"
   },
   "donationRequests": {
     "addressLabel": "पता:",
@@ -921,12 +937,14 @@
     "fund": "निधि",
     "goesToFund": "{{fund}} में जमा होगा · {{type}}",
     "filedAs": "{{type}} के रूप में दर्ज होगा",
-    "addHead": "एक और मद जोड़ें",
-    "removeHead": "यह मद हटाएँ",
-    "headN": "मद {{n}}",
-    "headIncomplete": "मद {{n}}: श्रेणी चुनें और उसकी राशि लिखें।",
-    "headsTotal_one": "{{count}} मद · कुल ₹{{amount}}",
-    "headsTotal_other": "{{count}} मद · कुल ₹{{amount}}"
+    "addHead": "एक और श्रेणी जोड़ें",
+    "removeHead": "हटाएँ",
+    "headIncomplete": "पंक्ति {{n}}: श्रेणी चुनें और उसकी राशि लिखें।",
+    "headsTotal_one": "{{count}} श्रेणी · कुल ₹{{amount}}",
+    "headsTotal_other": "{{count}} श्रेणियाँ · कुल ₹{{amount}}",
+    "donationFor": "दान किसके लिए",
+    "otherCategory": "अन्य… (नई श्रेणी लिखें)",
+    "newCategoryName": "नई श्रेणी का नाम"
   },
   "donationsHub": {
     "donations": "दान",
@@ -3822,7 +3840,8 @@
     "idsHeading_other": "पहचान पत्र ({{count}})",
     "addAnother": "एक और पहचान पत्र जोड़ें",
     "removeRow": "यह पहचान पत्र हटाएँ",
-    "tooManyPhotos": "एक बुकिंग के लिए बहुत अधिक बड़ी फ़ोटो। कम फ़ोटो के साथ अभी बुक करें और बाकी कमरों की सूची से जोड़ें।"
+    "tooManyPhotos": "एक बुकिंग के लिए बहुत अधिक बड़ी फ़ोटो। कम फ़ोटो के साथ अभी बुक करें और बाकी कमरों की सूची से जोड़ें।",
+    "photo": "फोटो"
   },
   "editBooking": {
     "title": "बुकिंग संपादित करें",
@@ -3862,7 +3881,11 @@
     "newItem": "नया शुल्क",
     "newItemPlaceholder": "जैसे अतिरिक्त कंबल",
     "addItem": "जोड़ें",
-    "itemSaved": "सहेजा गया"
+    "itemSaved": "सहेजा गया",
+    "choose": "शुल्क चुनें",
+    "other": "अन्य… (लिखें)",
+    "otherName": "यह शुल्क किसका है?",
+    "optionalHint": "वैकल्पिक — अतिरिक्त बिस्तर, भोजन, धुलाई…"
   },
   "expenseItems": {
     "toggle": "इस बिल में कई वस्तुएँ हैं",
@@ -3882,7 +3905,14 @@
     "needOne": "दर के साथ कम से कम एक वस्तु जोड़ें।",
     "incomplete": "वस्तु {{n}}: वस्तु का नाम और उसकी दर लिखें।",
     "heading_one": "{{count}} वस्तु",
-    "heading_other": "{{count}} वस्तुएँ"
+    "heading_other": "{{count}} वस्तुएँ",
+    "billCategory": "श्रेणी (सूची से बाहर की वस्तुओं के लिए)",
+    "chooseProduct": "उत्पाद चुनें",
+    "noProducts": "इस विक्रेता के अभी कोई उत्पाद नहीं",
+    "other": "अन्य… (वस्तु लिखें)",
+    "otherName": "वस्तु का नाम",
+    "otherCategory": "अन्य… (नई श्रेणी लिखें)",
+    "newCategoryName": "नई श्रेणी का नाम"
   },
   "vendorProducts": {
     "title": "यह विक्रेता कौन-से उत्पाद देता है",
@@ -3894,5 +3924,14 @@
     "remove": "यह उत्पाद हटाएँ",
     "saved": "सहेजा गया",
     "saveFailed": "उत्पाद सहेजा नहीं जा सका"
+  },
+  "vendorPicker": {
+    "search": "विक्रेता नाम या मोबाइल से खोजें",
+    "none": "अभी कोई विक्रेता नहीं। जोड़ने के लिए नाम लिखें।",
+    "addNew": "\"{{name}}\" को नया विक्रेता जोड़ें",
+    "mobileOptional": "मोबाइल (वैकल्पिक)",
+    "add": "विक्रेता जोड़ें",
+    "addFailed": "विक्रेता नहीं जोड़ा जा सका",
+    "change": "विक्रेता बदलें"
   }
 }

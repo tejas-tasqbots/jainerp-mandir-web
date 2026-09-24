@@ -11,12 +11,13 @@ import { itemAmounts, newItemRow, type ItemRow, type VendorItem } from './expens
  * head; anything else can be typed. Each row is qty x rate plus its GST, and
  * the bill's amount and GST are the sums - the API derives them the same way.
  */
-export function ExpenseItemsEditor({ rows, onChange, products, categories }: {
+const OTHER = '__other__'
+
+export function ExpenseItemsEditor({ rows, onChange, products }: {
   rows: ItemRow[]
   onChange: (rows: ItemRow[]) => void
   /** The chosen vendor's product list; empty for a vendor with none. */
   products: VendorItem[]
-  categories: string[]
 }) {
   const { t } = useTranslation()
   const set = (key: string, patch: Partial<ItemRow>) =>
@@ -29,24 +30,32 @@ export function ExpenseItemsEditor({ rows, onChange, products, categories }: {
         return (
           <div key={row.key} className="rounded-lg border border-slate-200 p-2.5 space-y-2" data-testid="expense-item">
             <div className="grid grid-cols-2 md:grid-cols-[1fr_4.5rem_4.5rem_6rem_4rem_auto] gap-2 items-end">
-              <div className="col-span-2 md:col-span-1">
+              <div className="col-span-2 md:col-span-1 space-y-1.5">
                 <label className="form-label text-xs">{t('expenseItems.item', { n: i + 1 })}</label>
-                <input className="form-input" list={`vendor-items-${row.key}`} value={row.description} maxLength={200}
-                  aria-label={t('expenseItems.item', { n: i + 1 })} placeholder={t('expenseItems.itemPlaceholder')}
+                {/* The vendor's products first; "Other…" for anything not on the list. */}
+                <select className="form-select" aria-label={t('expenseItems.item', { n: i + 1 })}
+                  value={row.other ? OTHER : row.vendor_item_id}
                   onChange={e => {
                     const v = e.target.value
-                    const p = products.find(x => x.name === v)
+                    if (v === OTHER) { set(row.key, { other: true, vendor_item_id: '', description: '', category: '' }); return }
+                    const p = products.find(x => x.id === v)
                     set(row.key, p
                       ? {
-                        description: p.name, vendor_item_id: p.id, unit: p.unit ?? '',
+                        other: false, vendor_item_id: p.id, description: p.name, unit: p.unit ?? '',
                         rate: p.default_rate_paise ? String(p.default_rate_paise / 100) : row.rate,
-                        gst_rate: String(p.gst_rate ?? 0), category: p.category ?? row.category,
+                        gst_rate: String(p.gst_rate ?? 0), category: p.category ?? '',
                       }
-                      : { description: v, vendor_item_id: '' })
-                  }} />
-                <datalist id={`vendor-items-${row.key}`}>
-                  {products.map(p => <option key={p.id} value={p.name} />)}
-                </datalist>
+                      : { other: false, vendor_item_id: '', description: '', category: '' })
+                  }}>
+                  <option value="">{products.length ? t('expenseItems.chooseProduct') : t('expenseItems.noProducts')}</option>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                  <option value={OTHER}>{t('expenseItems.other')}</option>
+                </select>
+                {row.other && (
+                  <input className="form-input" autoFocus maxLength={200} value={row.description}
+                    aria-label={t('expenseItems.otherName')} placeholder={t('expenseItems.itemPlaceholder')}
+                    onChange={e => set(row.key, { description: e.target.value })} />
+                )}
               </div>
               <div>
                 <label className="form-label text-xs">{t('expenseItems.qty')}</label>
@@ -74,16 +83,12 @@ export function ExpenseItemsEditor({ rows, onChange, products, categories }: {
                 <Trash2 size={14} />
               </button>
             </div>
-            <div className="flex items-center gap-3">
-              <select className="form-select max-w-xs" value={row.category} aria-label={t('expenseItems.category')}
-                onChange={e => set(row.key, { category: e.target.value })}>
-                <option value="">{t('expenseItems.sameCategory')}</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              {total > 0 && (
-                <span className="ml-auto text-sm font-semibold text-navy-900" data-testid="item-amount">₹{fmtPaise(total)}</span>
-              )}
-            </div>
+            {(total > 0 || row.category) && (
+              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                {row.category && <span data-testid="item-category">{row.category}</span>}
+                {total > 0 && <span className="ml-auto text-sm font-semibold text-navy-900" data-testid="item-amount">₹{fmtPaise(total)}</span>}
+              </div>
+            )}
           </div>
         )
       })}

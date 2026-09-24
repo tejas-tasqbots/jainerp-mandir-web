@@ -8,6 +8,7 @@ import { recipientGstin } from '../../../lib/statutoryIds'
 import { compressIdImage } from '../../../lib/idImage'
 import type { Room, DevoteeSelection } from '../../../types'
 import { fetchAllPages } from '../../../lib/fetchAllPages'
+import { RoomPicker } from './RoomPicker'
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
 import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
 
@@ -205,252 +206,160 @@ export function AddRoomCheckin() {
     }
   }
 
-  const selectedRoom = rooms.find(r => r.id === form.room_id)
-  const bookedRooms = [form.room_id, ...moreRooms].map(id => rooms.find(r => r.id === id)).filter(Boolean) as Room[]
+  const selectedIds = [form.room_id, ...moreRooms].filter(Boolean)
+  const setSelectedIds = (ids: string[]) => {
+    setForm(f => ({ ...f, room_id: ids[0] ?? '' }))
+    setMoreRooms(ids.slice(1))
+  }
+  const bookedRooms = selectedIds.map(id => rooms.find(r => r.id === id)).filter(Boolean) as Room[]
   const roomLabel = (r: Room) => `${r.building?.trim() ? `${r.building.trim()} · ` : ''}${r.room_number}`
   const stayNights = Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000))
   const roomsPaise = bookedRooms.reduce((s, r) => s + stayNights * Number(r.tariff_paise), 0)
   const extrasPaise = chargesTotalPaise(charges)
+  const capacity = bookedRooms.reduce((s, r) => s + Number(r.capacity_persons || 0), 0)
+  const hasAadhaar = idRows.some(r => r.id_type === 'aadhaar')
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-4xl pb-24">
+      <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newRoomBooking')}</h1>
-        <button onClick={() => navigate('/rooms')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
+        <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
-      <form onSubmit={handleSubmit} className="card">
-        <div className="card-body space-y-5">
-          <div>
-            <label className="form-label">{t('dharamshala.roomLabel')}</label>
-            <select className="form-select" value={form.room_id}
-              onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}>
-              <option value="">{t('dharamshala.selectAvailableRoom')}</option>
-              {/* The room's name, not `room_type`: no screen writes that
-                  column, so it is `non_ac` for every room (RoomAvailability). */}
-              {/* A room housekeeping is holding is shown and disabled rather
-                  than hidden: the cashier looking for room 104 needs to be told
-                  it is being cleaned, not left wondering where it went. Dated
-                  like the API gate - the hold only blocks a stay starting
-                  today, so a booking for next week may still use it. */}
-              {rooms.map(r => {
-                const held = heldByHousekeeping(r, form.check_in_date)
-                return (
-                  <option key={r.id} value={r.id} disabled={held}>
-                    {r.building?.trim() ? `${r.building.trim()} · ` : ''}{r.room_number}{r.name?.trim() ? ` — ${r.name.trim()}` : ''}
-                    {' '}{t('dharamshala.sleepsN', { n: r.capacity_persons })} — ₹{fmtPaise(r.tariff_paise)}{t('dharamshala.perNightSuffix')}
-                    {held ? ` — ${t(`housekeeping.status.${r.housekeeping_status}`)}` : ''}
-                  </option>
-                )
-              })}
-            </select>
-            {/* More rooms for the same guest. Picked one at a time from the rooms
-                not yet taken; each shows as a chip that can be removed. */}
-            {form.room_id && (
-              <div className="mt-2 space-y-2" data-testid="more-rooms">
-                {moreRooms.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {moreRooms.map(id => {
-                      const r = rooms.find(x => x.id === id)
-                      return r ? (
-                        <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-sm text-blue-800" data-testid="more-room">
-                          {roomLabel(r)} · ₹{fmtPaise(r.tariff_paise)}
-                          <button type="button" className="text-blue-400 hover:text-brand-red" aria-label={t('dharamshala.removeRoom')}
-                            onClick={() => setMoreRooms(ids => ids.filter(x => x !== id))}><X size={13} /></button>
-                        </span>
-                      ) : null
-                    })}
-                  </div>
-                )}
-                <select className="form-select" value="" aria-label={t('dharamshala.addAnotherRoom')} data-testid="add-room"
-                  onChange={e => { const v = e.target.value; if (v) setMoreRooms(ids => [...ids, v]) }}>
-                  <option value="">{t('dharamshala.addAnotherRoom')}</option>
-                  {rooms.filter(r => r.id !== form.room_id && !moreRooms.includes(r.id) && !heldByHousekeeping(r, form.check_in_date)).map(r => (
-                    <option key={r.id} value={r.id}>{roomLabel(r)}{r.name?.trim() ? ` — ${r.name.trim()}` : ''} — ₹{fmtPaise(r.tariff_paise)}{t('dharamshala.perNightSuffix')}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2 space-y-3" data-testid="id-rows">
-              <div className="flex items-baseline justify-between">
-                <span className="form-label mb-0">{t('guestId.idsHeading', { count: idRows.length })}</span>
-                <span className="text-xs text-slate-400">{t('guestId.laterHint')}</span>
-              </div>
-              {idRows.map((row, i) => (
-                <div key={row.key} className="rounded-lg border border-slate-200 p-3 space-y-2" data-testid="id-row">
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div>
-                      <label className="form-label" htmlFor={`id-holder-${row.key}`}>{t('guestId.holderName')}</label>
-                      <input
-                        id={`id-holder-${row.key}`} className="form-input" value={row.holder_name}
-                        onChange={e => setRow(row.key, { holder_name: e.target.value })}
-                        placeholder={i === 0 ? (guest?.name || t('guestId.holderPlaceholder')) : t('guestId.holderPlaceholder')}
-                        maxLength={120} autoComplete="off"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" htmlFor={`id-type-${row.key}`}>{t('dharamshala.idType')}</label>
-                      <select
-                        id={`id-type-${row.key}`} className="form-select" value={row.id_type}
-                        onChange={e => setRow(row.key, { id_type: e.target.value, id_number: '' })}
-                      >
-                        <option value="aadhaar">{t('dharamshala.idAadhaar')}</option>
-                        <option value="pan">{t('dharamshala.idPan')}</option>
-                        <option value="passport">{t('dharamshala.idPassport')}</option>
-                        <option value="voter_id">{t('dharamshala.idVoter')}</option>
-                        <option value="driving_license">{t('dharamshala.idDl')}</option>
-                        <option value="other">{t('guestId.types.other')}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="form-label" htmlFor={`id-number-${row.key}`}>{t('dharamshala.idNumber')}</label>
-                      <input
-                        id={`id-number-${row.key}`} className="form-input" value={row.id_number}
-                        onChange={e => setRow(row.key, { id_number: e.target.value })}
-                        placeholder={row.id_type === 'aadhaar' ? 'XXXX XXXX 1234' : ''}
-                        inputMode={row.id_type === 'aadhaar' ? 'numeric' : 'text'}
-                        autoComplete="off"
-                      />
-                    </div>
-                  </div>
-                  {row.id_type === 'aadhaar' && (
-                    <p className="text-xs text-amber-700">{t('guestId.aadhaarHint')}</p>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <label className="btn-secondary btn-sm inline-flex cursor-pointer">
-                      <Camera size={14} /> {row.image ? t('guestId.retake') : t('guestId.addPhoto')}
-                      <input
-                        type="file" accept="image/*" className="hidden" data-testid="id-photo"
-                        onChange={async e => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          try { setRow(row.key, { image: await compressIdImage(file) }) } catch { setError(t('guestId.photoFailed')) }
-                        }}
-                      />
-                    </label>
-                    {row.image && <span className="text-xs text-green-700">{t('guestId.photoAttached')}</span>}
-                    {idRows.length > 1 && (
-                      <button
-                        type="button" className="ml-auto p-1 text-slate-400 hover:text-brand-red rounded"
-                        onClick={() => setIdRows(rows => rows.filter(r => r.key !== row.key))}
-                        title={t('guestId.removeRow')} aria-label={t('guestId.removeRow')}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {idRows.length < 12 && (
-                <button type="button" className="btn-secondary btn-sm" onClick={() => setIdRows(rows => [...rows, newIdRow()])}>
-                  <Plus size={14} /> {t('guestId.addAnother')}
-                </button>
-              )}
-              <p className="text-xs text-slate-500">{t('dharamshala.idStoredHint')}</p>
-            </div>
-            {/* CGST Rule 46(e): the recipient's GSTIN. Optional, because most
-                guests are individuals who have none — but without it a company
-                sending staff cannot claim input tax credit on the invoice, and
-                there was previously nowhere to put it at all.
-
-                Validated as you type rather than on submit: a GSTIN is fifteen
-                characters of state code, PAN and check digit, and finding out
-                it was mistyped after the guest has walked away is too late. */}
-            {gstRegistered && <div>
+      {/* One section per question the counter asks, in the order it asks them:
+          who, which rooms and when, their IDs, any extras, and the money. The
+          form used to open on the room and the IDs and ask for the guest halfway
+          down, between the deposit and the dates. */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Section n={1} title={t('dharamshala.sectionGuest')}>
+          <DevoteePicker label={t('dharamshala.guestLabel')} value={guest} onChange={setGuest} showAnonymous={false} required />
+          {/* CGST Rule 46(e): the recipient's GSTIN, only for a trust that can
+              issue a tax invoice at all. Validated as it is typed. */}
+          {gstRegistered && (
+            <div className="max-w-sm">
               <label className="form-label" htmlFor="guest-gstin">{t('dharamshala.guestGstin')}</label>
-              <input
-                id="guest-gstin" className="form-input" value={form.guest_gstin}
-                onChange={e => setForm(f => ({ ...f, guest_gstin: e.target.value.toUpperCase() }))}
-                placeholder="27AAATR1234C1Z0"
-                maxLength={15}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>
-                {gstinError || t('dharamshala.guestGstinHint')}
-              </p>
-            </div>}
-            <div>
-              <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
-              <input
-                id="deposit" className="form-input" inputMode="decimal" value={form.deposit}
-                onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))}
-                placeholder="0"
-              />
-              <p className="text-xs text-slate-500 mt-1">{t('dharamshala.depositHint')}</p>
+              <input id="guest-gstin" className="form-input" value={form.guest_gstin} maxLength={15} autoComplete="off" spellCheck={false}
+                onChange={e => setForm(f => ({ ...f, guest_gstin: e.target.value.toUpperCase() }))} placeholder="27AAATR1234C1Z0" />
+              <p className={`text-xs mt-1 ${gstinError ? 'text-red-600' : 'text-slate-500'}`}>{gstinError || t('dharamshala.guestGstinHint')}</p>
             </div>
-          </div>
+          )}
+        </Section>
 
-          <DevoteePicker
-            label={t('dharamshala.guestLabel')}
-            value={guest}
-            onChange={setGuest}
-            showAnonymous={false}
-            required
-          />
-
-          {/* Date AND time. The times are stated on the bill, which is what the
-              client asked for — and a guest arriving at 2:30 pm and leaving at
-              10 am was previously recorded as "19 Sep to 21 Sep", which
-              settles no argument about a late checkout. */}
-          <div className="grid grid-cols-4 gap-4">
-            <div>
+        <Section n={2} title={t('dharamshala.sectionStay')}>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="md:col-span-2">
               <label className="form-label">{t('dharamshala.checkInDate')}</label>
-              <input type="date" className="form-input" value={form.check_in_date}
-                onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
-              <input
-                type="time" className="form-input mt-1.5" data-testid="check-in-time"
-                aria-label={t('dharamshala.checkInTime')}
-                value={form.check_in_time}
-                onChange={e => setForm(f => ({ ...f, check_in_time: e.target.value }))}
-              />
+              <div className="flex gap-2">
+                <input type="date" className="form-input" value={form.check_in_date}
+                  onChange={e => setForm(f => ({ ...f, check_in_date: e.target.value }))} />
+                <input type="time" className="form-input w-32" data-testid="check-in-time" aria-label={t('dharamshala.checkInTime')}
+                  value={form.check_in_time} onChange={e => setForm(f => ({ ...f, check_in_time: e.target.value }))} />
+              </div>
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label className="form-label">{t('dharamshala.checkOutDate')}</label>
-              <input type="date" className="form-input" value={form.check_out_date}
-                onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
-              <input
-                type="time" className="form-input mt-1.5" data-testid="check-out-time"
-                aria-label={t('dharamshala.checkOutTime')}
-                value={form.check_out_time}
-                onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))}
-              />
+              <div className="flex gap-2">
+                <input type="date" className="form-input" value={form.check_out_date}
+                  onChange={e => setForm(f => ({ ...f, check_out_date: e.target.value }))} />
+                <input type="time" className="form-input w-32" data-testid="check-out-time" aria-label={t('dharamshala.checkOutTime')}
+                  value={form.check_out_time} onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))} />
+              </div>
             </div>
             <div>
-              <label className="form-label">{t('dharamshala.personsLabel')}</label>
-              {/* The room's real capacity. The old fallback of 10 applied to
-                  every room because `capacity` was never sent, so a clerk could
-                  book ten guests into a two-person room. */}
-              <input type="number" min="1" max={selectedRoom?.capacity_persons ?? 20} className="form-input"
+              <label className="form-label" htmlFor="booking-persons">{t('dharamshala.personsLabel')}</label>
+              {/* The rooms' real capacity, all of them together. */}
+              <input id="booking-persons" type="number" min="1" max={capacity || 20} className="form-input"
                 value={form.persons_count} onChange={e => setForm(f => ({ ...f, persons_count: e.target.value }))} />
             </div>
           </div>
+          <div>
+            <p className="form-label">{t('dharamshala.roomsLabel')}</p>
+            <RoomPicker rooms={rooms} selected={selectedIds} onChange={setSelectedIds}
+              isHeld={r => heldByHousekeeping(r, form.check_in_date)}
+              heldLabel={r => t(`housekeeping.status.${r.housekeeping_status}`)} />
+          </div>
+        </Section>
 
-          <div className="grid grid-cols-2 gap-4">
+        <Section n={3} title={t('guestId.idsHeading', { count: idRows.length })} hint={t('guestId.laterHint')}>
+          <div className="space-y-2" data-testid="id-rows">
+            {idRows.map((row, i) => (
+              <div key={row.key} className="grid gap-2 md:grid-cols-[1.2fr_1fr_1.2fr_auto_auto] items-center rounded-lg border border-slate-200 p-2" data-testid="id-row">
+                <input id={`id-holder-${row.key}`} className="form-input" value={row.holder_name} maxLength={120} autoComplete="off"
+                  aria-label={t('guestId.holderName')}
+                  onChange={e => setRow(row.key, { holder_name: e.target.value })}
+                  placeholder={i === 0 && guest?.name ? guest.name : t('guestId.holderName')} />
+                <select id={`id-type-${row.key}`} className="form-select" value={row.id_type} aria-label={t('dharamshala.idType')}
+                  onChange={e => setRow(row.key, { id_type: e.target.value, id_number: '' })}>
+                  <option value="aadhaar">{t('dharamshala.idAadhaar')}</option>
+                  <option value="pan">{t('dharamshala.idPan')}</option>
+                  <option value="passport">{t('dharamshala.idPassport')}</option>
+                  <option value="voter_id">{t('dharamshala.idVoter')}</option>
+                  <option value="driving_license">{t('dharamshala.idDl')}</option>
+                  <option value="other">{t('guestId.types.other')}</option>
+                </select>
+                <input id={`id-number-${row.key}`} className="form-input" value={row.id_number} autoComplete="off"
+                  aria-label={t('dharamshala.idNumber')}
+                  onChange={e => setRow(row.key, { id_number: e.target.value })}
+                  placeholder={row.id_type === 'aadhaar' ? 'XXXX XXXX 1234' : t('dharamshala.idNumber')}
+                  inputMode={row.id_type === 'aadhaar' ? 'numeric' : 'text'} />
+                <label className={`btn-sm inline-flex cursor-pointer whitespace-nowrap ${row.image ? 'btn-success' : 'btn-secondary'}`}
+                  title={row.image ? t('guestId.photoAttached') : t('guestId.addPhoto')}>
+                  <Camera size={14} /> {row.image ? t('guestId.photoAttached') : t('guestId.photo')}
+                  <input type="file" accept="image/*" className="hidden" data-testid="id-photo"
+                    onChange={async e => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try { setRow(row.key, { image: await compressIdImage(file) }) } catch { setError(t('guestId.photoFailed')) }
+                    }} />
+                </label>
+                <button type="button" className="p-1.5 text-slate-400 hover:text-brand-red rounded disabled:invisible"
+                  disabled={idRows.length === 1}
+                  onClick={() => setIdRows(rows => rows.filter(r => r.key !== row.key))}
+                  title={t('guestId.removeRow')} aria-label={t('guestId.removeRow')}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              {idRows.length < 12 && (
+                <button type="button" className="text-sm text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                  onClick={() => setIdRows(rows => [...rows, newIdRow()])}>
+                  <Plus size={14} /> {t('guestId.addAnother')}
+                </button>
+              )}
+              <span className="text-xs text-slate-500">{t('dharamshala.idStoredHint')}</span>
+            </div>
+            {/* Once, under the rows - not repeated in every Aadhaar row. */}
+            {hasAadhaar && <p className="text-xs text-amber-700">{t('guestId.aadhaarHint')}</p>}
+          </div>
+        </Section>
+
+        <Section n={4} title={t('roomCharges.heading')} hint={t('roomCharges.optionalHint')}>
+          <ExtraChargesEditor rows={charges} onChange={setCharges} nights={stayNights}
+            rooms={bookedRooms.map(r => ({ id: r.id, label: roomLabel(r) }))} />
+        </Section>
+
+        <Section n={5} title={t('dharamshala.sectionPayment')}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="form-label">{t('dharamshala.advanceAmount')}</label>
-              <input type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
+              <label className="form-label" htmlFor="booking-advance">{t('dharamshala.advanceAmount')}</label>
+              <input id="booking-advance" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
             <div>
-              <label className="form-label">{t('dharamshala.paymentMode')}</label>
-              <select className="form-select" value={form.payment_mode}
+              <label className="form-label" htmlFor="booking-mode">{t('dharamshala.paymentMode')}</label>
+              <select id="booking-mode" className="form-select" value={form.payment_mode}
                 onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
                 <option value="cash">{t('common.cash')}</option>
                 <option value="upi">{t('common.upi')}</option>
               </select>
             </div>
-          </div>
-
-          {/* Extras taken with the booking - an extra bed for the third
-              person, food - and anything the counter wants on record. */}
-          <div>
-            <p className="form-label">{t('roomCharges.heading')}</p>
-            <ExtraChargesEditor rows={charges} onChange={setCharges} nights={stayNights}
-              rooms={bookedRooms.map(r => ({ id: r.id, label: roomLabel(r) }))} />
+            <div>
+              <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
+              <input id="deposit" className="form-input" inputMode="decimal" value={form.deposit} placeholder="0"
+                onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
+              <p className="text-xs text-slate-500 mt-1">{t('dharamshala.depositHint')}</p>
+            </div>
           </div>
           <div>
             <label className="form-label" htmlFor="booking-remarks">{t('dharamshala.remarks')}</label>
@@ -458,29 +367,26 @@ export function AddRoomCheckin() {
               placeholder={t('dharamshala.remarksPlaceholder')}
               value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} />
           </div>
+        </Section>
 
-          {selectedRoom && form.check_in_date && form.check_out_date && (
-            <div className="bg-blue-50 rounded-md p-3 text-sm" data-testid="booking-summary">
-              <p className="text-blue-800 font-medium">{t('dharamshala.bookingSummary')}</p>
-              {bookedRooms.map(r => (
-                <p key={r.id} className="text-blue-600 mt-1">
-                  {bookedRooms.length > 1 ? `${roomLabel(r)}: ` : ''}
-                  {t('dharamshala.nightsSummary', {
-                    nights: stayNights, tariff: fmtPaise(r.tariff_paise), total: fmtPaise(stayNights * Number(r.tariff_paise)),
-                  })}
-                </p>
-              ))}
-              {extrasPaise > 0 && <p className="text-blue-600 mt-1">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</p>}
-              {(bookedRooms.length > 1 || extrasPaise > 0) && (
-                <p className="text-blue-800 font-semibold mt-1">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</p>
-              )}
-            </div>
-          )}
+        {error && <p className="text-red-600 text-sm">{error}</p>}
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-        </div>
-
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+        {/* The total and the button stay in view while the form scrolls. */}
+        <div className="sticky bottom-0 z-10 -mx-1 px-5 py-3 bg-white/95 backdrop-blur border border-slate-200 rounded-xl shadow-sm flex items-center gap-4 flex-wrap"
+          data-testid="booking-summary">
+          <div className="text-sm text-slate-600 flex-1 min-w-0">
+            {bookedRooms.length === 0 ? (
+              <span>{t('dharamshala.pickRoomsHint')}</span>
+            ) : (
+              <>
+                <span className="font-medium text-navy-900">
+                  {t('dharamshala.summaryRooms', { count: bookedRooms.length, rooms: bookedRooms.map(roomLabel).join(', '), nights: stayNights })}
+                </span>
+                {extrasPaise > 0 && <span className="ml-2">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</span>}
+                <span className="block font-semibold text-navy-900">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</span>
+              </>
+            )}
+          </div>
           <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary">{t('common.cancel')}</button>
           <button type="submit" disabled={saving} className="btn-primary">
             <Save size={16} /> {saving ? t('common.saving') : t('dharamshala.confirmBooking')}
@@ -488,5 +394,21 @@ export function AddRoomCheckin() {
         </div>
       </form>
     </div>
+  )
+}
+
+/** A numbered card: one question the counter asks. */
+function Section({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="card">
+      <div className="card-body space-y-3">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-navy-900 text-white text-[11px] font-bold">{n}</span>
+          <h2 className="font-semibold text-navy-900">{title}</h2>
+          {hint && <span className="text-xs text-slate-400 ml-auto">{hint}</span>}
+        </div>
+        {children}
+      </div>
+    </section>
   )
 }

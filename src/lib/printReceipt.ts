@@ -182,7 +182,80 @@ export async function printReceiptDocuments(
   }
 }
 
+/**
+ * Scale a full-sheet receipt (Anumodana) to fill ONE page of its paper, centred.
+ *
+ * The design is drawn at A5 width (148mm). On A4 it printed at that size in the
+ * top-left corner - 70% of the width, the bottom third empty - which is what
+ * "page print of the donation receipt is not proper" was. And a fixed scale
+ * cannot serve every receipt: a receipt with eight heads and a long trust name
+ * is 1,208px tall at 1x and went onto a second page, while an ordinary one is
+ * 882px and should be enlarged. So the receipt is MEASURED here, in a hidden
+ * frame, and given exactly the zoom that fills the page - as wide as the paper
+ * allows, never taller than one page.
+ *
+ * Done in the page that prints rather than in the receipt document, because
+ * that document runs with JavaScript off on the desktop; this runs in the app
+ * on both, and hands the printer plain CSS. Designs other than a full sheet
+ * already lay out to their paper and are returned untouched.
+ */
+export async function fitSheetToPage(html: string): Promise<string> {
+  if (!/class="sheet"/.test(html) || typeof document === 'undefined') return html
+  const rule = /@page\s*\{[^}]*?size:\s*(A4|A5)[^}]*?\}/i.exec(html)
+  if (!rule) return html
+  const a5 = rule[1].toUpperCase() === 'A5'
+  const margin = Number(/@page\s*\{[^}]*?margin:\s*([\d.]+)mm/i.exec(html)?.[1] ?? 0)
+  const mm = 96 / 25.4
+  const pageW = ((a5 ? 148 : 210) - margin * 2) * mm
+  const pageH = ((a5 ? 210 : 297) - margin * 2) * mm
+
+  const frame = document.createElement('iframe')
+  // Wide enough that none of the phone-width @media rules apply.
+  Object.assign(frame.style, { position: 'fixed', left: '-10000px', top: '0', width: '900px', height: '1400px', border: '0' })
+  document.body.appendChild(frame)
+  try {
+    const doc = frame.contentWindow?.document
+    if (!doc) return html
+    doc.open()
+    doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
+    doc.close()
+    await (doc as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready?.catch(() => {})
+    await Promise.all(Array.from(doc.images).map((img) => (img.complete ? null : new Promise((r) => { img.onload = r; img.onerror = r }))))
+    // Natural size: the design's own page-rule zoom switched off while measuring.
+    const style = doc.createElement('style')
+    style.textContent = '.receipt-copy{zoom:1 !important}'
+    doc.head.appendChild(style)
+    await new Promise((r) => setTimeout(r, 60))
+    const sheets = Array.from(doc.querySelectorAll('.sheet')) as HTMLElement[]
+    if (!sheets.length) return html
+    const w = Math.max(...sheets.map((s) => s.getBoundingClientRect().width))
+    const h = Math.max(...sheets.map((s) => s.getBoundingClientRect().height))
+    if (!w || !h) return html
+    // 4% of side margin on A4 so the frame never meets the paper's edge; a few
+    // px of height headroom so rounding can never start a second page.
+    // 2.5% of height headroom too: at a small zoom text is re-laid out at the
+    // smaller size and can wrap a line differently, which measured +2% on a
+    // 20-head receipt on A5.
+    const zoom = Math.max(0.45, Math.min((pageW * (a5 ? 1 : 0.96)) / w, ((pageH - 8) / h) * 0.975, 1.5))
+    const fit = `<style>
+  /* fitSheetToPage(): measured ${Math.round(w)}x${Math.round(h)}px, zoom to fill one ${a5 ? 'A5' : 'A4'} page. */
+  .receipt-copy { zoom: ${zoom.toFixed(3)} !important; }
+  .receipt-copy .sheet { margin: 0 auto !important; }
+  @media print { .receipt-copy .sheet { margin: 0 auto !important; box-shadow: none !important; } body { background: #fff !important; } }
+</style>`
+    return html.includes('</head>') ? html.replace('</head>', `${fit}</head>`) : fit + html
+  } catch {
+    return html
+  } finally {
+    setTimeout(() => { try { document.body.removeChild(frame) } catch { /* noop */ } }, 50)
+  }
+}
+
 export function printReceiptHtml(html: string): void {
+  void fitSheetToPage(html).then(printFitted)
+}
+
+function printFitted(html: string): void {
   const bridge = desktopBridge()
   if (bridge?.printHtml) {
     void bridge.printHtml(html).then((res) => {

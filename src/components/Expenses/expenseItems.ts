@@ -17,17 +17,19 @@ export interface VendorItem {
 export interface ItemRow {
   key: string
   vendor_item_id: string
+  /** "Other…" chosen: an item not on the vendor's list, typed by name. */
+  other: boolean
   description: string
   qty: string
   unit: string
   rate: string
   gst_rate: string
-  /** Expense head by name; blank = the bill's own category. */
+  /** The product's own expense head, shown under the row; blank = the bill's category. */
   category: string
 }
 
 export const newItemRow = (): ItemRow => ({
-  key: Math.random().toString(36).slice(2), vendor_item_id: '', description: '', qty: '1', unit: '', rate: '', gst_rate: '0', category: '',
+  key: Math.random().toString(36).slice(2), vendor_item_id: '', other: false, description: '', qty: '1', unit: '', rate: '', gst_rate: '0', category: '',
 })
 
 /**

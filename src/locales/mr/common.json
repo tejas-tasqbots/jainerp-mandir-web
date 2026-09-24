@@ -800,7 +800,23 @@
     "refundNow": "पाहुण्याला आत्ता ₹{{amount}} परत करा",
     "refundLaterHint": "जास्तीची रक्कम बुकिंगवर राहील. नंतर खोल्यांच्या यादीतून परत करा.",
     "roomNights_one": "खोली · {{count}} रात्र × ₹{{rate}}",
-    "roomNights_other": "खोली · {{count}} रात्री × ₹{{rate}}"
+    "roomNights_other": "खोली · {{count}} रात्री × ₹{{rate}}",
+    "findRoom": "खोली शोधा",
+    "noRoomsFree": "एकही रिकामी खोली सापडली नाही.",
+    "pickRoomsHint": "वर एक किंवा अधिक खोल्या निवडा.",
+    "roomsLabel": "खोल्या",
+    "roomsSelected_one": "{{count}} खोली निवडली",
+    "roomsSelected_other": "{{count}} खोल्या निवडल्या",
+    "sectionGuest": "पाहुणे",
+    "sectionStay": "मुक्काम आणि खोल्या",
+    "sectionPayment": "भरणा आणि शेरा",
+    "summaryRooms_one": "खोली {{rooms}} · {{nights}} रात्र",
+    "summaryRooms_other": "{{count}} खोल्या ({{rooms}}) · {{nights}} रात्र",
+    "stayColumn": "मुक्काम",
+    "inShort": "आगमन",
+    "outShort": "निर्गमन",
+    "personsN_one": "{{count}} व्यक्ती",
+    "personsN_other": "{{count}} व्यक्ती"
   },
   "donationRequests": {
     "addressLabel": "पत्ता:",
@@ -921,12 +937,14 @@
     "fund": "निधी",
     "goesToFund": "{{fund}} मध्ये जमा होईल · {{type}}",
     "filedAs": "{{type}} म्हणून नोंदवले जाईल",
-    "addHead": "आणखी एक मद जोडा",
-    "removeHead": "हा मद काढा",
-    "headN": "मद {{n}}",
-    "headIncomplete": "मद {{n}}: प्रकार निवडा आणि त्याची रक्कम लिहा.",
-    "headsTotal_one": "{{count}} मद · एकूण ₹{{amount}}",
-    "headsTotal_other": "{{count}} मद · एकूण ₹{{amount}}"
+    "addHead": "आणखी एक प्रकार जोडा",
+    "removeHead": "काढा",
+    "headIncomplete": "ओळ {{n}}: प्रकार निवडा आणि त्याची रक्कम लिहा.",
+    "headsTotal_one": "{{count}} प्रकार · एकूण ₹{{amount}}",
+    "headsTotal_other": "{{count}} प्रकार · एकूण ₹{{amount}}",
+    "donationFor": "देणगी कशासाठी",
+    "otherCategory": "इतर… (नवीन प्रकार लिहा)",
+    "newCategoryName": "नवीन प्रकाराचे नाव"
   },
   "donationsHub": {
     "donations": "देणगी",
@@ -3822,7 +3840,8 @@
     "idsHeading_other": "ओळखपत्रे ({{count}})",
     "addAnother": "आणखी एक ओळखपत्र जोडा",
     "removeRow": "हे ओळखपत्र काढा",
-    "tooManyPhotos": "एका बुकिंगसाठी खूप मोठे फोटो. कमी फोटोंसह आता बुक करा आणि उरलेले खोल्यांच्या यादीतून जोडा."
+    "tooManyPhotos": "एका बुकिंगसाठी खूप मोठे फोटो. कमी फोटोंसह आता बुक करा आणि उरलेले खोल्यांच्या यादीतून जोडा.",
+    "photo": "फोटो"
   },
   "editBooking": {
     "title": "बुकिंग संपादित करा",
@@ -3862,7 +3881,11 @@
     "newItem": "नवीन शुल्क",
     "newItemPlaceholder": "उदा. जादा घोंगडी",
     "addItem": "जोडा",
-    "itemSaved": "जतन केले"
+    "itemSaved": "जतन केले",
+    "choose": "शुल्क निवडा",
+    "other": "इतर… (लिहा)",
+    "otherName": "हे शुल्क कशाचे?",
+    "optionalHint": "ऐच्छिक — जादा बेड, भोजन, धुलाई…"
   },
   "expenseItems": {
     "toggle": "या बिलात अनेक वस्तू आहेत",
@@ -3882,7 +3905,14 @@
     "needOne": "दरासह किमान एक वस्तू जोडा.",
     "incomplete": "वस्तू {{n}}: वस्तूचे नाव आणि दर लिहा.",
     "heading_one": "{{count}} वस्तू",
-    "heading_other": "{{count}} वस्तू"
+    "heading_other": "{{count}} वस्तू",
+    "billCategory": "प्रकार (यादीबाहेरील वस्तूंसाठी)",
+    "chooseProduct": "उत्पादन निवडा",
+    "noProducts": "या विक्रेत्याची अजून उत्पादने नाहीत",
+    "other": "इतर… (वस्तू लिहा)",
+    "otherName": "वस्तूचे नाव",
+    "otherCategory": "इतर… (नवीन प्रकार लिहा)",
+    "newCategoryName": "नवीन प्रकाराचे नाव"
   },
   "vendorProducts": {
     "title": "हा विक्रेता पुरवतो ती उत्पादने",
@@ -3894,5 +3924,14 @@
     "remove": "हे उत्पादन काढा",
     "saved": "जतन केले",
     "saveFailed": "उत्पादन जतन करता आले नाही"
+  },
+  "vendorPicker": {
+    "search": "विक्रेता नाव किंवा मोबाइलने शोधा",
+    "none": "अजून विक्रेते नाहीत. जोडण्यासाठी नाव लिहा.",
+    "addNew": "\"{{name}}\" नवीन विक्रेता म्हणून जोडा",
+    "mobileOptional": "मोबाइल (ऐच्छिक)",
+    "add": "विक्रेता जोडा",
+    "addFailed": "विक्रेता जोडता आला नाही",
+    "change": "विक्रेता बदला"
   }
 }

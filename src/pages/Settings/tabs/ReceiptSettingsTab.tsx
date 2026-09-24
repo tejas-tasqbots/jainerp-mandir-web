@@ -14,7 +14,6 @@ import { ReceiptWordingCard } from './ReceiptWordingCard'
 import { ReceiptDesignerCard } from './ReceiptDesignerTab'
 import type { ReceiptDefinition } from '../../../lib/receiptDefinition'
 import { useToast } from '../../../components/kit/Toast'
-import { RoomChargeItemsCard } from '../../../components/RoomCharges/RoomChargeItemsCard'
 
 /**
  * The steps, in the order a trust works through them.
@@ -1536,10 +1535,6 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.groupStay')}</h3>
             <p className="text-[11px] text-slate-400">{t('settings.receipts.groupStayHint')}</p>
           </div>
-
-          {/* The price list of stay extras (tenant migration 057). Saved on its
-              own, row by row - it is a master, not part of this form. */}
-          <RoomChargeItemsCard />
 
           <div className="card">
             <div className="card-header">

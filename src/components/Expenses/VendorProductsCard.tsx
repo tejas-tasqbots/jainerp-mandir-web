@@ -6,13 +6,16 @@ import { useToast } from '../kit/Toast'
 import type { VendorItem } from './expenseItems'
 
 interface Category { id: string; name: string }
-interface EditRow { id: string | null; name: string; unit: string; rate: string; gst_rate: string; category_id: string; is_active: boolean; dirty?: boolean }
+interface EditRow { id: string | null; name: string; unit: string; rate: string; gst_rate: string; category_id: string; other_category: string; is_active: boolean; dirty?: boolean }
+
+/** "Other…" in the category dropdown: a new expense head, typed by name. */
+const OTHER = '__other__'
 
 const toRow = (i: VendorItem): EditRow => ({
   id: i.id, name: i.name, unit: i.unit ?? '', rate: String(Number(i.default_rate_paise) / 100),
-  gst_rate: String(i.gst_rate ?? 0), category_id: i.category_id ?? '', is_active: i.is_active,
+  gst_rate: String(i.gst_rate ?? 0), category_id: i.category_id ?? '', other_category: '', is_active: i.is_active,
 })
-const blank = (): EditRow => ({ id: null, name: '', unit: '', rate: '', gst_rate: '0', category_id: '', is_active: true })
+const blank = (): EditRow => ({ id: null, name: '', unit: '', rate: '', gst_rate: '0', category_id: '', other_category: '', is_active: true })
 
 /**
  * What a vendor sells (tenant migration 057): "One Vendor Can give multiple
@@ -37,7 +40,10 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
 
   const body = (r: EditRow) => ({
     name: r.name.trim(), unit: r.unit.trim() || null, default_rate_paise: parsePaise(r.rate || '0'),
-    gst_rate: Number(r.gst_rate || 0), category_id: r.category_id || null, is_active: r.is_active,
+    gst_rate: Number(r.gst_rate || 0), is_active: r.is_active,
+    ...(r.category_id === OTHER
+      ? { category: r.other_category.trim() || null }
+      : { category_id: r.category_id || null }),
   })
 
   async function run(fn: () => Promise<unknown>, ok?: string) {
@@ -64,11 +70,19 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
         aria-label={t('expenseItems.rate')} onChange={e => set({ rate: e.target.value })} />
       <input type="number" min="0" max="40" step="0.01" className="form-input" value={r.gst_rate} disabled={!canEdit}
         aria-label={t('expenseItems.gstPct')} onChange={e => set({ gst_rate: e.target.value })} />
-      <select className="form-select" value={r.category_id} disabled={!canEdit} aria-label={t('expenseItems.category')}
-        onChange={e => set({ category_id: e.target.value })}>
-        <option value="">{t('vendorProducts.noCategory')}</option>
-        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </select>
+      <div className="space-y-1">
+        <select className="form-select" value={r.category_id} disabled={!canEdit} aria-label={t('expenses.category')}
+          onChange={e => set({ category_id: e.target.value })}>
+          <option value="">{t('vendorProducts.noCategory')}</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
+        </select>
+        {r.category_id === OTHER && (
+          <input className="form-input" maxLength={100} value={r.other_category} autoFocus
+            placeholder={t('expenseItems.newCategoryName')} aria-label={t('expenseItems.newCategoryName')}
+            onChange={e => set({ other_category: e.target.value })} />
+        )}
+      </div>
     </>
   )
 
@@ -78,7 +92,7 @@ export function VendorProductsCard({ vendorId, canEdit }: { vendorId: string; ca
       <div className="card p-3 space-y-2">
         <div className="hidden md:grid grid-cols-[1fr_5rem_6rem_4.5rem_10rem_auto_auto] gap-2 text-xs text-slate-500 px-0.5">
           <span>{t('vendorProducts.name')}</span><span>{t('expenseItems.unit')}</span><span>{t('expenseItems.rate')}</span>
-          <span>{t('expenseItems.gstPct')}</span><span>{t('expenseItems.category')}</span><span /><span />
+          <span>{t('expenseItems.gstPct')}</span><span>{t('expenses.category')}</span><span /><span />
         </div>
         {rows.length === 0 && <p className="text-sm text-slate-500">{t('vendorProducts.none')}</p>}
         {rows.map(r => (

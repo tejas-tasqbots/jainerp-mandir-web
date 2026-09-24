@@ -800,7 +800,23 @@
     "refundNow": "Refund ₹{{amount}} to the guest now",
     "refundLaterHint": "The excess stays on the booking. Refund it later from the Rooms list.",
     "roomNights_one": "Room · {{count}} night × ₹{{rate}}",
-    "roomNights_other": "Room · {{count}} nights × ₹{{rate}}"
+    "roomNights_other": "Room · {{count}} nights × ₹{{rate}}",
+    "findRoom": "Find a room",
+    "noRoomsFree": "No free rooms match.",
+    "pickRoomsHint": "Pick one or more rooms above.",
+    "roomsLabel": "Rooms",
+    "roomsSelected_one": "{{count}} room selected",
+    "roomsSelected_other": "{{count}} rooms selected",
+    "sectionGuest": "Guest",
+    "sectionStay": "Stay and rooms",
+    "sectionPayment": "Payment and remarks",
+    "summaryRooms_one": "Room {{rooms}} · {{nights}} night(s)",
+    "summaryRooms_other": "{{count}} rooms ({{rooms}}) · {{nights}} night(s)",
+    "stayColumn": "Stay",
+    "inShort": "In",
+    "outShort": "Out",
+    "personsN_one": "{{count}} person",
+    "personsN_other": "{{count}} persons"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -921,12 +937,14 @@
     "fund": "Fund",
     "goesToFund": "Goes to {{fund}} · {{type}}",
     "filedAs": "Filed as {{type}}",
-    "addHead": "Add another head",
-    "removeHead": "Remove this head",
-    "headN": "Head {{n}}",
-    "headIncomplete": "Head {{n}}: choose a category and enter its amount.",
-    "headsTotal_one": "{{count}} head · total ₹{{amount}}",
-    "headsTotal_other": "{{count}} heads · total ₹{{amount}}"
+    "addHead": "Add another category",
+    "removeHead": "Remove",
+    "headIncomplete": "Row {{n}}: choose a category and enter its amount.",
+    "headsTotal_one": "{{count}} category · Total ₹{{amount}}",
+    "headsTotal_other": "{{count}} categories · Total ₹{{amount}}",
+    "donationFor": "Donation for",
+    "otherCategory": "Other… (type a new category)",
+    "newCategoryName": "Name of the new category"
   },
   "donationsHub": {
     "donations": "Donations",
@@ -3822,7 +3840,8 @@
     "idsHeading_other": "ID documents ({{count}})",
     "addAnother": "Add another ID",
     "removeRow": "Remove this ID",
-    "tooManyPhotos": "Too many large photos for one booking. Book now with fewer photos and add the rest from the Rooms list."
+    "tooManyPhotos": "Too many large photos for one booking. Book now with fewer photos and add the rest from the Rooms list.",
+    "photo": "Photo"
   },
   "editBooking": {
     "title": "Edit booking",
@@ -3862,7 +3881,11 @@
     "newItem": "New charge",
     "newItemPlaceholder": "e.g. Extra blanket",
     "addItem": "Add",
-    "itemSaved": "Saved"
+    "itemSaved": "Saved",
+    "choose": "Choose a charge",
+    "other": "Other… (type it)",
+    "otherName": "What is the charge for?",
+    "optionalHint": "Optional — extra bed, food, laundry…"
   },
   "expenseItems": {
     "toggle": "This bill has several items",
@@ -3882,7 +3905,14 @@
     "needOne": "Add at least one item with a rate.",
     "incomplete": "Item {{n}}: enter what it is and its rate.",
     "heading_one": "{{count}} item",
-    "heading_other": "{{count}} items"
+    "heading_other": "{{count}} items",
+    "billCategory": "Category (for items not in the list)",
+    "chooseProduct": "Choose a product",
+    "noProducts": "This vendor has no products yet",
+    "other": "Other… (type the item)",
+    "otherName": "Item name",
+    "otherCategory": "Other… (type a new category)",
+    "newCategoryName": "Name of the new category"
   },
   "vendorProducts": {
     "title": "Products this vendor supplies",
@@ -3894,5 +3924,14 @@
     "remove": "Remove this product",
     "saved": "Saved",
     "saveFailed": "Could not save the product"
+  },
+  "vendorPicker": {
+    "search": "Search vendor by name or mobile",
+    "none": "No vendors yet. Type a name to add one.",
+    "addNew": "Add \"{{name}}\" as a new vendor",
+    "mobileOptional": "Mobile (optional)",
+    "add": "Add vendor",
+    "addFailed": "Could not add the vendor",
+    "change": "Change vendor"
   }
 }

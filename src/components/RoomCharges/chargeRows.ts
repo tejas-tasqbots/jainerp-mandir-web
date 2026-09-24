@@ -8,6 +8,8 @@ export interface ChargeRow {
   key: string
   room_id: string
   charge_item_id: string
+  /** "Other…" chosen in the dropdown: the description is typed. */
+  other: boolean
   description: string
   qty: string
   nights: string
@@ -15,7 +17,7 @@ export interface ChargeRow {
 }
 
 export const newChargeRow = (roomId = '', nights = 1): ChargeRow => ({
-  key: Math.random().toString(36).slice(2), room_id: roomId, charge_item_id: '', description: '',
+  key: Math.random().toString(36).slice(2), room_id: roomId, charge_item_id: '', other: false, description: '',
   qty: '1', nights: String(Math.max(1, nights)), rate: '',
 })
 
