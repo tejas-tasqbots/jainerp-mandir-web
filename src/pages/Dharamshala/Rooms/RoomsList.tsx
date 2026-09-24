@@ -1100,8 +1100,8 @@ export function RoomsList() {
       )}
 
       {collectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-navy-900">{t('dharamshala.collectPayment')}</h3>
@@ -1143,7 +1143,7 @@ export function RoomsList() {
 
       {/* Bill — the invoice plus every tender recorded against it. */}
       {billModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -1218,7 +1218,7 @@ export function RoomsList() {
 
       {/* Cancel confirmation modal */}
       {cancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('dharamshala.cancelBookingTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">

@@ -180,7 +180,7 @@ function ProposeModal({ maharaj, onClose, onDone }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[88vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-navy-900">{t('maharaj.proposeLocationTitle', { name: maharaj.name })}</h3>

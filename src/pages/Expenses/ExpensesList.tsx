@@ -417,7 +417,7 @@ export function ExpensesList() {
 
       {/* Edit modal */}
       {editModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="font-bold text-navy-900 mb-4">{t('expenses.editExpense')}</h3>
             <form onSubmit={saveEdit} className="space-y-4">
@@ -447,7 +447,7 @@ export function ExpensesList() {
 
       {/* Pay-off modal for credit expenses — records a real cash/bank outflow via the same flow as Creditors. */}
       {payModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('creditors.recordPayment')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('creditors.outstandingLabel', { amount: fmtPaise(payModal.outstanding) })}</p>

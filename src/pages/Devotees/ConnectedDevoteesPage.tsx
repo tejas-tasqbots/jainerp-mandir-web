@@ -274,7 +274,7 @@ export function ConnectedDevoteesPage() {
 
       {/* Invite Modal */}
       {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-navy-900">{t('devoteesPage.inviteADevotee')}</h2>
             <p className="text-sm text-slate-500">

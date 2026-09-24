@@ -273,7 +273,7 @@ export function CashBank() {
 
       {/* Deposit / Withdraw modal */}
       {moveModal && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h3 className="font-bold text-navy-900 mb-1">
               {moveModal === 'deposit' ? t('accounts.depositTo', { account: selected.name }) : t('accounts.withdrawFrom', { account: selected.name })}

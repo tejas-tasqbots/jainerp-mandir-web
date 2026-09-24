@@ -802,7 +802,7 @@ export function SettingsPage() {
 
           {/* Change Plan modal */}
           {showPlanModal && (
-            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowPlanModal(false)}>
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" onClick={() => setShowPlanModal(false)}>
               <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-navy-900">{t('settings.subscription.modalHeading')}</h3>

@@ -229,7 +229,7 @@ export function PrasadItems() {
 
       {/* Edit item modal */}
       {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
             <h3 className="font-bold text-navy-900 mb-4">{t('prasad.editPrasadItem')}</h3>
             <form onSubmit={saveEdit} className="space-y-4">
@@ -283,7 +283,7 @@ export function PrasadItems() {
 
       {/* Stock adjustment modal */}
       {stockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('prasad.adjustStock')}</h3>
             <p className="text-sm text-slate-500 mb-4">

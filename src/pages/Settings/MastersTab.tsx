@@ -308,8 +308,10 @@ export function MastersTab() {
             ? 'bg-navy-900 text-white border-navy-900'
             : compact ? 'bg-white text-slate-600 border-slate-200 hover:border-slate-300' : 'text-slate-600 hover:bg-slate-100'
         }`}>
-        <Icon size={15} className={on ? 'text-white' : 'text-slate-400'} />
-        <span className={`flex-1 ${compact ? 'whitespace-nowrap' : 'min-w-0 truncate'}`}>{l.title}</span>
+        <Icon size={15} className={`shrink-0 ${on ? 'text-white' : 'text-slate-400'}`} />
+        {/* Wraps rather than truncates: "Extra charges price list" read
+            "Extra charges price l..." and the Hindi and Marathi names are longer. */}
+        <span className={`flex-1 ${compact ? 'whitespace-nowrap' : 'min-w-0 leading-snug'}`}>{l.title}</span>
         {counts[l.id] !== undefined && (
           <span className={`rounded-full px-1.5 text-[11px] font-semibold ${on ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
             {counts[l.id]}

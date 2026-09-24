@@ -286,7 +286,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
       />
 
       {depositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('cheques.depositTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('cheques.depositSubtitle', { invoiceNo: depositModal.invoiceNo })}</p>
@@ -312,7 +312,7 @@ function ReceivedCheques({ statusLabel, statusBadge, t, toast }: {
       )}
 
       {bounceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('cheques.bounceTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('cheques.bounceWarning', { invoiceNo: bounceModal.invoiceNo })}</p>
@@ -493,7 +493,7 @@ function IssuedCheques({ statusLabel, statusBadge, t, toast }: {
       />
 
       {bounceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('cheques.bounceTitle')}</h3>
             <p className="text-sm text-slate-500 mb-4">{t('cheques.issuedBounceWarning', { description: bounceModal.description })}</p>

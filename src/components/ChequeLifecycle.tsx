@@ -111,7 +111,7 @@ export function useChequeLifecycle(kind: ChequeKind, reload: () => void) {
   }
 
   const bounceModal = bounce ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
         <h3 className="font-bold text-navy-900 mb-1">{t('cheques.bounceTitle')}</h3>
         <p className="text-sm text-slate-500 mb-4">

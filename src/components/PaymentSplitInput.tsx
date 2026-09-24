@@ -60,8 +60,9 @@ export function cashPaise(rows: PaymentRow[]): number {
  * literally in the source, so `sm:${...}` would silently produce nothing.
  *
  * Flexible, with floors that still fit the narrowest host — the room and hall
- * payment dialogs (max-w-lg, ~464px of content). Fixed widths there left the
- * reference box a few pixels wide.
+ * payment dialogs (max-w-xl, ~528px of content). Fixed widths there left the
+ * reference box a few pixels wide; at max-w-lg the account select cut
+ * "Default account" to "Default acco" (2026-09-24), so those dialogs widened.
  */
 const ROW_COLS = 'sm:grid-cols-[minmax(6rem,1fr)_minmax(5.5rem,0.9fr)_minmax(6rem,1.4fr)_minmax(7rem,1.3fr)_2rem]'
 

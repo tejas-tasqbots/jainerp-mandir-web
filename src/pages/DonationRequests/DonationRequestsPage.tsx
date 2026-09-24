@@ -358,7 +358,7 @@ export function DonationRequestsPage() {
 
       {/* Detail / proof modal */}
       {detail.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail({ open: false, loading: false, request: null })}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" onClick={() => setDetail({ open: false, loading: false, request: null })}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
             {detail.loading || !detail.request ? (
               <div className="py-10 text-center text-slate-400 text-sm">{t('common.loading')}</div>
@@ -426,7 +426,7 @@ export function DonationRequestsPage() {
 
       {/* Reject reason modal */}
       {rejectModal.open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-navy-900">{t('donationRequests.rejectDonationRequest')}</h2>
             <p className="text-sm text-slate-500">{t('donationRequests.rejectSubtitle')}</p>

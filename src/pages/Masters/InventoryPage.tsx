@@ -252,7 +252,7 @@ export function InventoryPage() {
       />
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-navy-900">{editId ? t('inventory.editItem') : t('inventory.addInventoryItem')}</h3>

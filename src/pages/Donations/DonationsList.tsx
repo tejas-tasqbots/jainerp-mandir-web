@@ -371,7 +371,7 @@ export function DonationsList() {
 
       {/* Void confirmation modal */}
       {voidModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h3 className="font-bold text-navy-900 mb-1">{t('donations.voidDonation')}</h3>
             <p className="text-sm text-slate-500 mb-4">
@@ -482,7 +482,7 @@ function BulkImportModal({ onClose }: { onClose: (imported: boolean) => void }) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h3 className="font-semibold text-navy-900">{t('donations.importTitle')}</h3>
