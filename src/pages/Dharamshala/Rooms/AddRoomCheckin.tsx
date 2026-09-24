@@ -269,9 +269,17 @@ export function AddRoomCheckin() {
             </div>
             <div>
               <label className="form-label" htmlFor="booking-persons">{t('dharamshala.personsLabel')}</label>
-              {/* The rooms' real capacity, all of them together. */}
-              <input id="booking-persons" type="number" min="1" max={capacity || 20} className="form-input max-w-[10rem]"
+              {/* Not capped at the rooms' capacity: a family of five in two
+                  rooms for two takes an extra bed, which is what the extras
+                  price list is for. The form capped it and refused them. It
+                  says so instead, and the clerk adds the bed below. */}
+              <input id="booking-persons" type="number" min="1" max={99} className="form-input max-w-[10rem]"
                 value={form.persons_count} onChange={e => setForm(f => ({ ...f, persons_count: e.target.value }))} />
+              {capacity > 0 && Number(form.persons_count) > capacity && (
+                <p className="form-hint text-amber-700" data-testid="over-capacity" role="status">
+                  {t('dharamshala.overCapacity', { n: Number(form.persons_count), cap: capacity })}
+                </p>
+              )}
             </div>
           </div>
           <div>

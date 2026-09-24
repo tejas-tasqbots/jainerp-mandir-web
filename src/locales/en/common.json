@@ -677,6 +677,7 @@
     "paymentsReceived": "Payments received",
     "persons": "Persons",
     "personsLabel": "Persons",
+    "overCapacity": "{{n}} guests, but the rooms sleep {{cap}}. Add an extra bed under Extra charges if needed.",
     "realised": "Realised",
     "reasonOptional": "Reason (optional)",
     "reasonPlaceholder": "e.g. Guest request, no-show...",
