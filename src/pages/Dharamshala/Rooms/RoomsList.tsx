@@ -27,7 +27,7 @@ import {
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
 import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
-import { useConfirm } from '../../../components/ConfirmDialog'
+import { GroupCheckinModal, GroupCheckoutModal } from './GroupStayDialogs'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'checked_in', 'checked_out', 'cancelled'] as const
@@ -109,7 +109,11 @@ function refundable(b: RoomBooking): number {
  * Grouped on the page's rows: a group is created in one request, so its rooms
  * sit together in the list.
  */
-type StayRow = RoomBooking & { members?: RoomBooking[] }
+type StayRow = RoomBooking & {
+  members?: RoomBooking[]
+  /** A room shown under its group: its money is the group's (see the group entry). */
+  inGroup?: boolean
+}
 
 function groupStays(list: RoomBooking[]): StayRow[] {
   const byGroup = new Map<string, RoomBooking[]>()
@@ -135,12 +139,13 @@ function groupStays(list: RoomBooking[]): StayRow[] {
       advance_paise: sum(x => x.advance_paise),
       refunded_paise: sum(x => x.refunded_paise),
       total_paise: sum(x => x.total_paise),
-      due_paise: sum(x => x.due_paise ?? x.balance_paise),
+      // One account: the group's money against every room's bill, netted.
+      due_paise: Math.max(0, sum(x => x.total_paise) - sum(x => (x.paid_paise ?? x.advance_paise) - (x.refunded_paise ?? 0))),
       balance_paise: sum(x => x.balance_paise),
       // 'mixed' is only ever on a group's own entry; the status column reads it.
       status: (statuses.length === 1 ? statuses[0] : 'mixed') as RoomBooking['status'],
       has_id_document: ms.every(x => x.has_id_document !== false),
-      members: ms,
+      members: ms.map(x => ({ ...x, inGroup: true })),
     })
   }
   return out
@@ -152,7 +157,6 @@ export function RoomsList() {
   const canDelete = useCanDeleteEntries()
   const deleteEntry = useDeleteEntry()
   const toast = useToast()
-  const confirm = useConfirm()
   /** The TRUST's printed words, for the bill. Not `t()` - see the hook. */
   const L = useReceiptLabels()
 
@@ -199,6 +203,8 @@ export function RoomsList() {
   const [checkinFor, setCheckinFor] = useState<RoomBooking | null>(null)
   const [extrasFor, setExtrasFor] = useState<RoomBooking | null>(null)
   const [checkoutFor, setCheckoutFor] = useState<RoomBooking | null>(null)
+  const [groupCheckinFor, setGroupCheckinFor] = useState<RoomBooking[] | null>(null)
+  const [groupCheckoutFor, setGroupCheckoutFor] = useState<RoomBooking[] | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
 
@@ -314,6 +320,20 @@ export function RoomsList() {
         // 057 refunds at checkout): a stay paid 1,200, billed 600 and refunded
         // 600 is settled, not "-600".
         const refunded = b.refunded_paise ?? 0
+        // A room under its group entry: the money is the group's, so the room
+        // shows its bill, not a balance of its own.
+        if ((b as StayRow).inGroup) {
+          return <span className="text-slate-500 text-xs" title={t('dharamshala.groupMoneyHint')}>{t('dharamshala.roomBill', { amount: fmtPaise(b.total_paise ?? 0) })}</span>
+        }
+        const ms = (b as StayRow).members
+        if (ms && ms.some(x => x.status === 'checked_in' || x.status === 'confirmed' || x.status === 'booked')) {
+          const held = (b.paid_paise ?? 0) - refunded - (b.total_paise ?? 0)
+          if ((b.due_paise ?? 0) <= 0 && held > 0) {
+            // Paid over the rooms' bills while rooms still stay: held for the
+            // group, refunded when its last room checks out.
+            return <span className="text-green-700 font-semibold" title={t('dharamshala.groupHeldHint')}>{t('dharamshala.heldForGroup', { amount: fmtPaise(held) })}</span>
+          }
+        }
         if (b.status === 'cancelled') {
           const held = (b.paid_paise ?? 0) - refunded
           return held > 0
@@ -370,43 +390,41 @@ export function RoomsList() {
    * side by side, which ran out of the table on an ordinary laptop screen and
    * left the clerk guessing what each icon was.
    */
-  /** Checks in every room of a group booking that is still waiting. */
-  async function checkInAll(ms: RoomBooking[]) {
-    const waiting = ms.filter(x => x.status === 'confirmed' || x.status === 'booked')
-    const ok = await confirm({
-      title: t('dharamshala.checkInAllTitle', { count: waiting.length }),
-      message: t('dharamshala.checkInAllMessage', { rooms: waiting.map(x => x.room_number || x.room_id).join(', '), guest: ms[0].guest_name }),
-      confirmLabel: t('dharamshala.checkInAction'),
-    })
-    if (!ok) return
-    let done = 0
-    for (const x of waiting) {
-      try {
-        await api.patch(`/room-bookings/${x.id}/checkin`, {})
-        done++
-      } catch (e) {
-        toast.error(`${x.room_number}: ${apiErrorMessage(e, t('dharamshala.checkinFailed', { defaultValue: 'Could not check in' }))}`)
-      }
-    }
-    if (done) toast.success(t('dharamshala.checkedInAll', { count: done }))
-    load()
-  }
-
   function rowActions(b: StayRow): RowAction[] {
     // A group's own entry: what applies to all its rooms at once. Each room's
     // own steps are on its row underneath.
     if (b.members) {
       const ms = b.members
       const waiting = ms.filter(x => x.status === 'confirmed' || x.status === 'booked')
+      const staying = ms.filter(x => x.status === 'checked_in')
       const out: RowAction[] = []
+      // The next step for the group, with the rooms to pick: some arrive
+      // today and the rest tomorrow, some leave early.
       if (waiting.length) {
-        out.push({ label: t('dharamshala.checkInAll', { count: waiting.length }), onClick: () => { void checkInAll(ms) }, primary: true })
+        out.push({ label: t('dharamshala.checkInGroup', { count: waiting.length }), onClick: () => setGroupCheckinFor(ms), primary: true })
+      } else if (staying.length) {
+        out.push({ label: t('dharamshala.checkOutGroup', { count: staying.length }), onClick: () => setGroupCheckoutFor(ms), primary: true })
+      }
+      if (waiting.length && staying.length) {
+        out.push({ label: t('dharamshala.checkOutGroup', { count: staying.length }), icon: <Undo2 size={14} />, onClick: () => setGroupCheckoutFor(ms) })
       }
       if (ms.some(x => x.status !== 'cancelled')) {
         out.push({
           label: t('dharamshala.printGroupBill'), icon: <Files size={14} />,
           onClick: () => { printDonationReceipt(ms[0].id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed'))) },
         })
+      }
+      // Every room out and the group paid over: its refund, recorded on one of
+      // its rooms (the API allows what the GROUP holds over its bills).
+      // The group owes more than it has paid: collected on one of its rooms,
+      // the group's money is one account.
+      if ((b.due_paise ?? 0) > 0) {
+        const payOn = ms.find(x => x.status !== 'cancelled') ?? ms[0]
+        out.push({ label: t('dharamshala.collectPayment'), icon: <IndianRupee size={14} />, onClick: () => openCollect(payOn) })
+      }
+      const groupOver = refundable(b)
+      if (!waiting.length && !staying.length && groupOver > 0) {
+        out.push({ label: t('dharamshala.refund'), icon: <Undo2 size={14} />, onClick: () => openRefund(ms[0], groupOver) })
       }
       const noId = ms.find(x => x.has_id_document === false && x.status !== 'cancelled')
       if (noId) out.push({ label: t('guestId.title'), icon: <IdCard size={14} />, onClick: () => setIdDocsFor(noId) })
@@ -432,10 +450,11 @@ export function RoomsList() {
       })
     }
     if (b.status === 'checked_out') out.push({ label: t('dharamshala.viewBill'), icon: <FileText size={14} />, onClick: () => viewBill(b.id) })
-    if (b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0) {
+    if (!(b as StayRow).inGroup && b.status !== 'cancelled' && (b.due_paise ?? b.balance_paise ?? 0) > 0) {
       out.push({ label: t('dharamshala.collectPayment'), icon: <IndianRupee size={14} />, onClick: () => openCollect(b) })
     }
-    if (refundable(b) > 0) out.push({ label: t('dharamshala.refund'), icon: <Undo2 size={14} />, onClick: () => openRefund(b) })
+    // A room of a group: collecting and refunding are the group's (its entry).
+    if (!(b as StayRow).inGroup && refundable(b) > 0) out.push({ label: t('dharamshala.refund'), icon: <Undo2 size={14} />, onClick: () => openRefund(b) })
     if (b.status !== 'cancelled' && depositHeld(b) > 0) {
       out.push({
         label: t('dharamshala.settleDeposit'), icon: <ShieldCheck size={14} />,
@@ -626,13 +645,13 @@ export function RoomsList() {
     }
   }
 
-  function openRefund(b: RoomBooking) {
+  function openRefund(b: RoomBooking, amountPaise = refundable(b)) {
     setRefundModal(b)
     setRefundError('')
     setRefundMode('cash')
     // Prefilled with everything refundable, which is what a cancellation
     // normally gives back. A cashier keeping part of it types a smaller number.
-    setRefundAmt((refundable(b) / 100).toFixed(2))
+    setRefundAmt((amountPaise / 100).toFixed(2))
   }
 
   async function submitRefund() {
@@ -822,6 +841,19 @@ export function RoomsList() {
           surprising a cashier with a new total. */}
       {idDocsFor && (
         <IdDocumentsModal booking={idDocsFor} onClose={() => setIdDocsFor(null)} onChanged={() => void load()} />
+      )}
+      {groupCheckinFor && (
+        <GroupCheckinModal rooms={groupCheckinFor} onClose={() => setGroupCheckinFor(null)}
+          onDone={() => { setGroupCheckinFor(null); toast.success(t('dharamshala.checkedInGroup')); load() }} />
+      )}
+      {groupCheckoutFor && (
+        <GroupCheckoutModal rooms={groupCheckoutFor} onClose={() => setGroupCheckoutFor(null)}
+          onDone={res => {
+            setGroupCheckoutFor(null)
+            toast.success([t('dharamshala.checkedOutGroup', { count: res.invoices.length }), ...res.invoices,
+              ...(res.refunded > 0 ? [t('dharamshala.refundedAmount', { amount: fmtPaise(res.refunded) })] : [])].join(' · '))
+            load()
+          }} />
       )}
       {checkinFor && (
         <CheckinModal booking={checkinFor} onClose={() => setCheckinFor(null)}

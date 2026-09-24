@@ -21,7 +21,7 @@ import type { RoomBooking } from '../../../types'
 
 interface StayCharge { id: string; description: string; qty: number; nights: number; rate_paise: number; amount_paise: number; stage: string }
 
-function Shell({ title, sub, children, onClose }: {
+export function Shell({ title, sub, children, onClose }: {
   title: string; sub: string; children: React.ReactNode; onClose: () => void
 }) {
   // Escape closes, as every other dialog in the app does.
@@ -216,6 +216,11 @@ interface Preview {
   existing_charges_paise: number; new_charges_paise: number
   subtotal_paise: number; gst_paise: number; gst_rate_pct: number; total_paise: number
   paid_paise: number; refunded_paise: number; due_paise: number; refund_owed_paise: number
+  /** A room of a group booking: the group's account (the API settles against it). */
+  group?: {
+    rooms: number; others_open: number; held_paise: number
+    settled_paise: number; committed_paise: number; carried_paise: number
+  } | null
 }
 
 /** "Now", as the local wall-clock value a datetime-local input takes. */
@@ -291,7 +296,9 @@ export function CheckoutModal({ booking, onClose, onDone }: {
       const { data } = await api.patch(`/room-bookings/${booking.id}/checkout`, {
         ...body(),
         ...(remarks !== (booking.notes ?? '') ? { remarks: remarks.trim() || null } : {}),
-        ...(due > 0 ? { payments: toPayload(payRows) } : {}),
+        // "Check out without payment" must take nothing: with no tender list
+        // the API books the whole due as cash, so say zero.
+        ...(due > 0 && sumPaise(payRows) > 0 ? { payments: toPayload(payRows) } : { amount_paise: 0 }),
         ...(owed > 0 && refundNow ? { refund: { payment_mode: refundMode } } : {}),
       })
       onDone(data?.data ?? data)
@@ -342,8 +349,19 @@ export function CheckoutModal({ booking, onClose, onDone }: {
             {p.existing_charges_paise + p.new_charges_paise > 0 && line(t('roomCharges.heading'), p.existing_charges_paise + p.new_charges_paise)}
             {p.gst_paise > 0 && line(`GST ${p.gst_rate_pct}%`, p.gst_paise)}
             {line(t('dharamshala.total'), p.total_paise, true, 'preview-total')}
-            {line(t('dharamshala.alreadyPaid'), p.paid_paise)}
-            {p.refunded_paise > 0 && line(t('dharamshala.refunded'), p.refunded_paise)}
+            {/* A room of a group booking settles against the group's money,
+                not what happened to be taken on this room. */}
+            {p.group ? (
+              <>
+                {line(t('dharamshala.groupHeld', { count: p.group.rooms }), p.group.held_paise)}
+                {line(t('dharamshala.groupSettled'), p.group.settled_paise)}
+              </>
+            ) : (
+              <>
+                {line(t('dharamshala.alreadyPaid'), p.paid_paise)}
+                {p.refunded_paise > 0 && line(t('dharamshala.refunded'), p.refunded_paise)}
+              </>
+            )}
             {p.due_paise > 0 && (
               <div className="flex justify-between font-semibold text-amber-800" data-testid="preview-due">
                 <span>{t('dharamshala.dueNow')}</span><span>₹{fmtPaise(p.due_paise)}</span>
@@ -353,6 +371,13 @@ export function CheckoutModal({ booking, onClose, onDone }: {
               <div className="flex justify-between font-semibold text-brand-blue" data-testid="preview-refund">
                 <span>{t('dharamshala.refundToGuest')}</span><span>₹{fmtPaise(p.refund_owed_paise)}</span>
               </div>
+            )}
+            {p.group && p.group.others_open > 0 && (
+              <p className="pt-1 text-xs text-slate-600" data-testid="preview-group-note">
+                {p.group.carried_paise > 0
+                  ? t('dharamshala.groupCarriedNote', { amount: fmtPaise(p.group.carried_paise), count: p.group.others_open })
+                  : t('dharamshala.groupOthersLater', { count: p.group.others_open })}
+              </p>
             )}
           </>
         )}
