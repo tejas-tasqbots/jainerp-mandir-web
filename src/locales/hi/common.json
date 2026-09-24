@@ -614,7 +614,7 @@
     "checkOutAction": "चेक-आउट",
     "checkOutButton": "चेक-आउट करें",
     "checkOutDate": "चेक-आउट तिथि *",
-    "checkinFailed": "चेक-इन विफल",
+    "checkinFailed": "चेक-इन नहीं हो सका",
     "checkinSuccess": "अतिथि चेक-इन हुए",
     "checkoutFailed": "चेक-आउट विफल",
     "checkoutSuccess": "अतिथि चेक-आउट हुए",
@@ -816,7 +816,16 @@
     "inShort": "आगमन",
     "outShort": "प्रस्थान",
     "personsN_one": "{{count}} व्यक्ति",
-    "personsN_other": "{{count}} व्यक्ति"
+    "personsN_other": "{{count}} व्यक्ति",
+    "roomsCount_one": "{{count}} कमरा",
+    "roomsCount_other": "{{count}} कमरे",
+    "checkInAll_one": "चेक-इन",
+    "checkInAll_other": "सभी {{count}} चेक-इन",
+    "checkInAllTitle_one": "1 कमरा चेक-इन करें?",
+    "checkInAllTitle_other": "{{count}} कमरे चेक-इन करें?",
+    "checkInAllMessage": "{{guest}} — कमरे {{rooms}} अभी चेक-इन होंगे।",
+    "checkedInAll_one": "1 कमरा चेक-इन हुआ",
+    "checkedInAll_other": "{{count}} कमरे चेक-इन हुए"
   },
   "donationRequests": {
     "addressLabel": "पता:",
@@ -1303,7 +1312,9 @@
     "total": "कुल",
     "viewNamePlaceholder": "दृश्य का नाम…",
     "vsPrevPeriod": "पिछली अवधि की तुलना में",
-    "vsPrevPeriodSub": "पिछली अवधि की तुलना में"
+    "vsPrevPeriodSub": "पिछली अवधि की तुलना में",
+    "expandRow": "कमरे दिखाएँ",
+    "collapseRow": "कमरे छिपाएँ"
   },
   "languages": {
     "en": "English",
@@ -2098,7 +2109,18 @@
       "imagesOnly": "केवल इमेज फ़ाइल जोड़ी जा सकती हैं।",
       "imageReadFailed": "{{name}} पढ़ी नहीं जा सकी।",
       "imageRemove": "फ़ोटो {{n}} हटाएँ",
-      "imageCover": "मुख्य"
+      "imageCover": "मुख्य",
+      "listsNav": "सूचियाँ",
+      "searchList": "{{count}} प्रविष्टियों में खोजें…",
+      "noMatch": "खोज से कुछ नहीं मिला।",
+      "groups": {
+        "donations": "दान",
+        "payments": "भुगतान और कर",
+        "expenses": "व्यय",
+        "seva": "सेवा और प्रसाद",
+        "stay": "कमरे और हॉल",
+        "food": "भोजनशाला"
+      }
     },
     "messages": {
       "channel": "माध्यम",
@@ -3916,7 +3938,18 @@
     "other": "अन्य… (वस्तु लिखें)",
     "otherName": "वस्तु का नाम",
     "otherCategory": "अन्य… (नई श्रेणी लिखें)",
-    "newCategoryName": "नई श्रेणी का नाम"
+    "newCategoryName": "नई श्रेणी का नाम",
+    "searchProducts": "इस विक्रेता के उत्पाद खोजें",
+    "typeItem": "वस्तु लिखें",
+    "pickVendorFirst": "उत्पाद देखने और सहेजने के लिए ऊपर विक्रेता चुनें। वस्तु लिख भी सकते हैं।",
+    "noProductsYet": "{{vendor}} के अभी कोई उत्पाद सहेजे नहीं हैं। एक लिखें और जोड़ें।",
+    "noProductMatch": "इस विक्रेता का कोई उत्पाद नहीं मिला।",
+    "addToVendor": "\"{{name}}\" को {{vendor}} के उत्पादों में जोड़ें",
+    "useJustThisBill": "\"{{name}}\" केवल इस बिल के लिए",
+    "addedToVendor": "\"{{name}}\" {{vendor}} के उत्पादों में जुड़ गया",
+    "productUpdated": "{{name}}: सामान्य दर अपडेट हुई",
+    "saveAsUsual": "₹{{rate}} को {{name}} की सामान्य दर बनाएँ",
+    "gstShort": "{{rate}}% जीएसटी"
   },
   "vendorProducts": {
     "title": "यह विक्रेता कौन-से उत्पाद देता है",

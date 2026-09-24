@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Search, XCircle, Filter, ArrowUp, ArrowDown, BarChart2,
   FileSpreadsheet, FileDown, Printer, Inbox, Columns3, BookmarkPlus, Bookmark, X, Trash2,
-  MoreVertical,
+  MoreVertical, ChevronRight,
 } from 'lucide-react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -665,6 +665,13 @@ export interface DataTableProps<T> {
   rowActions?: (row: T, index: number) => RowAction[]
 
   /**
+   * Rows shown under this one when it is opened - e.g. the rooms of one guest's
+   * booking. A row with two or more gets a toggle; each sub-row renders with the
+   * same columns and its own row actions. Omit for a flat table.
+   */
+  subRows?: (row: T) => T[] | undefined
+
+  /**
    * Renders the row detail drawer opened on row click (plan §04 — receipt
    * preview, payment history, audit trail). Takes precedence over onRowClick.
    */
@@ -751,6 +758,14 @@ export function DataTable<T>(props: DataTableProps<T>) {
     else props.onRowClick?.(row)
   }
   const rowClickable = !!props.renderDetail || !!props.onRowClick
+  // Which rows with sub-rows are open (by row key).
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const toggleExpanded = (key: string) => setExpanded(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
 
   return (
     <div className="space-y-3">
@@ -919,24 +934,59 @@ export function DataTable<T>(props: DataTableProps<T>) {
                   </td>
                 </tr>
               ) : (
-                props.rows.map((row, i) => (
-                  <tr
-                    key={props.rowKey(row, i)}
-                    className={rowClickable ? 'cursor-pointer' : undefined}
-                    onClick={rowClickable ? () => handleRowClick(row) : undefined}
-                  >
-                    {visibleColumns.map(col => (
-                      <td key={col.key} className={col.align === 'right' ? 'text-right tabular-nums' : ''}>
-                        {col.render ? col.render(row, i) : String((row as Record<string, unknown>)[col.key] ?? '—')}
-                      </td>
-                    ))}
-                    {hasRowMenu && (
-                      <td className="text-right whitespace-nowrap">
-                        <RowActionCell actions={props.rowActions!(row, i)} />
-                      </td>
-                    )}
-                  </tr>
-                ))
+                props.rows.flatMap((row, i) => {
+                  const key = props.rowKey(row, i)
+                  const subs = props.subRows?.(row)
+                  const hasSubs = !!subs && subs.length > 1
+                  const open = hasSubs && expanded.has(key)
+                  const cell = (r: T, idx: number, col: ColumnDef<T>) =>
+                    col.render ? col.render(r, idx) : String((r as Record<string, unknown>)[col.key] ?? '—')
+                  const parent = (
+                    <tr
+                      key={key}
+                      className={`${rowClickable || hasSubs ? 'cursor-pointer' : ''} ${open ? 'bg-slate-50' : ''}`}
+                      data-testid={hasSubs ? 'group-row' : undefined}
+                      aria-expanded={hasSubs ? open : undefined}
+                      onClick={rowClickable ? () => handleRowClick(row) : hasSubs ? () => toggleExpanded(key) : undefined}
+                    >
+                      {visibleColumns.map((col, ci) => (
+                        <td key={col.key} className={col.align === 'right' ? 'text-right tabular-nums' : ''}>
+                          {ci === 0 && hasSubs ? (
+                            <div className="flex items-start gap-1.5">
+                              <button type="button" data-testid="group-toggle"
+                                onClick={e => { e.stopPropagation(); toggleExpanded(key) }}
+                                aria-label={open ? t('kit.collapseRow') : t('kit.expandRow')} title={open ? t('kit.collapseRow') : t('kit.expandRow')}
+                                className="mt-0.5 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-navy-900">
+                                <ChevronRight size={15} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+                              </button>
+                              <div className="min-w-0">{cell(row, i, col)}</div>
+                            </div>
+                          ) : cell(row, i, col)}
+                        </td>
+                      ))}
+                      {hasRowMenu && (
+                        <td className="text-right whitespace-nowrap">
+                          <RowActionCell actions={props.rowActions!(row, i)} />
+                        </td>
+                      )}
+                    </tr>
+                  )
+                  if (!open) return [parent]
+                  return [parent, ...subs!.map((sub, j) => (
+                    <tr key={`${key}/${props.rowKey(sub, j)}`} className="bg-slate-50/70" data-testid="sub-row">
+                      {visibleColumns.map((col, ci) => (
+                        <td key={col.key} className={`${col.align === 'right' ? 'text-right tabular-nums' : ''} ${ci === 0 ? 'pl-10 border-l-2 border-l-brand-blue/40' : ''}`}>
+                          {cell(sub, j, col)}
+                        </td>
+                      ))}
+                      {hasRowMenu && (
+                        <td className="text-right whitespace-nowrap">
+                          <RowActionCell actions={props.rowActions!(sub, j)} />
+                        </td>
+                      )}
+                    </tr>
+                  ))]
+                })
               )}
             </tbody>
           </table>

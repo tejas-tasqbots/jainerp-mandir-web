@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Save, X, Pencil, Trash2, RefreshCw, ImagePlus } from 'lucide-react'
+import { Plus, Save, X, Pencil, Trash2, RefreshCw, ImagePlus, Search } from 'lucide-react'
 import { api } from '../../lib/api'
 import { compressImage } from '../../lib/imageCompress'
 import { useConfirm } from '../../components/ConfirmDialog'
@@ -54,7 +54,12 @@ export interface MasterEditorProps {
   listParams?: Record<string, string>
   /** Boolean column that represents "enabled". Defaults to 'is_active'. */
   statusField?: string
+  /** Told how many entries the list has, whenever it loads (the Settings rail shows it). */
+  onCount?: (n: number) => void
 }
+
+/** A list longer than this gets a search box above it. */
+const SEARCH_FROM = 8
 
 type Row = Record<string, unknown> & { id: string }
 
@@ -90,9 +95,10 @@ function fromPaise(paise: unknown): string {
  * Generic create/list/edit/activate-deactivate editor over a backend master
  * resource. Soft-deletes via is_active so historical records keep their value.
  */
-export function MasterEditor({ resource, title, description, fields, listParams, statusField = 'is_active' }: MasterEditorProps) {
+export function MasterEditor({ resource, title, description, fields, listParams, statusField = 'is_active', onCount }: MasterEditorProps) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<Row[]>([])
+  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -124,6 +130,15 @@ export function MasterEditor({ resource, title, description, fields, listParams,
 
   const optionsOf = (field: MasterField) => field.optionsFrom ? (remoteOptions[field.key] ?? []) : (field.options ?? [])
 
+  // What the search matches: every column as shown (a select by its label).
+  const q = query.trim().toLowerCase()
+  const shown = !q ? rows : rows.filter(row => fields.some(f => {
+    const v = row[f.key]
+    if (v === null || v === undefined || f.type === 'images' || f.type === 'checkbox') return false
+    const label = f.type === 'select' ? optionsOf(f).find(o => o.value === v)?.label ?? '' : String(v)
+    return label.toLowerCase().includes(q)
+  }))
+
   async function load() {
     setLoading(true)
     try {
@@ -141,6 +156,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
         if (batch.length < PAGE || all.length >= total) break
       }
       setRows(all)
+      onCount?.(all.length)
     } catch {
       setError(t('settings.masters.loadFailed'))
     } finally {
@@ -339,6 +355,15 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       </div>
       <div className="card-body space-y-3">
         {showAdd && editorRow}
+        {/* A long list (donation heads run to dozens) gets a search box. */}
+        {!loading && rows.length > SEARCH_FROM && (
+          <div className="relative max-w-xs">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input className="form-input pl-8" value={query} onChange={e => setQuery(e.target.value)}
+              placeholder={t('settings.masters.searchList', { count: rows.length })} aria-label={t('settings.masters.searchList', { count: rows.length })}
+              data-testid="master-search" />
+          </div>
+        )}
         {loading ? (
           <p className="text-sm text-slate-400">{t('common.loading')}</p>
         ) : rows.length === 0 && !showAdd ? (
@@ -355,7 +380,10 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => {
+                {shown.length === 0 && (
+                  <tr><td colSpan={99} className="text-sm text-slate-400 text-center py-4">{t('settings.masters.noMatch')}</td></tr>
+                )}
+                {shown.map(row => {
                   const active = (row[statusField] ?? true) as boolean
                   if (editingId === row.id) {
                     return (

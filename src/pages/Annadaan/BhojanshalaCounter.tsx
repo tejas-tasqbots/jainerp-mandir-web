@@ -153,7 +153,7 @@ export function BhojanshalaCounter({
           ) : (
             // Without a rate every sale is worth nothing, so say so here rather
             // than letting a day's collection quietly total zero.
-            <Link to="/settings?tab=masters" className="inline-flex items-center gap-1 text-brand-red hover:underline">
+            <Link to="/settings?tab=masters&sub=bhojanshala" className="inline-flex items-center gap-1 text-brand-red hover:underline">
               <Settings2 size={13} /> {t('bhojanshala.noRateSet')}
             </Link>
           )}

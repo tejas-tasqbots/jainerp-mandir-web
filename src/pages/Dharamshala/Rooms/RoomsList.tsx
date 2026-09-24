@@ -27,6 +27,7 @@ import {
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
 import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
+import { useConfirm } from '../../../components/ConfirmDialog'
 
 const PAGE_SIZE = 20
 const STATUSES = ['confirmed', 'checked_in', 'checked_out', 'cancelled'] as const
@@ -98,12 +99,60 @@ function refundable(b: RoomBooking): number {
   return Math.max(0, collected - refunded - keep)
 }
 
+/**
+ * One guest's rooms booked together (tenant migration 057, `group_id`) as ONE
+ * entry, the rooms under it (founder, 2026-09-24: "if one booking is there
+ * from one person so the booking will be one only and all rooms will be shown
+ * in one entry"). The entry sums what the rooms have in common - persons,
+ * paid, balance - and each room keeps its own row, and actions, when opened.
+ *
+ * Grouped on the page's rows: a group is created in one request, so its rooms
+ * sit together in the list.
+ */
+type StayRow = RoomBooking & { members?: RoomBooking[] }
+
+function groupStays(list: RoomBooking[]): StayRow[] {
+  const byGroup = new Map<string, RoomBooking[]>()
+  for (const b of list) {
+    if (!b.group_id) continue
+    byGroup.set(b.group_id, [...(byGroup.get(b.group_id) ?? []), b])
+  }
+  const out: StayRow[] = []
+  const done = new Set<string>()
+  for (const b of list) {
+    const ms = b.group_id ? byGroup.get(b.group_id)! : [b]
+    if (ms.length < 2) { out.push(b); continue }
+    if (done.has(b.group_id!)) continue
+    done.add(b.group_id!)
+    const sum = (f: (x: RoomBooking) => number | null | undefined) => ms.reduce((acc, x) => acc + (f(x) ?? 0), 0)
+    const statuses = [...new Set(ms.map(x => x.status))]
+    out.push({
+      ...ms[0],
+      id: `group:${b.group_id}`,
+      room_number: ms.map(x => x.room_number || x.room_id).join(', '),
+      persons_count: sum(x => x.persons_count),
+      paid_paise: sum(x => x.paid_paise ?? x.advance_paise),
+      advance_paise: sum(x => x.advance_paise),
+      refunded_paise: sum(x => x.refunded_paise),
+      total_paise: sum(x => x.total_paise),
+      due_paise: sum(x => x.due_paise ?? x.balance_paise),
+      balance_paise: sum(x => x.balance_paise),
+      // 'mixed' is only ever on a group's own entry; the status column reads it.
+      status: (statuses.length === 1 ? statuses[0] : 'mixed') as RoomBooking['status'],
+      has_id_document: ms.every(x => x.has_id_document !== false),
+      members: ms,
+    })
+  }
+  return out
+}
+
 export function RoomsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const canDelete = useCanDeleteEntries()
   const deleteEntry = useDeleteEntry()
   const toast = useToast()
+  const confirm = useConfirm()
   /** The TRUST's printed words, for the bill. Not `t()` - see the hook. */
   const L = useReceiptLabels()
 
@@ -188,12 +237,20 @@ export function RoomsList() {
         <div>
           <p className="font-medium">{b.guest_name}</p>
           <p className="text-xs text-slate-400">{b.guest_mobile}</p>
+          {(b as StayRow).members && (
+            <span className="badge-blue mt-1 whitespace-nowrap" data-testid="group-rooms">
+              {t('dharamshala.roomsCount', { count: (b as StayRow).members!.length })}
+            </span>
+          )}
           {/* "Book it now, we'll bring the ID": the booking stands, and the
               register keeps saying the ID is still owed until it arrives. */}
           {b.has_id_document === false && b.status !== 'cancelled' && (
             <button
-              onClick={() => setIdDocsFor(b)}
-              className="badge-yellow mt-1 cursor-pointer hover:opacity-80"
+              onClick={e => {
+                e.stopPropagation()
+                setIdDocsFor((b as StayRow).members?.find(x => x.has_id_document === false) ?? b)
+              }}
+              className="badge-yellow mt-1 ml-1 cursor-pointer hover:opacity-80"
               title={t('guestId.pendingHint')}
             >
               {t('guestId.pending')}
@@ -290,7 +347,18 @@ export function RoomsList() {
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
-      render: b => statusBadge(b.status),
+      render: b => {
+        // Rooms of one booking at different stages: each stage with its count.
+        const ms = (b as StayRow).members
+        if (!ms || (b.status as string) !== 'mixed') return statusBadge(b.status)
+        const counts = new Map<string, number>()
+        for (const x of ms) counts.set(x.status, (counts.get(x.status) ?? 0) + 1)
+        return (
+          <div className="flex flex-col items-start gap-1">
+            {[...counts].map(([st, n]) => <span key={st} className="inline-flex items-center gap-1">{statusBadge(st)}<span className="text-xs text-slate-500">×{n}</span></span>)}
+          </div>
+        )
+      },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, enteredByOptions, canDelete])
@@ -302,7 +370,48 @@ export function RoomsList() {
    * side by side, which ran out of the table on an ordinary laptop screen and
    * left the clerk guessing what each icon was.
    */
-  function rowActions(b: RoomBooking): RowAction[] {
+  /** Checks in every room of a group booking that is still waiting. */
+  async function checkInAll(ms: RoomBooking[]) {
+    const waiting = ms.filter(x => x.status === 'confirmed' || x.status === 'booked')
+    const ok = await confirm({
+      title: t('dharamshala.checkInAllTitle', { count: waiting.length }),
+      message: t('dharamshala.checkInAllMessage', { rooms: waiting.map(x => x.room_number || x.room_id).join(', '), guest: ms[0].guest_name }),
+      confirmLabel: t('dharamshala.checkInAction'),
+    })
+    if (!ok) return
+    let done = 0
+    for (const x of waiting) {
+      try {
+        await api.patch(`/room-bookings/${x.id}/checkin`, {})
+        done++
+      } catch (e) {
+        toast.error(`${x.room_number}: ${apiErrorMessage(e, t('dharamshala.checkinFailed', { defaultValue: 'Could not check in' }))}`)
+      }
+    }
+    if (done) toast.success(t('dharamshala.checkedInAll', { count: done }))
+    load()
+  }
+
+  function rowActions(b: StayRow): RowAction[] {
+    // A group's own entry: what applies to all its rooms at once. Each room's
+    // own steps are on its row underneath.
+    if (b.members) {
+      const ms = b.members
+      const waiting = ms.filter(x => x.status === 'confirmed' || x.status === 'booked')
+      const out: RowAction[] = []
+      if (waiting.length) {
+        out.push({ label: t('dharamshala.checkInAll', { count: waiting.length }), onClick: () => { void checkInAll(ms) }, primary: true })
+      }
+      if (ms.some(x => x.status !== 'cancelled')) {
+        out.push({
+          label: t('dharamshala.printGroupBill'), icon: <Files size={14} />,
+          onClick: () => { printDonationReceipt(ms[0].id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed'))) },
+        })
+      }
+      const noId = ms.find(x => x.has_id_document === false && x.status !== 'cancelled')
+      if (noId) out.push({ label: t('guestId.title'), icon: <IdCard size={14} />, onClick: () => setIdDocsFor(noId) })
+      return out
+    }
     const open = b.status === 'confirmed' || b.status === 'booked'
     const out: RowAction[] = []
     if (open) out.push({ label: t('dharamshala.checkInAction'), onClick: () => setCheckinFor(b), primary: true })
@@ -672,9 +781,10 @@ export function RoomsList() {
       <DataTable
         viewKey="rooms-list"
         columns={columns}
-        rows={bookings}
+        rows={groupStays(bookings)}
         rowKey={b => b.id}
         rowActions={b => rowActions(b)}
+        subRows={b => (b as StayRow).members}
         loading={loading}
         graphData={trendByDay(bookings, 'check_in_date', 'advance_paise')}
         searchValue={search}

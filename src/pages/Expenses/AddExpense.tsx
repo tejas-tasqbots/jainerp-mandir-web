@@ -74,10 +74,20 @@ export function AddExpense() {
   const [itemised, setItemised] = useState(false)
   const [items, setItems] = useState<ItemRow[]>(() => [newItemRow()])
   const [products, setProducts] = useState<VendorItem[]>([])
-  useEffect(() => {
-    if (!vendor) { setProducts([]); return }
-    api.get(`/vendors/${vendor.id}/items`).then(r => setProducts(r.data.data ?? [])).catch(() => setProducts([]))
-  }, [vendor?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The vendor's products; reloaded after one is added or updated from an item row.
+  async function loadProducts(): Promise<VendorItem[]> {
+    if (!vendor) { setProducts([]); return [] }
+    try {
+      const r = await api.get(`/vendors/${vendor.id}/items`)
+      const list: VendorItem[] = r.data.data ?? []
+      setProducts(list)
+      return list
+    } catch {
+      setProducts([])
+      return []
+    }
+  }
+  useEffect(() => { loadProducts() }, [vendor?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const billCategory = form.category === OTHER ? form.other_category.trim() : form.category
   // Every product on the vendor's list brings its own category, so the bill's
   // category is asked only when something has none: a one-amount bill, an
@@ -201,7 +211,8 @@ export function AddExpense() {
           </label>
 
           {itemised && (
-            <ExpenseItemsEditor rows={items} onChange={setItems} products={products} />
+            <ExpenseItemsEditor rows={items} onChange={setItems} products={products}
+              vendor={vendor} onProductsChanged={loadProducts} billCategory={billCategory} />
           )}
 
           <div>

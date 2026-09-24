@@ -14,8 +14,7 @@ import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
 import { LocationPicker } from '../../components/LocationPicker'
 import { StateSelect, CitySelect } from '../../components/GeoSelect'
-import { MasterEditor } from './MasterEditor'
-import { BhojanshalaRates } from './BhojanshalaRates'
+import { MastersTab } from './MastersTab'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
@@ -394,7 +393,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className={`space-y-6 ${['masters', 'accounts', 'users', 'receipts', 'messages'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className={`space-y-6 ${tab === 'masters' ? 'max-w-6xl' : ['accounts', 'users', 'receipts', 'messages'].includes(tab) ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-navy-900">{t('settings.title')}</h1>
         {/* Stays here even after the dashboard card is dismissed, so setup is
@@ -557,183 +556,8 @@ export function SettingsPage() {
         </div>
       )}
 
-      {tab === 'masters' && (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500">{t('settings.masters.helpText')}</p>
-
-          <MasterEditor
-            resource="donation-categories"
-            title={t('settings.masters.donationCategories')}
-            description={t('settings.masters.donationCategoriesDesc')}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderGeneral') as string },
-              // Which fund this head's gifts belong to (tenant-migration 038).
-              // Set once here, so the donation counter never asks; the fund
-              // carries the statutory bucket (corpus / specific / general).
-              {
-                key: 'fund_id', label: t('settings.masters.fields.fund'), type: 'select',
-                optionsFrom: { resource: 'funds' }, emptyLabel: t('settings.masters.fields.fundNone') as string,
-              },
-              { key: 'is_80g_eligible', label: t('settings.masters.fields.is80gEligible'), type: 'checkbox', default: true },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          {/* Named funds (tenant-migration 036). Separate from the donation
-              CATEGORY, which says what a gift was for; a fund says whose money
-              it is and what it may be spent on. Dev Dravya, Jivdaya and
-              Sadharan are added here — they are not seeded, because they would
-              be wrong for a trust outside the Jain tradition. */}
-          <MasterEditor
-            resource="funds"
-            title={t('settings.masters.funds')}
-            description={t('settings.masters.fundsDesc')}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: 'Dev Dravya' },
-              {
-                key: 'fund_type', label: t('settings.masters.fields.fundType'), type: 'select', default: 'general',
-                options: [
-                  { value: 'general', label: t('donations.fundGeneral') },
-                  { value: 'specific', label: t('donations.fundSpecific') },
-                  { value: 'corpus', label: t('donations.fundCorpus') },
-                ],
-              },
-              { key: 'is_restricted', label: t('settings.masters.fields.isRestricted'), type: 'checkbox', default: true },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="expense-categories"
-            title={t('settings.masters.expenseCategories')}
-            description={t('settings.masters.expenseCategoriesDesc')}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderElectricity') as string },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="payment-modes"
-            title={t('settings.masters.paymentModes')}
-            description={t('settings.masters.paymentModesDesc')}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.displayName'), required: true, placeholder: t('settings.masters.fields.namePlaceholderUpi') as string },
-              { key: 'code', label: t('settings.masters.fields.code'), required: true, placeholder: t('settings.masters.fields.codePlaceholder') as string },
-              { key: 'requires_reference', label: t('settings.masters.fields.requiresRef'), type: 'checkbox' },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="services"
-            title={t('settings.masters.sevas')}
-            description={t('settings.masters.sevasDesc')}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderAbhishek') as string },
-              { key: 'name_hindi', label: t('settings.masters.fields.nameHindi'), placeholder: 'अभिषेक' },
-              { key: 'price_paise', label: t('settings.masters.fields.amountRupees'), type: 'money', placeholder: '0.00', required: true },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="gst-rates"
-            title={t('settings.masters.gstRates')}
-            description={t('settings.masters.gstRatesDesc')}
-            fields={[
-              { key: 'service', label: t('settings.masters.fields.service'), required: true, placeholder: t('settings.masters.fields.servicePlaceholder') as string },
-              { key: 'cgst', label: t('settings.masters.fields.cgst'), type: 'number', placeholder: '9' },
-              { key: 'sgst', label: t('settings.masters.fields.sgst'), type: 'number', placeholder: '9' },
-              { key: 'igst', label: t('settings.masters.fields.igst'), type: 'number', placeholder: '18' },
-            ]}
-          />
-
-          {/* The stay extras' price list (tenant migration 057), with the other
-              masters rather than inside the receipt settings: it is a list of
-              things the counter picks from, like the categories above. */}
-          <MasterEditor
-            resource="room-charge-items"
-            title={t('roomCharges.priceList')}
-            description={t('roomCharges.priceListHint')}
-            listParams={{ all: 'true' }}
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('roomCharges.newItemPlaceholder') as string },
-              { key: 'default_rate_paise', label: t('roomCharges.rate'), type: 'money', placeholder: '0.00' },
-              { key: 'per_night', label: t('roomCharges.perNight'), type: 'checkbox' },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="halls"
-            title={t('settings.masters.halls')}
-            description={t('settings.masters.hallsDesc')}
-            statusField="is_available"
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderMainHall') as string },
-              { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
-              { key: 'fullday_tariff_paise', label: t('settings.masters.fields.fullDayTariff'), type: 'money', placeholder: '0' },
-              { key: 'session_tariff_paise', label: t('settings.masters.fields.sessionTariff'), type: 'money', placeholder: '0' },
-              { key: 'hourly_tariff_paise', label: t('settings.masters.fields.hourlyTariff'), type: 'money', placeholder: '0' },
-              { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
-              // Shown to devotees deciding where to hold a function
-              // (tenant-migration 040). The first is the one a listing uses.
-              { key: 'images', label: t('settings.masters.fields.hallPhotos'), type: 'images' },
-            ]}
-          />
-
-          <MasterEditor
-            resource="rooms"
-            title={t('settings.masters.rooms')}
-            description={t('settings.masters.roomsDesc')}
-            statusField="is_available"
-            fields={[
-              { key: 'room_number', label: t('settings.masters.fields.roomNo'), required: true, placeholder: t('settings.masters.fields.roomNoPlaceholder') as string },
-              { key: 'name', label: t('settings.masters.fields.nameType'), placeholder: t('settings.masters.fields.nameTypePlaceholder') as string },
-              // Where the room is, so the room board can show it building by
-              // building and floor by floor (tenant migration 053). Both are
-              // optional: a one-building trust leaves Building empty, and the
-              // board falls back to the room numbers' own series.
-              { key: 'building', label: t('settings.masters.fields.building'), placeholder: t('settings.masters.fields.buildingPlaceholder') as string, clearable: true },
-              { key: 'floor', label: t('settings.masters.fields.floor'), type: 'number', placeholder: t('settings.masters.fields.floorPlaceholder') as string },
-              { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
-              { key: 'tariff_paise', label: t('settings.masters.fields.tariffPerNight'), type: 'money', placeholder: '0' },
-              { key: 'gst_rate', label: t('settings.masters.fields.gstPercent'), type: 'number', placeholder: '0' },
-              // Shown to a devotee choosing a room in the Bhakt app and portal
-              // (tenant-migration 040), who previously saw only a number, a
-              // type and a price. The first photo is the one a search card uses.
-              { key: 'images', label: t('settings.masters.fields.roomPhotos'), type: 'images' },
-            ]}
-          />
-
-          {/* What a plate costs at each sitting (tenant migration 042).
-              Here rather than at the counter because it is a property of the
-              trust, not of a sale — and because the counter has a queue in
-              front of it and must not stop to ask. The API prices from these,
-              so the counter showing them as fixed is true. */}
-          <BhojanshalaRates />
-
-          {/* Vendors are managed on the dedicated master page (Masters → Vendors / Suppliers),
-              not here, to avoid two places editing the same records. */}
-
-          <MasterEditor
-            resource="prasad/items"
-            title={t('settings.masters.prasadItems')}
-            description={t('settings.masters.prasadItemsDesc')}
-            statusField="is_available"
-            fields={[
-              { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderLadoo') as string },
-              { key: 'name_hindi', label: t('settings.masters.fields.nameHindi'), placeholder: 'लड्डू' },
-              { key: 'unit', label: t('settings.masters.fields.unit'), placeholder: t('settings.masters.fields.unitPlaceholder') as string, default: 'piece' },
-              { key: 'price_paise', label: t('settings.masters.fields.priceRupees'), type: 'money', required: true, placeholder: '0.00' },
-              { key: 'gst_rate', label: t('settings.masters.fields.gstPercentField'), type: 'number', placeholder: '0', default: 0 },
-              { key: 'low_stock_threshold', label: t('settings.masters.fields.lowStockAlert'), type: 'number', placeholder: '10', default: 10 },
-              { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0', default: 0 },
-            ]}
-          />
-        </div>
-      )}
+      {/* One list at a time, picked from a rail (MastersTab). */}
+      {tab === 'masters' && <MastersTab />}
 
       {tab === 'privacy' && (
         <div className="space-y-4">

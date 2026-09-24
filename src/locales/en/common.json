@@ -614,7 +614,7 @@
     "checkOutAction": "Check-Out",
     "checkOutButton": "Check out",
     "checkOutDate": "Check-Out Date *",
-    "checkinFailed": "Check-in failed",
+    "checkinFailed": "Could not check in",
     "checkinSuccess": "Guest checked in",
     "checkoutFailed": "Check-out failed",
     "checkoutSuccess": "Guest checked out",
@@ -816,7 +816,16 @@
     "inShort": "In",
     "outShort": "Out",
     "personsN_one": "{{count}} person",
-    "personsN_other": "{{count}} persons"
+    "personsN_other": "{{count}} persons",
+    "roomsCount_one": "{{count}} room",
+    "roomsCount_other": "{{count}} rooms",
+    "checkInAll_one": "Check-In",
+    "checkInAll_other": "Check-In all {{count}}",
+    "checkInAllTitle_one": "Check in 1 room?",
+    "checkInAllTitle_other": "Check in {{count}} rooms?",
+    "checkInAllMessage": "{{guest}} — rooms {{rooms}} are checked in now.",
+    "checkedInAll_one": "1 room checked in",
+    "checkedInAll_other": "{{count}} rooms checked in"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -1303,7 +1312,9 @@
     "total": "Total",
     "viewNamePlaceholder": "View name…",
     "vsPrevPeriod": "vs previous period",
-    "vsPrevPeriodSub": "vs previous period"
+    "vsPrevPeriodSub": "vs previous period",
+    "expandRow": "Show the rooms",
+    "collapseRow": "Hide the rooms"
   },
   "languages": {
     "en": "English",
@@ -2098,7 +2109,18 @@
       "imagesOnly": "Only image files can be added.",
       "imageReadFailed": "Could not read {{name}}.",
       "imageRemove": "Remove photo {{n}}",
-      "imageCover": "Cover"
+      "imageCover": "Cover",
+      "listsNav": "Lists",
+      "searchList": "Search {{count}} entries…",
+      "noMatch": "Nothing matches the search.",
+      "groups": {
+        "donations": "Donations",
+        "payments": "Payments & tax",
+        "expenses": "Expenses",
+        "seva": "Seva & prasad",
+        "stay": "Rooms & halls",
+        "food": "Bhojanshala"
+      }
     },
     "messages": {
       "channel": "Channel",
@@ -3916,7 +3938,18 @@
     "other": "Other… (type the item)",
     "otherName": "Item name",
     "otherCategory": "Other… (type a new category)",
-    "newCategoryName": "Name of the new category"
+    "newCategoryName": "Name of the new category",
+    "searchProducts": "Search this vendor's products",
+    "typeItem": "Type the item",
+    "pickVendorFirst": "Pick the vendor above to see and save their products. You can still type an item.",
+    "noProductsYet": "{{vendor}} has no products saved yet. Type one and add it.",
+    "noProductMatch": "None of this vendor's products match.",
+    "addToVendor": "Add \"{{name}}\" to {{vendor}}'s products",
+    "useJustThisBill": "Use \"{{name}}\" just for this bill",
+    "addedToVendor": "\"{{name}}\" added to {{vendor}}'s products",
+    "productUpdated": "{{name}}: usual rate updated",
+    "saveAsUsual": "Make ₹{{rate}} the usual rate for {{name}}",
+    "gstShort": "{{rate}}% GST"
   },
   "vendorProducts": {
     "title": "Products this vendor supplies",
