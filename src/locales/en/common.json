@@ -864,7 +864,16 @@
     "heldForGroup": "₹{{amount}} held",
     "groupHeldHint": "Paid over the rooms' bills. Kept for the rooms still staying; refunded when the last room checks out.",
     "groupOthersLater_one": "The 1 room still staying is billed when it checks out.",
-    "groupOthersLater_other": "The {{count}} rooms still staying are billed when they check out."
+    "groupOthersLater_other": "The {{count}} rooms still staying are billed when they check out.",
+    "picker": {
+      "search": "Room number or type — Enter picks it",
+      "freeOnly": "Free only",
+      "freeOf": "{{free}} of {{total}} free",
+      "beds": "{{beds}} beds",
+      "remove": "Remove {{room}}",
+      "clash": "Not free for these dates: {{rooms}}. Remove it or change the dates.",
+      "bookedFrom": "Booked from {{date}}"
+    }
   },
   "donationRequests": {
     "addressLabel": "Address:",

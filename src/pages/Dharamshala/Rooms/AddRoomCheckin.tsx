@@ -7,22 +7,15 @@ import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { recipientGstin } from '../../../lib/statutoryIds'
 import { compressIdImage } from '../../../lib/idImage'
 import type { Room, DevoteeSelection } from '../../../types'
-import { fetchAllPages } from '../../../lib/fetchAllPages'
-import { RoomPicker } from './RoomPicker'
+import { RoomPicker, type PickerRoom } from './RoomPicker'
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
 import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
 
-/**
- * Is housekeeping holding this room for the date being booked?
- *
- * Mirrors the API gate exactly (dharamshala.service.ts `availability`): a hold
- * is about today. A room dirty this morning is fine for a stay next week.
- */
-function heldByHousekeeping(room: Room, checkInDate: string): boolean {
-  const status = room.housekeeping_status
-  if (!status || status === 'ready') return false
-  const todayIst = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)
-  return String(checkInDate).slice(0, 10) <= todayIst
+/** The night before `day` (YYYY-MM-DD), for the last night of a stay. */
+function dayBefore(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
 }
 
 /** One ID handed over at the counter: whose, which, the number, the photo. */
@@ -43,7 +36,9 @@ function newIdRow(): IdRow {
 export function AddRoomCheckin() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [rooms, setRooms] = useState<Room[]>([])
+  const [rooms, setRooms] = useState<PickerRoom[]>([])
+  // The window the rooms on screen were fetched for; loading until it matches.
+  const [roomsFor, setRoomsFor] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [guest, setGuest] = useState<DevoteeSelection | null>(null)
@@ -109,20 +104,30 @@ export function AddRoomCheckin() {
     }).catch(() => { /* keep the defaults */ })
   }, [])
 
+  // Every room WITH its verdict for this stay's nights, from the availability
+  // board's own endpoint: a room booked, occupied or held for these dates is
+  // shown as such instead of being offered and then refused with a 409. The
+  // window is the nights slept - arrival to the night before departure - and it
+  // is asked again whenever the dates change. (It was every room from
+  // GET /rooms, with no idea of the dates.)
+  const lastNight = form.check_out_date > form.check_in_date ? dayBefore(form.check_out_date) : form.check_in_date
   useEffect(() => {
-    // EVERY room, page by page. This asked for one page with no limit, which
-    // the API answers with the first 50 - so a dharamshala with more rooms than
-    // that could not book room 51 onward from this form at all.
-    fetchAllPages<Room>('/rooms', { is_available: 'true' }).then(list => {
+    let live = true
+    api.get('/rooms/availability', { params: { from: form.check_in_date, to: lastNight } }).then(r => {
+      if (!live) return
+      const list: PickerRoom[] = r.data?.data ?? r.data ?? []
       setRooms(list)
       // Arriving from the availability board: ?room_id=… pre-selects it, so
-      // the cashier doesn't have to find the number again in the dropdown.
+      // the cashier doesn't have to find the number again.
       const wanted = new URLSearchParams(window.location.search).get('room_id')
-      if (wanted && list.some((rm: Room) => rm.id === wanted)) {
-        setForm(f => ({ ...f, room_id: wanted }))
+      if (wanted && list.some(rm => rm.id === wanted)) {
+        setForm(f => (f.room_id ? f : { ...f, room_id: wanted }))
       }
-    })
-  }, [])
+    }).catch(() => { /* the picker shows no rooms; the API still guards the booking */ })
+      .finally(() => { if (live) setRoomsFor(`${form.check_in_date}|${lastNight}`) })
+    return () => { live = false }
+  }, [form.check_in_date, lastNight])
+  const roomsLoading = roomsFor !== `${form.check_in_date}|${lastNight}`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -285,8 +290,7 @@ export function AddRoomCheckin() {
           <div>
             <p className="form-label">{t('dharamshala.roomsLabel')}</p>
             <RoomPicker rooms={rooms} selected={selectedIds} onChange={setSelectedIds}
-              isHeld={r => heldByHousekeeping(r, form.check_in_date)}
-              heldLabel={r => t(`housekeeping.status.${r.housekeeping_status}`)} />
+              persons={Number(form.persons_count) || undefined} loading={roomsLoading} />
           </div>
         </Section>
 

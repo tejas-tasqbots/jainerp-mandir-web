@@ -864,7 +864,16 @@
     "heldForGroup": "₹{{amount}} जमा",
     "groupHeldHint": "कमरों के बिल से अधिक भुगतान। ठहरे कमरों के लिए रखा जाता है; आखिरी कमरे के चेक-आउट पर वापस।",
     "groupOthersLater_one": "ठहरे हुए 1 कमरे का बिल उसके चेक-आउट पर बनेगा।",
-    "groupOthersLater_other": "ठहरे हुए {{count}} कमरों के बिल उनके चेक-आउट पर बनेंगे।"
+    "groupOthersLater_other": "ठहरे हुए {{count}} कमरों के बिल उनके चेक-आउट पर बनेंगे।",
+    "picker": {
+      "search": "कमरा नंबर या प्रकार — Enter से चुनें",
+      "freeOnly": "केवल खाली",
+      "freeOf": "{{total}} में से {{free}} खाली",
+      "beds": "{{beds}} बिस्तर",
+      "remove": "{{room}} हटाएँ",
+      "clash": "इन तारीखों पर खाली नहीं: {{rooms}}। इसे हटाएँ या तारीख बदलें।",
+      "bookedFrom": "{{date}} से बुक"
+    }
   },
   "donationRequests": {
     "addressLabel": "पता:",
