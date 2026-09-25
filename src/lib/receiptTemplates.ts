@@ -132,6 +132,8 @@ export interface ReceiptData {
     signature_image?: string | null
     template?: string
     primary_color?: string
+    /** Colour, or black and white for a mono printer (tenant migration 058). Absent = colour. */
+    print_colour?: 'colour' | 'bw' | null
     // Print settings (tenant-migration 011, widened by 032).
     //
     // A COUNTER SLIP arrives in these same fields — mandir-api substitutes the
@@ -3449,15 +3451,20 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     .roll .name { text-align:center; font-size:14px; font-weight:800; }
     .roll .addr { text-align:center; font-size:10px; margin-bottom:6px; }
     .roll .title { text-align:center; font-weight:${w(700, 800)}; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:4px 0; margin-bottom:6px; }
-    .tr { display:flex; justify-content:space-between; gap:8px; }
+    /* A value that does not fit beside its label takes the next line WHOLE,
+       right-aligned, and breaks only if it is wider than the paper itself.
+       Breaking it in place split a receipt number in two - "PRS/2026-" over
+       "27/000001" - which read as the number being cut off (2026-09-25). So
+       the value may not shrink (flex-shrink 0) and the row wraps instead. */
+    .tr { display:flex; flex-wrap:wrap; justify-content:space-between; column-gap:8px; }
     /* The label keeps its width and the VALUE wraps. Without min-width:0 a flex
        item refuses to shrink below its content, so a long value ran off the
        paper: on a 58mm roll a registration number like SOC/2015/BEAWAR/000123
        measured 236px against 219px of paper and printed off the edge, on every
        design. break-all rather than normal wrapping because these are
        identifiers with no spaces to break at. */
-    .tr span:first-child { color:${ink}; flex:none; }
-    .tr span:last-child { font-weight:${w(600, 700)}; text-align:right; min-width:0; word-break:break-all; }
+    .tr span:first-child { color:${ink}; flex:none; white-space:nowrap; }
+    .tr span:last-child { font-weight:${w(600, 700)}; text-align:right; flex:1 0 auto; max-width:100%; overflow-wrap:anywhere; }
     .amt { text-align:center; font-size:${t.bold ? '17px' : '16px'}; font-weight:800; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0; margin:6px 0; }
     .words { font-size:10px; font-style:italic; text-align:center; margin-bottom:6px; }
     .note { font-size:9.5px; text-align:center; margin-top:6px; }
@@ -3568,8 +3575,12 @@ function slipStyles(mandir: NonNullable<ReceiptData['mandir']>): string {
                   border-top:1px dashed #000; border-bottom:1px dashed #000; padding:3px 0; margin-bottom:5px; }
     /* The number is the point of the whole slip. */
     .slip .no { text-align:center; font-size:17px; font-weight:800; letter-spacing:1px; margin:2px 0 5px; }
-    .sr { display:flex; justify-content:space-between; gap:8px; }
-    .sr span:last-child { font-weight:600; text-align:right; }
+    /* Same rule as a roll receipt's rows (.tr): the label never wraps, and a
+       value that does not fit beside it takes the next line whole instead of
+       being split mid-number (a token's receipt number, 2026-09-25). */
+    .sr { display:flex; flex-wrap:wrap; justify-content:space-between; column-gap:8px; }
+    .sr span:first-child { flex:none; white-space:nowrap; }
+    .sr span:last-child { font-weight:600; text-align:right; flex:1 0 auto; max-width:100%; overflow-wrap:anywhere; }
     .items { border-top:1px dashed #000; margin-top:4px; padding-top:4px; }
     .it { display:flex; justify-content:space-between; gap:6px; font-size:10.5px; }
     .it .q { flex:0 0 auto; color:#333; }
@@ -4064,5 +4075,27 @@ export function buildReceiptHtml(input: ReceiptData): string {
   }
   ${thermal || slip ? '' : pageRules(mandir.receipt_paper, template)}
 </style>
-</head><body>${copies}<script>window.onload=()=>{window.print()}</script></body></html>`
+</head><body>${copies}${mandir.print_colour === 'bw' ? BLACK_AND_WHITE : ''}<script>window.onload=()=>{window.print()}</script></body></html>`
 }
+
+/**
+ * Black and white, for a mono printer (tenant migration 058).
+ *
+ * Asked for from a counter (2026-09-25). The designs are drawn in the trust's
+ * brand colour with tinted boxes; on a black-and-white laser the tints print as
+ * grey blocks and a light brand colour as text too faint to read. This prints
+ * every design as pure black on white instead: black text and rules, no tinted
+ * backgrounds, the logo and the ornaments in greyscale.
+ *
+ * Placed LAST in the body and marked !important throughout, because every
+ * design carries its own <style> inside the body and paints some colours in
+ * style="" attributes: an !important author rule is the one thing that
+ * outranks both. Pure CSS - the desktop prints receipts with javascript off.
+ */
+const BLACK_AND_WHITE = `<style>
+  *{color:#000 !important;background-color:transparent !important;background-image:none !important;
+    border-color:#000 !important;box-shadow:none !important;text-shadow:none !important;
+    -webkit-print-color-adjust:economy !important;print-color-adjust:economy !important;}
+  html,body{background:#fff !important;}
+  img,svg{filter:grayscale(1) !important;}
+</style>`

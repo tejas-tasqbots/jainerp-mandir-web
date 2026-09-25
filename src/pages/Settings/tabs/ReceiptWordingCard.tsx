@@ -131,9 +131,10 @@ export function ReceiptWordingCard({
 }: {
   value: LabelOverrides
   onChange: (next: LabelOverrides) => void
-  /** Shared with the preview, so a Hindi rename is previewed in Hindi. */
+  /** The receipt language (set under Printing): these are the words for it. */
   lang: string
-  onLangChange: (lang: string) => void
+  /** Absent: the language is shown, not chosen here (one language control per screen). */
+  onLangChange?: (lang: string) => void
 }) {
   const { t } = useTranslation()
   const [q, setQ] = useState('')
@@ -237,13 +238,19 @@ export function ReceiptWordingCard({
           {/* The language the words are FOR, which is also the language the
               preview renders in — a Hindi rename previewed in English would
               look like it had not applied. */}
-          <select
-            className="form-select w-auto text-xs" value={lang}
-            onChange={e => onLangChange(e.target.value)} data-testid="wording-lang"
-            aria-label={t('settings.wording.language')}
-          >
-            {LANGS.map(l => <option key={l} value={l}>{t(`settings.wording.lang.${l}`)}</option>)}
-          </select>
+          {onLangChange ? (
+            <select
+              className="form-select w-auto text-xs" value={lang}
+              onChange={e => onLangChange(e.target.value)} data-testid="wording-lang"
+              aria-label={t('settings.wording.language')}
+            >
+              {LANGS.map(l => <option key={l} value={l}>{t(`settings.wording.lang.${l}`)}</option>)}
+            </select>
+          ) : (
+            <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-1 rounded" data-testid="wording-lang">
+              {t(`settings.wording.lang.${lang}`)}
+            </span>
+          )}
         </div>
       </div>
 

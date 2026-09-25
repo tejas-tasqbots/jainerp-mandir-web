@@ -2469,7 +2469,13 @@
         "new": "New",
         "rule_46": "Rule 46",
         "statutory": "Statutory"
-      }
+      },
+      "printColour": "Print in",
+      "printInColour": "Colour",
+      "printInBw": "Black & white",
+      "printColourHint": "Black & white prints every receipt in pure black on white - for a black-and-white printer, or to save colour ink.",
+      "wordingForLang": "These are the words for your {{lang}} receipts. The receipt language is chosen under Printing.",
+      "changeLanguage": "Change language"
     },
     "save": "Save",
     "saved": "Saved",

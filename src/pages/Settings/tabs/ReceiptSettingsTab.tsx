@@ -442,6 +442,8 @@ const TEMPLATES: TemplateDef[] = [
 const BLANK = {
   logo_cdn_url: '', logo_base64: '', show_logo_on_receipts: true,
   receipt_template: 'anumodana', primary_color: '#0D1B2E',
+  // Colour, or black and white for a mono printer (tenant migration 058).
+  receipt_print_colour: 'colour' as 'colour' | 'bw',
   show_gstin_on_header: true, show_80g_on_receipt: true,
   upi_id: '', bank_account_name: '', bank_account_no: '',
   bank_ifsc: '', bank_name: '', custom_receipt_footer: '',
@@ -792,6 +794,7 @@ function buildPreviewData(
           : mode === 'stay' ? (form.room_invoice_template || form.receipt_template)
             : form.receipt_template,
       primary_color: form.primary_color,
+      print_colour: form.receipt_print_colour,
       receipt_copies: (mode === 'slip' ? form.slip_copies : form.receipt_copies) as 'single' | 'both',
       receipt_paper: (mode === 'slip'
         ? (form.slip_template === 'receipt' ? form.receipt_paper : form.slip_paper)
@@ -888,16 +891,6 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     else setPreviewMode((m) => (m === 'stay' || m === 'slip' ? 'receipt' : m))
   }
   /**
-   * The language the WORDING step is editing, which is also the language the
-   * preview renders in while that step is open.
-   *
-   * Separate from `form.receipt_language`, the trust's print language: someone
-   * whose receipts print in English may still want to prepare the Hindi words
-   * before switching. A Hindi rename previewed in English would simply look as
-   * though it had not applied.
-   */
-  const [wordingLang, setWordingLang] = useState('en')
-  /**
    * The custom design being edited in the designer card below, if any.
    *
    * The designer used to draw its own preview, which cost the editor a third of
@@ -935,7 +928,6 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
       // The Wording step opens in the language receipts PRINT in. It opened in
       // English whatever the trust printed in, so a Hindi trust's first view of
       // "your wording" was English words on an English preview.
-      setWordingLang((p.receipt_language as string) || 'en')
       setForm(f => ({
         ...f,
         logo_cdn_url: (p.logo_cdn_url as string) || '',
@@ -943,6 +935,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         show_logo_on_receipts: p.show_logo_on_receipts !== false,
         receipt_template: (p.receipt_template as string) || 'anumodana',
         primary_color: (p.primary_color as string) || '#0D1B2E',
+        receipt_print_colour: (p.receipt_print_colour === 'bw' ? 'bw' : 'colour') as 'colour' | 'bw',
         show_gstin_on_header: p.show_gstin_on_header !== false,
         show_80g_on_receipt: Boolean(p.show_80g_on_receipt),
         upi_id: (p.upi_id as string) || '',
@@ -1021,9 +1014,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     if (!doc) return
     const html = buildReceiptHtml(buildPreviewData(
       form, previewMode,
-      // Only while the Wording step is open. Everywhere else the preview must
-      // show the language the trust actually prints in.
-      step === 'wording' ? wordingLang : undefined,
+      // Always the language the trust prints in: the Wording step edits the
+      // words of that one language (see below).
+      undefined,
       designPreview,
       previewQr,
     ))
@@ -1032,7 +1025,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', ''))
     doc.close()
     markPageEdge(doc, setPageFit)
-  }, [form, previewMode, step, wordingLang, designPreview, previewQr])
+  }, [form, previewMode, designPreview, previewQr])
 
   useEffect(() => {
     paintPreview()
@@ -1115,6 +1108,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         show_logo_on_receipts: form.show_logo_on_receipts,
         receipt_template: form.receipt_template,
         primary_color: form.primary_color,
+        receipt_print_colour: form.receipt_print_colour,
         show_gstin_on_header: form.show_gstin_on_header,
         show_80g_on_receipt: form.show_80g_on_receipt,
         custom_receipt_footer: form.custom_receipt_footer,
@@ -1292,6 +1286,22 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 className="h-9 w-16 rounded border border-slate-200 cursor-pointer" />
               <span className="text-xs font-mono text-slate-500">{form.primary_color}</span>
             </div>
+            {/* Colour or black and white (tenant migration 058): for an office
+                on a mono laser, or one saving colour ink. The preview beside
+                this shows exactly what will print. */}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="form-label mb-0 w-28" id="receipt-print-colour-label">{t('settings.receipts.printColour')}</span>
+              <div className="inline-flex rounded-md border border-slate-200 overflow-hidden" role="radiogroup" aria-labelledby="receipt-print-colour-label" data-testid="receipt-print-colour">
+                {(['colour', 'bw'] as const).map(v => (
+                  <button key={v} type="button" role="radio" aria-checked={form.receipt_print_colour === v}
+                    onClick={() => set('receipt_print_colour', v)}
+                    className={`px-3 py-1.5 text-sm ${form.receipt_print_colour === v ? 'bg-navy-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
+                    {v === 'colour' ? t('settings.receipts.printInColour') : t('settings.receipts.printInBw')}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 basis-full">{t('settings.receipts.printColourHint')}</p>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="w-4 h-4 accent-navy-900" checked={form.show_gstin_on_header}
                 onChange={e => set('show_gstin_on_header', e.target.checked)} />
@@ -1362,30 +1372,22 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               in is a different setting, under Printing. Reported as "I have
               selected Hindi but it is printing English only": the preview said
               Hindi, the printer said English, and nothing on this step said why. */}
-          {wordingLang !== form.receipt_language ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-              data-testid="wording-lang-mismatch">
-              <p>{t('settings.receipts.wordingNotPrinted', {
-                edit: t(`settings.wording.lang.${wordingLang}`),
-                print: t(`settings.wording.lang.${form.receipt_language}`),
-              })}</p>
-              <button type="button" className="btn-primary btn-sm mt-2"
-                data-testid="wording-print-in-this"
-                onClick={() => set('receipt_language', wordingLang)}>
-                {t('settings.receipts.printInThis', { lang: t(`settings.wording.lang.${wordingLang}`) })}
-              </button>
-              <span className="ml-2 text-xs text-amber-800">{t('settings.receipts.thenSave')}</span>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500" data-testid="wording-prints-in">
-              {t('settings.receipts.printsIn', { lang: t(`settings.wording.lang.${form.receipt_language}`) })}
-            </p>
-          )}
+          {/* ── ONE LANGUAGE CONTROL ───────────────────────────────────────
+              This step had its own language picker for the words being edited,
+              beside the Receipt language under Printing - two dropdowns that
+              could disagree (reported 2026-09-25: "here we have two times
+              receipt language selection"; earlier: "I selected Hindi but it
+              prints English"). Now the words edited here are the words of the
+              language receipts print in, and that is chosen in one place. */}
+          <p className="text-xs text-slate-500 flex flex-wrap items-center gap-2" data-testid="wording-prints-in">
+            {t('settings.receipts.wordingForLang', { lang: t(`settings.wording.lang.${form.receipt_language}`) })}
+            <button type="button" className="text-brand-blue underline" data-testid="wording-change-lang"
+              onClick={() => goToStep('printing')}>{t('settings.receipts.changeLanguage')}</button>
+          </p>
           <ReceiptWordingCard
             value={form.receipt_label_overrides}
             onChange={next => set('receipt_label_overrides', next)}
-            lang={wordingLang}
-            onLangChange={setWordingLang}
+            lang={form.receipt_language}
           />
         </section>}
 
@@ -1902,15 +1904,6 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           <div className="card-header flex flex-wrap items-center gap-2">
             <Eye size={14} className="text-slate-500" />
             <h3 className="font-semibold text-sm">{t('settings.receipts.livePreview')}</h3>
-            {step === 'wording' && wordingLang !== form.receipt_language && (
-              <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded"
-                data-testid="preview-lang-badge">
-                {t('settings.receipts.previewLangBadge', {
-                  edit: t(`settings.wording.lang.${wordingLang}`),
-                  print: t(`settings.wording.lang.${form.receipt_language}`),
-                })}
-              </span>
-            )}
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
               {previewMode === 'receipt' ? (selected?.label || 'Classic')
                 : previewMode === 'stay' ? (stayDesign?.label || selected?.label || 'Classic')
