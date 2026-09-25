@@ -149,3 +149,20 @@ export function groupRooms<T extends RoomLike>(rooms: readonly T[]): RoomGroup<T
   }
   return out
 }
+
+/**
+ * At a trust with wings, the rooms that name none are ONE "Other rooms" group.
+ *
+ * groupRooms() gives them a group per number series, which reads well at a
+ * one-building trust ("Rooms 101 - 112") and badly beside wings: every stray
+ * room got its own heading ("Room N193 - 1 of 1 free"). Pass whether the trust
+ * has wings at all - not whether the filtered list does - so the groups do not
+ * change shape as the clerk filters.
+ */
+export function mergeLooseGroups<T>(groups: RoomGroup<T>[], hasWings: boolean): RoomGroup<T>[] {
+  if (!hasWings) return groups
+  const loose = groups.filter(g => !g.building)
+  if (loose.length < 2) return groups
+  const merged: RoomGroup<T> = { key: 'other', building: null, level: { kind: 'all' }, rooms: loose.flatMap(g => g.rooms) }
+  return [merged, ...groups.filter(g => g.building)]
+}

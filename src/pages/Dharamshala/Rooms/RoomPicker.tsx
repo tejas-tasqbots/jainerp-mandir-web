@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Search, X } from 'lucide-react'
 import { fmtPaise } from '../../../lib/api'
-import { buildingNames, buildingOf, groupRooms, type RoomGroup } from '../../../lib/roomOrder'
+import { buildingNames, buildingOf, groupRooms, mergeLooseGroups, type RoomGroup } from '../../../lib/roomOrder'
 import type { Room } from '../../../types'
 
 /**
@@ -103,14 +103,7 @@ export function RoomPicker({ rooms, selected, onChange, persons, loading }: {
     && matches(r))
   // At a trust with wings, the rooms that name none are ONE "Other rooms"
   // group, not one header per number ("Room N193 - 1 of 1 free").
-  const groups = useMemo(() => {
-    const gs = groupRooms(shown)
-    if (!wings.length) return gs
-    const loose = gs.filter(g => !g.building)
-    if (loose.length < 2) return gs
-    const merged: RoomGroup<PickerRoom> = { key: 'other', building: null, level: { kind: 'all' }, rooms: loose.flatMap(g => g.rooms) }
-    return [merged, ...gs.filter(g => g.building)]
-  }, [shown, wings.length])
+  const groups = useMemo(() => mergeLooseGroups(groupRooms(shown), wings.length > 0), [shown, wings.length])
 
   const byId = useMemo(() => new Map(rooms.map(r => [r.id, r])), [rooms])
   const chosen = selected.map(id => byId.get(id)).filter((r): r is PickerRoom => !!r)

@@ -5,7 +5,7 @@ import { BedDouble, Search, Users } from 'lucide-react'
 import { api, fmtPaise } from '../../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../../components/kit/PrintLetterhead'
-import { buildingNames, buildingOf, groupRooms, type RoomGroup } from '../../../lib/roomOrder'
+import { buildingNames, buildingOf, groupRooms, mergeLooseGroups, type RoomGroup } from '../../../lib/roomOrder'
 
 /**
  * "Which rooms are free right now, and book one."
@@ -149,8 +149,9 @@ export function RoomAvailability() {
 
   // Building, then floor (or the numbers' own hundreds), then room number read
   // as a number - see lib/roomOrder.ts. Headers only when there is more than
-  // one group; a trust with one short series of rooms sees a plain grid.
-  const groups = useMemo(() => groupRooms(shown), [shown])
+  // one group; a trust with one short series of rooms sees a plain grid. Beside
+  // wings, the rooms that name none share one "Other rooms" heading.
+  const groups = useMemo(() => mergeLooseGroups(groupRooms(shown), buildings.length > 0), [shown, buildings.length])
 
   // "Total minus available" was the old occupied count, and it swept the
   // cleaning queue and next week's bookings in with the guests actually here.
