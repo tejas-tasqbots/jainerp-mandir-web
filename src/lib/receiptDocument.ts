@@ -464,6 +464,10 @@ export function receiptParts(
   const mode = r.payment_mode ? (MODES[r.payment_mode] ?? esc(r.payment_mode)) : '—';
 
   const show80gCert = donation && r.is_80g_eligible && m.show_80g && m.reg_80g_number;
+  // The Yes/No row only where the trust can grant 80G at all: without an 80G
+  // number, "80G eligible: No" printed on every gift told the donor nothing
+  // (reported 2026-09-25).
+  const show80gRow = donation && !!(m.show_80g && String(m.reg_80g_number ?? '').trim());
   const validUpto = m.reg_80g_valid_upto ? new Date(m.reg_80g_valid_upto) : null;
   // Every remittance field the trust HAS, each on its own terms. The bank half
   // used to be gated on `bank_account_no`, so a trust holding a bank name and
@@ -718,7 +722,7 @@ export function receiptParts(
     <table class="details">
       ${items.length ? '' : `<tr><td>${esc(r.detail_label || L.purpose)}</td><td>${esc(r.category || '—')}</td></tr>`}
       <tr><td>${esc(L.paymentMode)}</td><td>${mode}</td></tr>
-      ${donation ? `<tr><td>${esc(L.eligible80g)}</td><td><span class="badge ${r.is_80g_eligible ? 'yes' : 'no'}">${esc(r.is_80g_eligible ? L.yes : L.no)}</span></td></tr>` : ''}
+      ${show80gRow ? `<tr><td>${esc(L.eligible80g)}</td><td><span class="badge ${r.is_80g_eligible ? 'yes' : 'no'}">${esc(r.is_80g_eligible ? L.yes : L.no)}</span></td></tr>` : ''}
     </table>
     ${r.remarks?.text ? `<div class="remarks"><span class="k">${esc(r.remarks.label)}:</span> ${esc(r.remarks.text)}</div>` : ''}
     ${show80gCert ? `<div class="cert">${esc(L.certified80g)}<br/>80G: <b>${esc(m.reg_80g_number)}</b>${m.reg_80g_urn ? ` &nbsp;·&nbsp; URN: <b>${esc(m.reg_80g_urn)}</b>` : ''}${validUpto && !Number.isNaN(validUpto.getTime()) ? ` &nbsp;·&nbsp; ${esc(L.validUpto)}: <b>${esc(validUpto.toLocaleDateString('en-IN'))}</b>` : ''}</div>` : ''}

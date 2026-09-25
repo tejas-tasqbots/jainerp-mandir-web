@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Receipt, ShoppingCart, Trash2 } from 'lucide-react'
+import { ShoppingCart, Trash2 } from 'lucide-react'
 import { fmtPaise } from '../../lib/api'
 import { useApiGet } from '../../lib/useApiGet'
 import { printCurrentView } from '../../lib/downloadReport'
-import { printDonationReceipt } from '../../lib/printReceipt'
 import { rangeCaption, type DateRange } from '../../lib/dateRanges'
 import { DataTable, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
-import { useToast } from '../../components/kit/Toast'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { enteredByColumn, useEnteredByOptions } from '../../lib/enteredBy'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
@@ -41,19 +39,18 @@ function linesOf(s: PrasadSale): SaleLine[] {
  * Prasad sales register — every sale from the counter, with its receipt.
  *
  * The counter screen only ever showed the sale just made, so a mistaken sale
- * could not be found again, reprinted or taken back. This is where it can be:
- * reprint the slip, and (temple admin) delete it — which puts the items back
- * on the shelf and takes the money out of Cash & Bank.
+ * could not be found again or taken back. This is where it can be: (temple
+ * admin) delete it — which puts the items back on the shelf and takes the
+ * money out of Cash & Bank. There is no reprint: the slip is exchanged for the
+ * prasad, so a second copy is a second packet for money taken once.
  */
 export function PrasadSales() {
   const { t } = useTranslation()
-  const toast = useToast()
   const canDelete = useCanDeleteEntries()
   const deleteEntry = useDeleteEntry()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('prasad-sales', 'today'))
-  const [printing, setPrinting] = useState<string | null>(null)
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   // The only filterable column is "Entered by"; its param is fixed, so the URL
   // is built from the state alone rather than from `columns` (declared below).
@@ -71,17 +68,6 @@ export function PrasadSales() {
   const rows = data?.data ?? []
   const total = data?.meta?.total ?? 0
   const amount = Number(data?.meta?.total_amount_paise ?? 0)
-
-  async function reprint(id: string) {
-    setPrinting(id)
-    try {
-      await printDonationReceipt(id, '/prasad/sales')
-    } catch {
-      toast.error(t('prasad.receiptFailed', { defaultValue: 'Could not load the receipt' }))
-    } finally {
-      setPrinting(null)
-    }
-  }
 
   const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<PrasadSale>[] = useMemo(() => [
@@ -118,10 +104,7 @@ export function PrasadSales() {
   ], [t, enteredByOptions])
 
   function rowActions(s: PrasadSale): RowAction[] {
-    const actions: RowAction[] = [{
-      label: t('prasad.printReceipt'), icon: <Receipt size={14} />, primary: true,
-      onClick: () => void reprint(s.id), disabled: printing === s.id,
-    }]
+    const actions: RowAction[] = []
     if (canDelete) {
       actions.push({
         label: t('entries.delete'), icon: <Trash2 size={13} />, danger: true,

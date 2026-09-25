@@ -21,7 +21,7 @@ export function PrasadCounter() {
   const [buyer, setBuyer] = useState<DevoteeSelection | null>(null)
   const [showBuyerPicker, setShowBuyerPicker] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [lastSale, setLastSale] = useState<{ id: string; total_paise: number; invoice?: string } | null>(null)
+  const [lastSale, setLastSale] = useState<{ id: string; total_paise: number; invoice?: string; printed?: boolean } | null>(null)
   const [receiptLoading, setReceiptLoading] = useState(false)
 
   useEffect(() => {
@@ -69,8 +69,13 @@ export function PrasadCounter() {
       // Counter slips). Not awaited: the counter must be ready for the next
       // devotee whether or not a printer answers, and autoPrintSlip swallows
       // its own errors precisely so a print problem can never read as a failed
-      // sale. The Print button below stays for a reprint.
-      void autoPrintSlip(data.data.id, '/prasad/sales', data.data.receipt)
+      // sale. The Print button below is for a trust that does NOT auto-print,
+      // and it goes once the slip is out: no reprints of a slip that is
+      // exchanged for prasad.
+      const saleId = data.data.id
+      void autoPrintSlip(data.data.id, '/prasad/sales', data.data.receipt).then(printed => {
+        if (printed) setLastSale(s => (s && s.id === saleId ? { ...s, printed: true } : s))
+      })
       setCart([])
       setReference('')
       setBuyer(null)
@@ -93,6 +98,7 @@ export function PrasadCounter() {
     setReceiptLoading(true)
     try {
       await printDonationReceipt(lastSale.id, '/prasad/sales')
+      setLastSale(s => (s ? { ...s, printed: true } : s))
     } catch {
       toast.error(t('msg.loadReceiptFailed'))
     } finally {
@@ -117,10 +123,12 @@ export function PrasadCounter() {
             <p className="text-sm text-green-600">{t('prasad.totalLabel', { amount: fmtPaise(lastSale.total_paise) })}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={printLastReceipt} disabled={receiptLoading}
-              className="btn-secondary btn-sm flex items-center gap-1 disabled:opacity-50">
-              <Receipt size={14} /> {receiptLoading ? t('prasad.loadingEllipsis') : t('prasad.printReceipt')}
-            </button>
+            {!lastSale.printed && (
+              <button type="button" onClick={printLastReceipt} disabled={receiptLoading}
+                className="btn-secondary btn-sm flex items-center gap-1 disabled:opacity-50">
+                <Receipt size={14} /> {receiptLoading ? t('prasad.loadingEllipsis') : t('prasad.printReceipt')}
+              </button>
+            )}
             <button type="button" onClick={() => setLastSale(null)} className="text-green-600 text-xs underline">{t('prasad.dismiss')}</button>
           </div>
         </div>

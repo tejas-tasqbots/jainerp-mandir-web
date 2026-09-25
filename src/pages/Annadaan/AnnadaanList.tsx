@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, Receipt, Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, todayIst } from '../../lib/api'
-import { printDonationReceipt } from '../../lib/printReceipt'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { splitBy } from '../../lib/chartData'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../components/kit/DataTable'
@@ -37,7 +36,6 @@ export function AnnadaanList() {
   const [summary, setSummary] = useState<{ tokens: number; collection_paise: number } | null>(null)
   const [redeemId, setRedeemId] = useState<string | null>(null)
   const [redeemTokens, setRedeemTokens] = useState('')
-  const [receiptLoading, setReceiptLoading] = useState<string | null>(null)
 
   // The counter's session is a mode, not a per-sale field: picked once (or
   // guessed from the clock the first time) and remembered.
@@ -120,15 +118,9 @@ export function AnnadaanList() {
                 <button type="button" onClick={() => setRedeemId(s.id)} className="btn-secondary btn-sm text-xs">{t('bhojanshala.redeem')}</button>
               )
             )}
-            <button
-              type="button"
-              onClick={() => openReceipt(s.id)}
-              title={t('bhojanshala.printTokenSlip')} aria-label={t('bhojanshala.printTokenSlip')}
-              disabled={receiptLoading === s.id}
-              className="p-1 text-slate-400 hover:text-brand-blue rounded disabled:opacity-40"
-            >
-              <Receipt size={14} className={receiptLoading === s.id ? 'animate-pulse' : ''} />
-            </button>
+            {/* No reprint: a token is exchanged for a plate, so a second copy
+                is a second meal for money taken once. It prints at the
+                counter, when it is sold, and never again. */}
             {canDelete && (
               <button
                 type="button"
@@ -150,7 +142,7 @@ export function AnnadaanList() {
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, enteredByOptions, redeemId, redeemTokens, saving, receiptLoading, canDelete])
+  ], [t, enteredByOptions, redeemId, redeemTokens, saving, canDelete])
 
   useEffect(() => { load() }, [dateFilter, reloadTick])
 
@@ -208,17 +200,6 @@ export function AnnadaanList() {
       toast.success(t('kit.exportReady'))
     } catch {
       toast.error(t('kit.exportFailed'))
-    }
-  }
-
-  async function openReceipt(id: string) {
-    setReceiptLoading(id)
-    try {
-      await printDonationReceipt(id, '/bhojanshala/sales')
-    } catch {
-      toast.error(t('donations.receiptLoadFailed'))
-    } finally {
-      setReceiptLoading(null)
     }
   }
 
