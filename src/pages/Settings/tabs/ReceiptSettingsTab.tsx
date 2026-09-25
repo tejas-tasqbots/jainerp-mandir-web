@@ -32,7 +32,7 @@ import { useToast } from '../../../components/kit/Toast'
  *   stay     - the accommodation document and the trust's stay policy
  *   slips    - the counter slip, which is a different document again
  */
-const STEPS = ['design', 'wording', 'brand', 'printing', 'content', 'stay', 'slips'] as const
+const STEPS = ['documents', 'design', 'wording', 'brand', 'printing', 'content', 'stay', 'slips'] as const
 type Step = (typeof STEPS)[number]
 
 type TemplateDef = { id: string; label: string; badge?: string; thumb: (color: string) => string }
@@ -439,6 +439,28 @@ const TEMPLATES: TemplateDef[] = [
   },
 ]
 
+/**
+ * Every document the trust prints, in the order the Documents step lists them
+ * (tenant migration 059).
+ *
+ * Asked for 2026-09-25: "a check and select page for donation, hall, room,
+ * bhojanshala, prasad, seva - it is too much confusing UI, what for what". The
+ * answer to "what prints for a hall booking?" was spread over four settings,
+ * two of them not on the screen at all: a hall printed the donation's design on
+ * the donation's paper, a room bill the donation's paper, and bhojanshala,
+ * prasad and seva shared one slip setting. Each now has its own design, paper
+ * and copies, and a document with nothing set prints what it always printed.
+ */
+const DOCS = ['donation', 'stay', 'hall', 'bhojanshala', 'prasad', 'seva'] as const
+type DocId = (typeof DOCS)[number]
+const COUNTER_DOCS: readonly DocId[] = ['bhojanshala', 'prasad', 'seva']
+type DocPrint = { template?: string; paper?: string; copies?: string }
+/** Everything but the donation, whose choice stays in receipt_template/paper/copies. */
+type DocSettings = Partial<Record<Exclude<DocId, 'donation'>, DocPrint>>
+/** The small counter layouts. `plate` (no running number) is bhojanshala's own. */
+const SLIP_LAYOUTS = ['token', 'compact', 'plate'] as const
+const PAPERS = ['a4', 'a5', 'thermal80', 'thermal58', 'thermal112'] as const
+
 const BLANK = {
   logo_cdn_url: '', logo_base64: '', show_logo_on_receipts: true,
   receipt_template: 'anumodana', primary_color: '#0D1B2E',
@@ -451,7 +473,7 @@ const BLANK = {
   receipt_copies: 'single', receipt_paper: 'a4', receipt_language: 'en', receipt_show_upi_qr: false,
   // Accommodation (migration 004's column, first rendered 2026-09) and the
   // trust's stay policy (tenant migration 043).
-  room_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
+  room_invoice_template: '', hall_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
   housekeeping_hold_on_checkout: true, stay_house_rules: '',
   guest_id_retention_years: 3,
   receipt_terms: '', receipt_signature_image: '',
@@ -479,6 +501,43 @@ const BLANK = {
   // did before this setting existed, and writing defaults here would store
   // choices the trust never made.
   receipt_thermal: {} as ThermalOptions,
+  // Each document's own design, paper and copies (tenant migration 059).
+  receipt_documents: {} as DocSettings,
+}
+
+/**
+ * What prints for this document: its own choice, or what it printed before
+ * migration 059. The same rule as mandiradmin-api common/domain/
+ * receipt-documents.ts `resolveDocumentPrint` - change both together.
+ */
+function resolveDoc(form: typeof BLANK, doc: DocId): { template: string; paper: string; copies: string; slip: boolean } {
+  const own: DocPrint = doc === 'donation' ? {} : (form.receipt_documents?.[doc] ?? {})
+  const donationTemplate = form.receipt_template || 'anumodana'
+  if (!COUNTER_DOCS.includes(doc)) {
+    const legacy = doc === 'stay' ? form.room_invoice_template : doc === 'hall' ? form.hall_invoice_template : ''
+    return {
+      template: own.template || legacy || donationTemplate,
+      paper: own.paper || form.receipt_paper || 'a4',
+      copies: own.copies || form.receipt_copies || 'single',
+      slip: false,
+    }
+  }
+  let chosen = own.template || form.slip_template || 'token'
+  if (chosen === 'plate' && doc !== 'bhojanshala') chosen = 'token'
+  if ((SLIP_LAYOUTS as readonly string[]).includes(chosen)) {
+    return {
+      template: chosen,
+      paper: own.paper || form.slip_paper || 'thermal80',
+      copies: own.copies || form.slip_copies || 'single',
+      slip: true,
+    }
+  }
+  return {
+    template: chosen === 'receipt' ? donationTemplate : chosen,
+    paper: own.paper || form.receipt_paper || 'a4',
+    copies: own.copies || form.receipt_copies || 'single',
+    slip: false,
+  }
 }
 
 /**
@@ -629,7 +688,7 @@ const STAY_TEMPLATES: TemplateDef[] = [
   },
 ]
 
-export type PreviewMode = 'receipt' | 'stay' | '80g' | 'slip'
+export type PreviewMode = DocId | '80g'
 
 /**
  * The sample's number, in the series the document really prints under and in
@@ -640,13 +699,13 @@ export type PreviewMode = 'receipt' | 'stay' | '80g' | 'slip'
 function sampleNumber(mode: PreviewMode): string {
   const now = new Date(Date.now() + 330 * 60_000)
   const y = now.getUTCMonth() >= 3 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
-  const series = mode === 'stay' ? 'ROOM' : mode === 'slip' ? 'PRS' : 'DON'
+  const series = ({ donation: 'DON', stay: 'ROOM', hall: 'HALL', bhojanshala: 'BHJ', prasad: 'PRS', seva: 'SEVA', '80g': 'DON' } as const)[mode]
   return `${series}/${y}-${String((y + 1) % 100).padStart(2, '0')}/000001`
 }
 
 function buildPreviewData(
   form: typeof BLANK,
-  mode: PreviewMode = 'receipt',
+  mode: PreviewMode = 'donation',
   /**
    * The language to preview in. Normally the trust's print language; while the
    * Wording step is open it is the language being edited, or a Hindi rename
@@ -674,6 +733,10 @@ function buildPreviewData(
   const gstEnabled = isWellFormedGstin(form.gstin)
   const gstin = gstEnabled ? form.gstin.trim().toUpperCase() : ''
   const has80g = form.reg_80g_number.trim().length > 0
+  const counter = (COUNTER_DOCS as readonly string[]).includes(mode)
+  const print = mode === '80g'
+    ? { template: '80g', paper: form.receipt_paper, copies: form.receipt_copies, slip: false }
+    : resolveDoc(form, mode)
 
   return {
     receipt_number: sampleNumber(mode),
@@ -688,19 +751,45 @@ function buildPreviewData(
       pan_masked: 'ABXXXXX34C',
       address: '12 Sample Street', city: 'Surat', state: 'Gujarat', pincode: '395001',
     },
-    category: mode === 'slip'
-      ? 'Bhojanshala — lunch (10 plates)'
-      : mode === 'stay' ? 'Dharamshala — Room 101' : 'General Donation',
-    amount_paise: mode === 'slip' ? 20000 : mode === 'stay' ? 336000 : 150000,
+    category: ({
+      donation: 'General Donation', '80g': 'General Donation', stay: 'Dharamshala — Room 101',
+      hall: 'Community Hall — wedding reception', bhojanshala: 'Bhojanshala — lunch (10 plates)',
+      prasad: 'Prasad', seva: 'Abhishek Seva',
+    } as const)[mode],
+    amount_paise: ({ donation: 150000, '80g': 150000, stay: 336000, hall: 2950000, bhojanshala: 20000, prasad: 15000, seva: 51100 } as const)[mode],
     payment_mode: 'cash',
     // A slip is a purchase, a receipt is a gift: the wording, the 80G row and
     // the registration numbers follow this.
-    kind: mode === 'slip' || mode === 'stay' ? 'service' : 'donation',
-    ...(mode === 'slip'
+    kind: mode === 'donation' || mode === '80g' ? 'donation' : 'service',
+    ...(mode === 'bhojanshala'
       ? {
         slip_kind: 'bhojanshala' as const,
         doc_title: 'Bhojanshala Token',
         meta: { tokens: 10, meal_type: 'lunch', rate_paise: 2000, tokens_redeemed: 0 },
+      }
+      : {}),
+    // Prasad and seva had no preview at all: the one "Counter slip" sample
+    // was a bhojanshala token, so a trust choosing the prasad layout was
+    // looking at meal tokens.
+    ...(mode === 'prasad'
+      ? {
+        slip_kind: 'prasad' as const,
+        doc_title: 'Prasad',
+        lines: [
+          { label: 'Laddu prasad', qty: '2', amount_paise: 10000 },
+          { label: 'Mishri packet', qty: '1', amount_paise: 5000 },
+        ],
+      }
+      : {}),
+    ...(mode === 'seva'
+      ? { slip_kind: 'seva' as const, doc_title: 'Seva Receipt', meta: { seva_date: '2026-09-27' } }
+      : {}),
+    // A hall bill: one day, taxed, which is what exercises its blocks.
+    ...(mode === 'hall'
+      ? {
+        doc_title: 'Hall Receipt',
+        lines: [{ label: 'Community Hall (1 day)', qty: '1 × ₹25,000.00', amount_paise: 2500000 }],
+        tax: { cgst_paise: 225000, sgst_paise: 225000, igst_paise: 0 },
       }
       : {}),
     // A two-night stay, itemised, taxed and settled across two tenders on two
@@ -732,7 +821,7 @@ function buildPreviewData(
     // The sample donation is 80G-eligible only if this trust could actually
     // issue one. Previewing a "80G Eligible: Yes" row on a trust with no
     // registration shows an admin a receipt they can never produce.
-    is_80g_eligible: mode === 'slip' || mode === 'stay' ? false : has80g,
+    is_80g_eligible: mode === 'donation' || mode === '80g' ? has80g : false,
     mandir: {
       name: form.name || 'Shree Jain Mandir',
       address: form.address || '123, Temple Road, Ahmedabad, Gujarat 380001',
@@ -785,20 +874,13 @@ function buildPreviewData(
       terms: form.receipt_terms || null,
       signature_image: form.receipt_signature_image || null,
       house_rules: mode === 'stay' ? (form.stay_house_rules || null) : null,
-      template: mode === 'slip'
-        ? (form.slip_template === 'receipt' ? form.receipt_template : form.slip_template)
-        : mode === '80g' ? '80g'
-          // Falls back to the donation template exactly as the API's
-          // `templateFor()` does, so the preview and the print agree for a
-          // trust that has not chosen an accommodation design.
-          : mode === 'stay' ? (form.room_invoice_template || form.receipt_template)
-            : form.receipt_template,
+      // What this document prints - its own choice or its fallback, by the
+      // same rule the API resolves it (resolveDoc), so preview and print agree.
+      template: print.template,
       primary_color: form.primary_color,
       print_colour: form.receipt_print_colour,
-      receipt_copies: (mode === 'slip' ? form.slip_copies : form.receipt_copies) as 'single' | 'both',
-      receipt_paper: (mode === 'slip'
-        ? (form.slip_template === 'receipt' ? form.receipt_paper : form.slip_paper)
-        : form.receipt_paper) as 'a4' | 'a5' | 'thermal58' | 'thermal80',
+      receipt_copies: print.copies as 'single' | 'both',
+      receipt_paper: print.paper as 'a4' | 'a5' | 'thermal58' | 'thermal80',
       receipt_language: langOverride || form.receipt_language,
       // What makes a rename visible in the pane beside the editor. Without it
       // the preview renders our words and a trust typing "Bhet" watches nothing
@@ -814,8 +896,8 @@ function buildPreviewData(
       // real thing and not a mock-up of it.
       ...(design ? { template: 'custom', template_definition: design.def } : {}),
       receipt_show_upi_qr: form.receipt_show_upi_qr,
-      ...(mode === 'slip'
-        ? { surface: 'slip' as const, slip_token_per_plate: form.slip_token_per_plate }
+      ...(counter && print.slip
+        ? { surface: 'slip' as const, slip_token_per_plate: mode === 'bhojanshala' && form.slip_token_per_plate }
         : {}),
     },
   }
@@ -878,8 +960,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const iframeRef = useRef<HTMLIFrameElement>(null)
   /** A design's badge in the screen's language ('New', 'Default', 'Statutory'...). */
   const badgeLabel = (b: string) => t(`settings.receipts.badge.${b.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { defaultValue: b }) as string
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('receipt')
-  const [step, setStep] = useState<Step>('design')
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('donation')
+  const [step, setStep] = useState<Step>('documents')
+  /** Which document the Design step's gallery is choosing for. */
+  const [designDoc, setDesignDoc] = useState<DocId>('donation')
   // The preview shows what the step is about: on Stay the room bill, on Slips
   // a counter slip. It stayed on the donation receipt, so a trust choosing
   // its room bill design was looking at a donation. Leaving those steps goes
@@ -887,8 +971,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   const goToStep = (next: Step) => {
     setStep(next)
     if (next === 'stay') setPreviewMode('stay')
-    else if (next === 'slips') setPreviewMode('slip')
-    else setPreviewMode((m) => (m === 'stay' || m === 'slip' ? 'receipt' : m))
+    else if (next === 'slips') setPreviewMode('bhojanshala')
+    else if (next === 'design') setPreviewMode(designDoc)
   }
   /**
    * The custom design being edited in the designer card below, if any.
@@ -947,6 +1031,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         receipt_copies: (p.receipt_copies as string) || 'single',
         receipt_paper: (p.receipt_paper as string) || 'a4',
         room_invoice_template: (p.room_invoice_template as string) || '',
+        hall_invoice_template: (p.hall_invoice_template as string) || '',
+        receipt_documents: (p.receipt_documents && typeof p.receipt_documents === 'object' ? p.receipt_documents : {}) as DocSettings,
         default_checkin_time: ((p.default_checkin_time as string) || '12:00').slice(0, 5),
         default_checkout_time: ((p.default_checkout_time as string) || '10:00').slice(0, 5),
         housekeeping_hold_on_checkout: p.housekeeping_hold_on_checkout !== false,
@@ -1043,7 +1129,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
    */
   useEffect(() => {
     let live = true
-    void buildUpiQr(buildPreviewData(form, 'receipt')).then((uri) => {
+    void buildUpiQr(buildPreviewData(form, 'donation')).then((uri) => {
       if (live) setPreviewQr(uri)
     })
     return () => { live = false }
@@ -1062,6 +1148,31 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     set('receipt_thermal', { ...form.receipt_thermal, ...patch } as ThermalOptions)
   }
 
+  /** Change what one document prints (design, paper or copies). */
+  function setDoc(doc: DocId, patch: DocPrint) {
+    setSuccess(false)
+    if (doc === 'donation') {
+      // The donation's choice lives in its own columns - and every other
+      // document that has not chosen for itself follows them.
+      setForm(f => ({
+        ...f,
+        ...(patch.template ? { receipt_template: patch.template } : {}),
+        ...(patch.paper ? { receipt_paper: patch.paper } : {}),
+        ...(patch.copies ? { receipt_copies: patch.copies } : {}),
+      }))
+      return
+    }
+    setForm(f => ({ ...f, receipt_documents: { ...f.receipt_documents, [doc]: { ...(f.receipt_documents[doc] ?? {}), ...patch } } }))
+  }
+  /** Back to "as before": this document follows its fallback again. */
+  function resetDoc(doc: Exclude<DocId, 'donation'>) {
+    setSuccess(false)
+    setForm(f => {
+      const next = { ...f.receipt_documents }
+      delete next[doc]
+      return { ...f, receipt_documents: next }
+    })
+  }
   function set<K extends keyof typeof BLANK>(k: K, v: (typeof BLANK)[K]) {
     setForm(f => ({ ...f, [k]: v }))
   }
@@ -1115,6 +1226,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         receipt_copies: form.receipt_copies,
         receipt_paper: form.receipt_paper,
         room_invoice_template: form.room_invoice_template,
+        receipt_documents: form.receipt_documents,
         default_checkin_time: form.default_checkin_time,
         default_checkout_time: form.default_checkout_time,
         housekeeping_hold_on_checkout: form.housekeeping_hold_on_checkout,
@@ -1167,9 +1279,20 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
     { label: t('settings.profile.darpanNumber'), value: form.darpan_number },
   ]
   const missingRequired = statutory.filter(s => s.required && !s.value)
-  const selected = TEMPLATES.find(t => t.id === form.receipt_template)
-  const stayDesign = [...STAY_TEMPLATES, ...TEMPLATES]
-    .find(t => t.id === (form.room_invoice_template || form.receipt_template))
+  /** A design's name, for a design id or a slip layout. */
+  const designName = (id: string) => (SLIP_LAYOUTS as readonly string[]).includes(id)
+    ? t(`settings.receipts.docs.layout_${id}`)
+    : id === 'custom' ? t('settings.receipts.docs.customDesign')
+      : ([...STAY_TEMPLATES, ...TEMPLATES].find(x => x.id === id)?.label ?? id)
+  const paperName = (p: string) => t(`settings.receipts.docs.paper_${p}`)
+  /** The designs a document may choose from. */
+  const designsFor = (doc: DocId): string[] => [
+    ...(COUNTER_DOCS.includes(doc) ? SLIP_LAYOUTS.filter(l => l !== 'plate' || doc === 'bhojanshala') : []),
+    ...(doc === 'stay' ? STAY_TEMPLATES.map(x => x.id) : []),
+    ...TEMPLATES.map(x => x.id),
+  ]
+  const previewPrint = previewMode === '80g' ? null : resolveDoc(form, previewMode)
+  const selected = TEMPLATES.find(x => x.id === previewPrint?.template)
   // Same rule as buildPreviewData and as the server's statutoryVisibility: the
   // NUMBER is the fact, and it has to be shaped like a GSTIN.
   //
@@ -1178,8 +1301,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
   // problem this solves: an admin who picks "Room GST Invoice" and gets a folio
   // has no way to tell whether the setting saved. Say so instead.
   const gstRegistered = isWellFormedGstin(form.gstin)
+  /** Any document printing on a roll - the roll options apply to all of them. */
+  const anyRoll = DOCS.some(d => isRollPaper(resolveDoc(form, d).paper))
   const gstTemplateUnavailable = !gstRegistered
-    && (form.room_invoice_template || form.receipt_template) === 'room_gst'
+    && resolveDoc(form, 'stay').template === 'room_gst'
 
   return (
     // Side by side from xl only: the preview is 420 px, and below that it sat
@@ -1225,19 +1350,129 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         </div>
         <p className="text-[11px] text-slate-400 -mt-1">{t(`settings.receipts.stepHint.${step}`)}</p>
 
+        {step === 'documents' && <section className="space-y-4" data-testid="docs-step">
+          <div className="flex items-baseline gap-2 pt-1">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('settings.receipts.docs.heading')}</h3>
+            <p className="text-[11px] text-slate-400">{t('settings.receipts.docs.hint')}</p>
+          </div>
+          {/* ── WHAT PRINTS FOR WHAT ──────────────────────────────────────
+              One row per document: its design, its paper and its copies, and
+              a button that shows it. Everything a trust asks "what prints for
+              a hall?" about is on this one screen (tenant migration 059). */}
+          <div className="space-y-2">
+            {DOCS.map(doc => {
+              const p = resolveDoc(form, doc)
+              const own = doc !== 'donation' && !!form.receipt_documents[doc]
+              const roll = isRollPaper(p.paper)
+              return (
+                <div key={doc} data-testid={`doc-row-${doc}`}
+                  className={`card p-3 ${previewMode === doc ? 'ring-2 ring-navy-900' : ''}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-navy-900">{t(`settings.receipts.docs.name_${doc}`)}</p>
+                      <p className="text-[11px] text-slate-500">{t(`settings.receipts.docs.desc_${doc}`)}</p>
+                    </div>
+                    <span className="text-[10px] rounded px-1.5 py-0.5 bg-slate-100 text-slate-600" data-testid={`doc-source-${doc}`}>
+                      {doc === 'donation' ? t('settings.receipts.docs.sourceMain')
+                        : own ? t('settings.receipts.docs.sourceOwn') : t('settings.receipts.docs.sourceDefault')}
+                    </span>
+                    <button type="button" className="btn-secondary btn-sm" data-testid={`doc-preview-${doc}`}
+                      onClick={() => setPreviewMode(doc)}>
+                      <Eye size={12} /> {t('settings.receipts.docs.preview')}
+                    </button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div>
+                      <label className="form-label text-xs" htmlFor={`doc-design-${doc}`}>{t('settings.receipts.docs.design')}</label>
+                      <select id={`doc-design-${doc}`} className="form-select text-sm" value={p.template}
+                        data-testid={`doc-design-${doc}`}
+                        onChange={e => { setDoc(doc, { template: e.target.value }); setPreviewMode(doc) }}>
+                        {designsFor(doc).map(id => <option key={id} value={id}>{designName(id)}</option>)}
+                        {!designsFor(doc).includes(p.template) && <option value={p.template}>{designName(p.template)}</option>}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label text-xs" htmlFor={`doc-paper-${doc}`}>{t('settings.receipts.docs.paper')}</label>
+                      <select id={`doc-paper-${doc}`} className="form-select text-sm" value={p.paper}
+                        data-testid={`doc-paper-${doc}`}
+                        onChange={e => { setDoc(doc, { paper: e.target.value }); setPreviewMode(doc) }}>
+                        {PAPERS.map(pp => <option key={pp} value={pp}>{paperName(pp)}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label text-xs" htmlFor={`doc-copies-${doc}`}>{t('settings.receipts.docs.copies')}</label>
+                      <select id={`doc-copies-${doc}`} className="form-select text-sm" value={p.copies}
+                        data-testid={`doc-copies-${doc}`}
+                        onChange={e => { setDoc(doc, { copies: e.target.value }); setPreviewMode(doc) }}>
+                        <option value="single">{t('settings.receipts.docs.copies_single')}</option>
+                        <option value="both">{t(COUNTER_DOCS.includes(doc) ? 'settings.receipts.docs.copies_both_slip' : 'settings.receipts.docs.copies_both')}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
+                    <button type="button" className="text-brand-blue underline" data-testid={`doc-browse-${doc}`}
+                      onClick={() => { setDesignDoc(doc); setPreviewMode(doc); setStep('design') }}>
+                      {t('settings.receipts.docs.browse')}
+                    </button>
+                    {own && (
+                      <button type="button" className="text-slate-500 underline" data-testid={`doc-reset-${doc}`}
+                        onClick={() => resetDoc(doc as Exclude<DocId, 'donation'>)}>
+                        {t('settings.receipts.docs.reset')}
+                      </button>
+                    )}
+                    {!roll && p.slip && <span className="text-amber-700">{t('settings.receipts.docs.slipOnSheet')}</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>}
+
         {step === 'design' && <section className="space-y-4">
+
+        {/* Which document the gallery is choosing for. It chose the DONATION
+            design only, whatever the admin had in mind - a room bill or a
+            prasad slip could not be picked from here at all. */}
+        <div className="card p-3 flex flex-wrap items-center gap-2" data-testid="design-for">
+          <label className="text-sm font-semibold text-navy-900" htmlFor="design-for-doc">{t('settings.receipts.docs.designFor')}</label>
+          <select id="design-for-doc" className="form-select w-auto text-sm" value={designDoc}
+            onChange={e => { const d = e.target.value as DocId; setDesignDoc(d); setPreviewMode(d) }}>
+            {DOCS.map(d => <option key={d} value={d}>{t(`settings.receipts.docs.name_${d}`)}</option>)}
+          </select>
+          <span className="text-xs text-slate-500">{t('settings.receipts.docs.designForNow', { design: designName(resolveDoc(form, designDoc).template) })}</span>
+        </div>
+
+        {/* Counter layouts, for bhojanshala, prasad and seva. */}
+        {COUNTER_DOCS.includes(designDoc) && (
+          <div className="card">
+            <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.receipts.docs.slipLayouts')}</h3></div>
+            <div className="card-body grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {SLIP_LAYOUTS.filter(l => l !== 'plate' || designDoc === 'bhojanshala').map(l => {
+                const active = resolveDoc(form, designDoc).template === l
+                return (
+                  <button type="button" key={l} onClick={() => setDoc(designDoc, { template: l })}
+                    aria-pressed={active} data-testid="design-card" data-design={l}
+                    className={`text-left border rounded-lg p-2.5 ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <p className="font-semibold text-sm text-slate-800">{designName(l)}</p>
+                    <p className="text-[11px] text-slate-500">{t(`settings.receipts.docs.layoutHelp_${l}`)}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Template */}
         <div className="card">
           <div className="card-header flex items-center gap-2">
             <h3 className="font-semibold text-sm">{t('settings.receipts.templateHeading')}</h3>
-            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length })}</span>
+            <span className="ml-auto text-[11px] text-slate-400">{t('settings.receipts.designsCount', { count: TEMPLATES.length + (designDoc === 'stay' ? STAY_TEMPLATES.length : 0) })}</span>
           </div>
           <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {TEMPLATES.map(tpl => {
-              const active = form.receipt_template === tpl.id
+            {[...(designDoc === 'stay' ? STAY_TEMPLATES : []), ...TEMPLATES].map(tpl => {
+              const active = resolveDoc(form, designDoc).template === tpl.id
               return (
-                <button type="button" key={tpl.id} onClick={() => set('receipt_template', tpl.id)}
+                <button type="button" key={tpl.id} onClick={() => setDoc(designDoc, { template: tpl.id })}
                   aria-pressed={active} data-testid="design-card" data-design={tpl.id}
                   className={`relative text-left border rounded-lg p-2.5 transition-all ${active ? 'border-navy-900 ring-2 ring-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'}`}>
                   {active && (
@@ -1264,8 +1499,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             reported as confusing. */}
         <ReceiptDesignerCard
           accent={form.primary_color}
-          onUseDesign={() => set('receipt_template', 'custom')}
-          selectedTemplate={form.receipt_template}
+          onUseDesign={() => setDoc(designDoc, { template: 'custom' })}
+          selectedTemplate={resolveDoc(form, designDoc).template}
           onPreview={handleDesignPreview}
         />
         </section>}
@@ -1401,10 +1636,12 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               settings. Renders nothing in a browser. */}
           <DesktopPrintersCard testDocs={kind => {
             const roll = (paper: string) => paper.startsWith('thermal')
-            const data = buildPreviewData(form, kind === 'receipt' ? 'slip' : 'receipt', undefined, designPreview, previewQr)
+            const data = buildPreviewData(form, kind === 'receipt' ? 'bhojanshala' : 'donation', undefined, designPreview, previewQr)
+            const slipPaper = resolveDoc(form, 'bhojanshala').paper
+            const docPaper = resolveDoc(form, 'donation').paper
             const paper = kind === 'receipt'
-              ? (roll(form.slip_paper) ? form.slip_paper : roll(form.receipt_paper) ? form.receipt_paper : 'thermal80')
-              : (roll(form.receipt_paper) ? 'a4' : form.receipt_paper)
+              ? (roll(slipPaper) ? slipPaper : roll(docPaper) ? docPaper : 'thermal80')
+              : (roll(docPaper) ? 'a4' : docPaper)
             type Paper = NonNullable<typeof data.mandir>['receipt_paper']
             const mandir = { ...data.mandir!, receipt_paper: paper as Paper }
             if (kind === 'document') return [buildReceiptHtml({ ...data, mandir })]
@@ -1426,29 +1663,12 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <h3 className="font-semibold text-sm">{t('settings.receipts.printHeading')}</h3>
           </div>
           <div className="card-body space-y-4">
+            {/* Paper and copies are per document now - Documents step. */}
+            <p className="text-xs text-slate-500" data-testid="printing-docs-note">
+              {t('settings.receipts.docs.printingNote')}{' '}
+              <button type="button" className="text-brand-blue underline" onClick={() => goToStep('documents')}>{t('settings.receipts.docs.open')}</button>
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="form-label" htmlFor="receipt-settings-tab-receipt-copies">{t('settings.receipts.copies')}</label>
-                <select id="receipt-settings-tab-receipt-copies" className="form-select" value={form.receipt_copies}
-                  onChange={e => set('receipt_copies', e.target.value)}>
-                  <option value="single">{t('settings.receipts.copiesSingle')}</option>
-                  <option value="both">{t('settings.receipts.copiesBoth')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="receipt-settings-tab-receipt-paper">{t('settings.receipts.paper')}</label>
-                <select id="receipt-settings-tab-receipt-paper" className="form-select" value={form.receipt_paper}
-                  onChange={e => set('receipt_paper', e.target.value)}>
-                  {/* A5 and 58 mm were built into the renderer and never
-                      offered here, so a trust that wanted half-sheet receipts
-                      had no way to ask for them. */}
-                  <option value="a4">{t('settings.receipts.paperA4')}</option>
-                  <option value="a5">{t('settings.receipts.paperA5')}</option>
-                  <option value="thermal80">{t('settings.receipts.paperThermal')}</option>
-                  <option value="thermal58">{t('settings.receipts.paperThermal58')}</option>
-                  <option value="thermal112">{t('settings.receipts.paperThermal112')}</option>
-                </select>
-              </div>
               <div>
                 <label className="form-label" htmlFor="receipt-settings-tab-receipt-language">{t('settings.receipts.language')}</label>
                 <select id="receipt-settings-tab-receipt-language" className="form-select" value={form.receipt_language}
@@ -1473,7 +1693,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 {t('settings.receipts.upiQrNeedsId')}
               </p>
             )}
-            {isRollPaper(form.receipt_paper) && (
+            {anyRoll && (
               <p className="text-xs text-slate-500">{t('settings.receipts.thermalNote')}</p>
             )}
 
@@ -1481,7 +1701,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 Shown only for a roll, because none of it means anything on a
                 sheet: a sheet has no cutter, no feed, and enough width that
                 hiding a row to save space is never the question. */}
-            {isRollPaper(form.receipt_paper) && (
+            {anyRoll && (
               <div className="rounded-md border border-slate-200 bg-slate-50 p-3 space-y-3" data-testid="roll-options">
                 <p className="text-xs font-semibold text-slate-700">{t('settings.receipts.rollOptions')}</p>
 
@@ -1570,39 +1790,15 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               <p className="mt-0.5 text-xs text-slate-500">{t('settings.stay.subheading')}</p>
             </div>
             <div className="card-body space-y-4">
-              <div>
-                <label className="form-label" htmlFor="receipt-settings-tab-room-invoice-template">{t('settings.stay.template')}</label>
-                <select id="receipt-settings-tab-room-invoice-template"
-                  className="form-select" data-testid="stay-template"
-                  value={form.room_invoice_template}
-                  onChange={e => set('room_invoice_template', e.target.value)}
-                >
-                  {/* Blank is not "none" — it means "whatever donations use",
-                      which is what every trust has today and must keep. */}
-                  <option value="">{t('settings.stay.templateSameAsReceipt')}</option>
-                  <optgroup label={t('settings.stay.templateGroupStay')}>
-                    {STAY_TEMPLATES.map(tpl => (
-                      <option key={tpl.id} value={tpl.id}>
-                        {tpl.label}
-                        {tpl.id === 'room_gst' && !gstRegistered
-                          ? ` — ${t('settings.stay.needsGstin')}`
-                          : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label={t('settings.stay.templateGroupShared')}>
-                    {TEMPLATES.map(tpl => (
-                      <option key={tpl.id} value={tpl.id}>{tpl.label}</option>
-                    ))}
-                  </optgroup>
-                </select>
-                <p className="form-hint">{t('settings.stay.templateHint')}</p>
-                {gstTemplateUnavailable && (
-                  <p className="text-[11px] leading-relaxed text-amber-700 mt-1" data-testid="stay-gst-unavailable">
-                    {t('settings.stay.gstTemplateUnavailable')}
-                  </p>
-                )}
-              </div>
+              <p className="text-xs text-slate-500" data-testid="stay-docs-note">
+                {t('settings.receipts.docs.stayNote', { design: designName(resolveDoc(form, 'stay').template), paper: paperName(resolveDoc(form, 'stay').paper) })}{' '}
+                <button type="button" className="text-brand-blue underline" onClick={() => goToStep('documents')}>{t('settings.receipts.docs.change')}</button>
+              </p>
+              {gstTemplateUnavailable && (
+                <p className="text-[11px] leading-relaxed text-amber-700" data-testid="stay-gst-unavailable">
+                  {t('settings.stay.gstTemplateUnavailable')}
+                </p>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1722,48 +1918,10 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <p className="mt-0.5 text-xs text-slate-500">{t('settings.slips.subheading')}</p>
           </div>
           <div className="card-body space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <label className="form-label" htmlFor="receipt-settings-tab-slip-template">{t('settings.slips.layout')}</label>
-                <select id="receipt-settings-tab-slip-template" className="form-select" value={form.slip_template}
-                  onChange={e => set('slip_template', e.target.value)}>
-                  <option value="token">{t('settings.slips.layoutToken')}</option>
-                  {/* Same token, without the running number. A trust that hands
-                      tokens out one at a time wants "1 plate" on each rather
-                      than "7 / 10", which reads as a queue position. */}
-                  <option value="plate">{t('settings.slips.layoutPlate')}</option>
-                  <option value="compact">{t('settings.slips.layoutCompact')}</option>
-                  <option value="receipt">{t('settings.slips.layoutReceipt')}</option>
-                </select>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                  {form.slip_template === 'token' && t('settings.slips.layoutTokenHelp')}
-                  {form.slip_template === 'compact' && t('settings.slips.layoutCompactHelp')}
-                  {form.slip_template === 'receipt' && t('settings.slips.layoutReceiptHelp')}
-                </p>
-              </div>
-              <div>
-                <label className="form-label">{t('settings.receipts.paper')}</label>
-                {/* Disabled on 'receipt', where the receipt settings above own
-                    the paper too — a paper picker that silently does nothing is
-                    worse than one that says why. */}
-                <select className="form-select" value={form.slip_paper}
-                  disabled={form.slip_template === 'receipt'}
-                  onChange={e => set('slip_paper', e.target.value)}>
-                  <option value="thermal58">{t('settings.slips.paper58')}</option>
-                  <option value="thermal80">{t('settings.slips.paper80')}</option>
-                  <option value="a5">{t('settings.slips.paperA5')}</option>
-                  <option value="a4">{t('settings.receipts.paperA4')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label" htmlFor="receipt-settings-tab-slip-copies">{t('settings.receipts.copies')}</label>
-                <select id="receipt-settings-tab-slip-copies" className="form-select" value={form.slip_copies}
-                  onChange={e => set('slip_copies', e.target.value)}>
-                  <option value="single">{t('settings.slips.copiesSingle')}</option>
-                  <option value="both">{t('settings.slips.copiesBoth')}</option>
-                </select>
-              </div>
-            </div>
+            <p className="text-xs text-slate-500" data-testid="slips-docs-note">
+              {t('settings.receipts.docs.slipsNote')}{' '}
+              <button type="button" className="text-brand-blue underline" onClick={() => goToStep('documents')}>{t('settings.receipts.docs.open')}</button>
+            </p>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={form.slip_auto_print}
                 onChange={e => set('slip_auto_print', e.target.checked)} />
@@ -1776,7 +1934,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" data-testid="slip-token-per-plate"
                   checked={form.slip_token_per_plate}
-                  disabled={form.slip_template === 'receipt'}
+                  disabled={!resolveDoc(form, 'bhojanshala').slip}
                   onChange={e => set('slip_token_per_plate', e.target.checked)} />
                 {t('settings.slips.tokenPerPlate')}
               </label>
@@ -1905,24 +2063,17 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
             <Eye size={14} className="text-slate-500" />
             <h3 className="font-semibold text-sm">{t('settings.receipts.livePreview')}</h3>
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-              {previewMode === 'receipt' ? (selected?.label || 'Classic')
-                : previewMode === 'stay' ? (stayDesign?.label || selected?.label || 'Classic')
-                  : previewMode === '80g' ? '80G' : t('settings.slips.heading')}
-              {previewMode === 'receipt' && selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{badgeLabel(selected.badge)}</span>}
+              {previewPrint ? `${designName(previewPrint.template)} · ${paperName(previewPrint.paper)}` : '80G'}
+              {selected?.badge && <span className="text-[9px] uppercase font-bold tracking-wide bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">{badgeLabel(selected.badge)}</span>}
             </span>
-            {/* Three documents print from this screen; all three are previewable. */}
-            <div className="w-full flex gap-1">
-              {([
-                ['receipt', t('settings.receipts.previewReceipt')],
-                ['stay', t('settings.receipts.previewStay')],
-                ['80g', t('settings.receipts.preview80g')],
-                ['slip', t('settings.receipts.previewSlip')],
-              ] as [PreviewMode, string][]).map(([m, label]) => (
+            {/* Every document this screen prints, and the 80G certificate. */}
+            <div className="w-full grid grid-cols-4 gap-1">
+              {([...DOCS, '80g'] as PreviewMode[]).map(m => (
                 <button
                   key={m} type="button" data-testid={`preview-mode-${m}`}
                   onClick={() => setPreviewMode(m)}
-                  className={`flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${previewMode === m ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                >{label}</button>
+                  className={`rounded-md px-1.5 py-1 text-[11px] font-medium transition-colors ${previewMode === m ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                >{m === '80g' ? t('settings.receipts.preview80g') : t(`settings.receipts.docs.name_${m}`)}</button>
               ))}
             </div>
           </div>
