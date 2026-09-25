@@ -29,7 +29,10 @@ import type { Room } from '../../../types'
  *    nightly total, so nothing selected is ever scrolled out of sight.
  */
 
-export type PickerRoom = Room & {
+// `floor` as /rooms/availability sends it: a number (Room allows a string,
+// which the wing -> floor grouping cannot order).
+export type PickerRoom = Omit<Room, 'floor'> & {
+  floor?: number | null
   /** The API's verdict for the window asked for (rooms/availability). */
   available?: boolean
   /** A guest is in the room now. */
