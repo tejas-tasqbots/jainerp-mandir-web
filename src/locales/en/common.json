@@ -269,7 +269,7 @@
     "reference": "Reference",
     "referenceHint": "UPI / txn reference (optional)",
     "saleRecorded": "Sale recorded",
-    "searchBuyer": "Search buyer name / mobile...",
+    "searchBuyer": "Search token no., buyer name or mobile...",
     "time": "Time",
     "title": "Bhojanshala",
     "tokens": "Tokens",
@@ -287,7 +287,8 @@
     "addDetails": "Add name / mobile",
     "hideDetails": "Hide name / mobile",
     "printTokens_one": "Print {{count}} token",
-    "printTokens_other": "Print {{count}} tokens"
+    "printTokens_other": "Print {{count}} tokens",
+    "tokenNo": "Token no."
   },
   "brand": {
     "portal": "Temple/Trust"

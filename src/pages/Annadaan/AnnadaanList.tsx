@@ -69,12 +69,15 @@ export function AnnadaanList() {
       const who = s as { entered_by?: string | null; entered_online?: boolean | null }
       if (!(who.entered_by && byFilter.includes(who.entered_by)) && !(who.entered_online && byFilter.includes('online'))) return false
     }
-    if (q && !(s.buyer_name?.toLowerCase().includes(q) || s.buyer_mobile?.toLowerCase().includes(q))) return false
+    if (q && !(s.buyer_name?.toLowerCase().includes(q) || s.buyer_mobile?.toLowerCase().includes(q) || s.invoice_no?.toLowerCase().includes(q))) return false
     return true
   })
 
   const enteredByOptions = useEnteredByOptions()
   const columns: ColumnDef<BhojanshalaSale>[] = useMemo(() => [
+    // The token's own number - what is printed on it, and what the dining hall
+    // or the counter reads out when a token is queried (2026-09-25).
+    { key: 'invoice_no', label: t('bhojanshala.tokenNo'), render: s => <span className="font-mono text-xs text-slate-700 whitespace-nowrap">{s.invoice_no || '—'}</span> },
     { key: 'buyer', label: t('bhojanshala.buyer'), render: s => <span className="font-medium">{s.buyer_name || '—'}</span> },
     {
       key: 'meal', label: t('bhojanshala.mealType'),
@@ -174,6 +177,7 @@ export function AnnadaanList() {
         subtitle: new Date(dateFilter).toLocaleDateString('en-IN'),
         filename: `annadaan-${dateFilter}`,
         columns: [
+          { header: t('bhojanshala.tokenNo'), width: 20 },
           { header: t('bhojanshala.time'), width: 10 },
           { header: t('bhojanshala.buyer'), width: 24 },
           { header: t('bhojanshala.mealType'), width: 12 },
@@ -185,13 +189,14 @@ export function AnnadaanList() {
           { header: t('enteredBy.column'), width: 18 },
         ],
         rows: visible.map(s => [
+          s.invoice_no ?? '',
           new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
           s.buyer_name ?? '', mealLabel[s.meal_type] ?? s.meal_type,
           s.plates, s.tokens_redeemed ?? 0, s.rate_per_plate_paise, s.total_paise, s.payment_mode,
           enteredByText(s, t),
         ]),
         totals: [
-          t('kit.total'), '', '',
+          t('kit.total'), '', '', '',
           visible.reduce((sum, s) => sum + s.plates, 0),
           visible.reduce((sum, s) => sum + (s.tokens_redeemed ?? 0), 0),
           '', visible.reduce((sum, s) => sum + s.total_paise, 0), '', '',

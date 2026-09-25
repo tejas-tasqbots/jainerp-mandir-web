@@ -269,7 +269,7 @@
     "reference": "संदर्भ",
     "referenceHint": "UPI / लेन-देन संदर्भ (वैकल्पिक)",
     "saleRecorded": "बिक्री दर्ज हुई",
-    "searchBuyer": "खरीदार नाम / मोबाइल खोजें...",
+    "searchBuyer": "टोकन क्रमांक, खरीदार का नाम या मोबाइल खोजें...",
     "time": "समय",
     "title": "भोजनशाला",
     "tokens": "टोकन",
@@ -287,7 +287,8 @@
     "addDetails": "नाम / मोबाइल जोड़ें",
     "hideDetails": "नाम / मोबाइल छिपाएँ",
     "printTokens_one": "{{count}} टोकन छापें",
-    "printTokens_other": "{{count}} टोकन छापें"
+    "printTokens_other": "{{count}} टोकन छापें",
+    "tokenNo": "टोकन क्रमांक"
   },
   "brand": {
     "portal": "मंदिर/ट्रस्ट"
