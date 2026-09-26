@@ -4,6 +4,7 @@ import { Paperclip, ExternalLink } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import type { Expense } from '../../types'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { PaymentVouchers } from '../../components/PaymentVouchers'
 
 /** Row detail drawer for an expense — bill details plus the scanned attachment (plan §05). */
 export function ExpenseDetail({ expense }: { expense: Expense }) {
@@ -86,6 +87,14 @@ export function ExpenseDetail({ expense }: { expense: Expense }) {
           </table>
         </div>
       )}
+
+      {/* Every payment against this bill, each a voucher the vendor signs
+          (tenant migration 060) - the one payment of a bill paid at entry, or
+          every installment of one bought on credit. */}
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">{t('expenses.vouchers.title')}</h4>
+        <PaymentVouchers expenseId={expense.id} />
+      </div>
 
       <div>
         <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">

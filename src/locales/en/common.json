@@ -1292,7 +1292,29 @@
     "vendorPlaceholder": "Vendor name",
     "fund": "Paid from fund",
     "fundNone": "Not allocated",
-    "fundHint": "Which fund bore this cost. Needed for the fund utilisation report."
+    "fundHint": "Which fund bore this cost. Needed for the fund utilisation report.",
+    "vouchers": {
+      "title": "Payments & vouchers",
+      "open": "Payments & vouchers",
+      "bill": "Bill",
+      "paid": "Paid",
+      "balance": "Balance",
+      "balanceAfter": "Balance after ₹{{amount}}",
+      "kind_full": "Full payment",
+      "kind_part": "Part payment",
+      "kind_final": "Final payment",
+      "print": "Print voucher",
+      "none": "Nothing paid against this bill yet.",
+      "loadFailed": "Could not load the payments.",
+      "printFailed": "Could not print the voucher.",
+      "reference": "UTR / Cheque / Ref. No. (optional)",
+      "referencePh": "e.g. UPI or NEFT reference",
+      "referenceChequePh": "Cheque number",
+      "narration": "Narration (optional)",
+      "payHint": "A payment voucher is made for this payment, for the vendor to sign.",
+      "ready": "Payment voucher {{no}} is ready",
+      "readyHint": "Print it and have the vendor sign it."
+    }
   },
   "inventory": {
     "actions": "Actions",
@@ -2263,7 +2285,8 @@
         "HALL": "Hall booking",
         "PRASAD": "Prasad sale",
         "ROOM": "Room booking",
-        "SEVA": "Seva booking"
+        "SEVA": "Seva booking",
+        "PAYMENT": "Payment voucher"
       }
     },
     "privacy": {

@@ -3767,7 +3767,15 @@ function pageRules(paper: string | undefined, template: string): string {
   const a5 = paper === 'a5'
   const size = PAPER_MM[a5 ? 'a5' : 'a4']
   const sheet = SHEET_DESIGNS.has(template)
-  const margin = sheet ? 0 : 8
+  // A sheet design keeps 6mm of paper margin, not 0. Reported 2026-09-25/26:
+  // "A4 and A5 print in the printer is not proper, but the PDF is" - the
+  // photographed Anumodana came off an inkjet cut on the right and bottom. A
+  // PDF has no unprintable border; a printer does (3-5mm on an office inkjet),
+  // and with a 0mm @page margin the driver shrank the usable page under the
+  // design and dropped its edge. 6mm clears every such border, and
+  // fitSheetToPage() measures against this margin, so the design shrinks to
+  // fit inside it rather than losing its edge.
+  const margin = sheet ? 6 : 8
   // 0.69, not the exact 0.7071: at the exact ratio a design that fits A4 with
   // a pixel to spare comes out a pixel over on A5, and I measured that
   // happening (the acknowledgement room bill). 2% of headroom absorbs the
@@ -3791,7 +3799,10 @@ function pageRules(paper: string | undefined, template: string): string {
   // fixed-height artifact that gets scaled; that is a redesign of
   // buildAnumodana, not a constant. qa-receipt-print counts PDF pages so this
   // cannot drift back either way.
-  const scale = !a5 ? 1 : sheet ? 0.78 : 0.69
+  //
+  // 0.73 since the 6mm margin above (2026-09-26): the printable box is 198mm,
+  // not 210, so the same worst case needs 0.78 x 198/210 = 0.735.
+  const scale = !a5 ? 1 : sheet ? 0.73 : 0.69
 
   // ── ONE COPY PER SHEET, FOR DESIGNS THAT FILL A SHEET ─────────────────────
   // Not the same question as `sheet`. `sheet` decides paper margin, scale and

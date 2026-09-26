@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, Trash2, Landmark, Paperclip } from 'lucide-react'
+import { Plus, Pencil, Trash2, Landmark, Paperclip, FileText, Printer, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { rsFmt, printCurrentView } from '../../lib/downloadReport'
 import { downloadRowsPdf } from '../../lib/pdfTable'
@@ -17,6 +17,8 @@ import { SummaryStrip, deltaPct, type SummaryStat } from '../../components/kit/S
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { PaymentVouchers } from '../../components/PaymentVouchers'
+import { printPaymentVoucher } from '../../lib/printVoucher'
 import type { Expense } from '../../types'
 import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
 import { ExpenseDetail } from './ExpenseDetail'
@@ -59,7 +61,15 @@ export function ExpensesList() {
   const { chequeActions, bounceModal } = useChequeLifecycle('expenses', () => { void load() })
 
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [payModal, setPayModal] = useState<{ creditorId: string; vendorName: string; outstanding: number } | null>(null)
+  const [payModal, setPayModal] = useState<{ creditorId: string; expenseId: string; vendorName: string; outstanding: number } | null>(null)
+  // The UTR / cheque no. and a narration for this payment - both print on its
+  // voucher (tenant migration 060).
+  const [payRef, setPayRef] = useState('')
+  const [payNarration, setPayNarration] = useState('')
+  /** The voucher of the payment just recorded, offered for printing at once. */
+  const [justPaid, setJustPaid] = useState<{ expenseId: string; paymentId: string; voucherNo: string } | null>(null)
+  /** The expense whose payments & vouchers are open. */
+  const [vouchersOf, setVouchersOf] = useState<Expense | null>(null)
   const [payAmt, setPayAmt] = useState('')
   const [payMode, setPayMode] = useState<PayMode>('cash')
   const [payAccountId, setPayAccountId] = useState('')
@@ -79,8 +89,8 @@ export function ExpensesList() {
 
   function openPay(e: Expense) {
     if (!e.creditor_id) return
-    setPayModal({ creditorId: e.creditor_id, vendorName: e.vendor_name || e.description, outstanding: creditOutstanding(e) })
-    setPayAmt(''); setPayMode('cash'); setPayAccountId(''); setPayError('')
+    setPayModal({ creditorId: e.creditor_id, expenseId: e.id, vendorName: e.vendor_name || e.description, outstanding: creditOutstanding(e) })
+    setPayAmt(''); setPayMode('cash'); setPayAccountId(''); setPayError(''); setPayRef(''); setPayNarration('')
   }
 
   async function submitPay(ev: React.FormEvent) {
@@ -92,12 +102,16 @@ export function ExpensesList() {
     if (payMode !== 'cash' && !payAccountId) { setPayError(t('creditors.selectBankAccountError')); return }
     setPaying(true); setPayError('')
     try {
-      await api.post(`/creditors/${payModal.creditorId}/pay`, {
+      const res = await api.post(`/creditors/${payModal.creditorId}/pay`, {
         amount_paise: payPaise,
         payment_mode: payMode,
         payment_account_id: payMode === 'cash' ? undefined : payAccountId,
         payment_date: todayIst(),
+        reference_no: payRef.trim() || undefined,
+        narration: payNarration.trim() || undefined,
       })
+      const payment = (res.data?.data ?? res.data)?.payment
+      if (payment?.id) setJustPaid({ expenseId: payModal.expenseId, paymentId: payment.id, voucherNo: payment.voucher_no })
       setPayModal(null)
       toast.success(t('creditors.paymentRecorded'))
       load()
@@ -196,6 +210,12 @@ export function ExpensesList() {
       actions.push({ label: t('creditors.recordPayment'), icon: <Landmark size={14} />, primary: true, onClick: () => openPay(e) })
     }
     actions.push({ label: t('expenses.edit'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(e) })
+    // Every payment against this bill, each a voucher to print and have the
+    // vendor sign (tenant migration 060). Not for an on-credit bill nothing
+    // has been paid against yet: there is no payment to vouch for.
+    if (!e.is_on_credit || (e.credit_paid_paise ?? 0) > 0) {
+      actions.push({ label: t('expenses.vouchers.open'), icon: <FileText size={14} />, onClick: () => setVouchersOf(e) })
+    }
     actions.push(...chequeActions(e))
     // temple_admin only: the shared entry delete asks why, takes the expense
     // out of Cash & Bank, and keeps it restorable in the Recycle Bin.
@@ -486,12 +506,53 @@ export function ExpensesList() {
                   </select>
                 </div>
               )}
+              <div>
+                <label className="form-label" htmlFor="expenses-list-payRef">{t('expenses.vouchers.reference')}</label>
+                <input id="expenses-list-payRef" className="form-input" maxLength={60} value={payRef}
+                  placeholder={payMode === 'cheque' ? t('expenses.vouchers.referenceChequePh') : t('expenses.vouchers.referencePh')}
+                  onChange={e => setPayRef(e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="expenses-list-payNarration">{t('expenses.vouchers.narration')}</label>
+                <input id="expenses-list-payNarration" className="form-input" maxLength={500} value={payNarration}
+                  onChange={e => setPayNarration(e.target.value)} />
+              </div>
+              <p className="text-[11px] text-slate-500">{t('expenses.vouchers.payHint')}</p>
               {payError && <p className="text-sm text-red-600">{payError}</p>}
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">{t('common.cancel')}</button>
                 <button type="submit" disabled={paying} className="btn-success">{paying ? t('creditors.recording') : t('creditors.recordPayment')}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* The voucher of the payment just made: print it now, while the vendor
+          is here to sign it. */}
+      {justPaid && (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg" role="status" data-testid="voucher-ready">
+          <div className="text-sm">
+            <p className="font-semibold text-emerald-900">{t('expenses.vouchers.ready', { no: justPaid.voucherNo })}</p>
+            <p className="text-xs text-emerald-800">{t('expenses.vouchers.readyHint')}</p>
+          </div>
+          <button type="button" className="btn-primary btn-sm" data-testid="voucher-ready-print"
+            onClick={() => { void printPaymentVoucher(justPaid.expenseId, justPaid.paymentId).catch(() => toast.error(t('expenses.vouchers.printFailed'))) }}>
+            <Printer size={13} /> {t('expenses.vouchers.print')}
+          </button>
+          <button type="button" className="p-1 text-emerald-700" aria-label={t('common.close')} onClick={() => setJustPaid(null)}><X size={14} /></button>
+        </div>
+      )}
+      {vouchersOf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-labelledby="vouchers-title">
+          <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 id="vouchers-title" className="font-bold text-navy-900">{t('expenses.vouchers.title')}</h3>
+                <p className="text-sm text-slate-500">{vouchersOf.description}{vouchersOf.vendor_name ? ` · ${vouchersOf.vendor_name}` : ''}</p>
+              </div>
+              <button type="button" className="p-1 text-slate-500" aria-label={t('common.close')} onClick={() => setVouchersOf(null)}><X size={16} /></button>
+            </div>
+            <PaymentVouchers expenseId={vouchersOf.id} />
           </div>
         </div>
       )}
