@@ -80,6 +80,14 @@ interface DesktopPrintBridge {
     error?: string
     filePath?: string
   }>>
+  /** Desktop 2.7.6+: a sale's per-token documents and their all-in-one form; the shell picks direct or driver. */
+  printRoll?: (docs: string[], combined: string) => Promise<{
+    success: boolean
+    direct?: boolean
+    reason?: string
+    error?: string
+    filePath?: string
+  }>
   openPath?: (filePath: string) => Promise<string>
 }
 
@@ -162,6 +170,17 @@ export async function printReceiptDocuments(
   // printer driver set to cut after every page, not from separate jobs.
   // PRINT_TOKENS_AS_SEPARATE_JOBS switches the old per-job path back on.
   if (!PRINT_TOKENS_AS_SEPARATE_JOBS) {
+    // Desktop 2.7.6+ takes both forms and chooses: with direct thermal
+    // printing on, one picture + one cut per token straight to the printer;
+    // otherwise `combined`, as one job, through the driver.
+    const desk = desktopBridge()
+    if (desk?.printRoll) {
+      try {
+        const res = await desk.printRoll(htmls, combined)
+        if (!res?.success && res?.filePath) void desk.openPath?.(res.filePath)
+      } catch { /* the shell reports its own failures */ }
+      return
+    }
     printReceiptHtml(combined)
     return
   }

@@ -2798,7 +2798,13 @@
       "testSent": "Sent to {{printer}}. If the paper comes out blank, choose your receipt printer above and test again.",
       "testFailed": "Could not print on {{printer}} ({{reason}}). It has been opened as a PDF instead.",
       "receiptTestHint": "Test print sends a 3-token Bhojanshala sale, exactly as the counter prints it.",
-      "testSentTokens": "Sent {{count}} tokens to {{printer}}, each as its own print — the cutter should cut after each one.",
+      "testSentTokens": "Sent {{count}} tokens to {{printer}} in one go — the printer should cut after each one.",
+
+      "rawThermal": "Direct thermal printing (fastest)",
+
+      "rawThermalHint": "Tokens and slips go straight to the receipt printer with a cut after each one, skipping the Windows driver. Turn it off if the printer prints odd characters or nothing at all.",
+
+      "testSentDirect": "Sent {{count}} tokens straight to {{printer}} — each should come out already cut.",
       "onePerSale": "Per-plate tokens are off (Slips), so the 3 plates print as one slip."
     },
     "donationAccount": {

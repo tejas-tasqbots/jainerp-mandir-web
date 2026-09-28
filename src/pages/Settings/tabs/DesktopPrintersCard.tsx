@@ -23,10 +23,13 @@ import { Printer } from 'lucide-react'
  */
 
 type PrinterInfo = { name: string; displayName: string; isDefault: boolean }
-type Result = { success: boolean; reason?: string; error?: string; filePath?: string; printer?: string }
+type Result = { success: boolean; direct?: boolean; reason?: string; error?: string; filePath?: string; printer?: string }
 type Bridge = {
-  getPrinters?: () => Promise<{ printers: PrinterInfo[]; receiptPrinter: string | null; documentPrinter: string | null }>
+  getPrinters?: () => Promise<{ printers: PrinterInfo[]; receiptPrinter: string | null; documentPrinter: string | null; rawThermal?: boolean }>
   setPrinter?: (kind: 'receipt' | 'document', name: string | null) => Promise<{ success: boolean }>
+  /** Desktop 2.7.6+: direct thermal printing, and the sale print path that honours it. */
+  setRawThermal?: (on: boolean) => Promise<{ success: boolean }>
+  printRoll?: (docs: string[], combined: string) => Promise<Result>
   printHtml?: (html: string) => Promise<Result>
   printHtmlBatch?: (htmls: string[]) => Promise<Result[]>
   openPath?: (p: string) => Promise<string>
@@ -39,7 +42,7 @@ export function DesktopPrintersCard({ testDocs }: {
    * own print job, so the cutter cuts between them) or one slip when off; for
    * the document printer, one A4/A5 receipt.
    */
-  testDocs: (kind: 'receipt' | 'document') => string[]
+  testDocs: (kind: 'receipt' | 'document') => { docs: string[]; combined: string }
 }) {
   const { t } = useTranslation()
   const bridge = (typeof window !== 'undefined' ? window.electronAPI : undefined) as Bridge | undefined
@@ -47,6 +50,7 @@ export function DesktopPrintersCard({ testDocs }: {
   const [chosen, setChosen] = useState<{ receipt: string; document: string }>({ receipt: '', document: '' })
   const [result, setResult] = useState<{ kind: 'receipt' | 'document'; text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState<'receipt' | 'document' | null>(null)
+  const [rawThermal, setRawThermal] = useState(false)
 
   useEffect(() => {
     if (!bridge?.getPrinters) return
@@ -55,6 +59,7 @@ export function DesktopPrintersCard({ testDocs }: {
       if (!live) return
       setPrinters(r.printers)
       setChosen({ receipt: r.receiptPrinter ?? '', document: r.documentPrinter ?? '' })
+      setRawThermal(!!r.rawThermal)
     }).catch(() => setPrinters([]))
     return () => { live = false }
   }, [bridge])
@@ -76,14 +81,20 @@ export function DesktopPrintersCard({ testDocs }: {
       // One job per document, exactly as printReceiptDocuments does at the
       // counter — through the same batch call when the desktop has it, so the
       // test shows the counter's real speed as well as its real output.
-      const docs = testDocs(kind)
+      const { docs, combined } = testDocs(kind)
       const results: Result[] = []
-      if (docs.length > 1 && bridge.printHtmlBatch) results.push(...await bridge.printHtmlBatch(docs))
+      // The receipt test goes the way a sale goes (printReceiptDocuments):
+      // printRoll on a desktop that has it, so direct thermal printing is what
+      // gets tested when it is on.
+      if (kind === 'receipt' && bridge.printRoll) results.push(await bridge.printRoll(docs, combined))
+      else if (docs.length > 1 && bridge.printHtmlBatch) results.push(...await bridge.printHtmlBatch(docs))
       else for (const doc of docs) results.push(await bridge.printHtml(doc))
       const failed = results.find((r) => !r.success)
       const printer = results.find((r) => r.printer)?.printer ?? ''
       if (!failed) {
-        const text = kind === 'receipt' && docs.length > 1
+        const text = kind === 'receipt' && results.some((r) => r.direct)
+          ? t('settings.printers.testSentDirect', { count: docs.length, printer: printer || chosen.receipt || systemDefault || '—' })
+          : kind === 'receipt' && docs.length > 1
           ? t('settings.printers.testSentTokens', { count: docs.length, printer })
           : kind === 'receipt'
             ? `${t('settings.printers.testSent', { printer })} ${t('settings.printers.onePerSale')}`
@@ -133,6 +144,16 @@ export function DesktopPrintersCard({ testDocs }: {
       </div>
       <div className="card-body space-y-4">
         {row('receipt', t('settings.printers.receipt'), `${t('settings.printers.receiptHint')} ${t('settings.printers.receiptTestHint')}`)}
+        {bridge.setRawThermal && (
+          <label className="flex items-start gap-2 cursor-pointer" data-testid="printer-raw-thermal">
+            <input type="checkbox" className="mt-0.5" checked={rawThermal}
+              onChange={(e) => { const on = e.target.checked; setRawThermal(on); setResult(null); void bridge.setRawThermal!(on) }} />
+            <span>
+              <span className="text-sm font-medium">{t('settings.printers.rawThermal')}</span>
+              <span className="block text-xs text-slate-500">{t('settings.printers.rawThermalHint')}</span>
+            </span>
+          </label>
+        )}
         {row('document', t('settings.printers.document'), t('settings.printers.documentHint'))}
       </div>
     </div>

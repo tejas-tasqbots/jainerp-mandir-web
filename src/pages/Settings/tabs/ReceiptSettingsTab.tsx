@@ -1644,7 +1644,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               : (roll(docPaper) ? 'a4' : docPaper)
             type Paper = NonNullable<typeof data.mandir>['receipt_paper']
             const mandir = { ...data.mandir!, receipt_paper: paper as Paper }
-            if (kind === 'document') return [buildReceiptHtml({ ...data, mandir })]
+            if (kind === 'document') { const one = buildReceiptHtml({ ...data, mandir }); return { docs: [one], combined: one } }
             // THREE TOKENS, the way the counter prints them. Asked for so a
             // counter can check its cutter: with per-plate tokens on (Slips)
             // that is three separate prints - three cuts - and with it off,
@@ -1655,7 +1655,8 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
               amount_paise: 3 * 2000,
               meta: { ...(data.meta ?? {}), tokens: 3 },
             }
-            return buildPlateTokenDocuments(sale) ?? [buildReceiptHtml(sale)]
+            const combined = buildReceiptHtml(sale)
+            return { docs: buildPlateTokenDocuments(sale) ?? [combined], combined }
           }} />
         {/* Printing — copies, paper, receipt language, UPI QR */}
         <div className="card">
