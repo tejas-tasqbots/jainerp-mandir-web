@@ -341,15 +341,23 @@ export async function fitFlowToPage(source: string): Promise<string> {
     const style = doc.createElement('style')
     doc.body.appendChild(style)
     const css = (z: number) => `.receipt-copy{zoom:${z.toFixed(3)} !important;width:${(pageW / z).toFixed(1)}px !important;max-width:none !important;margin-left:auto !important;margin-right:auto !important;}`
+    // Measured between two UNZOOMED markers around the copies, never from a
+    // zoomed element's own box: Chromium before 128 - the desktop's Electron 31
+    // is 126 - reports a zoomed element's rect unscaled, so the receipt read as
+    // shorter than it prints and got a zoom that spilled onto a second page.
+    const mark = () => { const m = doc.createElement('div'); m.style.cssText = 'height:0;margin:0;padding:0;border:0;'; return m }
+    const start = mark()
+    const end = mark()
+    copies[0].before(start)
+    copies[copies.length - 1].after(end)
     // Height of what must fit one page, or Infinity when it no longer fits across.
     const measure = (z: number): number => {
       style.textContent = css(z)
       const tooWide = copies.some((c) => c.scrollWidth > c.clientWidth + 1) || doc.documentElement.scrollWidth > pageW + 1
       if (tooWide) return Infinity
-      const boxes = copies.map((c) => c.getBoundingClientRect())
-      return ownPage || copies.length === 1
-        ? Math.max(...boxes.map((b) => b.height))
-        : boxes[boxes.length - 1].bottom - boxes[0].top
+      const total = end.getBoundingClientRect().top - start.getBoundingClientRect().top
+      // Copies that each take their own page are the same receipt twice.
+      return ownPage ? total / copies.length : total
     }
     let lo = 0.45
     let hi = Math.max(lo, pageW / MIN_LAYOUT_PX)
