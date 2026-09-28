@@ -1634,7 +1634,9 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
           {/* Desktop only: which printer this computer sends each kind of
               document to, and a test print of each built from the trust's own
               settings. Renders nothing in a browser. */}
-          <DesktopPrintersCard testDocs={kind => {
+          <DesktopPrintersCard
+            rollWidthMm={Number(/thermal(\d+)/.exec(resolveDoc(form, 'bhojanshala').paper)?.[1] ?? 58)}
+            testDocs={kind => {
             const roll = (paper: string) => paper.startsWith('thermal')
             const data = buildPreviewData(form, kind === 'receipt' ? 'bhojanshala' : 'donation', undefined, designPreview, previewQr)
             const slipPaper = resolveDoc(form, 'bhojanshala').paper

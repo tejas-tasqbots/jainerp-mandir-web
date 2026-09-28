@@ -2805,6 +2805,19 @@
       "rawThermalHint": "Tokens and slips go straight to the receipt printer with a cut after each one, skipping the Windows driver. Turn it off if the printer prints odd characters or nothing at all.",
 
       "testSentDirect": "Sent {{count}} tokens straight to {{printer}} — each should come out already cut.",
+      "directSkipped": "Direct printing did NOT run ({{reason}}) — this went through the Windows driver on {{printer}} instead.",
+      "checkPrint": "Printer check",
+      "checkHint": "Prints one strip with sections A–G. Photograph it, then pick below the picture that showed a bar and the cut that cut.",
+      "checkSent": "Check strip sent to {{printer}}. Look for bar B or bar C, and see after which line (D, E or F) the paper was cut.",
+      "checkFailed": "Could not send the check strip: {{reason}}",
+      "imageMode": "Picture method",
+      "imageB": "1 — bar B printed (standard)",
+      "imageC": "2 — only bar C printed (older printers)",
+      "cutMode": "Cut command",
+      "cutD": "1 — cut after line D",
+      "cutE": "2 — cut after line E",
+      "cutF": "3 — cut after line F",
+      "cutNone": "No cut — tear by hand",
       "onePerSale": "Per-plate tokens are off (Slips), so the 3 plates print as one slip."
     },
     "donationAccount": {

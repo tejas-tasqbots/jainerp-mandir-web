@@ -23,19 +23,30 @@ import { Printer } from 'lucide-react'
  */
 
 type PrinterInfo = { name: string; displayName: string; isDefault: boolean }
-type Result = { success: boolean; direct?: boolean; reason?: string; error?: string; filePath?: string; printer?: string }
+type Result = {
+  success: boolean; direct?: boolean; reason?: string; error?: string; filePath?: string; printer?: string
+  /** 2.7.7+: why direct printing did not run, when it was on and the driver printed instead. */
+  directError?: string
+}
+type ImageMode = 'gsv0' | 'escstar'
+type CutMode = 'gsv66' | 'gsv1' | 'escm' | 'none'
 type Bridge = {
-  getPrinters?: () => Promise<{ printers: PrinterInfo[]; receiptPrinter: string | null; documentPrinter: string | null; rawThermal?: boolean }>
+  getPrinters?: () => Promise<{ printers: PrinterInfo[]; receiptPrinter: string | null; documentPrinter: string | null; rawThermal?: boolean; rawImage?: ImageMode; rawCut?: CutMode }>
   setPrinter?: (kind: 'receipt' | 'document', name: string | null) => Promise<{ success: boolean }>
   /** Desktop 2.7.6+: direct thermal printing, and the sale print path that honours it. */
   setRawThermal?: (on: boolean) => Promise<{ success: boolean }>
   printRoll?: (docs: string[], combined: string) => Promise<Result>
+  /** Desktop 2.7.7+: the printer check strip, and the two answers it gives. */
+  rawCheck?: (widthMm?: number) => Promise<{ success: boolean; printer?: string; error?: string }>
+  setRawOptions?: (image: ImageMode, cut: CutMode) => Promise<{ success: boolean }>
   printHtml?: (html: string) => Promise<Result>
   printHtmlBatch?: (htmls: string[]) => Promise<Result[]>
   openPath?: (p: string) => Promise<string>
 }
 
-export function DesktopPrintersCard({ testDocs }: {
+export function DesktopPrintersCard({ testDocs, rollWidthMm }: {
+  /** The trust's slip roll width (58 / 80 / 112), for the printer check strip. */
+  rollWidthMm?: number
   /**
    * The documents a test print sends: for the receipt printer a three-token
    * sale, as one document per token when per-plate tokens are on (each is its
@@ -51,6 +62,9 @@ export function DesktopPrintersCard({ testDocs }: {
   const [result, setResult] = useState<{ kind: 'receipt' | 'document'; text: string; ok: boolean } | null>(null)
   const [busy, setBusy] = useState<'receipt' | 'document' | null>(null)
   const [rawThermal, setRawThermal] = useState(false)
+  const [rawImage, setRawImage] = useState<ImageMode>('gsv0')
+  const [rawCut, setRawCut] = useState<CutMode>('gsv66')
+  const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     if (!bridge?.getPrinters) return
@@ -60,6 +74,8 @@ export function DesktopPrintersCard({ testDocs }: {
       setPrinters(r.printers)
       setChosen({ receipt: r.receiptPrinter ?? '', document: r.documentPrinter ?? '' })
       setRawThermal(!!r.rawThermal)
+      if (r.rawImage) setRawImage(r.rawImage)
+      if (r.rawCut) setRawCut(r.rawCut)
     }).catch(() => setPrinters([]))
     return () => { live = false }
   }, [bridge])
@@ -92,14 +108,19 @@ export function DesktopPrintersCard({ testDocs }: {
       const failed = results.find((r) => !r.success)
       const printer = results.find((r) => r.printer)?.printer ?? ''
       if (!failed) {
-        const text = kind === 'receipt' && results.some((r) => r.direct)
+        // Direct printing was on but did not run: say so, and why - the
+        // silent fallback is what made "it doesn't cut" impossible to read.
+        const skipped = results.find((r) => r.directError)?.directError
+        const text = kind === 'receipt' && skipped
+          ? t('settings.printers.directSkipped', { reason: skipped, printer: printer || '—' })
+          : kind === 'receipt' && results.some((r) => r.direct)
           ? t('settings.printers.testSentDirect', { count: docs.length, printer: printer || chosen.receipt || systemDefault || '—' })
           : kind === 'receipt' && docs.length > 1
           ? t('settings.printers.testSentTokens', { count: docs.length, printer })
           : kind === 'receipt'
             ? `${t('settings.printers.testSent', { printer })} ${t('settings.printers.onePerSale')}`
             : t('settings.printers.testSent', { printer })
-        setResult({ kind, ok: true, text })
+        setResult({ kind, ok: !skipped, text })
       } else {
         setResult({ kind, ok: false, text: t('settings.printers.testFailed', { printer: failed.printer ?? '—', reason: failed.reason ?? failed.error ?? '' }) })
         // Only the first fallback PDF: three tokens failing should not open three windows.
@@ -153,6 +174,48 @@ export function DesktopPrintersCard({ testDocs }: {
               <span className="block text-xs text-slate-500">{t('settings.printers.rawThermalHint')}</span>
             </span>
           </label>
+        )}
+        {/* Which picture and which cut THIS printer understands. Reported
+            2026-09-28 from a counter (PSF-307, 58 mm): direct printing fed a
+            BLANK token and did not cut - its printer did not know the default
+            picture command. The check strip answers both questions on paper. */}
+        {rawThermal && bridge.rawCheck && bridge.setRawOptions && (
+          <div className="ml-6 space-y-2 rounded-lg border border-slate-200 p-3" data-testid="printer-raw-options">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-secondary btn-sm" data-testid="printer-raw-check"
+                disabled={busy !== null} onClick={async () => {
+                  setCheck(null)
+                  const r = await bridge.rawCheck!(rollWidthMm).catch((e) => ({ success: false, error: String(e) }))
+                  setCheck(r.success
+                    ? { ok: true, text: t('settings.printers.checkSent', { printer: (r as { printer?: string }).printer ?? '—' }) }
+                    : { ok: false, text: t('settings.printers.checkFailed', { reason: (r as { error?: string }).error ?? '' }) })
+                }}>
+                <Printer size={13} /> {t('settings.printers.checkPrint')}
+              </button>
+              <span className="text-xs text-slate-500">{t('settings.printers.checkHint')}</span>
+            </div>
+            {check && <p className={`text-xs ${check.ok ? 'text-emerald-700' : 'text-amber-800'}`} data-testid="printer-raw-check-result">{check.text}</p>}
+            <div className="flex flex-wrap gap-3">
+              <label className="text-xs">
+                <span className="block text-slate-600 mb-1">{t('settings.printers.imageMode')}</span>
+                <select className="form-select" value={rawImage} data-testid="printer-raw-image"
+                  onChange={(e) => { const v = e.target.value as ImageMode; setRawImage(v); void bridge.setRawOptions!(v, rawCut) }}>
+                  <option value="gsv0">{t('settings.printers.imageB')}</option>
+                  <option value="escstar">{t('settings.printers.imageC')}</option>
+                </select>
+              </label>
+              <label className="text-xs">
+                <span className="block text-slate-600 mb-1">{t('settings.printers.cutMode')}</span>
+                <select className="form-select" value={rawCut} data-testid="printer-raw-cut"
+                  onChange={(e) => { const v = e.target.value as CutMode; setRawCut(v); void bridge.setRawOptions!(rawImage, v) }}>
+                  <option value="gsv66">{t('settings.printers.cutD')}</option>
+                  <option value="gsv1">{t('settings.printers.cutE')}</option>
+                  <option value="escm">{t('settings.printers.cutF')}</option>
+                  <option value="none">{t('settings.printers.cutNone')}</option>
+                </select>
+              </label>
+            </div>
+          </div>
         )}
         {row('document', t('settings.printers.document'), t('settings.printers.documentHint'))}
       </div>
