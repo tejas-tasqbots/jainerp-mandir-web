@@ -2818,6 +2818,8 @@
       "cutE": "2 — cut after line E",
       "cutF": "3 — cut after line F",
       "cutNone": "No cut — tear by hand",
+      "recentPrints": "Recent prints on this computer",
+      "noPrintsYet": "No prints since the app was opened.",
       "onePerSale": "Per-plate tokens are off (Slips), so the 3 plates print as one slip."
     },
     "donationAccount": {

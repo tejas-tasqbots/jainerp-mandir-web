@@ -39,6 +39,8 @@ type Bridge = {
   /** Desktop 2.7.7+: the printer check strip, and the two answers it gives. */
   rawCheck?: (widthMm?: number) => Promise<{ success: boolean; printer?: string; error?: string }>
   setRawOptions?: (image: ImageMode, cut: CutMode) => Promise<{ success: boolean }>
+  /** Desktop 2.7.8+: the last prints on this computer, direct or driver and why. */
+  getPrintLog?: () => Promise<string[]>
   printHtml?: (html: string) => Promise<Result>
   printHtmlBatch?: (htmls: string[]) => Promise<Result[]>
   openPath?: (p: string) => Promise<string>
@@ -65,6 +67,7 @@ export function DesktopPrintersCard({ testDocs, rollWidthMm }: {
   const [rawImage, setRawImage] = useState<ImageMode>('gsv0')
   const [rawCut, setRawCut] = useState<CutMode>('gsv66')
   const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null)
+  const [log, setLog] = useState<string[] | null>(null)
 
   useEffect(() => {
     if (!bridge?.getPrinters) return
@@ -218,6 +221,22 @@ export function DesktopPrintersCard({ testDocs, rollWidthMm }: {
           </div>
         )}
         {row('document', t('settings.printers.document'), t('settings.printers.documentHint'))}
+        {/* What the last prints on this computer actually did - direct or
+            through the driver, and why. Asked for after "test print cuts, the
+            counter's 6 tokens do not" could not be told apart remotely. */}
+        {bridge.getPrintLog && (
+          <div className="space-y-1.5" data-testid="printer-log">
+            <button type="button" className="btn-secondary btn-sm"
+              onClick={async () => setLog(await bridge.getPrintLog!().catch(() => []))}>
+              {t('settings.printers.recentPrints')}
+            </button>
+            {log && (
+              <pre className="text-[11px] leading-snug bg-slate-50 border border-slate-200 rounded p-2 whitespace-pre-wrap max-h-60 overflow-auto">
+                {log.length ? log.slice().reverse().join('\n') : t('settings.printers.noPrintsYet')}
+              </pre>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
