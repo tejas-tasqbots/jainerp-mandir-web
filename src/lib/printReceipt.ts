@@ -83,6 +83,9 @@ interface DesktopPrintBridge {
   openPath?: (filePath: string) => Promise<string>
 }
 
+/** See printReceiptDocuments: false = a sale's tokens print as one job. */
+const PRINT_TOKENS_AS_SEPARATE_JOBS = false
+
 function desktopBridge(): DesktopPrintBridge | undefined {
   if (typeof window === 'undefined') return undefined
   return (window as unknown as { electronAPI?: DesktopPrintBridge }).electronAPI
@@ -151,6 +154,17 @@ export async function printReceiptDocuments(
    */
   combined: string,
 ): Promise<void> {
+  // ── ALL IN ONE GO (founder decision 2026-09-28) ──────────────────────────
+  // Reported from prod: "3 tokens print fast, then the next one 8-10 s later -
+  // it should print all in one go, not in batch". The whole sale is now ONE
+  // job, one token per page (the .roll-cut markers in buildReceiptHtml), on the
+  // desktop exactly as in a browser. Separate tokens come from the counter's
+  // printer driver set to cut after every page, not from separate jobs.
+  // PRINT_TOKENS_AS_SEPARATE_JOBS switches the old per-job path back on.
+  if (!PRINT_TOKENS_AS_SEPARATE_JOBS) {
+    printReceiptHtml(combined)
+    return
+  }
   const bridge = desktopBridge()
   if (!bridge?.printHtml || htmls.length <= 1) {
     // A browser cannot reliably fire N print jobs — each would need its own
@@ -251,8 +265,129 @@ export async function fitSheetToPage(html: string): Promise<string> {
   }
 }
 
+/**
+ * Make an A4/A5 receipt FILL its page, not the top half of it.
+ *
+ * Reported 2026-09-28 from prod, desktop and web alike: "A5 print is there but
+ * the page is coming half or 1/4 blank" - and "same for A4". Measured: every
+ * non-sheet design (classic, modern, temple, ...) filled 100% of the page's
+ * width and only 40-56% of its height, on both papers. They are drawn as wide,
+ * short blocks; the only fitting anywhere (pageRules' 0.69 on A5) scales DOWN
+ * to the width, which was already full, so the rest of the page stayed empty.
+ * With the office copy as well, most designs spilled onto a second sheet.
+ *
+ * Scaling up alone cannot help - the width is already full. So the receipt is
+ * laid out NARROWER and zoomed back to the full width: it reflows taller and
+ * every letter is larger. The zoom is found by measuring, in a hidden frame,
+ * the largest one whose result still fits the page with headroom, and handed
+ * to the printer as plain CSS - the desktop prints with scripts off, so this
+ * has to happen here, in the app, and it does on the desktop and the web alike.
+ *
+ * One copy fills one page. Donor + office copies share ONE page between them
+ * (they were two half-empty sheets), unless the design keeps each copy on its
+ * own page (Anumodana, 80G - fitSheetToPage handles those).
+ */
+export async function fitFlowToPage(source: string): Promise<string> {
+  if (typeof document === 'undefined') return source
+  if (/class="sheet"/.test(source) || /class="(slip|plate-sheet)"/.test(source) || !/class="receipt-copy"/.test(source)) return source
+  // A receipt number never breaks across lines ("DON/2026-" / "27/000123" was
+  // what the narrower layout produced). If keeping it whole makes a design too
+  // wide, the width check below simply picks a smaller zoom.
+  const html = keepReceiptNumberWhole(source)
+  const rule = /@page\s*\{[^}]*?size:\s*(A4|A5)[^}]*?\}/i.exec(html)
+  if (!rule) return html
+  const a5 = rule[1].toUpperCase() === 'A5'
+  // The wider of the design's @page margin and Chromium's own default print
+  // margin (~10 mm): the desktop hands print() a named A4/A5 page and no
+  // margins, and measured through Electron an 8 mm plan spilled onto a second
+  // page. Planning for 10.5 mm is safe whichever margin the printer path uses.
+  const margin = Math.max(10.5, Number(/margin:\s*([\d.]+)mm/i.exec(rule[0])?.[1] ?? 0))
+  const mm = 96 / 25.4
+  const pageW = ((a5 ? 148 : 210) - margin * 2) * mm
+  const pageH = ((a5 ? 210 : 297) - margin * 2) * mm
+  // Screen and printer lay text out a hair differently, and so do Chromium
+  // versions (the desktop's Electron against a counter's Chrome); 8% keeps a
+  // fitted receipt from ever starting a second page, which is worse than white
+  // space. 5% was measured spilling 'classic' on Electron.
+  const budget = pageH * 0.92
+  // Never lay a design out narrower than this: tables and the amount box are
+  // drawn for an A4 column and start to wrap badly below it.
+  const MIN_LAYOUT_PX = 400
+
+  const frame = document.createElement('iframe')
+  Object.assign(frame.style, { position: 'fixed', left: '-10000px', top: '0', width: `${Math.ceil(pageW)}px`, height: '1600px', border: '0' })
+  document.body.appendChild(frame)
+  try {
+    const doc = frame.contentWindow?.document
+    if (!doc) return html
+    doc.open()
+    // Measured as it PRINTS: a design's @media print rules apply here too. The
+    // 'traditional' design is taller in print than on screen, and a fit measured
+    // on screen sent its two copies onto a second page.
+    doc.write(html.replace('<script>window.onload=()=>{window.print()}</script>', '').replace(/@media\s+print/gi, '@media all'))
+    // Wait for the frame to LOAD, not just to be written: a design that
+    // @imports a web font (traditional) lays out to ZERO height until that
+    // stylesheet arrives, and a zero measured as "fits at any zoom". Capped,
+    // so a counter with no internet is not held up.
+    const loaded = new Promise<void>((r) => { frame.onload = () => r(); setTimeout(r, 1500) })
+    doc.close()
+    if (doc.readyState !== 'complete') await loaded
+    await (doc as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready?.catch(() => {})
+    await Promise.all(Array.from(doc.images).map((img) => (img.complete ? null : new Promise((r) => { img.onload = r; img.onerror = r }))))
+    const copies = Array.from(doc.querySelectorAll('.receipt-copy')) as HTMLElement[]
+    if (!copies.length) return html
+    const sep = doc.querySelector('.copy-sep') as HTMLElement | null
+    const ownPage = !!sep && doc.defaultView?.getComputedStyle(sep).display === 'none'
+    const style = doc.createElement('style')
+    doc.body.appendChild(style)
+    const css = (z: number) => `.receipt-copy{zoom:${z.toFixed(3)} !important;width:${(pageW / z).toFixed(1)}px !important;max-width:none !important;margin-left:auto !important;margin-right:auto !important;}`
+    // Height of what must fit one page, or Infinity when it no longer fits across.
+    const measure = (z: number): number => {
+      style.textContent = css(z)
+      const tooWide = copies.some((c) => c.scrollWidth > c.clientWidth + 1) || doc.documentElement.scrollWidth > pageW + 1
+      if (tooWide) return Infinity
+      const boxes = copies.map((c) => c.getBoundingClientRect())
+      return ownPage || copies.length === 1
+        ? Math.max(...boxes.map((b) => b.height))
+        : boxes[boxes.length - 1].bottom - boxes[0].top
+    }
+    let lo = 0.45
+    let hi = Math.max(lo, pageW / MIN_LAYOUT_PX)
+    // Nothing laid out yet (a stylesheet still loading): never guess a zoom.
+    if (!(measure(1) > 0)) return html
+    if (measure(lo) > budget) return html // cannot fit at all: leave it as designed
+    if (measure(hi) <= budget) lo = hi
+    else {
+      for (let i = 0; i < 9; i++) {
+        const mid = (lo + hi) / 2
+        if (measure(mid) <= budget) lo = mid
+        else hi = mid
+      }
+    }
+    const fit = `<style>
+  /* fitFlowToPage(): ${copies.length} cop${copies.length > 1 ? 'ies' : 'y'} fill one ${a5 ? 'A5' : 'A4'} page at zoom ${lo.toFixed(3)}. */
+  ${css(lo)}
+  ${!ownPage && copies.length > 1 ? '.copy-sep{margin:10px 0 !important;} .receipt-copy{break-inside:avoid;page-break-inside:avoid;}' : ''}
+</style>`
+    return html.includes('</body>') ? html.replace('</body>', `${fit}</body>`) : html + fit
+  } catch {
+    return html
+  } finally {
+    setTimeout(() => { try { document.body.removeChild(frame) } catch { /* noop */ } }, 50)
+  }
+}
+
+/** Wrap every occurrence of the document's number (from its <title>) in the body in a no-wrap span. */
+function keepReceiptNumberWhole(html: string): string {
+  const num = /<title>Receipt ([^<]+)<\/title>/.exec(html)?.[1]?.trim()
+  const at = html.indexOf('<body')
+  if (!num || num === '—' || num.length < 4 || at < 0) return html
+  const body = html.slice(at).split(num).join(`<span style="white-space:nowrap">${num}</span>`)
+  return html.slice(0, at) + body
+}
+
 export function printReceiptHtml(html: string): void {
-  void fitSheetToPage(html).then(printFitted)
+  void fitSheetToPage(html).then(fitFlowToPage).then(printFitted)
 }
 
 function printFitted(html: string): void {

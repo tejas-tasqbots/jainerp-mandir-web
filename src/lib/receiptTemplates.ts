@@ -4011,12 +4011,20 @@ export function buildReceiptHtml(input: ReceiptData): string {
     const single = Number.isInteger(only)
     const from = single ? only : 1
     const to = single ? only : n
+    // ── ON A ROLL, ONE JOB WITH ONE TOKEN PER PAGE ─────────────────────────
+    // Founder decision 2026-09-28: a sale's tokens print "all in one go", as
+    // ONE job, and the counter's printer driver is set to cut after every page.
+    // So the tokens are separated by .roll-cut, not by a CSS break alone: the
+    // desktop sizes a roll page to the tallest section BETWEEN .roll-cut
+    // markers (print-geometry.ts), and without them the whole set measured as
+    // one page as tall as every token together.
+    const sep = thermal ? '<div class="roll-cut"></div>' : ''
     const tokens = from < 1 ? '' : Array.from({ length: to - from + 1 }, (_, i) =>
-      `<div class="plate-token">${buildPlateToken(r, dateStr, mandir, from + i, n)}</div>`).join('')
+      `<div class="plate-token">${buildPlateToken(r, dateStr, mandir, from + i, n)}</div>`).join(sep)
     // The office copy prints with the set, or alone when plate_index is 0.
     const wantsOffice = mandir.receipt_copies === 'both' && (!single || only === 0)
     const office = wantsOffice
-      ? `<div class="plate-office">${one(L.officeCopy)}</div>`
+      ? `${tokens ? sep : ''}<div class="plate-office">${one(L.officeCopy)}</div>`
       : ''
     // Last in the document on purpose: the office copy carries the slip
     // styles again, and its roll-sized @page must not win on A4/A5.
@@ -4024,7 +4032,9 @@ export function buildReceiptHtml(input: ReceiptData): string {
   .plate-token { page-break-inside:avoid; break-inside:avoid; }
   ${thermal
     // Block layout: Chromium ignores page breaks between flex items.
-    ? `.plate-token + .plate-token, .plate-office { page-break-before:always; break-before:page; }`
+    // The .roll-cut between tokens ends each page (see above); a second
+    // forced break here could leave a blank page on some drivers.
+    ? ``
     : `@page { size: ${mandir.receipt_paper === 'a5' ? 'A5' : 'A4'}; margin: 8mm; }
   /* Tokens tile on the sheet and are cut apart, so they are never scaled to
      the paper the way a full document is — a smaller token is just harder to
