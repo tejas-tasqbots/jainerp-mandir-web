@@ -721,6 +721,14 @@ export function SettingsPage() {
                             : t('settings.subscription.neverDownloaded')}
                         </td>
                         <td className="text-right">
+                          {/* A part-paid invoice (migration 088) offers both: the
+                              invoice listing what has been paid so far, and Pay for
+                              the balance — the API charges only what is still due. */}
+                          {inv.status === 'partially_paid' && (
+                            <button onClick={() => openReceipt(inv.id)} className="btn-secondary btn-sm mr-1">
+                              <ClipboardList size={13} /> {t('settings.subscription.receiptButton')}
+                            </button>
+                          )}
                           {inv.status === 'paid' ? (
                             <button onClick={() => openReceipt(inv.id)} className="btn-secondary btn-sm">
                               <ClipboardList size={13} /> {t('settings.subscription.receiptButton')}

@@ -4184,6 +4184,7 @@
     "final": "Final",
     "paid": "Paid",
     "unpaid": "Unpaid",
+    "partially_paid": "Partially paid",
     "pending": "Pending",
     "overdue": "Overdue",
     "booked": "Booked",

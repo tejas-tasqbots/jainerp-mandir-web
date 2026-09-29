@@ -4184,6 +4184,7 @@
     "final": "अंतिम",
     "paid": "भुगतान हुआ",
     "unpaid": "बकाया",
+    "partially_paid": "आंशिक भुगतान",
     "pending": "लंबित",
     "overdue": "अतिदेय",
     "booked": "बुक",
