@@ -4,7 +4,7 @@ import { MessageSquare, History, Languages, ChevronDown, ChevronRight, ExternalL
 import { api } from '../../../lib/api'
 import { useToast } from '../../../components/kit/Toast'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../../components/kit/DataTable'
-import { DailySummaryCard } from './DailySummaryCard'
+import { DailySummaryCard, DailySummaryRuns } from './DailySummaryCard'
 import { WhatsAppBubble } from './whatsappText'
 
 interface Template {
@@ -46,6 +46,8 @@ interface OutboxRow {
   sent_at: string | null
   delivered_at: string | null
   language: string | null
+  /** The WhatsApp template actually sent, e.g. jerp_daily_summary_v2. */
+  provider_template: string | null
 }
 
 const STATUS_CLASS: Record<string, string> = {
@@ -146,6 +148,8 @@ export function MessagesTab() {
       if (search.trim()) params.set('q', search.trim())
       const status = filterState.status?.values
       if (status?.length === 1) params.set('status', status[0])
+      const templateKey = filterState.template_key?.values
+      if (templateKey?.length === 1) params.set('template_key', templateKey[0])
       const { data } = await api.get(`/comms/outbox?${params}`)
       setRows(data.data ?? [])
       setTotal(data.meta?.total ?? 0)
@@ -200,10 +204,17 @@ export function MessagesTab() {
     { key: 'recipient', label: t('settings.messages.recipient'), render: r => <span className="font-medium">{r.recipient}</span> },
     {
       key: 'template_key', label: t('settings.messages.message'),
+      filter: {
+        kind: 'enum', param: 'template_key',
+        options: templates.map(x => ({ value: x.key, label: t(`settings.messages.tpl.${x.key}`, x.key) })),
+      },
       render: r => (
         <span className="text-slate-600">
           {t(`settings.messages.tpl.${r.template_key}`, r.template_key)}
           {r.language && <span className="ml-1.5 text-[10px] uppercase text-slate-400">{r.language}</span>}
+          {r.provider_template && (
+            <span className="block text-[10px] text-slate-400 font-mono" title={t('settings.messages.templateSent')}>{r.provider_template}</span>
+          )}
         </span>
       ),
     },
@@ -278,6 +289,7 @@ export function MessagesTab() {
         onToggle={() => { if (dailySummary) void toggle(dailySummary) }}
         saving={savingKey === 'daily_summary'}
         languageName={languageName(savedLanguage)}
+        languageLabel={languageName}
       />
 
       <div className="flex gap-2">
@@ -350,27 +362,30 @@ export function MessagesTab() {
           </>
         )
       ) : (
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={r => r.id}
-          loading={loadingLog}
-          searchValue={search}
-          onSearchChange={v => { setSearch(v); setPage(1) }}
-          searchPlaceholder={t('settings.messages.searchPlaceholder')}
-          filterState={filterState}
-          onFilterChange={(key, s) => {
-            setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
-            setPage(1)
-          }}
-          onClearFilters={() => { setFilterState({}); setSearch(''); setPage(1) }}
-          page={page}
-          limit={50}
-          total={total}
-          onPageChange={setPage}
-          viewKey="settings-messages-log"
-          emptyMessage={t('settings.messages.noMessages')}
-        />
+        <>
+          <DailySummaryRuns />
+          <DataTable
+            columns={columns}
+            rows={rows}
+            rowKey={r => r.id}
+            loading={loadingLog}
+            searchValue={search}
+            onSearchChange={v => { setSearch(v); setPage(1) }}
+            searchPlaceholder={t('settings.messages.searchPlaceholder')}
+            filterState={filterState}
+            onFilterChange={(key, s) => {
+              setFilterState(prev => { const next = { ...prev }; if (s) next[key] = s; else delete next[key]; return next })
+              setPage(1)
+            }}
+            onClearFilters={() => { setFilterState({}); setSearch(''); setPage(1) }}
+            page={page}
+            limit={50}
+            total={total}
+            onPageChange={setPage}
+            viewKey="settings-messages-log"
+            emptyMessage={t('settings.messages.noMessages')}
+          />
+        </>
       )}
     </div>
   )
