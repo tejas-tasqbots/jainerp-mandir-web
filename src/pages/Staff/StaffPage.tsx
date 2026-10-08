@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarCheck, IndianRupee, Users } from 'lucide-react'
+import { CalendarCheck, FileText, IndianRupee, Users } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { AttendanceGrid } from './AttendanceGrid'
 import { PayrollPage } from '../Payroll/PayrollPage'
+import { printPayslip } from '../../lib/printVoucher'
 
 /**
  * Staff: everyone the trust manages, in one place.
@@ -194,8 +195,11 @@ export function StaffProfile() {
         const [adv, sal] = await Promise.all([
           api.get('/payroll/advances', { params: { employee_id: id } })
             .then(r => r.data.data ?? r.data ?? []).catch(() => []),
-          api.get('/employee-salary-records', { params: { limit: '24' } })
-            .then(r => (r.data.data ?? []).filter((s: any) => s.employee_id === id)).catch(() => []),
+          // This person's own records. It used to read the latest 24 records
+          // of EVERYONE and filter them here, so with a few staff an
+          // employee's history stopped after a month or two.
+          api.get('/payroll/salaries', { params: { employee_id: id, limit: '36' } })
+            .then(r => r.data.data ?? r.data ?? []).catch(() => []),
         ])
         if (!live) return
         setAdvances(adv)
@@ -301,6 +305,7 @@ export function StaffProfile() {
                     <th className="text-right">{t('staff.advanceRecovered')}</th>
                     <th className="text-right">{t('staff.net')}</th>
                     <th>{t('common.status')}</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
@@ -319,6 +324,15 @@ export function StaffProfile() {
                         {s.paid_at
                           ? <span className="badge-green">{t('staff.paid')}</span>
                           : <span className="badge-yellow">{t('staff.computedNotPaid')}</span>}
+                        {s.voucher_no && <span className="block text-[11px] font-mono text-slate-500">{s.voucher_no}</span>}
+                      </td>
+                      <td className="text-right">
+                        <button
+                          className="p-1.5 text-slate-500 hover:text-navy-900" title={t('payroll.payslip')}
+                          aria-label={t('payroll.payslip')} onClick={() => printPayslip(s.id).catch(() => {})}
+                        >
+                          <FileText size={15} />
+                        </button>
                       </td>
                     </tr>
                   ))}

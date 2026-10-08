@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../../store/profileStore'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -29,6 +30,7 @@ interface DonationRow {
 
 export function DonationRegisterReport() {
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const toast = useToast()
   const [rows, setRows] = useState<DonationRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,12 +54,12 @@ export function DonationRegisterReport() {
       render: r => <span className="badge-gray">{paymentModeLabel(t, r.payment_mode)}</span>,
     },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
-    {
+    ...(!has80g ? [] : [{
       key: 'eightyG', label: t('donations.eightyG'),
-      render: r => r.is_80g_eligible ? <span className="badge-green">{t('common.yes')}</span> : <span className="badge-gray">{t('common.no')}</span>,
-    },
+      render: (r: DonationRow) => r.is_80g_eligible ? <span className="badge-green">{t('common.yes')}</span> : <span className="badge-gray">{t('common.no')}</span>,
+    } as ColumnDef<DonationRow>]),
      
-  ], [t])
+  ], [t, has80g])
 
   function buildParams(): URLSearchParams {
     const params = new URLSearchParams()
@@ -111,13 +113,13 @@ export function DonationRegisterReport() {
           { header: t('donations.category') },
           { header: t('donations.mode'), width: 12 },
           { header: t('common.amount'), type: 'money' },
-          { header: t('donations.eightyG'), width: 8 },
+          ...(has80g ? [{ header: t('donations.eightyG'), width: 8 }] : []),
         ],
         rows: visible.map(r => [
           new Date(r.date).toLocaleDateString('en-IN'), r.invoice_no, r.donor, r.pan_masked ?? '',
-          r.category ?? '', r.payment_mode, r.amount_paise, r.is_80g_eligible ? t('common.yes') : t('common.no'),
+          r.category ?? '', r.payment_mode, r.amount_paise, ...(has80g ? [r.is_80g_eligible ? t('common.yes') : t('common.no')] : []),
         ]),
-        totals: [t('kit.total'), '', '', '', '', '', totalAmount, ''],
+        totals: [t('kit.total'), '', '', '', '', '', totalAmount, ...(has80g ? [''] : [])],
       })
       toast.success(t('kit.exportReady'))
     } catch {

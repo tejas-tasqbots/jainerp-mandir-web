@@ -37,7 +37,23 @@ import { receiptParts, type ReceiptDocument } from './receiptDocument'
  */
 let L: ReceiptLabels = receiptLabels('en')
 
+/**
+ * Where a boli stood as at one of its collections (tenant migration 061).
+ * Present only on a donation that collects against a boli.
+ */
+export interface BoliStanding {
+  description: string
+  category?: string | null
+  pledged_paise: number
+  paid_before_paise: number
+  this_paise: number
+  paid_to_date_paise: number
+  balance_paise: number
+}
+
 export interface ReceiptData {
+  /** A boli collection: the boli and what is still pending on it. */
+  boli?: BoliStanding | null
   /**
    * What this document calls itself. Every template hardcoded "Donation
    * Receipt", so a room stay, a hall booking and a prasad sale all printed as
@@ -863,6 +879,34 @@ function mandirHouseRules(r: ReceiptData): string {
  * details adds no empty boxes and shifts nothing below it.
  */
 /**
+ * A boli collection's standing, in the order a donor reads it (2026-10-08:
+ * "the pending boli amount is not showing in the receipt"). As at THIS
+ * receipt, so an earlier instalment's reprint still says what was pending then.
+ */
+export function boliRows(r: ReceiptData): Array<[string, string, boolean]> {
+  const b = r.boli
+  if (!b) return []
+  const rows: Array<[string, string, boolean]> = [
+    [L.boliFor, b.description, false],
+    [L.boliAmount, `₹ ${fmtRs(b.pledged_paise)}`, false],
+  ]
+  if (b.paid_before_paise > 0) rows.push([L.paidEarlier, `₹ ${fmtRs(b.paid_before_paise)}`, false])
+  rows.push([L.paidThisReceipt, `₹ ${fmtRs(b.this_paise)}`, false])
+  if (b.paid_before_paise > 0) rows.push([L.paidToDate, `₹ ${fmtRs(b.paid_to_date_paise)}`, false])
+  rows.push([L.balancePending, `₹ ${fmtRs(b.balance_paise)}`, true])
+  return rows
+}
+
+function boliBlock(r: ReceiptData, color: string, opts: { compact?: boolean } = {}): string {
+  const rows = boliRows(r)
+  if (!rows.length) return ''
+  const size = opts.compact ? '9px' : '10px'
+  return `<div class="boli-standing" data-testid="boli-standing" style="margin-top:8px;border:1px solid ${color}33;border-left:3px solid ${color};border-radius:3px;padding:${opts.compact ? '4px 8px' : '6px 10px'};font-size:${size};line-height:1.5">
+    ${rows.map(([k, v, strong]) => `<div style="display:flex;justify-content:space-between;gap:10px${strong ? ';font-weight:800;border-top:1px dashed #d1d5db;margin-top:2px;padding-top:2px' : ''}"><span style="color:${strong ? '#111827' : '#4b5563'}">${k}</span><span>${v}</span></div>`).join('')}
+  </div>`
+}
+
+/**
  * The panels under an itemised bill: the stay window, and how to pay.
  *
  * `stay: false` for a design that ALREADY prints the stay details in its own
@@ -891,7 +935,7 @@ function paymentFooter(
       <div style="flex:1 1 46%;min-width:180px;display:flex">${remit}</div>
     </div>`
     : `${stay}${remit}`
-  return `${paymentWhenBlock(r, opts)}${panels}`
+  return `${boliBlock(r, color, opts)}${paymentWhenBlock(r, opts)}${panels}`
 }
 
 function remittanceBlock(
@@ -2044,7 +2088,7 @@ function buildAnumodana(r: ReceiptData, mandir: NonNullable<ReceiptData['mandir'
     ] : []),
   ] : []
   // Paid, refunded, still due: printed under the total they settle.
-  const settlement = moneyAfterTotal(r)
+  const settlement = [...moneyAfterTotal(r), ...boliRows(r)]
   // Everything below reaches receiptDocument, which escapes it once itself.
   const doc: ReceiptDocument = unescapeDeep({
     // A gift or a sale — the payload says so now; a title is the old signal.
@@ -2275,9 +2319,12 @@ function stayMoneyRows(r: ReceiptData): Array<[string, string, boolean]> {
   if (refunded > 0) rows.push([L.refunded, `₹ ${fmtRs(refunded)}`, false])
   if (refundDue > 0) rows.push([L.refundDue, `₹ ${fmtRs(refundDue)}`, true])
   if (due > 0) rows.push([L.balanceDue, `₹ ${fmtRs(due)}`, true])
-  // Held, not earned: it is not part of the bill and must never be added into
-  // the total (tenant migration 034 made the same point in the ledger).
-  if (deposit > 0) rows.push([L.securityDeposit, `₹ ${fmtRs(deposit)}`, false])
+  // The security deposit is NOT on the stay's bill (2026-10-08): it is held,
+  // not earned, has its own receipt when it is taken (SD/...) and its own
+  // signed voucher when it is returned. Printed here it read as part of what
+  // the room cost — the client's words: "in the receipt security deposit
+  // amount should not be there as it will be given back".
+  void deposit
   return rows
 }
 
@@ -2979,6 +3026,7 @@ function buildRuled(r: ReceiptData, dateStr: string, mandir: NonNullable<Receipt
     </div>
 
     <div class="words">${L.amountInWords}: <b>${amountInWords(r.amount_paise)}</b></div>
+    ${r.boli ? `<div style="padding:0 10px 6px">${boliBlock(r, '#111827', { compact: true })}</div>` : ''}
 
     <div class="lower" style="border-top:1px solid #111827">
       <div style="flex:1.2">${remittanceBlock(r, '#111827', { compact: true })}</div>
@@ -3498,6 +3546,7 @@ function buildThermal(r: ReceiptData, dateStr: string, mandir: NonNullable<Recei
     ${thermalLines(r, mandir, row)}
     <div class="amt">₹ ${fmtRs(r.amount_paise)}</div>
     ${t.show('amount_in_words') ? `<div class="words">${amountInWords(r.amount_paise)}</div>` : ''}
+    ${boliRows(r).map(([k, v]) => row(k, v)).join('')}
     ${r.is_80g_eligible && trustGrants80g(mandir) ? `<div class="note">${L.valid80g}</div>` : ''}
     ${t.show('registration') && mandir.registration_number ? row(L.registrationNo, mandir.registration_number) : ''}
     ${t.show('registration') && mandir.darpan_number ? row(L.darpanNo, mandir.darpan_number) : ''}
@@ -3703,10 +3752,25 @@ function buildPlateToken(
       // alone rather than repeating "1 plate" underneath itself.
       ? (rate > 0 ? `<div class="plate">₹ ${fmtRs(rate)}</div>` : '')
       : `<div class="plate">${L.onePlate}${rate > 0 ? ` · ₹ ${fmtRs(rate)}` : ''}</div>`}
+    ${index === 1 ? plateTokenExtras(r) : ''}
     ${slipRow(L.receiptNo, r.receipt_number ?? '—')}
     ${slipRow(L.date, dateStr)}
     <div class="note">${mandir.footer || L.thankYou}</div>
   </div>`;
+}
+
+/**
+ * The extras on a meal sale (tenant migration 061) — packaging for a parcel,
+ * an extra item — and what the whole sale came to, on the FIRST token only.
+ * Every token is one plate; the extras belong to the sale, and printing them
+ * on all ten would read as ten parcels.
+ */
+function plateTokenExtras(r: ReceiptData): string {
+  const meta = (r.meta ?? {}) as Record<string, unknown>
+  const extras = Array.isArray(meta.extras) ? meta.extras as Array<{ label: string; qty?: number; amount_paise: number }> : []
+  if (!extras.length) return ''
+  return `${extras.map((e) => slipRow(`+ ${e.label}${Number(e.qty) > 1 ? ` × ${e.qty}` : ''}`, `₹ ${fmtRs(Number(e.amount_paise))}`)).join('')}
+    ${slipRow(L.total, `₹ ${fmtRs(Number(meta.total_paise ?? r.amount_paise))}`)}`
 }
 
 /**

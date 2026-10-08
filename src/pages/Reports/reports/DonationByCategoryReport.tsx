@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../../store/profileStore'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -27,6 +28,7 @@ interface CategoryData {
 /** Fund/category-wise donation collection over a period. */
 export function DonationByCategoryReport() {
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const toast = useToast()
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('report-donation-by-category', 'thisMonth'))
   const [data, setData] = useState<CategoryData | null>(null)
@@ -59,14 +61,14 @@ export function DonationByCategoryReport() {
       key: 'share', label: t('reports.share'), align: 'right',
       render: r => <span className="text-slate-500">{grandTotal ? `${((r.amount_paise / grandTotal) * 100).toFixed(1)}%` : '—'}</span>,
     },
-    { key: 'eligible80g', label: t('reports.eligible80g'), align: 'right', render: r => <span className="text-slate-500">₹{fmtPaise(r.eligible_80g_paise)}</span> },
+    ...(!has80g ? [] : [{ key: 'eligible80g', label: t('reports.eligible80g'), align: 'right', render: (r: CategoryRow) => <span className="text-slate-500">₹{fmtPaise(r.eligible_80g_paise)}</span> } as ColumnDef<CategoryRow>]),
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => <span className="font-semibold">₹{fmtPaise(r.amount_paise)}</span> },
   ]
 
   const stats: SummaryStat[] = data ? [
     { label: t('reports.totalCollection'), value: `₹${fmtPaise(data.totals.amount_paise)}`, tone: 'income' },
     { label: t('reports.receipts'), value: String(data.totals.count) },
-    { label: t('reports.eligible80g'), value: `₹${fmtPaise(data.totals.eligible_80g_paise)}` },
+    ...(has80g ? [{ label: t('reports.eligible80g'), value: `₹${fmtPaise(data.totals.eligible_80g_paise)}` }] : []),
     { label: t('reports.funds'), value: String(rows.length) },
   ] : []
 
@@ -80,11 +82,11 @@ export function DonationByCategoryReport() {
         columns: [
           { header: t('reports.category'), width: 24 },
           { header: t('reports.receipts'), width: 10 },
-          { header: t('reports.eligible80g'), type: 'money' },
+          ...(has80g ? [{ header: t('reports.eligible80g'), type: 'money' as const }] : []),
           { header: t('common.amount'), type: 'money' },
         ],
-        rows: rows.map(r => [r.category, r.count, r.eligible_80g_paise, r.amount_paise]),
-        totals: [t('kit.total'), data?.totals.count ?? 0, data?.totals.eligible_80g_paise ?? 0, grandTotal],
+        rows: rows.map(r => [r.category, r.count, ...(has80g ? [r.eligible_80g_paise] : []), r.amount_paise]),
+        totals: [t('kit.total'), data?.totals.count ?? 0, ...(has80g ? [data?.totals.eligible_80g_paise ?? 0] : []), grandTotal],
       })
       toast.success(t('kit.exportReady'))
     } catch {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../store/profileStore'
 import { Search, X, UserPlus, Link2, EyeOff, KeyRound, Check } from 'lucide-react'
 import { api } from '../../lib/api'
 import { CitySelect, CountrySelect, StateSelect } from '../GeoSelect'
@@ -92,6 +93,7 @@ export function DevoteePicker({
   noun = 'donor',
 }: DevoteePickerProps) {
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const guest = noun === 'guest'
   const addNewLabel = guest ? t('ui.addNewGuest') : t('ui.addNewDonor')
   const isOnline = useIsOnline()
@@ -323,7 +325,7 @@ export function DevoteePicker({
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-md">
           <EyeOff size={14} className="text-slate-400 flex-shrink-0" />
           <span className="text-sm font-medium text-slate-600">{label2}</span>
-          <span className="text-xs text-slate-400">— not 80G eligible</span>
+          {has80g && <span className="text-xs text-slate-400">— not 80G eligible</span>}
           <button type="button" onClick={clear} aria-label={t('ui.clearSelection')} className="ml-auto text-slate-400 hover:text-red-500 flex-shrink-0">
             <X size={14} />
           </button>
@@ -374,13 +376,15 @@ export function DevoteePicker({
           <input className="form-input" placeholder={t('ui.addressOpt')} value={f.address}
             onChange={e => setField('address', e.target.value)} />
 
-          {/* PAN — only needed for 80G */}
-          {!f.noPan && (
+          {/* PAN — only needed for 80G, so not asked at a trust without it. */}
+          {has80g && !f.noPan && (
             <input className="form-input uppercase" placeholder={t('ui.panFor80g')} value={f.pan}
               onChange={e => setField('pan', e.target.value.toUpperCase())} maxLength={10} />
           )}
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" checked={f.noPan} onChange={e => { setField('noPan', e.target.checked); setField('pan', '') }} />{t('ui.noPanShare')}</label>
+          {has80g && (
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" checked={f.noPan} onChange={e => { setField('noPan', e.target.checked); setField('pan', '') }} />{t('ui.noPanShare')}</label>
+          )}
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 

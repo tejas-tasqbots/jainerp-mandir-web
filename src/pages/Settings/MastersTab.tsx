@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import {
-  BedDouble, Building2, CreditCard, Gift, HandCoins, PackagePlus, Percent, PiggyBank, Sparkles,
+  BedDouble, Building2, CreditCard, Gavel, Gift, HandCoins, PackagePlus, Percent, PiggyBank, Sparkles, Tags,
   UtensilsCrossed, Wallet, type LucideIcon,
 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { MasterEditor } from './MasterEditor'
+import { useTrustHas80g } from '../../store/profileStore'
 import { BhojanshalaRates } from './BhojanshalaRates'
+import { HallPackagesEditor } from './HallPackagesEditor'
 
 /**
  * Settings → Categories & Dropdowns, one list at a time.
@@ -40,6 +42,7 @@ export function MastersTab() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const has80g = useTrustHas80g()
 
   const lists: ListDef[] = useMemo(() => [
     {
@@ -60,7 +63,7 @@ export function MastersTab() {
               key: 'fund_id', label: t('settings.masters.fields.fund'), type: 'select',
               optionsFrom: { resource: 'funds' }, emptyLabel: t('settings.masters.fields.fundNone') as string,
             },
-            { key: 'is_80g_eligible', label: t('settings.masters.fields.is80gEligible'), type: 'checkbox', default: true },
+            ...(has80g ? [{ key: 'is_80g_eligible', label: t('settings.masters.fields.is80gEligible'), type: 'checkbox' as const, default: true }] : []),
             { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
           ]}
         />
@@ -91,6 +94,30 @@ export function MastersTab() {
               ],
             },
             { key: 'is_restricted', label: t('settings.masters.fields.isRestricted'), type: 'checkbox', default: true },
+            { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+          ]}
+        />
+      ),
+    },
+    {
+      // The trust's own boli types (tenant migration 061) — they were five
+      // words hardcoded in the New boli form. A type can name the fund its
+      // collections belong to: Dev Dravya for an aarti boli, in the Jain way.
+      id: 'boli-categories', group: 'donations', icon: Gavel, resource: 'boli-categories',
+      title: t('settings.masters.boliCategories'),
+      render: () => (
+        <MasterEditor
+          resource="boli-categories"
+          title={t('settings.masters.boliCategories')}
+          description={t('settings.masters.boliCategoriesDesc')}
+          onCount={n => setCounts(c => ({ ...c, 'boli-categories': n }))}
+          fields={[
+            { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: 'Shantidhara' },
+            { key: 'name_hindi', label: t('settings.masters.fields.nameHindi'), placeholder: 'शांतिधारा' },
+            {
+              key: 'fund_id', label: t('settings.masters.fields.fund'), type: 'select',
+              optionsFrom: { resource: 'funds' }, emptyLabel: t('settings.masters.fields.fundNone') as string,
+            },
             { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
           ]}
         />
@@ -249,6 +276,18 @@ export function MastersTab() {
           onCount={n => setCounts(c => ({ ...c, halls: n }))}
           fields={[
             { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('settings.masters.fields.namePlaceholderMainHall') as string },
+            // A lawn, a dining hall or a terrace is let the same way as a hall
+            // and can go into a package with it (tenant migration 061).
+            {
+              key: 'venue_type', label: t('settings.masters.fields.venueType'), type: 'select', default: 'hall',
+              options: [
+                { value: 'hall', label: t('hallPackages.venue.hall') },
+                { value: 'lawn', label: t('hallPackages.venue.lawn') },
+                { value: 'dining', label: t('hallPackages.venue.dining') },
+                { value: 'terrace', label: t('hallPackages.venue.terrace') },
+                { value: 'other', label: t('hallPackages.venue.other') },
+              ],
+            },
             { key: 'capacity_persons', label: t('settings.masters.fields.capacity'), type: 'number', placeholder: '0' },
             { key: 'fullday_tariff_paise', label: t('settings.masters.fields.fullDayTariff'), type: 'money', placeholder: '0' },
             { key: 'session_tariff_paise', label: t('settings.masters.fields.sessionTariff'), type: 'money', placeholder: '0' },
@@ -262,6 +301,53 @@ export function MastersTab() {
       ),
     },
     {
+      // Packages — several halls, lawns and rooms at one price — and what each
+      // venue costs per rate category (tenant migration 061).
+      id: 'hall-packages', group: 'stay', icon: Building2,
+      title: t('hallPackages.title'),
+      render: () => <HallPackagesEditor />,
+    },
+    {
+      // What a hall booking can add on top (tenant migration 061): decoration,
+      // electricity, generator, sound ... at the trust's own rates.
+      id: 'hall-charges', group: 'stay', icon: PackagePlus, resource: 'hall-charge-items',
+      title: t('hallPackages.extrasList'),
+      render: () => (
+        <MasterEditor
+          resource="hall-charge-items"
+          title={t('hallPackages.extrasList')}
+          description={t('hallPackages.extrasListHint')}
+          onCount={n => setCounts(c => ({ ...c, 'hall-charges': n }))}
+          fields={[
+            { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('hallPackages.extraPlaceholder') as string },
+            { key: 'default_rate_paise', label: t('roomCharges.rate'), type: 'money', placeholder: '0.00' },
+            { key: 'per_day', label: t('hallPackages.perDay'), type: 'checkbox' },
+            { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+          ]}
+        />
+      ),
+    },
+    {
+      // Who pays which price (tenant migration 061): Sangh member, Jain
+      // non-member, outsider, a religious function ... Each venue and package
+      // can carry its own price for each.
+      id: 'rate-categories', group: 'stay', icon: Tags, resource: 'rate-categories',
+      title: t('hallPackages.rateCategories'),
+      render: () => (
+        <MasterEditor
+          resource="rate-categories"
+          title={t('hallPackages.rateCategories')}
+          description={t('hallPackages.rateCategoriesHint')}
+          onCount={n => setCounts(c => ({ ...c, 'rate-categories': n }))}
+          fields={[
+            { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('hallPackages.rateCategoryPlaceholder') as string },
+            { key: 'description', label: t('hallPackages.whoPays'), placeholder: '' },
+            { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+          ]}
+        />
+      ),
+    },
+    {
       // What a plate costs at each sitting (tenant migration 042): a property
       // of the trust, not of a sale, so it is set here and the counter shows
       // it as fixed. Vendors live on their own master page (Masters →
@@ -270,7 +356,28 @@ export function MastersTab() {
       title: t('settings.bhojanshalaRates.heading'),
       render: () => <BhojanshalaRates />,
     },
-  ], [t])
+    {
+      // What a meal can add (tenant migration 061): packaging for a parcel,
+      // an extra item, delivery — "if someone wants lunch with packaging we
+      // take packaging charges".
+      id: 'bhojanshala-charges', group: 'food', icon: PackagePlus, resource: 'bhojanshala-charge-items',
+      title: t('bhojanshalaExtras.priceList'),
+      render: () => (
+        <MasterEditor
+          resource="bhojanshala-charge-items"
+          title={t('bhojanshalaExtras.priceList')}
+          description={t('bhojanshalaExtras.priceListHint')}
+          onCount={n => setCounts(c => ({ ...c, 'bhojanshala-charges': n }))}
+          fields={[
+            { key: 'name', label: t('settings.masters.fields.name'), required: true, placeholder: t('bhojanshalaExtras.placeholder') as string },
+            { key: 'default_rate_paise', label: t('roomCharges.rate'), type: 'money', placeholder: '0.00' },
+            { key: 'per_plate', label: t('bhojanshalaExtras.perPlate'), type: 'checkbox' },
+            { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0' },
+          ]}
+        />
+      ),
+    },
+  ], [t, has80g])
 
   const requested = params.get('sub') ?? ''
   const current = lists.find(l => l.id === requested) ?? lists.find(l => l.id === DEFAULT_MASTER)!

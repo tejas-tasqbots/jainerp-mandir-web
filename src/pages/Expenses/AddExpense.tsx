@@ -10,6 +10,15 @@ import { VendorPicker, type VendorRef } from '../../components/Expenses/VendorPi
 
 /** The category dropdown's "Other…": type a category the trust has not set up yet. */
 const OTHER = '__other__'
+
+/**
+ * A staff salary paid as an expense never meets the payroll: no advance is
+ * deducted, no payslip exists, and the same wage can be paid twice. Trusts did
+ * exactly this because Payroll had no Pay step (2026-10-08). Not blocked —
+ * a priest's dakshina or a contractor's labour may genuinely be an expense —
+ * but the counter is told where staff salary belongs.
+ */
+const SALARY_WORDS = /salary|salaries|wage|वेतन|तनख्वाह|पगार|मानधन/i
 import { itemsPayload, itemsTotals, newItemRow, type ItemRow, type VendorItem } from '../../components/Expenses/expenseItems'
 import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 
@@ -182,6 +191,14 @@ export function AddExpense() {
                 {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
                 <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
               </select>
+              {SALARY_WORDS.test(billCategory) && (
+                <div className="mt-1.5 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900" data-testid="salary-to-payroll">
+                  {t('expenses.salaryUsePayroll')}{' '}
+                  <button type="button" className="font-semibold underline" onClick={() => navigate('/staff/payroll')}>
+                    {t('expenses.openPayroll')}
+                  </button>
+                </div>
+              )}
               {form.category === OTHER && (
                 <input className="form-input mt-1.5" autoFocus maxLength={100} data-testid="other-expense-category"
                   placeholder={t('expenseItems.newCategoryName')} aria-label={t('expenseItems.newCategoryName')}

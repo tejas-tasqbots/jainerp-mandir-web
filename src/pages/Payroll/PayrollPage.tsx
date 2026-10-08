@@ -1,42 +1,77 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calculator, HandCoins, Plus, RefreshCw, Save, X } from 'lucide-react'
+import {
+  Calculator, ChevronDown, ChevronRight, FileText, HandCoins, IndianRupee, Plus, Printer, RefreshCw, Save, X,
+} from 'lucide-react'
 import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { PaymentFields, emptyPayment, needsReference, type PaymentFieldsValue } from '../../components/PaymentFields'
+import { usePaymentModes } from '../../lib/useDropdownOptions'
+import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { printAdvanceVoucher, printPayslip } from '../../lib/printVoucher'
 
 /**
- * Payroll: the salary run, and the advances it recovers.
- *
- * Before this screen existed there was no way to compute a salary at all —
- * `employee_salary_records` was reachable only through the generic resource
- * CRUD, so an accountant typed gross and deductions in by hand and the salary
- * register could silently disagree with the attendance beside it.
+ * Payroll: the salary run, paying it, and the advances it recovers.
  *
  * The month is always PREVIEWED before it is written. The preview is computed
  * server-side by the same code that writes it (`GET /payroll/preview` and
  * `POST /payroll/compute` share one function), so what is shown is what will
  * be saved — not an estimate the write path might disagree with.
+ *
+ * 2026-10-08, from a live trust: "the advance is given to one employee but it
+ * is not deducting and not showing the calculations". Three things were
+ * wrong, and this screen shows the answer to each:
+ *   - a monthly salary was paid only for days MARKED present, so with no
+ *     register kept the gross was ₹0 and no advance could come off it. The
+ *     API now pays the month less loss-of-pay days; each row opens to show
+ *     the arithmetic and every advance taken, before and after;
+ *   - nothing paid a salary — computing was the last step, so trusts paid
+ *     salary as an Expense, which knows nothing about advances. "Pay" records
+ *     mode, account and UTR, issues a voucher and posts to the cash book;
+ *   - there was no payslip. There is now, from the same record.
  */
 
 type Tab = 'run' | 'advances'
+
+interface Recovery {
+  advance_id: string
+  advance_date: string | null
+  voucher_no: string | null
+  advance_paise: number
+  amount_paise: number
+  outstanding_before_paise: number
+  outstanding_after_paise: number
+}
 
 interface PreviewRow {
   employee_id: string
   employee_name: string
   designation: string | null
   salary_type: string
+  rate_paise: number
   days_in_month: number
+  days_not_joined: number
   days_present: number
   days_half: number
-  days_leave: number
+  days_paid_leave: number
+  days_unpaid_leave: number
   days_absent: number
+  payable_days: number
+  loss_of_pay_days: number
   gross_paise: number
+  deduction_cap_paise: number
   advance_recovered_paise: number
   other_deductions_paise: number
   deductions_paise: number
   net_paise: number
+  recoveries: Recovery[]
+  advances_outstanding_before_paise: number
+  advances_outstanding_after_paise: number
+  salary_record_id: string | null
+  status: 'draft' | 'computed' | 'paid'
+  voucher_no: string | null
 }
 
 interface Preview {
@@ -61,17 +96,25 @@ interface Advance {
   reason: string | null
   recovery_mode: 'instalment' | 'full_next_salary' | 'manual'
   instalment_paise: number
+  recovery_starts_on: string | null
   status: string
+  payment_mode: string | null
+  voucher_no: string | null
+  reference_no: string | null
 }
 
-interface Employee { id: string; name: string; designation?: string | null }
-interface Account { id: string; name: string }
+interface Employee { id: string; name: string; designation?: string | null; is_active?: boolean }
 
-const thisMonth = () => new Date().toISOString().slice(0, 7)
+/** This month in IST — toISOString() is UTC and reads the previous month until 05:30 on the 1st. */
+const thisMonth = () => todayIst().slice(0, 7)
+const days = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
+const fmtDay = (iso: string | null | undefined) =>
+  iso ? new Date(`${String(iso).slice(0, 10)}T00:00:00+05:30`).toLocaleDateString('en-IN') : '—'
 
 export function PayrollPage() {
   const { t } = useTranslation()
   const toast = useToast()
+  const modes = usePaymentModes()
   const [tab, setTab] = useState<Tab>('run')
 
   // ── salary run ─────────────────────────────────────────────────────────
@@ -80,18 +123,25 @@ export function PayrollPage() {
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [computing, setComputing] = useState(false)
   const [runError, setRunError] = useState('')
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  // Only the LATEST request may land. Switching month while the previous
+  // month was still loading let the older answer arrive last and show one
+  // month's figures under another month's heading.
+  const previewSeq = useRef(0)
 
   const loadPreview = useCallback(async (m: string) => {
+    const seq = ++previewSeq.current
     setLoadingPreview(true)
     setRunError('')
     try {
       const { data } = await api.get('/payroll/preview', { params: { month: m } })
-      setPreview(data.data ?? data)
+      if (seq === previewSeq.current) setPreview(data.data ?? data)
     } catch (e: any) {
+      if (seq !== previewSeq.current) return
       setPreview(null)
       setRunError(e?.response?.data?.error?.message ?? t('payroll.previewFailed'))
     } finally {
-      setLoadingPreview(false)
+      if (seq === previewSeq.current) setLoadingPreview(false)
     }
   }, [t])
 
@@ -106,28 +156,72 @@ export function PayrollPage() {
       await loadPreview(month)
       await loadAdvances()
     } catch (e: any) {
-      const err = e?.response?.data?.error
-      // A disbursed month is refused by design — the money has gone and the
-      // cash statements have posted it.
-      toast.error(err?.message ?? t('payroll.computeFailed'))
+      toast.error(e?.response?.data?.error?.message ?? t('payroll.computeFailed'))
     } finally {
       setComputing(false)
     }
+  }
+
+  // ── paying one salary ──────────────────────────────────────────────────
+  const [payFor, setPayFor] = useState<PreviewRow | null>(null)
+  const [payment, setPayment] = useState<PaymentFieldsValue>(emptyPayment())
+  const [paidOn, setPaidOn] = useState(todayIst())
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState('')
+
+  function openPay(r: PreviewRow) {
+    setPayFor(r)
+    setPayment(emptyPayment())
+    setPaidOn(todayIst())
+    setPayError('')
+  }
+
+  async function paySalary() {
+    if (!payFor?.salary_record_id) return
+    if (needsReference(modes, payment.payment_mode) && !payment.reference_no.trim()) {
+      setPayError(t('payroll.utrRequired'))
+      return
+    }
+    setPaying(true)
+    setPayError('')
+    try {
+      const { data } = await api.post(`/payroll/salaries/${payFor.salary_record_id}/pay`, {
+        payment_mode: payment.payment_mode,
+        payment_account_id: payment.payment_account_id || null,
+        reference_no: payment.reference_no.trim() || null,
+        paid_on: paidOn,
+      })
+      const res = data.data ?? data
+      toast.success(t('payroll.salaryPaid', { name: payFor.employee_name, voucher: res?.voucher_no ?? '' }))
+      const id = payFor.salary_record_id
+      setPayFor(null)
+      await loadPreview(month)
+      printPayslip(id).catch(() => {})
+    } catch (e: any) {
+      setPayError(e?.response?.data?.error?.message ?? t('payroll.payFailed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  async function slip(id: string | null) {
+    if (!id) return
+    try { await printPayslip(id) } catch { toast.error(t('payroll.payslipFailed')) }
   }
 
   // ── advances ───────────────────────────────────────────────────────────
   const [advances, setAdvances] = useState<Advance[]>([])
   const [loadingAdv, setLoadingAdv] = useState(true)
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [form, setForm] = useState({
     employee_id: '', amount: '', advance_date: todayIst(),
     reason: '', recovery_mode: 'instalment' as Advance['recovery_mode'],
-    instalment: '', recovery_starts_on: '', payment_mode: 'cash', payment_account_id: '',
+    instalment: '', recovery_starts_on: '',
   })
+  const [advPayment, setAdvPayment] = useState<PaymentFieldsValue>(emptyPayment())
 
   const [repay, setRepay] = useState<Advance | null>(null)
   const [repayAmt, setRepayAmt] = useState('')
@@ -149,16 +243,19 @@ export function PayrollPage() {
 
   useEffect(() => {
     api.get('/employees', { params: { limit: '200' } })
-      .then(r => setEmployees(r.data.data ?? [])).catch(() => setEmployees([]))
-    api.get('/accounts', { params: { limit: '100' } })
-      .then(r => setAccounts(r.data.data ?? [])).catch(() => setAccounts([]))
+      .then(r => setEmployees((r.data.data ?? []).filter((e: Employee) => e.is_active !== false)))
+      .catch(() => setEmployees([]))
   }, [])
 
   async function saveAdvance() {
+    if (needsReference(modes, advPayment.payment_mode) && !advPayment.reference_no.trim()) {
+      setFormError(t('payroll.utrRequired'))
+      return
+    }
     setSaving(true)
     setFormError('')
     try {
-      await api.post('/payroll/advances', {
+      const { data } = await api.post('/payroll/advances', {
         employee_id: form.employee_id,
         amount_paise: parsePaise(form.amount),
         advance_date: form.advance_date,
@@ -166,13 +263,18 @@ export function PayrollPage() {
         recovery_mode: form.recovery_mode,
         instalment_paise: form.recovery_mode === 'instalment' ? parsePaise(form.instalment) : 0,
         recovery_starts_on: form.recovery_starts_on || null,
-        payment_mode: form.payment_mode,
-        payment_account_id: form.payment_account_id || null,
+        payment_mode: advPayment.payment_mode,
+        payment_account_id: advPayment.payment_account_id || null,
+        reference_no: advPayment.reference_no.trim() || null,
       })
+      const created = data.data ?? data
       toast.success(t('payroll.advanceGiven'))
       setShowForm(false)
-      setForm({ ...form, employee_id: '', amount: '', reason: '', instalment: '' })
+      setForm({ ...form, employee_id: '', amount: '', reason: '', instalment: '', recovery_starts_on: '' })
+      setAdvPayment(emptyPayment())
       await loadAdvances()
+      // The employee signs the voucher as the money is handed over.
+      if (created?.id) printAdvanceVoucher(created.id).catch(() => {})
     } catch (e: any) {
       setFormError(e?.response?.data?.error?.message ?? t('payroll.advanceFailed'))
     } finally {
@@ -201,6 +303,7 @@ export function PayrollPage() {
     [advances],
   )
 
+  const unpaid = preview?.rows.filter(r => r.status !== 'paid') ?? []
   const runStats: SummaryStat[] = preview ? [
     { label: t('payroll.staff'), value: String(preview.employees) },
     { label: t('payroll.gross'), value: `₹${fmtPaise(preview.gross_paise)}` },
@@ -212,6 +315,18 @@ export function PayrollPage() {
     m === 'instalment' ? t('payroll.modeInstalment')
       : m === 'full_next_salary' ? t('payroll.modeFullNext')
         : t('payroll.modeManual')
+
+  const statusBadge = (s: PreviewRow['status']) =>
+    s === 'paid' ? <span className="badge-green">{t('payroll.statusPaid')}</span>
+      : s === 'computed' ? <span className="badge-blue">{t('payroll.statusComputed')}</span>
+        : <span className="badge-gray">{t('payroll.statusDraft')}</span>
+
+  /** "₹20,000 ÷ 31 days × 28.5 days paid = ₹18,387.10" — the line the client asked to see. */
+  const working = (r: PreviewRow) => r.salary_type === 'daily'
+    ? t('payroll.workingDaily', { rate: fmtPaise(r.rate_paise), days: days(r.payable_days), gross: fmtPaise(r.gross_paise) })
+    : t('payroll.workingMonthly', {
+      rate: fmtPaise(r.rate_paise), dim: r.days_in_month, days: days(r.payable_days), gross: fmtPaise(r.gross_paise),
+    })
 
   return (
     <div className="space-y-4">
@@ -247,11 +362,12 @@ export function PayrollPage() {
               <button
                 className="btn-primary"
                 onClick={compute}
-                disabled={computing || loadingPreview || !preview?.rows.length}
+                disabled={computing || loadingPreview || !unpaid.length}
+                data-testid="payroll-compute"
               >
                 <Save size={15} /> {computing ? t('payroll.computing') : t('payroll.compute')}
               </button>
-              <p className="text-xs text-slate-500 max-w-md">{t('payroll.computeHint')}</p>
+              <p className="text-xs text-slate-500 max-w-xl">{t('payroll.computeHintV2')}</p>
             </div>
           </div>
 
@@ -260,45 +376,131 @@ export function PayrollPage() {
 
           <div className="card">
             <div className="card-body overflow-x-auto">
-              <table className="data-table">
+              <table className="data-table" data-testid="payroll-run">
                 <thead>
                   <tr>
+                    <th />
                     <th>{t('payroll.employee')}</th>
-                    <th className="text-right">{t('payroll.present')}</th>
-                    <th className="text-right">{t('payroll.half')}</th>
-                    <th className="text-right">{t('payroll.leave')}</th>
-                    <th className="text-right">{t('payroll.absent')}</th>
+                    <th className="text-right">{t('payroll.salary')}</th>
+                    <th className="text-right">{t('payroll.lossOfPay')}</th>
+                    <th className="text-right">{t('payroll.daysPaid')}</th>
                     <th className="text-right">{t('payroll.gross')}</th>
                     <th className="text-right">{t('payroll.advanceRecovered')}</th>
                     <th className="text-right">{t('payroll.net')}</th>
+                    <th>{t('common.status')}</th>
+                    <th className="no-print" />
                   </tr>
                 </thead>
                 <tbody>
                   {loadingPreview && (
-                    <tr><td colSpan={8} className="text-center text-slate-400 py-6">{t('common.loading')}</td></tr>
+                    <tr><td colSpan={10} className="text-center text-slate-400 py-6">{t('common.loading')}</td></tr>
                   )}
                   {!loadingPreview && !preview?.rows.length && (
-                    <tr><td colSpan={8} className="text-center text-slate-400 py-6">{t('payroll.noStaff')}</td></tr>
+                    <tr><td colSpan={10} className="text-center text-slate-400 py-6">{t('payroll.noStaff')}</td></tr>
                   )}
-                  {!loadingPreview && preview?.rows.map(r => (
-                    <tr key={r.employee_id}>
-                      <td>
-                        <span className="font-medium">{r.employee_name}</span>
-                        {r.designation && <span className="text-xs text-slate-500 block">{r.designation}</span>}
-                      </td>
-                      <td className="text-right tabular-nums">{r.days_present}</td>
-                      <td className="text-right tabular-nums">{r.days_half || '—'}</td>
-                      <td className="text-right tabular-nums">{r.days_leave || '—'}</td>
-                      <td className="text-right tabular-nums">{r.days_absent || '—'}</td>
-                      <td className="text-right tabular-nums">₹{fmtPaise(r.gross_paise)}</td>
-                      <td className="text-right tabular-nums">
-                        {r.advance_recovered_paise
-                          ? <span className="text-red-600">−₹{fmtPaise(r.advance_recovered_paise)}</span>
-                          : '—'}
-                      </td>
-                      <td className="text-right tabular-nums font-semibold">₹{fmtPaise(r.net_paise)}</td>
-                    </tr>
-                  ))}
+                  {!loadingPreview && preview?.rows.map(r => {
+                    const isOpen = !!open[r.employee_id]
+                    return (
+                      <Fragment key={r.employee_id}>
+                        <tr data-testid={`payroll-row-${r.employee_id}`}>
+                          <td className="w-6">
+                            <button
+                              type="button" className="p-1 text-slate-400 hover:text-navy-900"
+                              aria-expanded={isOpen} aria-label={t('payroll.showWorking')}
+                              onClick={() => setOpen(o => ({ ...o, [r.employee_id]: !isOpen }))}
+                            >
+                              {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                          </td>
+                          <td>
+                            <span className="font-medium">{r.employee_name}</span>
+                            {r.designation && <span className="text-xs text-slate-500 block">{r.designation}</span>}
+                          </td>
+                          <td className="text-right tabular-nums text-xs">
+                            ₹{fmtPaise(r.rate_paise)}
+                            <span className="text-slate-500 block">{r.salary_type === 'daily' ? t('staff.perDay') : t('staff.perMonth')}</span>
+                          </td>
+                          <td className="text-right tabular-nums">{r.loss_of_pay_days ? days(r.loss_of_pay_days) : '—'}</td>
+                          <td className="text-right tabular-nums">{days(r.payable_days)}<span className="text-xs text-slate-400"> / {r.days_in_month}</span></td>
+                          <td className="text-right tabular-nums">₹{fmtPaise(r.gross_paise)}</td>
+                          <td className="text-right tabular-nums">
+                            {r.advance_recovered_paise
+                              ? <span className="text-red-600" data-testid="advance-deducted">−₹{fmtPaise(r.advance_recovered_paise)}</span>
+                              : '—'}
+                          </td>
+                          <td className="text-right tabular-nums font-semibold">₹{fmtPaise(r.net_paise)}</td>
+                          <td>{statusBadge(r.status)}{r.voucher_no && <span className="block text-[11px] font-mono text-slate-500">{r.voucher_no}</span>}</td>
+                          <td className="no-print text-right whitespace-nowrap">
+                            {r.status === 'computed' && (
+                              <button className="btn-success btn-sm" onClick={() => openPay(r)} data-testid="payroll-pay">
+                                <IndianRupee size={13} /> {t('payroll.pay')}
+                              </button>
+                            )}
+                            {r.salary_record_id && (
+                              <button
+                                className="p-1.5 text-slate-500 hover:text-navy-900" title={t('payroll.payslip')}
+                                aria-label={t('payroll.payslip')} onClick={() => slip(r.salary_record_id)}
+                              >
+                                <FileText size={15} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="bg-slate-50" data-testid="payroll-working">
+                            <td />
+                            <td colSpan={9} className="text-xs text-slate-600 space-y-1 py-3">
+                              <p>
+                                <b>{t('payroll.working')}:</b> {working(r)}
+                              </p>
+                              <p>
+                                {t('payroll.attendanceLine', {
+                                  present: r.days_present, half: r.days_half, paidLeave: r.days_paid_leave,
+                                  unpaidLeave: r.days_unpaid_leave, absent: r.days_absent,
+                                })}
+                                {r.days_not_joined > 0 && ` · ${t('payroll.notJoined', { count: r.days_not_joined })}`}
+                              </p>
+                              {r.salary_type !== 'daily' && <p className="text-slate-500">{t('payroll.unmarkedNote')}</p>}
+                              {r.recoveries.length > 0 ? (
+                                <table className="mt-1 text-xs">
+                                  <thead>
+                                    <tr className="text-slate-500">
+                                      <th className="pr-4 text-left font-medium">{t('payroll.advanceGivenOn')}</th>
+                                      <th className="pr-4 text-right font-medium">{t('payroll.amount')}</th>
+                                      <th className="pr-4 text-right font-medium">{t('payroll.owedBefore')}</th>
+                                      <th className="pr-4 text-right font-medium">{t('payroll.deductedNow')}</th>
+                                      <th className="text-right font-medium">{t('payroll.owedAfter')}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {r.recoveries.map(x => (
+                                      <tr key={x.advance_id}>
+                                        <td className="pr-4">{fmtDay(x.advance_date)}{x.voucher_no && <span className="font-mono text-slate-400"> · {x.voucher_no}</span>}</td>
+                                        <td className="pr-4 text-right tabular-nums">₹{fmtPaise(x.advance_paise)}</td>
+                                        <td className="pr-4 text-right tabular-nums">₹{fmtPaise(x.outstanding_before_paise)}</td>
+                                        <td className="pr-4 text-right tabular-nums text-red-600">−₹{fmtPaise(x.amount_paise)}</td>
+                                        <td className="text-right tabular-nums font-semibold">₹{fmtPaise(x.outstanding_after_paise)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : r.advances_outstanding_before_paise > 0 ? (
+                                <p className="text-amber-700">{t('payroll.advanceNotTaken', { amount: fmtPaise(r.advances_outstanding_before_paise) })}</p>
+                              ) : (
+                                <p className="text-slate-500">{t('payroll.noAdvanceOpen')}</p>
+                              )}
+                              {r.advances_outstanding_after_paise > 0 && r.recoveries.length > 0 && (
+                                <p>{t('payroll.stillOwed', { amount: fmtPaise(r.advances_outstanding_after_paise) })}</p>
+                              )}
+                              {r.advance_recovered_paise > 0 && r.advance_recovered_paise >= r.deduction_cap_paise && (
+                                <p className="text-amber-700">{t('payroll.capNote', { amount: fmtPaise(r.deduction_cap_paise) })}</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -323,75 +525,80 @@ export function PayrollPage() {
           {showForm && (
             <div className="card no-print">
               <div className="card-header">{t('payroll.giveAdvance')}</div>
-              <div className="card-body grid gap-3 md:grid-cols-3">
-                <div>
-                  <label className="form-label" htmlFor="adv-emp">{t('payroll.employee')}</label>
-                  <select
-                    id="adv-emp" className="form-select" value={form.employee_id}
-                    onChange={e => setForm({ ...form, employee_id: e.target.value })}
-                  >
-                    <option value="">{t('payroll.selectEmployee')}</option>
-                    {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="adv-amt">{t('payroll.amount')}</label>
-                  <input
-                    id="adv-amt" className="form-input" inputMode="decimal" value={form.amount}
-                    onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="10000"
-                  />
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="adv-date">{t('payroll.date')}</label>
-                  <input
-                    id="adv-date" type="date" className="form-input" value={form.advance_date}
-                    onChange={e => setForm({ ...form, advance_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="adv-mode">{t('payroll.recoveryMode')}</label>
-                  <select
-                    id="adv-mode" className="form-select" value={form.recovery_mode}
-                    onChange={e => setForm({ ...form, recovery_mode: e.target.value as Advance['recovery_mode'] })}
-                  >
-                    <option value="instalment">{t('payroll.modeInstalment')}</option>
-                    <option value="full_next_salary">{t('payroll.modeFullNext')}</option>
-                    <option value="manual">{t('payroll.modeManual')}</option>
-                  </select>
-                </div>
-                {form.recovery_mode === 'instalment' && (
+              <div className="card-body space-y-3">
+                <div className="grid gap-3 md:grid-cols-3">
                   <div>
-                    <label className="form-label" htmlFor="adv-inst">{t('payroll.instalment')}</label>
+                    <label className="form-label" htmlFor="adv-emp">{t('payroll.employee')}</label>
+                    <select
+                      id="adv-emp" className="form-select" value={form.employee_id}
+                      onChange={e => setForm({ ...form, employee_id: e.target.value })}
+                    >
+                      <option value="">{t('payroll.selectEmployee')}</option>
+                      {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label" htmlFor="adv-amt">{t('payroll.amount')}</label>
                     <input
-                      id="adv-inst" className="form-input" inputMode="decimal" value={form.instalment}
-                      onChange={e => setForm({ ...form, instalment: e.target.value })} placeholder="2000"
+                      id="adv-amt" className="form-input" inputMode="decimal" value={form.amount}
+                      onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="10000"
                     />
                   </div>
-                )}
-                <div>
-                  <label className="form-label" htmlFor="adv-acct">{t('payroll.paidFrom')}</label>
-                  <select
-                    id="adv-acct" className="form-select" value={form.payment_account_id}
-                    onChange={e => setForm({ ...form, payment_account_id: e.target.value })}
-                  >
-                    <option value="">{t('payroll.defaultCash')}</option>
-                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
+                  <div>
+                    <label className="form-label" htmlFor="adv-date">{t('payroll.date')}</label>
+                    <input
+                      id="adv-date" type="date" className="form-input" value={form.advance_date}
+                      onChange={e => setForm({ ...form, advance_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" htmlFor="adv-mode">{t('payroll.recoveryMode')}</label>
+                    <select
+                      id="adv-mode" className="form-select" value={form.recovery_mode}
+                      onChange={e => setForm({ ...form, recovery_mode: e.target.value as Advance['recovery_mode'] })}
+                    >
+                      <option value="instalment">{t('payroll.modeInstalment')}</option>
+                      <option value="full_next_salary">{t('payroll.modeFullNext')}</option>
+                      <option value="manual">{t('payroll.modeManual')}</option>
+                    </select>
+                  </div>
+                  {form.recovery_mode === 'instalment' && (
+                    <div>
+                      <label className="form-label" htmlFor="adv-inst">{t('payroll.instalment')}</label>
+                      <input
+                        id="adv-inst" className="form-input" inputMode="decimal" value={form.instalment}
+                        onChange={e => setForm({ ...form, instalment: e.target.value })} placeholder="2000"
+                      />
+                    </div>
+                  )}
+                  {form.recovery_mode !== 'manual' && (
+                    <div>
+                      <label className="form-label" htmlFor="adv-start">{t('payroll.recoveryStarts')}</label>
+                      <input
+                        id="adv-start" type="month" className="form-input"
+                        value={form.recovery_starts_on.slice(0, 7)}
+                        onChange={e => setForm({ ...form, recovery_starts_on: e.target.value ? `${e.target.value}-01` : '' })}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">{t('payroll.recoveryStartsHint')}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="md:col-span-3">
+                <PaymentFields idPrefix="adv-pay" value={advPayment} onChange={setAdvPayment} />
+                <div>
                   <label className="form-label" htmlFor="adv-reason">{t('payroll.reason')}</label>
                   <input
                     id="adv-reason" className="form-input" value={form.reason}
                     onChange={e => setForm({ ...form, reason: e.target.value })}
                   />
                 </div>
-                {formError && <p className="md:col-span-3 text-sm text-red-600">{formError}</p>}
-                <div className="md:col-span-3 flex justify-end">
+                {form.recovery_mode === 'manual' && <p className="text-xs text-amber-700">{t('payroll.manualHint')}</p>}
+                {formError && <p className="text-sm text-red-600">{formError}</p>}
+                <div className="flex justify-end">
                   <button
                     className="btn-primary" onClick={saveAdvance}
                     disabled={saving || !form.employee_id || !form.amount}
                   >
-                    <Save size={15} /> {saving ? t('common.saving') : t('common.save')}
+                    <Save size={15} /> {saving ? t('common.saving') : t('payroll.saveAndPrintVoucher')}
                   </button>
                 </div>
               </div>
@@ -426,7 +633,11 @@ export function PayrollPage() {
                         <span className="font-medium">{a.employee_name}</span>
                         {a.designation && <span className="text-xs text-slate-500 block">{a.designation}</span>}
                       </td>
-                      <td className="text-xs text-slate-500">{new Date(a.advance_date).toLocaleDateString('en-IN')}</td>
+                      <td className="text-xs text-slate-500">
+                        {fmtDay(a.advance_date)}
+                        {a.voucher_no && <span className="block font-mono">{a.voucher_no}</span>}
+                        <span className="block">{paymentModeLabel(t, a.payment_mode)}{a.reference_no ? ` · ${a.reference_no}` : ''}</span>
+                      </td>
                       <td className="text-right tabular-nums">₹{fmtPaise(a.amount_paise)}</td>
                       <td className="text-right tabular-nums text-green-700">₹{fmtPaise(a.recovered_paise)}</td>
                       <td className="text-right tabular-nums font-semibold">₹{fmtPaise(a.outstanding_paise)}</td>
@@ -435,13 +646,21 @@ export function PayrollPage() {
                         {a.recovery_mode === 'instalment' && a.instalment_paise > 0 && (
                           <span className="text-slate-500"> · ₹{fmtPaise(a.instalment_paise)}</span>
                         )}
+                        {a.recovery_starts_on && <span className="text-slate-500 block">{t('payroll.fromMonth', { month: a.recovery_starts_on.slice(0, 7) })}</span>}
                       </td>
                       <td>
                         {a.status === 'active'
                           ? <span className="badge-blue">{t('payroll.statusActive')}</span>
                           : <span className="badge-gray">{t('payroll.statusClosed')}</span>}
                       </td>
-                      <td className="text-right">
+                      <td className="text-right whitespace-nowrap">
+                        <button
+                          className="p-1.5 text-slate-500 hover:text-navy-900" title={t('payroll.printVoucher')}
+                          aria-label={t('payroll.printVoucher')}
+                          onClick={() => printAdvanceVoucher(a.id).catch(() => toast.error(t('payroll.voucherFailed')))}
+                        >
+                          <Printer size={15} />
+                        </button>
                         {Number(a.outstanding_paise) > 0 && (
                           <button className="btn-secondary btn-sm" onClick={() => { setRepay(a); setRepayAmt('') }}>
                             {t('payroll.recordRepayment')}
@@ -455,6 +674,37 @@ export function PayrollPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Pay one computed salary. */}
+      {payFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 no-print" role="dialog" aria-modal="true">
+          <div className="card w-full max-w-xl mx-4">
+            <div className="card-header flex items-center justify-between">
+              <span>{t('payroll.paySalaryOf', { name: payFor.employee_name, month })}</span>
+              <button onClick={() => setPayFor(null)} aria-label={t('common.close')} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            <div className="card-body space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="rounded border border-slate-200 p-2"><p className="text-xs text-slate-500">{t('payroll.gross')}</p><p className="font-semibold">₹{fmtPaise(payFor.gross_paise)}</p></div>
+                <div className="rounded border border-slate-200 p-2"><p className="text-xs text-slate-500">{t('payroll.advanceRecovered')}</p><p className="font-semibold text-red-600">−₹{fmtPaise(payFor.advance_recovered_paise)}</p></div>
+                <div className="rounded border border-emerald-300 bg-emerald-50 p-2"><p className="text-xs text-slate-500">{t('payroll.netPayable')}</p><p className="font-bold text-emerald-800" data-testid="pay-net">₹{fmtPaise(payFor.net_paise)}</p></div>
+              </div>
+              <PaymentFields idPrefix="sal-pay" value={payment} onChange={setPayment} />
+              <div className="max-w-[12rem]">
+                <label className="form-label" htmlFor="sal-paid-on">{t('payroll.paidOn')}</label>
+                <input id="sal-paid-on" type="date" className="form-input" value={paidOn} onChange={e => setPaidOn(e.target.value)} />
+              </div>
+              {payError && <p className="text-sm text-red-600">{payError}</p>}
+              <div className="flex justify-end gap-2">
+                <button className="btn-secondary" onClick={() => setPayFor(null)}>{t('common.cancel')}</button>
+                <button className="btn-success" onClick={paySalary} disabled={paying} data-testid="pay-confirm">
+                  {paying ? t('common.saving') : t('payroll.payAndPrint')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Cash repaid by hand, rather than deducted from a salary run. */}

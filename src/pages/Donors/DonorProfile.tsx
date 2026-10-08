@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../store/profileStore'
 import { ArrowLeft, Edit2, Save, X, Award, Download, RefreshCw } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
@@ -34,6 +35,20 @@ interface LedgerRow {
 
 interface LedgerTotals { donated_paise: number; receipts: number }
 
+/** Everything the person gave and paid, by kind (GET /donors/:id/ledger `summary`). */
+interface GivingSummary {
+  donations: { amount_paise: number; receipts: number }
+  boli: { pledged_paise: number; paid_paise: number; outstanding_paise: number; count: number }
+  seva: { amount_paise: number; count: number }
+  room: { billed_paise: number; paid_paise: number; outstanding_paise: number; count: number }
+  hall: { billed_paise: number; paid_paise: number; outstanding_paise: number; count: number }
+  gaushala: { amount_paise: number; count: number }
+  events: { amount_paise: number; count: number }
+  eligible_80g_paise: number
+  total_paid_paise: number
+  total_outstanding_paise: number
+}
+
 export function DonorProfile() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -42,6 +57,7 @@ export function DonorProfile() {
   const [donor, setDonor] = useState<Donor | null>(null)
   const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [totals, setTotals] = useState<LedgerTotals | null>(null)
+  const [summary, setSummary] = useState<GivingSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -80,6 +96,7 @@ export function DonorProfile() {
         const ld = ledgerResp.value.data.data
         setLedger(ld?.transactions || [])
         setTotals(ld?.totals || null)
+        setSummary(ld?.summary || null)
       }
     } finally {
       setLoading(false)
@@ -114,6 +131,7 @@ export function DonorProfile() {
   }
 
   const [cert80g, setCert80g] = useState(false)
+  const has80g = useTrustHas80g()
   const [receiptBusy, setReceiptBusy] = useState<string | null>(null)
   const [tagsSaving, setTagsSaving] = useState(false)
   const [tagPicker, setTagPicker] = useState(false)
@@ -474,26 +492,81 @@ export function DonorProfile() {
           <div className="card">
             <div className="card-header"><h3 className="font-semibold text-sm">{t('donors.givingSummary')}</h3></div>
             <div className="card-body space-y-3">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-green-700">
-                  ₹{fmtPaise(totals?.donated_paise ?? donor.cumulative_amount_current_fy_paise ?? 0)}
-                </p>
-                <p className="text-sm text-slate-400 mt-1">{t('donors.totalDonated')}</p>
-              </div>
-              {totals && totals.receipts > 0 && (
-                <div className="text-center text-sm text-slate-500">
-                  {t('donors.receiptsIssued', { count: totals.receipts })}
-                </div>
+              {summary ? (
+                <>
+                  {/* Everything received from this person, not donations alone
+                      (2026-10-08: "total donated, but what about the other
+                      categories"). */}
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-700" data-testid="giving-total">₹{fmtPaise(summary.total_paid_paise)}</p>
+                    <p className="text-sm text-slate-400 mt-1">{t('donors.totalReceived')}</p>
+                  </div>
+                  <dl className="text-sm divide-y divide-slate-100" data-testid="giving-breakdown">
+                    {([
+                      ['donations', t('donors.sumDonations'), summary.donations.amount_paise, t('donors.receiptsIssued', { count: summary.donations.receipts })],
+                      ['boli', t('donors.sumBoli'), summary.boli.paid_paise, summary.boli.count ? t('donors.boliOf', { pledged: fmtPaise(summary.boli.pledged_paise) }) : ''],
+                      ['seva', t('donors.sumSeva'), summary.seva.amount_paise, ''],
+                      ['room', t('donors.sumRoom'), summary.room.paid_paise, summary.room.count ? t('donors.stays', { count: summary.room.count }) : ''],
+                      ['hall', t('donors.sumHall'), summary.hall.paid_paise, ''],
+                      ['gaushala', t('donors.sumGaushala'), summary.gaushala.amount_paise, ''],
+                      ['events', t('donors.sumEvents'), summary.events.amount_paise, ''],
+                    ] as Array<[string, string, number, string]>)
+                      .filter(([key, , amt]) => amt > 0 || (key === 'boli' && summary.boli.count > 0))
+                      .map(([key, label, amt, sub]) => (
+                        <div key={key} className="flex justify-between gap-3 py-1.5" data-testid={`giving-${key}`}>
+                          <dt className="text-slate-600">{label}{sub && <span className="block text-xs text-slate-400">{sub}</span>}</dt>
+                          <dd className="font-semibold tabular-nums">₹{fmtPaise(amt)}</dd>
+                        </div>
+                      ))}
+                    {summary.total_outstanding_paise > 0 && (
+                      <div className="flex justify-between gap-3 py-1.5 text-red-700" data-testid="giving-outstanding">
+                        <dt>
+                          {t('donors.stillOwed')}
+                          <span className="block text-xs text-red-500">
+                            {[
+                              summary.boli.outstanding_paise > 0 ? `${t('donors.boliPending')} ₹${fmtPaise(summary.boli.outstanding_paise)}` : '',
+                              summary.room.outstanding_paise > 0 ? `${t('donors.sumRoom')} ₹${fmtPaise(summary.room.outstanding_paise)}` : '',
+                              summary.hall.outstanding_paise > 0 ? `${t('donors.sumHall')} ₹${fmtPaise(summary.hall.outstanding_paise)}` : '',
+                            ].filter(Boolean).join(' · ')}
+                          </span>
+                        </dt>
+                        <dd className="font-bold tabular-nums">₹{fmtPaise(summary.total_outstanding_paise)}</dd>
+                      </div>
+                    )}
+                    {has80g && summary.eligible_80g_paise > 0 && (
+                      <div className="flex justify-between gap-3 py-1.5 text-slate-500">
+                        <dt>{t('donors.eligible80g')}</dt>
+                        <dd className="tabular-nums">₹{fmtPaise(summary.eligible_80g_paise)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </>
+              ) : (
+                <>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-700">
+                      ₹{fmtPaise(totals?.donated_paise ?? donor.cumulative_amount_current_fy_paise ?? 0)}
+                    </p>
+                    <p className="text-sm text-slate-400 mt-1">{t('donors.totalDonated')}</p>
+                  </div>
+                  {totals && totals.receipts > 0 && (
+                    <div className="text-center text-sm text-slate-500">
+                      {t('donors.receiptsIssued', { count: totals.receipts })}
+                    </div>
+                  )}
+                </>
               )}
-              <button
-                type="button"
-                onClick={download80g}
-                disabled={cert80g}
-                className="btn-secondary btn-sm w-full justify-center"
-              >
-                {cert80g ? <RefreshCw size={14} className="animate-spin" /> : <Award size={14} />}
-                {t('donors.download80g')}
-              </button>
+              {has80g && (
+                <button
+                  type="button"
+                  onClick={download80g}
+                  disabled={cert80g}
+                  className="btn-secondary btn-sm w-full justify-center"
+                >
+                  {cert80g ? <RefreshCw size={14} className="animate-spin" /> : <Award size={14} />}
+                  {t('donors.download80g')}
+                </button>
+              )}
             </div>
           </div>
         </div>

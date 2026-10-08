@@ -103,6 +103,19 @@ export interface ReceiptLabels {
   securityDeposit: string
   amountPaid: string
   balanceDue: string
+  // -- A boli collection (tenant migration 061): where the boli stood as at
+  // this receipt, so the donor sees what is still pending.
+  boliFor: string
+  boliAmount: string
+  paidEarlier: string
+  paidThisReceipt: string
+  paidToDate: string
+  balancePending: string
+  // -- The security deposit receipt (061): held, not earned; returned at
+  // checkout against this receipt.
+  depositReceipt: string
+  depositRefundNote: string
+  depositHeld: string
   houseRules: string
   taxInvoice: string
   guestFolio: string
@@ -255,6 +268,15 @@ const en: ReceiptLabels = {
   securityDeposit: 'Security Deposit',
   amountPaid: 'Amount Paid',
   balanceDue: 'Balance Due',
+  boliFor: 'Boli',
+  boliAmount: 'Boli amount',
+  paidEarlier: 'Paid earlier',
+  paidThisReceipt: 'Paid by this receipt',
+  paidToDate: 'Paid to date',
+  balancePending: 'Balance pending',
+  depositReceipt: 'SECURITY DEPOSIT RECEIPT',
+  depositRefundNote: 'Refundable. Keep this receipt and return it at checkout; the deposit, less any charges for damage or dues, is returned against your signature.',
+  depositHeld: 'Deposit received',
   houseRules: 'House Rules',
   taxInvoice: 'Tax Invoice',
   guestFolio: 'Guest Folio',
@@ -378,6 +400,15 @@ const hi: ReceiptLabels = {
   securityDeposit: 'सुरक्षा निधि',
   amountPaid: 'प्राप्त राशि',
   balanceDue: 'शेष राशि',
+  boliFor: 'बोली',
+  boliAmount: 'बोली राशि',
+  paidEarlier: 'पहले प्राप्त',
+  paidThisReceipt: 'इस रसीद से प्राप्त',
+  paidToDate: 'अब तक प्राप्त',
+  balancePending: 'शेष राशि',
+  depositReceipt: 'सुरक्षा जमा रसीद',
+  depositRefundNote: 'वापसी योग्य। यह रसीद संभालकर रखें और चेक-आउट पर लौटाएँ; क्षति या बकाया की कटौती के बाद जमा राशि आपके हस्ताक्षर पर लौटाई जाएगी।',
+  depositHeld: 'प्राप्त जमा राशि',
   houseRules: 'नियम एवं शर्तें',
   taxInvoice: 'कर बीजक',
   guestFolio: 'अतिथि विवरण-पत्र',
@@ -501,6 +532,15 @@ const mr: ReceiptLabels = {
   securityDeposit: 'अनामत रक्कम',
   amountPaid: 'भरलेली रक्कम',
   balanceDue: 'शिल्लक रक्कम',
+  boliFor: 'बोली',
+  boliAmount: 'बोली रक्कम',
+  paidEarlier: 'आधी प्राप्त',
+  paidThisReceipt: 'या पावतीने प्राप्त',
+  paidToDate: 'आतापर्यंत प्राप्त',
+  balancePending: 'बाकी रक्कम',
+  depositReceipt: 'अनामत रक्कम पावती',
+  depositRefundNote: 'परत मिळणारी. ही पावती जपून ठेवा व चेक-आउटला परत करा; नुकसान किंवा थकबाकी वजा करून अनामत रक्कम आपल्या स्वाक्षरीवर परत दिली जाईल.',
+  depositHeld: 'मिळालेली अनामत',
   houseRules: 'नियम व अटी',
   taxInvoice: 'कर देयक',
   guestFolio: 'अतिथी तपशील-पत्र',
@@ -624,6 +664,15 @@ const gu: ReceiptLabels = {
   securityDeposit: 'જમાનત રકમ',
   amountPaid: 'ચૂકવેલ રકમ',
   balanceDue: 'બાકી રકમ',
+  boliFor: 'બોલી',
+  boliAmount: 'બોલી રકમ',
+  paidEarlier: 'અગાઉ પ્રાપ્ત',
+  paidThisReceipt: 'આ પાવતીથી પ્રાપ્ત',
+  paidToDate: 'અત્યાર સુધી પ્રાપ્ત',
+  balancePending: 'બાકી રકમ',
+  depositReceipt: 'સિક્યુરિટી ડિપોઝિટ પાવતી',
+  depositRefundNote: 'પરત મળવાપાત્ર. આ પાવતી સાચવી રાખો અને ચેક-આઉટ વખતે પરત આપો; નુકસાન કે બાકી રકમ બાદ કરી ડિપોઝિટ આપની સહી પર પરત અપાશે.',
+  depositHeld: 'પ્રાપ્ત ડિપોઝિટ',
   houseRules: 'નિયમો અને શરતો',
   taxInvoice: 'કર બિલ',
   guestFolio: 'અતિથિ વિગત-પત્ર',
@@ -747,6 +796,15 @@ const kn: ReceiptLabels = {
   securityDeposit: 'ಭದ್ರತಾ ಮೊತ್ತ',
   amountPaid: 'ಪಾವತಿಸಿದ ಮೊತ್ತ',
   balanceDue: 'ಬಾಕಿ ಮೊತ್ತ',
+  boliFor: 'ಬೋಲಿ',
+  boliAmount: 'ಬೋಲಿ ಮೊತ್ತ',
+  paidEarlier: 'ಹಿಂದೆ ಪಾವತಿ',
+  paidThisReceipt: 'ಈ ರಶೀದಿಯ ಪಾವತಿ',
+  paidToDate: 'ಇಲ್ಲಿಯವರೆಗೆ ಪಾವತಿ',
+  balancePending: 'ಬಾಕಿ ಮೊತ್ತ',
+  depositReceipt: 'ಭದ್ರತಾ ಠೇವಣಿ ರಶೀದಿ',
+  depositRefundNote: 'ಹಿಂದಿರುಗಿಸಬಹುದಾದದ್ದು. ಈ ರಶೀದಿಯನ್ನು ಇಟ್ಟುಕೊಂಡು ಚೆಕ್-ಔಟ್ ವೇಳೆ ಹಿಂದಿರುಗಿಸಿ; ಹಾನಿ ಅಥವಾ ಬಾಕಿ ಕಳೆದು ಠೇವಣಿಯನ್ನು ನಿಮ್ಮ ಸಹಿಯ ಮೇಲೆ ಹಿಂದಿರುಗಿಸಲಾಗುತ್ತದೆ.',
+  depositHeld: 'ಸ್ವೀಕರಿಸಿದ ಠೇವಣಿ',
   houseRules: 'ನಿಯಮ ಮತ್ತು ಷರತ್ತುಗಳು',
   taxInvoice: 'ತೆರಿಗೆ ಬಿಲ್',
   guestFolio: 'ಅತಿಥಿ ವಿವರ ಪತ್ರ',
@@ -870,6 +928,15 @@ const ta: ReceiptLabels = {
   securityDeposit: 'வைப்புத்தொகை',
   amountPaid: 'செலுத்திய தொகை',
   balanceDue: 'நிலுவைத் தொகை',
+  boliFor: 'ஏலம்',
+  boliAmount: 'ஏலத் தொகை',
+  paidEarlier: 'முன்பு செலுத்தியது',
+  paidThisReceipt: 'இந்த ரசீதில் செலுத்தியது',
+  paidToDate: 'இதுவரை செலுத்தியது',
+  balancePending: 'நிலுவைத் தொகை',
+  depositReceipt: 'பாதுகாப்பு வைப்புத் தொகை ரசீது',
+  depositRefundNote: 'திருப்பித் தரப்படும். இந்த ரசீதை வைத்திருந்து செக்-அவுட்டில் ஒப்படைக்கவும்; சேதம் அல்லது நிலுவை கழித்து வைப்புத் தொகை உங்கள் கையொப்பத்தில் திருப்பித் தரப்படும்.',
+  depositHeld: 'பெற்ற வைப்புத் தொகை',
   houseRules: 'விதிமுறைகள்',
   taxInvoice: 'வரி விலைப்பட்டியல்',
   guestFolio: 'விருந்தினர் விவரப் பட்டியல்',
@@ -993,6 +1060,15 @@ const te: ReceiptLabels = {
   securityDeposit: 'జమా మొత్తం',
   amountPaid: 'చెల్లించిన మొత్తం',
   balanceDue: 'బాకీ మొత్తం',
+  boliFor: 'వేలం',
+  boliAmount: 'వేలం మొత్తం',
+  paidEarlier: 'ముందు చెల్లించినది',
+  paidThisReceipt: 'ఈ రసీదుతో చెల్లించినది',
+  paidToDate: 'ఇప్పటివరకు చెల్లించినది',
+  balancePending: 'బాకీ మొత్తం',
+  depositReceipt: 'భద్రతా డిపాజిట్ రసీదు',
+  depositRefundNote: 'తిరిగి ఇవ్వబడుతుంది. ఈ రసీదును ఉంచుకుని చెక్-అవుట్ సమయంలో ఇవ్వండి; నష్టం లేదా బాకీ మినహాయించి డిపాజిట్ మీ సంతకంపై తిరిగి ఇవ్వబడుతుంది.',
+  depositHeld: 'స్వీకరించిన డిపాజిట్',
   houseRules: 'నియమ నిబంధనలు',
   taxInvoice: 'పన్ను ఇన్‌వాయిస్',
   guestFolio: 'అతిథి వివరాల పత్రం',

@@ -35,6 +35,23 @@ export interface TempleProfile {
   receipt_label_overrides?: unknown
 }
 
+/**
+ * Can this trust grant 80G at all? Its 80G registration number is the fact
+ * (mandiradmin-api statutoryVisibility says the same). A trust without one
+ * must not be offered 80G anywhere — a checkbox, a certificate button, a
+ * column of "No" — because it cannot grant the deduction to anybody
+ * (client, 2026-10-08: "if 80G is not there we don't need any 80G option
+ * anywhere").
+ *
+ * While the profile is still loading this answers true, so an 80G trust never
+ * sees its 80G controls blink away and back.
+ */
+export function useTrustHas80g(): boolean {
+  const profile = useProfileStore(s => s.profile)
+  if (!profile) return true
+  return String(profile.reg_80g_number ?? '').trim().length > 0
+}
+
 interface ProfileState {
   profile: TempleProfile | null
   loading: boolean

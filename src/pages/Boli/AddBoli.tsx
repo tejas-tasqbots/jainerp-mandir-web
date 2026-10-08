@@ -1,40 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, X } from 'lucide-react'
+import { Save, Settings2, X } from 'lucide-react'
 import { api, parsePaise, todayIst } from '../../lib/api'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import type { DevoteeSelection } from '../../types'
 
+/** The type dropdown's "Other…": a type the trust has not added to its list yet. */
+const OTHER = '__other__'
+
+interface BoliCategory { id: string; name: string; name_hindi?: string | null; is_active?: boolean }
+
 export function AddBoli() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
+  // The trust's own boli types (Settings → Categories & Dropdowns → Boli
+  // types, tenant migration 061). They were five words hardcoded here, so a
+  // trust could not add "Shantidhara" or "Kalash" (2026-10-08).
+  const [categories, setCategories] = useState<BoliCategory[]>([])
 
   const [form, setForm] = useState({
-    boli_type: 'aarti',
+    category_id: '',
+    other_category: '',
     description: '',
     pledged_amount: '',
     pledge_date: todayIst(),
     event_name: '',
   })
 
+  useEffect(() => {
+    api.get('/boli-categories', { params: { limit: '200' } })
+      .then(r => {
+        const rows: BoliCategory[] = (r.data.data ?? []).filter((c: BoliCategory) => c.is_active !== false)
+        setCategories(rows)
+        if (rows.length) setForm(f => (f.category_id ? f : { ...f, category_id: rows[0].id }))
+      })
+      .catch(() => setCategories([]))
+  }, [])
+
+  const label = (c: BoliCategory) => (i18n.language !== 'en' && c.name_hindi) ? c.name_hindi : c.name
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.pledged_amount || parseFloat(form.pledged_amount) <= 0) { setError(t('msg.validPledgeAmount')); return }
+    if (form.category_id === OTHER && !form.other_category.trim()) { setError(t('pledges.typeRequired')); return }
+    if (!form.category_id && !form.description.trim()) { setError(t('pledges.typeRequired')); return }
     setSaving(true)
     setError('')
     try {
-      // The API stores a single seva_description; fold the boli type into it
-      // (capitalised) so the type is preserved and the field is never empty.
-      const typeLabel = form.boli_type.charAt(0).toUpperCase() + form.boli_type.slice(1)
-      const sevaDescription = form.description.trim()
-        ? `${typeLabel} — ${form.description.trim()}`
-        : typeLabel
       const payload: Record<string, unknown> = {
-        seva_description: sevaDescription,
+        // The API files it under the type and composes "Aarti — Paryushan".
+        ...(form.category_id === OTHER
+          ? { category: form.other_category.trim() }
+          : form.category_id ? { category_id: form.category_id } : {}),
+        description: form.description.trim() || undefined,
         pledged_amount_paise: parsePaise(form.pledged_amount),
         boli_date: form.pledge_date,
         event_name: form.event_name || undefined,
@@ -52,7 +74,7 @@ export function AddBoli() {
       navigate('/donations?tab=pledges')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
-      setError(err.response?.data?.error?.message || 'Failed to save boli')
+      setError(err.response?.data?.error?.message || t('pledges.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -76,15 +98,26 @@ export function AddBoli() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label" htmlFor="add-boli-boli-type">{t('pledges.boliType')}</label>
-              <select id="add-boli-boli-type" className="form-select" value={form.boli_type}
-                onChange={e => setForm(f => ({ ...f, boli_type: e.target.value }))}>
-                <option value="aarti">{t('ui.aarti')}</option>
-                <option value="pratistha">{t('ui.pratistha')}</option>
-                <option value="seva">Seva</option>
-                <option value="chadhava">{t('ui.chadhava')}</option>
-                <option value="other">{t('ui.other')}</option>
+              <div className="flex items-center justify-between">
+                <label className="form-label" htmlFor="add-boli-boli-type">{t('pledges.boliType')}</label>
+                <button
+                  type="button" className="text-xs text-navy-700 hover:underline inline-flex items-center gap-1"
+                  onClick={() => navigate('/settings?tab=masters&sub=boli-categories')}
+                >
+                  <Settings2 size={12} /> {t('pledges.manageTypes')}
+                </button>
+              </div>
+              <select id="add-boli-boli-type" className="form-select" value={form.category_id}
+                onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
+                {!categories.length && <option value="">{t('pledges.selectType')}</option>}
+                {categories.map(c => <option key={c.id} value={c.id}>{label(c)}</option>)}
+                <option value={OTHER}>{t('expenseItems.otherCategory')}</option>
               </select>
+              {form.category_id === OTHER && (
+                <input className="form-input mt-1.5" autoFocus maxLength={120} data-testid="other-boli-type"
+                  placeholder={t('pledges.newTypeName')} aria-label={t('pledges.newTypeName')}
+                  value={form.other_category} onChange={e => setForm(f => ({ ...f, other_category: e.target.value }))} />
+              )}
             </div>
             <div>
               <label className="form-label" htmlFor="add-boli-pledged-amount">{t('pledges.pledgedAmount')}</label>
@@ -94,7 +127,7 @@ export function AddBoli() {
           </div>
 
           <div>
-            <label className="form-label" htmlFor="add-boli-description">{t('pledges.description')}</label>
+            <label className="form-label" htmlFor="add-boli-description">{t('pledges.description')} <span className="text-slate-400 font-normal">{t('donations.optional')}</span></label>
             <input id="add-boli-description" className="form-input" placeholder={t('pledges.descriptionPlaceholder')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>

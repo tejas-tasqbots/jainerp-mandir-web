@@ -6,6 +6,9 @@ import { printCurrentView } from '../../../lib/downloadReport'
 import { api, apiErrorMessage, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
+import { printDepositReceipt, printDepositRefundVoucher } from '../../../lib/printVoucher'
+import { PaymentFields, emptyPayment, needsReference, type PaymentFieldsValue } from '../../../components/PaymentFields'
+import { usePaymentModes } from '../../../lib/useDropdownOptions'
 import { printBillDoc } from '../../../lib/printBill'
 import { useProfileStore } from '../../../store/profileStore'
 import { trendByDay } from '../../../lib/chartData'
@@ -174,6 +177,14 @@ export function RoomsList() {
   // leave before the room has been inspected, and the deposit is returned
   // afterwards. Held = taken - refunded - forfeited.
   const [depositModal, setDepositModal] = useState<RoomBooking | null>(null)
+  // How the deposit goes back, and why anything is kept (2026-10-08): the
+  // guest signs a voucher for exactly this, so it has to say it.
+  const [refundPayment, setRefundPayment] = useState<PaymentFieldsValue>(emptyPayment())
+  const [keptReason, setKeptReason] = useState('')
+  const depositModes = usePaymentModes()
+  function openDeposit(b: RoomBooking) {
+    setDepositModal(b); setForfeitAmt(''); setSettleError(''); setKeptReason(''); setRefundPayment(emptyPayment())
+  }
   /** The stay-times dialog, and the four instants it is editing. */
   const [timesModal, setTimesModal] = useState<RoomBooking | null>(null)
   const [timesForm, setTimesForm] = useState({
@@ -458,7 +469,20 @@ export function RoomsList() {
     if (b.status !== 'cancelled' && depositHeld(b) > 0) {
       out.push({
         label: t('dharamshala.settleDeposit'), icon: <ShieldCheck size={14} />,
-        onClick: () => { setDepositModal(b); setForfeitAmt(''); setSettleError('') },
+        onClick: () => openDeposit(b),
+      })
+    }
+    const anyB = b as unknown as Record<string, unknown>
+    if (Number(anyB.deposit_paise ?? 0) > 0) {
+      out.push({
+        label: t('dharamshala.depositReceipt'), icon: <Receipt size={14} />,
+        onClick: () => { printDepositReceipt(b.id).catch(() => toast.error(t('dharamshala.depositDocFailed'))) },
+      })
+    }
+    if (anyB.deposit_settled_at) {
+      out.push({
+        label: t('dharamshala.depositRefundVoucher'), icon: <Undo2 size={14} />,
+        onClick: () => { printDepositRefundVoucher(b.id).catch(() => toast.error(t('dharamshala.depositDocFailed'))) },
       })
     }
     if (b.status !== 'cancelled') {
@@ -577,15 +601,32 @@ export function RoomsList() {
       setSettleError(t('dharamshala.forfeitTooLarge', { held: fmtPaise(held) }))
       return
     }
+    if (forfeit > 0 && !keptReason.trim()) {
+      setSettleError(t('dharamshala.keptReasonRequired'))
+      return
+    }
+    if (held - forfeit > 0 && needsReference(depositModes, refundPayment.payment_mode) && !refundPayment.reference_no.trim()) {
+      setSettleError(t('payroll.utrRequired'))
+      return
+    }
     setSettling(true)
     setSettleError('')
     try {
       // refund_paise is omitted on purpose: the server returns everything not
       // forfeited, so the two can never disagree about what is left.
-      await api.post(`/room-bookings/${depositModal.id}/deposit/settle`, { forfeit_paise: forfeit })
+      const id = depositModal.id
+      await api.post(`/room-bookings/${id}/deposit/settle`, {
+        forfeit_paise: forfeit,
+        payment_mode: refundPayment.payment_mode,
+        payment_account_id: refundPayment.payment_account_id || null,
+        reference_no: refundPayment.reference_no.trim() || null,
+        notes: keptReason.trim() || null,
+      })
       toast.success(t('dharamshala.depositSettled'))
       setDepositModal(null)
       load()
+      // The guest signs this for the money back (and what was kept).
+      printDepositRefundVoucher(id).catch(() => {})
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
       setSettleError(err.response?.data?.error?.message || t('dharamshala.depositSettleFailed'))
@@ -894,6 +935,9 @@ export function RoomsList() {
             // The proper bill, straight away - a stay ends with the guest
             // holding it.
             if (b) printDonationReceipt(b.id, '/room-bookings', b.group_id ? 'group-receipt' : 'receipt').catch(() => {})
+            // ...and the deposit comes back at the same desk: return it now,
+            // against the guest's signature (the client's dharamshala flow).
+            if (b && depositHeld(b) > 0) openDeposit(b)
           }} />
       )}
       {editFor && (
@@ -1054,7 +1098,7 @@ export function RoomsList() {
 
       {depositModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xl mx-4">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-navy-900">{t('dharamshala.settleDeposit')}</h3>
@@ -1086,6 +1130,20 @@ export function RoomsList() {
                 })}
               </p>
             </div>
+            {forfeitAmt && parsePaise(forfeitAmt) > 0 && (
+              <div className="mb-4">
+                <label className="form-label" htmlFor="kept-reason">{t('dharamshala.keptReason')}</label>
+                <input id="kept-reason" className="form-input" value={keptReason} onChange={e => setKeptReason(e.target.value)}
+                  placeholder={t('dharamshala.keptReasonPlaceholder')} maxLength={300} />
+              </div>
+            )}
+            {depositHeld(depositModal) - (forfeitAmt ? parsePaise(forfeitAmt) : 0) > 0 && (
+              <div className="mb-4">
+                <p className="form-label">{t('dharamshala.refundHow')}</p>
+                <PaymentFields idPrefix="deposit-refund" value={refundPayment} onChange={setRefundPayment} />
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mb-3">{t('dharamshala.refundVoucherHint')}</p>
 
             {settleError && <p className="text-sm text-red-600 mb-3">{settleError}</p>}
 

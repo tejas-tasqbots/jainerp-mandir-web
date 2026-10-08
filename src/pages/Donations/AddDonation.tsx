@@ -8,7 +8,7 @@ import { useAccounts, usePaymentModes, autoSelectAccount } from '../../lib/useDr
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
 import { emptyPaymentRow, toPayload, sumPaise, cashPaise, type PaymentRow } from '../../components/PaymentSplitInput'
 import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
-import { useProfileStore } from '../../store/profileStore'
+import { useProfileStore, useTrustHas80g } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
 import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 
@@ -164,6 +164,7 @@ export function AddDonation() {
   // (server enforces via EIGHTY_G_NOT_CONFIGURED; this just explains it up front).
   const profile = useProfileStore(s => s.profile)
   const temple80gBlocked = !!profile && !profile.reg_80g_number
+  const has80g = useTrustHas80g()
   // Only the CASH part counts against the ₹2,000 limit — the API decides it
   // that way, so ₹1,000 cash + ₹9,000 UPI stays eligible. Derived, not written
   // into the form: switching the mode back to UPI brings the tick back.
@@ -284,7 +285,7 @@ export function AddDonation() {
             aria-label={t('donations.donationCategory')} onChange={e => h.setCategory(e.target.value)}>
             <option value="">{t('donations.selectCategory')}</option>
             {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}{c.is_80g_eligible ? ' (80G)' : ''}</option>
+              <option key={c.id} value={c.id}>{c.name}{has80g && c.is_80g_eligible ? ' (80G)' : ''}</option>
             ))}
             <option value={OTHER}>{t('donations.otherCategory')}</option>
           </select>
@@ -471,8 +472,8 @@ export function AddDonation() {
             </div>
           )}
 
-          {/* 80G toggle */}
-          <div className="space-y-2">
+          {/* 80G toggle — only at a trust that holds an 80G registration. */}
+          {has80g && <div className="space-y-2">
             {/* Checkbox and its label on one line, the reasons it is off
                 underneath - with flex-wrap a long reason pushed the whole label
                 below the box, leaving a lone checkbox on its own line. */}
@@ -515,7 +516,7 @@ export function AddDonation() {
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Note */}
           <div>

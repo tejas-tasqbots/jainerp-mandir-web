@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { PaymentFields, emptyPayment, needsReference, type PaymentFieldsValue } from '../../../components/PaymentFields'
+import { usePaymentModes } from '../../../lib/useDropdownOptions'
+import { printDepositReceipt } from '../../../lib/printVoucher'
 import { Camera, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise, todayIst, istDayAfter } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
@@ -62,6 +65,12 @@ export function AddRoomCheckin() {
   // the API books them as one group with one combined bill.
   const [moreRooms, setMoreRooms] = useState<string[]>([])
   const [charges, setCharges] = useState<ChargeRow[]>([])
+  // How the advance and the deposit were paid: mode, the account it reached,
+  // and the UTR / cheque number for anything but cash. The form offered Cash
+  // or UPI and nothing else, so a UPI advance could not say which payment it
+  // was (2026-10-08).
+  const [payment, setPayment] = useState<PaymentFieldsValue>(emptyPayment())
+  const paymentModes = usePaymentModes()
   const [form, setForm] = useState(() => ({
     room_id: '',
     remarks: '',
@@ -74,7 +83,6 @@ export function AddRoomCheckin() {
     check_out_time: '10:00',
     persons_count: '1',
     advance: '',
-    payment_mode: 'cash',
     guest_gstin: '',
     deposit: '',
   }))
@@ -150,6 +158,11 @@ export function AddRoomCheckin() {
     // Each photo is shrunk to ~0.2-1.4 MB, and the request carries them all.
     const photoChars = idDocuments.reduce((s, d) => s + (d.image?.length ?? 0), 0)
     if (photoChars > 8_500_000) { setError(t('guestId.tooManyPhotos')); return }
+    const moneyNow = (form.advance ? parsePaise(form.advance) : 0) + (form.deposit ? parsePaise(form.deposit) : 0)
+    if (moneyNow > 0 && needsReference(paymentModes, payment.payment_mode) && !payment.reference_no.trim()) {
+      setError(t('payroll.utrRequired'))
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -168,7 +181,9 @@ export function AddRoomCheckin() {
         check_out_time: form.check_out_time,
         persons_count: parseInt(form.persons_count),
         advance_paise: form.advance ? parsePaise(form.advance) : 0,
-        payment_mode: form.payment_mode,
+        payment_mode: payment.payment_mode,
+        payment_account_id: payment.payment_account_id || null,
+        utr_number: payment.reference_no.trim() || null,
       }
 
       // The IDs travel as `id_documents` above; only the GSTIN rides with the guest.
@@ -192,10 +207,15 @@ export function AddRoomCheckin() {
       const depositPaise = form.deposit ? parsePaise(form.deposit) : 0
       if (bookingId && depositPaise > 0) {
         try {
-          await api.post(`/room-bookings/${bookingId}/deposit`, {
+          const { data: dep } = await api.post(`/room-bookings/${bookingId}/deposit`, {
             amount_paise: depositPaise,
-            payment_mode: form.payment_mode,
+            payment_mode: payment.payment_mode,
+            payment_account_id: payment.payment_account_id || null,
+            utr_number: payment.reference_no.trim() || null,
           })
+          // The receipt the guest keeps and hands back at checkout.
+          const no = (dep?.data ?? dep)?.deposit_receipt_no
+          printDepositReceipt(bookingId, no).catch(() => {})
         } catch {
           setError(t('dharamshala.depositNotTaken'))
           setSaving(false)
@@ -354,26 +374,23 @@ export function AddRoomCheckin() {
         </Section>
 
         <Section n={5} title={t('dharamshala.sectionPayment')}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="form-label" htmlFor="booking-advance">{t('dharamshala.advanceAmount')}</label>
               <input id="booking-advance" type="number" min="0" step="0.01" className="form-input" placeholder="0.00"
                 value={form.advance} onChange={e => setForm(f => ({ ...f, advance: e.target.value }))} />
             </div>
-            <div>
-              <label className="form-label" htmlFor="booking-mode">{t('dharamshala.paymentMode')}</label>
-              <select id="booking-mode" className="form-select" value={form.payment_mode}
-                onChange={e => setForm(f => ({ ...f, payment_mode: e.target.value }))}>
-                <option value="cash">{t('common.cash')}</option>
-                <option value="upi">{t('common.upi')}</option>
-              </select>
-            </div>
+
             <div>
               <label className="form-label" htmlFor="deposit">{t('dharamshala.securityDeposit')}</label>
               <input id="deposit" className="form-input" inputMode="decimal" value={form.deposit} placeholder="0"
                 onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
               <p className="text-xs text-slate-500 mt-1">{t('dharamshala.depositHint')}</p>
             </div>
+          </div>
+          <div className="mt-3">
+            <PaymentFields idPrefix="booking-pay" value={payment} onChange={setPayment} />
+            <p className="text-xs text-slate-500 mt-1">{t('dharamshala.depositReceiptHint')}</p>
           </div>
           <div>
             <label className="form-label" htmlFor="booking-remarks">{t('dharamshala.remarks')}</label>

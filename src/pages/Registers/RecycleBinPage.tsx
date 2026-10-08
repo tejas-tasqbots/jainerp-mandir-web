@@ -36,7 +36,7 @@ const PAGE_SIZE = 50
 
 /** The entry kinds first (money), then the master records, in a fixed order. */
 const TYPE_ORDER = [
-  'donation', 'seva_booking', 'prasad_sale', 'bhojanshala_sale', 'room_booking', 'hall_booking', 'expense',
+  'donation', 'boli', 'seva_booking', 'prasad_sale', 'bhojanshala_sale', 'room_booking', 'hall_booking', 'expense',
   'vendors', 'rooms', 'halls', 'guests', 'priests', 'employees', 'volunteers', 'inventory-items', 'lost-found',
   'creditors', 'fixed-assets', 'loans', 'announcements', 'gallery', 'cattle', 'feed-stock', 'cow-sponsorships',
 ]
@@ -44,7 +44,7 @@ const TYPE_ORDER = [
 /** Audit entity_type for a bin row — what the Activity Log filters by. */
 const ENTRY_TABLE: Record<string, string> = {
   donation: 'donations', seva_booking: 'seva_bookings', prasad_sale: 'prasad_sales', bhojanshala_sale: 'bhojanshala_sales',
-  room_booking: 'room_bookings', hall_booking: 'hall_bookings', expense: 'expenses',
+  room_booking: 'room_bookings', hall_booking: 'hall_bookings', expense: 'expenses', boli: 'bolis',
 }
 
 function binTypeLabel(t: TFunction, type: string): string {

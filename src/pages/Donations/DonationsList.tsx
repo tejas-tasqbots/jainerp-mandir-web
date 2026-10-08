@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../store/profileStore'
 import { Plus, Upload, Receipt, Ban, Award, Pencil, FileDown, XCircle, Trash2 } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
@@ -36,6 +37,7 @@ interface ListMeta {
 
 export function DonationsList() {
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const navigate = useNavigate()
   const toast = useToast()
   const canDelete = useCanDeleteEntries()
@@ -108,7 +110,7 @@ export function DonationsList() {
       filter: { kind: 'enum', param: 'payment_mode', options: PAYMENT_MODES.map(m => ({ value: m, label: t(`common.${m}`) })) },
       render: d => <span className={paymentModeBadge(d.payment_mode)}>{paymentModeLabel(t, d.payment_mode)}</span>,
     },
-    {
+    ...(!has80g ? [] : [{
       key: 'eightyG', label: t('donations.eightyG'),
       filter: {
         kind: 'enum', param: 'is_80g',
@@ -117,10 +119,10 @@ export function DonationsList() {
           { value: 'false', label: t('donations.nonEightyG') },
         ],
       },
-      render: d => d.is_80g_eligible
+      render: (d: Donation) => d.is_80g_eligible
         ? <span className="badge-green">{t('common.yes')}</span>
         : <span className="badge-gray">{t('common.no')}</span>,
-    },
+    } as ColumnDef<Donation>]),
     {
       key: 'date', label: t('common.date'), sortable: true,
       render: d => <span className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</span>,
@@ -135,7 +137,7 @@ export function DonationsList() {
     // The actions column is rendered by the kit from `rowActions` below — the
     // print button stays visible, everything else collapses behind ⋮.
      
-  ], [t, enteredByOptions, categories])
+  ], [t, enteredByOptions, categories, has80g])
 
   function rowActions(d: Donation): RowAction[] {
     const actions: RowAction[] = [
@@ -145,7 +147,7 @@ export function DonationsList() {
       },
       { label: t('donations.downloadPdf'), icon: <FileDown size={13} />, onClick: () => savePdf(d.id), disabled: pdfLoading === d.id },
     ]
-    if (d.is_80g_eligible && d.donor_id && !d.is_anonymous) {
+    if (has80g && d.is_80g_eligible && d.donor_id && !d.is_anonymous) {
       actions.push({
         label: t('donations.download80gCertificate'), icon: <Award size={13} />,
         onClick: () => download80g(d.donor_id!), disabled: certLoading === d.donor_id,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../store/profileStore'
 import { Receipt, FileDown, MessageCircle, History, RefreshCw } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printDonationReceipt, downloadReceiptPdf } from '../../lib/printReceipt'
@@ -20,6 +21,7 @@ interface AuditRow {
  */
 export function DonationDetail({ donation, onChanged }: { donation: Donation; onChanged?: () => void }) {
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const toast = useToast()
   const [history, setHistory] = useState<AuditRow[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
@@ -57,7 +59,7 @@ export function DonationDetail({ donation, onChanged }: { donation: Donation; on
     [t('donations.category'), donation.category_name || '—'],
     [t('common.amount'), <span className="font-semibold">₹{fmtPaise(donation.amount_paise)}</span>],
     [t('donations.mode'), <span className="badge-gray">{paymentModeLabel(t, donation.payment_mode)}</span>],
-    [t('donations.eightyG'), donation.is_80g_eligible ? t('common.yes') : t('common.no')],
+    ...(has80g ? [[t('donations.eightyG'), donation.is_80g_eligible ? t('common.yes') : t('common.no')] as [string, React.ReactNode]] : []),
     [t('common.date'), new Date(donation.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })],
     [t('common.status'), donation.is_voided
       ? <span className="badge-red">{t('donations.voided')}</span>

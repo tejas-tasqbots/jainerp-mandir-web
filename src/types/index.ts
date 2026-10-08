@@ -136,6 +136,9 @@ export interface Boli {
   outstanding_paise: number
   is_anonymous?: boolean
   boli_date: string
+  /** The boli type from the trust's list (tenant migration 061); null on older bolis. */
+  category_id?: string | null
+  category_name?: string | null
   fy?: string
   notes?: string
   status: BoliStatus

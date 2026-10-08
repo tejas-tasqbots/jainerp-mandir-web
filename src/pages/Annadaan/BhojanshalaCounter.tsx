@@ -22,6 +22,8 @@ const STORE_KEY = 'jainerp_bhojanshala_session'
  * 11am — being wrong by one tap is fine, being wrong silently is not, which is
  * why the tabs stay visible and the choice is remembered once made.
  */
+interface ExtraItem { id: string; name: string; default_rate_paise: number; per_plate: boolean; is_active?: boolean }
+
 export function sessionForHour(hour: number): Session {
   if (hour < 11) return 'breakfast'
   if (hour < 17) return 'lunch'
@@ -77,7 +79,34 @@ export function BhojanshalaCounter({
   const qtyRef = useRef<HTMLInputElement>(null)
 
   const rate = rates[session] ?? 0
-  const total = rate * qty
+
+  // Extras on the meal (tenant migration 061): "if someone wants lunch with
+  // packaging we take packaging charges". The trust's own list (Settings →
+  // Categories & Dropdowns → Bhojanshala extra charges), one tap each; a
+  // per-plate extra follows the plate count, a zero-rate one asks for the
+  // amount.
+  const [extraItems, setExtraItems] = useState<ExtraItem[]>([])
+  const [picked, setPicked] = useState<Record<string, string>>({})
+  useEffect(() => {
+    api.get('/bhojanshala-charge-items', { params: { limit: '50' } })
+      .then(r => setExtraItems((r.data?.data ?? []).filter((x: ExtraItem) => x.is_active !== false)))
+      .catch(() => setExtraItems([]))
+  }, [])
+  const extraAmount = (it: ExtraItem): number => {
+    if (!(it.id in picked)) return 0
+    const unit = Number(it.default_rate_paise) > 0 ? Number(it.default_rate_paise) : Math.round(Number(picked[it.id] || 0) * 100)
+    return unit * (it.per_plate ? qty : 1)
+  }
+  const extrasPaise = extraItems.reduce((n, it) => n + extraAmount(it), 0)
+  const total = rate * qty + extrasPaise
+  function toggleExtra(it: ExtraItem) {
+    setPicked(p => {
+      const next = { ...p }
+      if (it.id in next) delete next[it.id]
+      else next[it.id] = ''
+      return next
+    })
+  }
 
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, session) } catch { /* ignore */ }
@@ -93,6 +122,12 @@ export function BhojanshalaCounter({
         // Sent for a trust that has not set a rate yet; the server prefers its
         // own configured rate whenever there is one.
         rate_paise: rate,
+        charges: extraItems.filter(it => it.id in picked && extraAmount(it) > 0).map(it => ({
+          charge_item_id: it.id,
+          // Only used when the list has no rate for it.
+          rate_paise: Number(it.default_rate_paise) > 0 ? undefined : Math.round(Number(picked[it.id] || 0) * 100),
+          qty: it.per_plate ? undefined : 1,
+        })),
         payment_mode: mode,
         reference_no: reference.trim() || undefined,
         buyer_name: name.trim() || undefined,
@@ -107,6 +142,7 @@ export function BhojanshalaCounter({
       // details reset. Session, payment mode and the open/closed state of the
       // details panel are how this clerk is working today.
       setQty(1)
+      setPicked({})
       setName('')
       setMobile('')
       setReference('')
@@ -227,6 +263,34 @@ export function BhojanshalaCounter({
             {saving ? t('common.saving') : t('bhojanshala.printTokens', { count: qty })}
           </button>
         </div>
+
+        {extraItems.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="counter-extras">
+            <span className="text-xs font-medium text-slate-500">{t('bhojanshalaExtras.add')}</span>
+            {extraItems.map(it => {
+              const on = it.id in picked
+              const fixed = Number(it.default_rate_paise) > 0
+              return (
+                <span key={it.id} className="inline-flex items-center gap-1">
+                  <button type="button" onClick={() => toggleExtra(it)} aria-pressed={on}
+                    data-testid={`extra-${it.id}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      on ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                    {it.name}
+                    {fixed && <span className={on ? 'text-white/80' : 'text-slate-400'}> · ₹{fmtPaise(Number(it.default_rate_paise))}{it.per_plate ? `/${t('bhojanshalaExtras.plateShort')}` : ''}</span>}
+                    {on && extraAmount(it) > 0 && <b> = ₹{fmtPaise(extraAmount(it))}</b>}
+                  </button>
+                  {on && !fixed && (
+                    <input className="form-input !py-0.5 !text-xs w-20" inputMode="decimal" autoFocus
+                      aria-label={t('bhojanshalaExtras.amountFor', { name: it.name })}
+                      placeholder="₹" value={picked[it.id]}
+                      onChange={e => setPicked(p => ({ ...p, [it.id]: e.target.value }))} />
+                  )}
+                </span>
+              )
+            })}
+          </div>
+        )}
 
         {/* Everything most people never give. */}
         <button type="button" onClick={() => setOpen(o => !o)} data-testid="counter-details-toggle"

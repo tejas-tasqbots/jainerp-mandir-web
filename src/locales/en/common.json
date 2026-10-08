@@ -874,7 +874,16 @@
       "remove": "Remove {{room}}",
       "clash": "Not free for these dates: {{rooms}}. Remove it or change the dates.",
       "bookedFrom": "Booked from {{date}}"
-    }
+    },
+    "depositReceipt": "Deposit receipt",
+    "depositRefundVoucher": "Deposit refund voucher",
+    "depositDocFailed": "Could not open the deposit document.",
+    "keptReason": "Why is it kept?",
+    "keptReasonPlaceholder": "e.g. broken bucket, extra night",
+    "keptReasonRequired": "Say why part of the deposit is kept — it is printed on the voucher the guest signs.",
+    "refundHow": "How the deposit goes back",
+    "refundVoucherHint": "A refund voucher prints for the guest to sign: deposit received, kept and returned.",
+    "depositReceiptHint": "The advance and the security deposit are paid this way. A separate deposit receipt prints for the guest to keep and return at checkout; the deposit is not on the room bill."
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -1111,7 +1120,21 @@
     "txnRoom": "Room",
     "txnHall": "Hall",
     "txnGaushala": "Gaushala",
-    "txnEvent": "Event"
+    "txnEvent": "Event",
+    "totalReceived": "Total received (all kinds)",
+    "sumDonations": "Donations",
+    "sumBoli": "Boli paid",
+    "sumSeva": "Seva",
+    "sumRoom": "Room stays",
+    "sumHall": "Hall bookings",
+    "sumGaushala": "Gaushala",
+    "sumEvents": "Events",
+    "boliOf": "of ₹{{pledged}} pledged",
+    "stays_one": "{{count}} stay",
+    "stays_other": "{{count}} stays",
+    "stillOwed": "Still owed",
+    "eligible80g": "80G-eligible donations",
+    "boliPending": "Boli pending"
   },
   "employees": {
     "actions": "Actions",
@@ -1314,7 +1337,9 @@
       "payHint": "A payment voucher is made for this payment, for the vendor to sign.",
       "ready": "Payment voucher {{no}} is ready",
       "readyHint": "Print it and have the vendor sign it."
-    }
+    },
+    "salaryUsePayroll": "Staff salary should be paid from Payroll, so advances are deducted and a payslip is printed. Use this only for someone who is not on the staff list.",
+    "openPayroll": "Open Payroll"
   },
   "inventory": {
     "actions": "Actions",
@@ -1612,7 +1637,19 @@
     "waiveReasonPlaceholder": "Reason for waiving...",
     "waiveSuccess": "Pledge waived",
     "waiveWarning": "Waive outstanding amount for {{name}}. This cannot be undone.",
-    "waiving": "Waiving..."
+    "waiving": "Waiving...",
+    "deleteBoli": "Delete boli",
+    "enterAmount": "Enter the amount received.",
+    "moreThanOutstanding": "That is more than the ₹{{amount}} still pending on this boli.",
+    "utrRequired": "Enter the UTR / transaction or cheque number for every non-cash payment.",
+    "paymentSuccessNo": "Payment recorded — receipt {{receipt}}.",
+    "balanceAfter": "Balance pending after this payment: ₹{{amount}}",
+    "recordAndPrint": "Record & print receipt",
+    "typeRequired": "Choose the boli type, or type a new one.",
+    "manageTypes": "Manage types",
+    "selectType": "Select a type",
+    "newTypeName": "New boli type",
+    "saveFailed": "Could not save the boli."
   },
   "prasad": {
     "addBuyerOptional": "Add buyer (optional)",
@@ -1766,7 +1803,8 @@
       "gallery": "Gallery photo",
       "cattle": "Cattle",
       "feed-stock": "Feed stock",
-      "cow-sponsorships": "Cow sponsorship"
+      "cow-sponsorships": "Cow sponsorship",
+      "boli": "Boli"
     }
   },
   "registers": {
@@ -2148,7 +2186,8 @@
         "building": "Building / Wing",
         "buildingPlaceholder": "e.g. A Wing — leave blank if one building",
         "floor": "Floor",
-        "floorPlaceholder": "0 = Ground floor"
+        "floorPlaceholder": "0 = Ground floor",
+        "venueType": "Type of space"
       },
       "flags": "Flags",
       "gstRates": "GST Rates",
@@ -2191,7 +2230,9 @@
         "seva": "Seva & prasad",
         "stay": "Rooms & halls",
         "food": "Bhojanshala"
-      }
+      },
+      "boliCategories": "Boli types",
+      "boliCategoriesDesc": "The types a boli can be recorded under — Aarti, Pratishtha, Shantidhara, Kalash … Choose a fund to file a type's collections under it (e.g. Dev Dravya)."
     },
     "messages": {
       "channel": "Channel",
@@ -2288,7 +2329,8 @@
         "PRASAD": "Prasad sale",
         "ROOM": "Room booking",
         "SEVA": "Seva booking",
-        "PAYMENT": "Payment voucher"
+        "PAYMENT": "Payment voucher",
+        "DEPOSIT": "Security deposit receipt"
       }
     },
     "privacy": {
@@ -2801,11 +2843,8 @@
       "testFailed": "Could not print on {{printer}} ({{reason}}). It has been opened as a PDF instead.",
       "receiptTestHint": "Test print sends a 3-token Bhojanshala sale, exactly as the counter prints it.",
       "testSentTokens": "Sent {{count}} tokens to {{printer}} in one go — the printer should cut after each one.",
-
       "rawThermal": "Direct thermal printing (fastest)",
-
       "rawThermalHint": "Tokens and slips go straight to the receipt printer with a cut after each one, skipping the Windows driver. Turn it off if the printer prints odd characters or nothing at all.",
-
       "testSentDirect": "Sent {{count}} tokens straight to {{printer}} — each should come out already cut.",
       "directSkipped": "Direct printing did NOT run ({{reason}}) — this went through the Windows driver on {{printer}} instead.",
       "checkPrint": "Printer check",
@@ -3499,7 +3538,45 @@
     "advanceGiven": "Advance recorded.",
     "advanceFailed": "Could not record the advance.",
     "repaymentRecorded": "Repayment recorded.",
-    "repaymentFailed": "Could not record the repayment."
+    "repaymentFailed": "Could not record the repayment.",
+    "computeHintV2": "Shows what each person will be paid. A monthly salary is paid for the whole month less absent days, unpaid leave and half days — a day nobody marked counts as worked. Compute & save takes this month's advance instalments; then Pay each person.",
+    "salary": "Salary",
+    "lossOfPay": "Loss of pay",
+    "daysPaid": "Days paid",
+    "statusPaid": "Paid",
+    "statusComputed": "Computed",
+    "statusDraft": "Not computed",
+    "pay": "Pay",
+    "payslip": "Payslip",
+    "showWorking": "Show the calculation",
+    "working": "Calculation",
+    "workingMonthly": "₹{{rate}} ÷ {{dim}} days × {{days}} days paid = ₹{{gross}}",
+    "workingDaily": "₹{{rate}} a day × {{days}} days worked = ₹{{gross}}",
+    "attendanceLine": "Register: {{present}} present, {{half}} half days, {{paidLeave}} paid leave, {{unpaidLeave}} unpaid leave, {{absent}} absent",
+    "notJoined": "{{count}} day(s) before joining not paid",
+    "unmarkedNote": "Days not marked in the register are paid. Mark absences to reduce pay.",
+    "advanceGivenOn": "Advance given",
+    "owedBefore": "Owed before",
+    "deductedNow": "Deducted now",
+    "owedAfter": "Still owed",
+    "advanceNotTaken": "₹{{amount}} advance is open but nothing is taken this month (manual recovery, or recovery starts later).",
+    "noAdvanceOpen": "No advance to recover.",
+    "stillOwed": "After this salary ₹{{amount}} is still owed on advances.",
+    "capNote": "Deductions are limited to half the salary (₹{{amount}}) by the Code on Wages; the rest is taken next month.",
+    "paySalaryOf": "Pay {{name}} — {{month}}",
+    "paidOn": "Paid on",
+    "payAndPrint": "Pay & print payslip",
+    "utrRequired": "Enter the UTR / transaction or cheque number for a non-cash payment.",
+    "salaryPaid": "{{name}} paid — voucher {{voucher}}.",
+    "payFailed": "Could not record the salary payment.",
+    "payslipFailed": "Could not open the payslip.",
+    "recoveryStarts": "Start deducting from",
+    "recoveryStartsHint": "Leave empty to start with this month's salary.",
+    "manualHint": "Manual: nothing is deducted from salary. Use Record repayment when the employee pays it back.",
+    "saveAndPrintVoucher": "Save & print voucher",
+    "printVoucher": "Print advance voucher",
+    "voucherFailed": "Could not open the voucher.",
+    "fromMonth": "from {{month}}"
   },
   "staff": {
     "directory": "Directory",
@@ -3724,7 +3801,8 @@
       "bhojanshala_sale": "Bhojanshala sale",
       "room_booking": "Room booking",
       "hall_booking": "Hall booking",
-      "expense": "Expense"
+      "expense": "Expense",
+      "boli": "Boli"
     },
     "willHappen": "What happens",
     "effectMoney": "The money recorded against it comes out of Cash & Bank, the Day Book and every report.",
@@ -4288,5 +4366,94 @@
     "enterExpenseDescription": "Enter expense description",
     "loadReceiptFailed": "Could not load receipt",
     "selectSeva": "Select a seva"
+  },
+  "hallPackages": {
+    "venue": {
+      "hall": "Hall",
+      "lawn": "Lawn",
+      "dining": "Dining hall",
+      "terrace": "Terrace",
+      "other": "Other space"
+    },
+    "extrasList": "Hall extra charges",
+    "extrasListHint": "What a hall booking can add on top of the hall or package — decoration, electricity, generator, sound, cleaning. A rate of 0 asks for the amount at the desk.",
+    "extraPlaceholder": "Decoration",
+    "perDay": "Per day",
+    "rateCategories": "Rate categories",
+    "rateCategoriesHint": "Who pays which price — e.g. Sangh member, Jain non-member, Outside party, Religious function. Each hall and package can have its own price for each.",
+    "rateCategoryPlaceholder": "Sangh member",
+    "whoPays": "Who this is for",
+    "title": "Hall packages",
+    "hint": "A package lets several halls, lawns and rooms together at one price per day or half-day. Rate categories can price it differently.",
+    "add": "Add package",
+    "none": "No packages yet.",
+    "saved": "Package saved.",
+    "ratesSaved": "Rates saved.",
+    "deleteTitle": "Delete package?",
+    "deleteMessage": "Remove “{{name}}” from new bookings? Bookings already made keep it.",
+    "roomsCount_one": "{{count}} room",
+    "roomsCount_other": "{{count}} rooms",
+    "perFullDay": "per day",
+    "perHalfDay": "per half-day",
+    "namePlaceholder": "Wedding package",
+    "inclusions": "What it includes",
+    "inclusionsPlaceholder": "Hall + lawn + 10 rooms, chairs, lights",
+    "fullDayPrice": "Full-day price (₹)",
+    "halfDayPrice": "Half-day price (₹)",
+    "gstFromHall": "Same as the hall",
+    "active": "Offered at the desk",
+    "venues": "Halls and lawns in the package",
+    "rooms": "Rooms in the package",
+    "roomsHint": "held for the event's dates",
+    "pricesByCategory": "Price by rate category",
+    "rateCategory": "Rate category",
+    "fullDay": "Full day",
+    "halfDay": "Half day",
+    "perHour": "Per hour",
+    "standard": "Standard",
+    "blankIsStandard": "Leave blank to charge the standard price.",
+    "venueRates": "Hall prices by rate category",
+    "venueRatesHint": "Leave a box blank to charge that hall's standard tariff.",
+    "addCategoriesFirst": "Add rate categories first (Settings → Rate categories) to price halls differently for different people.",
+    "oneVenue": "One hall",
+    "package": "Package",
+    "choosePackage": "Choose a package",
+    "fromDate": "From",
+    "toDate": "To (several days)",
+    "hours": "Hours",
+    "alsoBook": "Also book",
+    "alsoBookHint": "another hall or lawn with this booking",
+    "roomsHeld": "Rooms held",
+    "roomsHeldHint": "taken off sale for these dates",
+    "extras": "Extra charges",
+    "addExtra": "Add extra",
+    "extraName": "Description",
+    "qty": "Qty",
+    "priceSummary": "Price",
+    "pickToPrice": "Choose a hall or package to see the price.",
+    "quoteFailed": "Could not price this booking.",
+    "perDayPrice": "Per day",
+    "daysLabel_one": "{{count}} day",
+    "daysLabel_other": "{{count}} days",
+    "agreedPrice": "Agreed price",
+    "gstExempt": "GST exempt for a registered trust below the limit.",
+    "advanceNow": "Advance now",
+    "balanceLater": "Balance later",
+    "clash": "Already booked",
+    "changePrice": "Change the price for this booking",
+    "overrideReason": "Why (kept with the booking)",
+    "overrideHint": "The list price is kept beside the agreed price.",
+    "overrideReasonRequired": "Say why the price is changed.",
+    "resolveClashes": "A hall or room is already booked for these dates.",
+    "bookingFailed": "Could not create the booking."
+  },
+  "bhojanshalaExtras": {
+    "priceList": "Bhojanshala extra charges",
+    "priceListHint": "What a meal sale can add — packaging for a parcel, an extra item, delivery. Per plate multiplies by the plates sold. A rate of 0 asks for the amount at the counter.",
+    "placeholder": "Packaging / Parcel",
+    "perPlate": "Per plate",
+    "add": "Extras:",
+    "plateShort": "plate",
+    "amountFor": "Amount for {{name}}"
   }
 }

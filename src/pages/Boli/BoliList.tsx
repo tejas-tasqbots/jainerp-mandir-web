@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, AlertTriangle, Bell } from 'lucide-react'
+import { Plus, AlertTriangle, Bell, Trash2, X } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { printBoliIntimation } from '../../lib/printBoliIntimation'
 import { downloadReport, printCurrentView } from '../../lib/downloadReport'
@@ -16,6 +16,10 @@ import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStri
 import { DateRangePicker, loadStoredRange } from '../../components/kit/DateRangePicker'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../components/PaymentSplitInput'
+import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntry'
+import { usePaymentModes } from '../../lib/useDropdownOptions'
+import { printDonationReceipt } from '../../lib/printReceipt'
 import type { Boli } from '../../types'
 
 const PAGE_SIZE = 20
@@ -41,9 +45,22 @@ export function BoliList() {
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('boli', 'thisFY'))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
-  const [payModal, setPayModal] = useState<{ id: string; name: string; outstanding: number } | null>(null)
-  const [payForm, setPayForm] = useState({ amount: '', mode: 'cash' })
+  const [payModal, setPayModal] = useState<{ id: string; name: string; outstanding: number; pledged: number; paid: number; description: string } | null>(null)
+  // Tenders, like every other bill: one boli payment may be part cash, part
+  // UPI, and every non-cash part carries its UTR / cheque number and the
+  // account it reached. The old dialog had a mode dropdown and nothing else,
+  // so a UPI collection could not say which transaction it was (2026-10-08).
+  const [payRows, setPayRows] = useState<PaymentRow[]>([emptyPaymentRow()])
+  const [payError, setPayError] = useState('')
   const [paying, setPaying] = useState(false)
+  const paymentModes = usePaymentModes()
+  const canDelete = useCanDeleteEntries()
+  const deleteEntry = useDeleteEntry()
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    api.get('/boli-categories', { params: { limit: '200' } })
+      .then(r => setCategories(r.data.data ?? [])).catch(() => setCategories([]))
+  }, [])
   const [waiveModal, setWaiveModal] = useState<{ id: string; name: string } | null>(null)
   const [waiveReason, setWaiveReason] = useState('')
   const [waiving, setWaiving] = useState(false)
@@ -73,6 +90,13 @@ export function BoliList() {
           {b.donor_mobile && <p className="text-xs text-slate-400">{b.donor_mobile}</p>}
         </div>
       ),
+    },
+    {
+      key: 'category', label: t('pledges.boliType'),
+      filter: categories.length
+        ? { kind: 'enum', param: 'category_id', options: categories.map(c => ({ value: c.id, label: c.name })) }
+        : undefined,
+      render: b => <span className="text-xs font-medium text-slate-700">{b.category_name || '—'}</span>,
     },
     {
       key: 'description', label: t('pledges.description'),
@@ -120,8 +144,9 @@ export function BoliList() {
             <>
               <button
                 type="button"
-                onClick={() => setPayModal({ id: b.id, name: b.donor_name, outstanding: b.outstanding_paise })}
+                onClick={() => openPay(b)}
                 className="btn-success btn-sm"
+                data-testid="boli-pay"
               >
                 {t('pledges.pay')}
               </button>
@@ -134,6 +159,17 @@ export function BoliList() {
                 <AlertTriangle size={14} />
               </button>
             </>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => removeBoli(b)}
+              title={t('pledges.deleteBoli')} aria-label={t('pledges.deleteBoli')}
+              className="p-1 text-slate-400 hover:text-red-600 rounded"
+              data-testid="boli-delete"
+            >
+              <Trash2 size={14} />
+            </button>
           )}
           {/* Intimation/reminder slip only makes sense while a balance is outstanding. */}
           {b.outstanding_paise > 0 && (
@@ -151,7 +187,7 @@ export function BoliList() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, intimating])
+  ], [t, intimating, categories, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -230,25 +266,57 @@ export function BoliList() {
     }
   }
 
+  function openPay(b: Boli) {
+    setPayModal({
+      id: b.id, name: b.is_anonymous ? t('pledges.anonymous') : b.donor_name, outstanding: b.outstanding_paise,
+      pledged: b.committed_amount_paise, paid: b.paid_amount_paise, description: b.seva_description,
+    })
+    // The whole balance by default: most bolis are settled in one go.
+    setPayRows([{ ...emptyPaymentRow(), amount: String(b.outstanding_paise / 100) }])
+    setPayError('')
+  }
+
+  const refNeeded = (code: string) =>
+    paymentModes.find(m => m.code === code)?.requires_reference ?? code !== 'cash'
+
   async function recordPayment(e: React.FormEvent) {
     e.preventDefault()
     if (!payModal) return
+    const total = sumPaise(payRows)
+    if (total <= 0) { setPayError(t('pledges.enterAmount')); return }
+    if (total > payModal.outstanding) {
+      setPayError(t('pledges.moreThanOutstanding', { amount: fmtPaise(payModal.outstanding) }))
+      return
+    }
+    if (payRows.some(r => Number(r.amount) > 0 && refNeeded(r.payment_mode) && !r.reference_no?.trim())) {
+      setPayError(t('pledges.utrRequired'))
+      return
+    }
     setPaying(true)
+    setPayError('')
     try {
-      await api.post(`/bolis/${payModal.id}/payments`, {
-        amount_paise: Math.round(parseFloat(payForm.amount) * 100),
-        payment_mode: payForm.mode,
-      })
+      const { data } = await api.post(`/bolis/${payModal.id}/payments`, { payments: toPayload(payRows) })
+      const res = data.data ?? data
       setPayModal(null)
-      setPayForm({ amount: '', mode: 'cash' })
-      toast.success(t('pledges.paymentSuccess'))
+      toast.success(t('pledges.paymentSuccessNo', { receipt: res?.donation?.receipt_number ?? '' }))
       load()
+      // The receipt the donor takes away: this payment and what is still pending.
+      if (res?.donation?.id) printDonationReceipt(res.donation.id).catch(() => {})
     } catch (err: unknown) {
       const ex = err as { response?: { data?: { error?: { message?: string } } } }
-      toast.error(ex.response?.data?.error?.message || t('pledges.paymentFailed'))
+      setPayError(ex.response?.data?.error?.message || t('pledges.paymentFailed'))
     } finally {
       setPaying(false)
     }
+  }
+
+  async function removeBoli(b: Boli) {
+    const done = await deleteEntry({
+      kind: 'boli', id: b.id,
+      title: b.is_anonymous ? t('pledges.anonymous') : b.donor_name,
+      detail: b.seva_description, amountPaise: b.committed_amount_paise, date: b.boli_date,
+    })
+    if (done) load()
   }
 
   async function waive(e: React.FormEvent) {
@@ -332,29 +400,26 @@ export function BoliList() {
       {/* Payment modal */}
       {payModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
-            <h3 className="font-bold text-navy-900 mb-1">{t('pledges.recordPayment')}</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              {t('pledges.pledgeByOutstanding', { name: payModal.name, amount: fmtPaise(payModal.outstanding) })}
-            </p>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xl mx-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-navy-900">{t('pledges.recordPayment')}</h3>
+                <p className="text-sm text-slate-500">{payModal.name} · {payModal.description}</p>
+              </div>
+              <button type="button" onClick={() => setPayModal(null)} aria-label={t('common.close')} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mb-4 text-sm">
+              <div className="rounded border border-slate-200 p-2"><p className="text-xs text-slate-500">{t('pledges.pledged')}</p><p className="font-semibold">₹{fmtPaise(payModal.pledged)}</p></div>
+              <div className="rounded border border-slate-200 p-2"><p className="text-xs text-slate-500">{t('pledges.paid')}</p><p className="font-semibold text-green-700">₹{fmtPaise(payModal.paid)}</p></div>
+              <div className="rounded border border-amber-300 bg-amber-50 p-2"><p className="text-xs text-slate-500">{t('pledges.outstanding')}</p><p className="font-bold text-amber-800" data-testid="boli-outstanding">₹{fmtPaise(payModal.outstanding)}</p></div>
+            </div>
             <form onSubmit={recordPayment} className="space-y-4">
-              <div>
-                <label className="form-label" htmlFor="boli-list-payForm">{t('donations.amountLabel')}</label>
-                <input id="boli-list-payForm" type="number" step="0.01" min="0.01" className="form-input" autoFocus
-                  value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} required />
-              </div>
-              <div>
-                <label className="form-label" htmlFor="boli-list-payForm-2">{t('donations.paymentMode')}</label>
-                <select id="boli-list-payForm-2" className="form-select" value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
-                  <option value="cash">{t('common.cash')}</option>
-                  <option value="upi">{t('common.upi')}</option>
-                  <option value="cheque">{t('common.cheque')}</option>
-                  <option value="netbanking">{t('common.netbanking')}</option>
-                </select>
-              </div>
+              <PaymentSplitInput rows={payRows} onChange={setPayRows} totalPaise={payModal.outstanding} />
+              <p className="text-xs text-slate-500">{t('pledges.balanceAfter', { amount: fmtPaise(Math.max(0, payModal.outstanding - sumPaise(payRows))) })}</p>
+              {payError && <p className="text-sm text-red-600" data-testid="boli-pay-error">{payError}</p>}
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setPayModal(null)} className="btn-secondary">{t('common.cancel')}</button>
-                <button type="submit" disabled={paying} className="btn-success">{paying ? t('pledges.recording') : t('pledges.recordPayment')}</button>
+                <button type="submit" disabled={paying} className="btn-success" data-testid="boli-pay-confirm">{paying ? t('pledges.recording') : t('pledges.recordAndPrint')}</button>
               </div>
             </form>
           </div>

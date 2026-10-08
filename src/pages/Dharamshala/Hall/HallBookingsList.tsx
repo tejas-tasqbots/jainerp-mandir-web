@@ -81,11 +81,24 @@ export function HallBookingsList() {
     },
     {
       key: 'hall', label: t('dharamshala.hall'),
-      render: b => <span className="text-slate-600">{b.hall_name || '—'}</span>,
+      render: b => {
+        const x = b as HallBooking & { package_name?: string | null; venue_names?: string | null; rooms_held?: number }
+        return (
+          <span className="text-slate-600">
+            {x.package_name && <b className="block text-navy-900">{x.package_name}</b>}
+            {x.venue_names || b.hall_name || '—'}
+            {Number(x.rooms_held) > 0 && <span className="block text-xs text-slate-500">{t('hallPackages.roomsCount', { count: x.rooms_held })}</span>}
+          </span>
+        )
+      },
     },
     {
       key: 'date', label: t('common.date'),
-      render: b => <span className="text-xs">{new Date(b.booking_date).toLocaleDateString('en-IN')}</span>,
+      render: b => {
+        const end = (b as HallBooking & { end_date?: string | null }).end_date
+        const d = (v: string) => new Date(v).toLocaleDateString('en-IN')
+        return <span className="text-xs">{d(b.booking_date)}{end ? ` – ${d(end)}` : ''}</span>
+      },
     },
     {
       key: 'session', label: t('dharamshala.session'),

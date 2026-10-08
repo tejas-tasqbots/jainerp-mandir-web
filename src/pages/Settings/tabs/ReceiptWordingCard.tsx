@@ -104,7 +104,9 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
     id: 'stay',
     keys: ['stayDetails', 'checkIn', 'checkOut', 'nights', 'persons', 'room',
       'guest', 'guestIdLabel', 'houseRules', 'roomBill', 'hallBill',
-      'guestFolio', 'eventName'],
+      'guestFolio', 'eventName',
+      // The security deposit receipt (tenant migration 061).
+      'depositReceipt', 'depositRefundNote', 'depositHeld'],
   },
   {
     id: 'slips',
@@ -114,7 +116,9 @@ const GROUPS: { id: string; keys: readonly string[] }[] = [
   {
     id: 'boli',
     keys: ['boliIntimation', 'pledgedAmount', 'pledgeDate', 'paidSoFar',
-      'outstandingAmount'],
+      'outstandingAmount',
+      // A boli collection's receipt: where the boli stood (tenant migration 061).
+      'boliFor', 'boliAmount', 'paidEarlier', 'paidThisReceipt', 'paidToDate', 'balancePending'],
   },
   {
     id: 'other',

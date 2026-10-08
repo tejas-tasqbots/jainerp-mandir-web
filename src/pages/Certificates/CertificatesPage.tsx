@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useTrustHas80g } from '../../store/profileStore'
 import { Award, Download, RefreshCw, FileText } from 'lucide-react'
 import { api, currentFY, fmtPaise } from '../../lib/api'
 import { downloadRowsPdf } from '../../lib/pdfTable'
@@ -35,8 +36,12 @@ function toCsv(headers: string[], rows: (string | number)[][]): string {
 export function CertificatesPage() {
   const toast = useToast()
   const { t } = useTranslation()
+  const has80g = useTrustHas80g()
   const confirm = useConfirm()
-  const [tab, setTab] = useState<'80g' | 'tds'>('80g')
+  const [tabPick, setTab] = useState<'80g' | 'tds'>('80g')
+  // A trust without an 80G registration has no 80G certificates to issue:
+  // the page is its TDS register.
+  const tab = has80g ? tabPick : 'tds'
   const [fy, setFy] = useState(currentFY())
   const [generating, setGenerating] = useState(false)
   const [certs, setCerts] = useState<{ id: string; donor: string; mobile?: string; pan_masked?: string; total_eligible_paise: number; receipts: number; certificate_no?: string | null }[]>([])
@@ -225,10 +230,10 @@ export function CertificatesPage() {
 
       {/* Tab bar */}
       <div className="flex gap-2">
-        <button type="button" onClick={() => setTab('80g')}
+        {has80g && <button type="button" onClick={() => setTab('80g')}
           className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === '80g' ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
           {t('certificates.tab80g')}
-        </button>
+        </button>}
         <button type="button" onClick={() => setTab('tds')}
           className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === 'tds' ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
           {t('certificates.tabTds')}

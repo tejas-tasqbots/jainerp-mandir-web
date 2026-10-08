@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/authStore'
 
 export type EntryKind =
   | 'donation' | 'seva_booking' | 'prasad_sale' | 'bhojanshala_sale'
-  | 'room_booking' | 'hall_booking' | 'expense'
+  | 'room_booking' | 'hall_booking' | 'expense' | 'boli'
 
 export interface DeleteTarget {
   kind: EntryKind

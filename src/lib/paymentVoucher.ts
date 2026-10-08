@@ -27,7 +27,18 @@
  */
 import { amountInWords } from './receiptDocument'
 
+/**
+ * What the voucher is for. The layout is the same — number, payee, amount,
+ * mode, UTR, three signatures — but the wording is not:
+ *   expense        — a vendor paid against a bill (the original, migration 060)
+ *   advance        — a salary advance handed to an employee (061)
+ *   deposit_refund — a security deposit given back to a guest (061): the paper
+ *                    the guest signs saying "received back ₹1,000"
+ */
+export type VoucherVariant = 'expense' | 'advance' | 'deposit_refund'
+
 export interface PaymentVoucherData {
+  variant?: VoucherVariant
   voucher_no: string | null
   date: string
   kind: 'full' | 'part' | 'final'
@@ -46,6 +57,13 @@ export interface PaymentVoucherData {
   narration?: string | null
   prepared_by?: string | null
   installments?: { voucher_no: string | null; date: string; amount_paise: number }[]
+  /** advance: how it will be taken back from salary. */
+  recovery?: { mode: string; instalment_paise: number; starts_on?: string | null; recovered_paise?: number; outstanding_paise?: number } | null
+  /** deposit_refund: what was kept towards damage or dues, and why. */
+  kept_paise?: number
+  kept_reason?: string | null
+  /** deposit_refund: the deposit receipt this settles, and the room. */
+  deposit_receipt_no?: string | null
   mandir?: {
     name?: string; address?: string; mobile?: string | null; email?: string | null
     pan?: string | null; gstin?: string | null; show_gstin?: boolean
@@ -97,6 +115,50 @@ const MR: Words = {
 }
 const WORDS: Record<string, Words> = { en: EN, hi: HI, mr: MR }
 
+type VariantWords = Partial<Words> & { kept?: string; recovery?: string; receipt?: string }
+const VARIANT: Record<Exclude<VoucherVariant, 'expense'>, Record<string, VariantWords>> = {
+  advance: {
+    en: {
+      title: 'SALARY ADVANCE VOUCHER', against: 'Purpose', category: 'Designation', billAmount: 'Advance amount',
+      thisPayment: 'Advance paid', receiverLine: 'Received the above amount as an advance against my salary, to be recovered as stated below.',
+      recovery: 'Recovery from salary',
+    },
+    hi: {
+      title: 'वेतन अग्रिम वाउचर', against: 'उद्देश्य', category: 'पद', billAmount: 'अग्रिम राशि',
+      thisPayment: 'अग्रिम भुगतान', receiverLine: 'उपरोक्त राशि वेतन के विरुद्ध अग्रिम के रूप में प्राप्त की, जो नीचे लिखे अनुसार वेतन से काटी जाएगी।',
+      recovery: 'वेतन से वसूली',
+    },
+    mr: {
+      title: 'पगार उचल व्हाउचर', against: 'कारण', category: 'पद', billAmount: 'उचल रक्कम',
+      thisPayment: 'उचल दिली', receiverLine: 'वरील रक्कम पगारापोटी उचल म्हणून मिळाली; ती खाली लिहिल्याप्रमाणे पगारातून कापली जाईल.',
+      recovery: 'पगारातून वसुली',
+    },
+  },
+  deposit_refund: {
+    en: {
+      title: 'SECURITY DEPOSIT REFUND', against: 'Against', billAmount: 'Deposit received', kept: 'Kept towards damage / dues',
+      thisPayment: 'Refunded by this voucher', receiverLine: 'I have received back the above amount of my security deposit and returned the deposit receipt.',
+      receiver: "Guest's signature", receipt: 'Deposit receipt No.',
+    },
+    hi: {
+      title: 'सुरक्षा जमा वापसी', against: 'किस हेतु', billAmount: 'प्राप्त जमा राशि', kept: 'क्षति / बकाया हेतु रखी गई',
+      thisPayment: 'इस वाउचर से लौटाई', receiverLine: 'मैंने अपनी सुरक्षा जमा की उपरोक्त राशि वापस प्राप्त की और जमा रसीद लौटा दी।',
+      receiver: 'अतिथि के हस्ताक्षर', receipt: 'जमा रसीद क्र.',
+    },
+    mr: {
+      title: 'अनामत रक्कम परतावा', against: 'कशासाठी', billAmount: 'मिळालेली अनामत', kept: 'नुकसान / थकबाकीसाठी ठेवली',
+      thisPayment: 'या व्हाउचरने परत', receiverLine: 'माझ्या अनामत रकमेपैकी वरील रक्कम मला परत मिळाली व अनामत पावती परत केली.',
+      receiver: 'पाहुण्याची स्वाक्षरी', receipt: 'अनामत पावती क्र.',
+    },
+  },
+}
+
+const RECOVERY_WORDS: Record<string, Record<string, string>> = {
+  en: { instalment: 'Monthly instalment of ₹ {x}', full_next_salary: 'In full from the next salary', manual: 'Repaid in cash (not from salary)', from: 'from', left: 'still to recover' },
+  hi: { instalment: '₹ {x} मासिक किस्त', full_next_salary: 'अगले वेतन से पूरी', manual: 'नकद वापसी (वेतन से नहीं)', from: 'से', left: 'वसूली शेष' },
+  mr: { instalment: 'दरमहा ₹ {x} हप्ता', full_next_salary: 'पुढील पगारातून पूर्ण', manual: 'रोख परतफेड (पगारातून नाही)', from: 'पासून', left: 'वसुली बाकी' },
+}
+
 const MODES: Record<string, string> = {
   cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', neft: 'NEFT', rtgs: 'RTGS', imps: 'IMPS',
   cheque: 'Cheque', card: 'Card', dd: 'Demand draft', online: 'Online', netbanking: 'Net banking',
@@ -113,7 +175,11 @@ const day = (iso: string | null | undefined): string => {
 }
 
 export function buildPaymentVoucherHtml(v: PaymentVoucherData): string {
-  const L = WORDS[v.mandir?.receipt_language ?? 'en'] ?? EN
+  const lang = v.mandir?.receipt_language ?? 'en'
+  const variant = v.variant ?? 'expense'
+  const V: VariantWords = variant === 'expense' ? {} : (VARIANT[variant][lang] ?? VARIANT[variant].en)
+  const L: Words & VariantWords = { ...(WORDS[lang] ?? EN), ...V }
+  const R = RECOVERY_WORDS[lang] ?? RECOVERY_WORDS.en
   const m = v.mandir ?? {}
   // A voucher is a sheet document: A5 when the trust prints receipts on A5,
   // A4 otherwise (a roll is no place for three signatures).
@@ -121,7 +187,10 @@ export function buildPaymentVoucherHtml(v: PaymentVoucherData): string {
   const logo = m.show_logo !== false ? (m.logo_base64 || m.logo_cdn_url || '') : ''
   const cash = (v.payment_mode ?? '').toLowerCase() === 'cash'
   const stamp = cash && v.amount_paise >= REVENUE_STAMP_FROM_PAISE
-  const kindWord = v.kind === 'part' ? L.part : v.kind === 'final' ? L.final : L.full
+  const kindWord = variant !== 'expense' ? '' : v.kind === 'part' ? L.part : v.kind === 'final' ? L.final : L.full
+  const recoveryText = v.recovery
+    ? `${v.recovery.mode === 'instalment' ? R.instalment.replace('{x}', rs(v.recovery.instalment_paise)) : (R[v.recovery.mode] ?? v.recovery.mode)}${v.recovery.starts_on ? ` · ${esc(R.from)} ${day(v.recovery.starts_on)}` : ''}${v.recovery.outstanding_paise != null && v.recovery.outstanding_paise !== v.amount_paise ? ` · ₹ ${rs(v.recovery.outstanding_paise)} ${R.left}` : ''}`
+    : ''
   const ref = v.reference_no || (v.cheque?.number ? `${L.cheque} ${v.cheque.number}${v.cheque.bank ? `, ${v.cheque.bank}` : ''}${v.cheque.date ? `, ${day(v.cheque.date)}` : ''}` : '')
   const row = (k: string, val: string, strong = false) =>
     `<tr${strong ? ' class="strong"' : ''}><td>${esc(k)}</td><td>${val}</td></tr>`
@@ -183,16 +252,19 @@ export function buildPaymentVoucherHtml(v: PaymentVoucherData): string {
       ${ids ? `<div class="i">${ids}</div>` : ''}
     </div>
   </div>
-  <div class="title"><h1>${esc(L.title)}</h1><span class="kind" data-kind="${esc(v.kind)}">${esc(kindWord)}</span></div>
+  <div class="title"><h1>${esc(L.title)}</h1>${kindWord ? `<span class="kind" data-kind="${esc(v.kind)}">${esc(kindWord)}</span>` : ''}</div>
   <div class="meta"><span>${esc(L.voucherNo)} <b>${esc(v.voucher_no ?? '—')}</b></span><span>${esc(L.date)} <b>${esc(day(v.date))}</b></span></div>
   <table class="grid">
     ${row(L.paidTo, `<b>${esc(v.payee.name ?? '—')}</b>${v.payee.mobile ? ` &nbsp;·&nbsp; ${esc(L.mobile)} ${esc(v.payee.mobile)}` : ''}${v.payee.gstin ? `<br>${esc(L.gstin)} ${esc(v.payee.gstin)}` : ''}${v.payee.pan ? `${v.payee.gstin ? ' &nbsp;·&nbsp; ' : '<br>'}${esc(L.pan)} ${esc(v.payee.pan)}` : ''}`)}
     ${row(L.against, `${esc(v.against.description ?? '—')}${v.against.category ? ` <span style="color:#444">(${esc(L.category)}: ${esc(v.against.category)})</span>` : ''}${v.against.bill_number ? `<br>${esc(L.billNo)} ${esc(v.against.bill_number)}` : ''}${v.against.bill_date ? ` &nbsp;·&nbsp; ${esc(L.billDate)} ${esc(day(v.against.bill_date))}` : ''}`)}
+    ${v.deposit_receipt_no && L.receipt ? row(L.receipt, esc(v.deposit_receipt_no)) : ''}
     ${row(L.billAmount, `₹ ${rs(v.bill_paise)}`)}
+    ${variant === 'deposit_refund' && L.kept ? row(L.kept, `₹ ${rs(v.kept_paise ?? 0)}${v.kept_reason ? ` <span style="color:#444">(${esc(v.kept_reason)})</span>` : ''}`) : ''}
     ${v.tds_paise ? row(`${L.tds}${v.tds_section ? ` (${v.tds_section})` : ''}`, `₹ ${rs(v.tds_paise)}`) : ''}
     ${v.paid_before_paise ? row(L.paidBefore, `₹ ${rs(v.paid_before_paise)}`) : ''}
     ${row(L.thisPayment, `₹ ${rs(v.amount_paise)}`, true)}
-    ${row(L.balance, v.balance_after_paise > 0 ? `₹ ${rs(v.balance_after_paise)}` : `₹ 0.00 &nbsp;(${esc(L.settled)})`)}
+    ${variant === 'expense' ? row(L.balance, v.balance_after_paise > 0 ? `₹ ${rs(v.balance_after_paise)}` : `₹ 0.00 &nbsp;(${esc(L.settled)})`) : ''}
+    ${recoveryText && L.recovery ? row(L.recovery, recoveryText) : ''}
     ${row(L.mode, `${esc(MODES[(v.payment_mode ?? '').toLowerCase()] ?? v.payment_mode ?? '—')}${v.account_name ? ` &nbsp;·&nbsp; ${esc(L.account)}: ${esc(v.account_name)}` : ''}`)}
     ${ref ? row(L.reference, esc(ref)) : ''}
   </table>
