@@ -1140,7 +1140,7 @@ export function RoomsList() {
             {depositHeld(depositModal) - (forfeitAmt ? parsePaise(forfeitAmt) : 0) > 0 && (
               <div className="mb-4">
                 <p className="form-label">{t('dharamshala.refundHow')}</p>
-                <PaymentFields idPrefix="deposit-refund" value={refundPayment} onChange={setRefundPayment} />
+                <PaymentFields idPrefix="deposit-refund" value={refundPayment} onChange={setRefundPayment} direction="out" />
               </div>
             )}
             <p className="text-xs text-slate-500 mb-3">{t('dharamshala.refundVoucherHint')}</p>

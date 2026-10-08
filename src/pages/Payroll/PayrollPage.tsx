@@ -583,7 +583,7 @@ export function PayrollPage() {
                     </div>
                   )}
                 </div>
-                <PaymentFields idPrefix="adv-pay" value={advPayment} onChange={setAdvPayment} />
+                <PaymentFields idPrefix="adv-pay" value={advPayment} onChange={setAdvPayment} direction="out" />
                 <div>
                   <label className="form-label" htmlFor="adv-reason">{t('payroll.reason')}</label>
                   <input
@@ -690,7 +690,7 @@ export function PayrollPage() {
                 <div className="rounded border border-slate-200 p-2"><p className="text-xs text-slate-500">{t('payroll.advanceRecovered')}</p><p className="font-semibold text-red-600">−₹{fmtPaise(payFor.advance_recovered_paise)}</p></div>
                 <div className="rounded border border-emerald-300 bg-emerald-50 p-2"><p className="text-xs text-slate-500">{t('payroll.netPayable')}</p><p className="font-bold text-emerald-800" data-testid="pay-net">₹{fmtPaise(payFor.net_paise)}</p></div>
               </div>
-              <PaymentFields idPrefix="sal-pay" value={payment} onChange={setPayment} />
+              <PaymentFields idPrefix="sal-pay" value={payment} onChange={setPayment} direction="out" />
               <div className="max-w-[12rem]">
                 <label className="form-label" htmlFor="sal-paid-on">{t('payroll.paidOn')}</label>
                 <input id="sal-paid-on" type="date" className="form-input" value={paidOn} onChange={e => setPaidOn(e.target.value)} />

@@ -139,6 +139,7 @@ export interface Boli {
   /** The boli type from the trust's list (tenant migration 061); null on older bolis. */
   category_id?: string | null
   category_name?: string | null
+  category_name_hindi?: string | null
   fy?: string
   notes?: string
   status: BoliStatus

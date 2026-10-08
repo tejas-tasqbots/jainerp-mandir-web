@@ -33,7 +33,7 @@ interface ListMeta {
 }
 
 export function BoliList() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -96,7 +96,7 @@ export function BoliList() {
       filter: categories.length
         ? { kind: 'enum', param: 'category_id', options: categories.map(c => ({ value: c.id, label: c.name })) }
         : undefined,
-      render: b => <span className="text-xs font-medium text-slate-700">{b.category_name || '—'}</span>,
+      render: b => <span className="text-xs font-medium text-slate-700">{(i18n.language !== 'en' && b.category_name_hindi) || b.category_name || '—'}</span>,
     },
     {
       key: 'description', label: t('pledges.description'),
@@ -187,7 +187,7 @@ export function BoliList() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, intimating, categories, canDelete])
+  ], [t, i18n.language, intimating, categories, canDelete])
 
   function buildParams(limit: number, forPage = 1): URLSearchParams {
     const params = new URLSearchParams({ page: String(forPage), limit: String(limit) })
@@ -414,7 +414,7 @@ export function BoliList() {
               <div className="rounded border border-amber-300 bg-amber-50 p-2"><p className="text-xs text-slate-500">{t('pledges.outstanding')}</p><p className="font-bold text-amber-800" data-testid="boli-outstanding">₹{fmtPaise(payModal.outstanding)}</p></div>
             </div>
             <form onSubmit={recordPayment} className="space-y-4">
-              <PaymentSplitInput rows={payRows} onChange={setPayRows} totalPaise={payModal.outstanding} />
+              <PaymentSplitInput rows={payRows} onChange={r => { setPayRows(r); setPayError('') }} totalPaise={payModal.outstanding} />
               <p className="text-xs text-slate-500">{t('pledges.balanceAfter', { amount: fmtPaise(Math.max(0, payModal.outstanding - sumPaise(payRows))) })}</p>
               {payError && <p className="text-sm text-red-600" data-testid="boli-pay-error">{payError}</p>}
               <div className="flex gap-3 justify-end">

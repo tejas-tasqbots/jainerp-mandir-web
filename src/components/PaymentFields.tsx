@@ -26,11 +26,13 @@ export function needsReference(modes: { code: string; requires_reference?: boole
   return modes.find(m => m.code === code)?.requires_reference ?? code !== 'cash'
 }
 
-export function PaymentFields({ value, onChange, idPrefix, disabled }: {
+export function PaymentFields({ value, onChange, idPrefix, disabled, direction = 'in' }: {
   value: PaymentFieldsValue
   onChange: (v: PaymentFieldsValue) => void
   idPrefix: string
   disabled?: boolean
+  /** 'out' for money the trust pays (salary, advance, refund): the account is where it is paid FROM. */
+  direction?: 'in' | 'out'
 }) {
   const { t } = useTranslation()
   const modes = usePaymentModes()
@@ -56,7 +58,7 @@ export function PaymentFields({ value, onChange, idPrefix, disabled }: {
         </select>
       </div>
       <div>
-        <label className="form-label" htmlFor={`${idPrefix}-acct`}>{t('ui.splitColAccount')}</label>
+        <label className="form-label" htmlFor={`${idPrefix}-acct`}>{direction === 'out' ? t('payroll.paidFrom') : t('ui.splitColAccount')}</label>
         <select
           id={`${idPrefix}-acct`} className="form-select" value={value.payment_account_id} disabled={disabled}
           onChange={e => onChange({ ...value, payment_account_id: e.target.value })}

@@ -3809,7 +3809,7 @@
     "effectExpense": "The expense comes out of Cash & Bank, the Day Book and every report.",
     "effectStock": "The items sold go back into prasad stock.",
     "effectRoom": "The room becomes free again for these dates.",
-    "effectHall": "The hall becomes free again for this date.",
+    "effectHall": "The hall, and any lawn or rooms held with it, become free again for these dates.",
     "effectBin": "It moves to the Recycle Bin — a temple admin can restore it later, with the same receipt number.",
     "effectLog": "The Activity Log records who deleted it, when, and why.",
     "effectFy": "Entries in a closed financial year cannot be deleted until that year is reopened.",
@@ -3826,7 +3826,8 @@
     "confirm": "Delete",
     "deleting": "Deleting…",
     "deleted": "{{kind}} deleted — it is in the Recycle Bin",
-    "failed": "Could not delete this entry"
+    "failed": "Could not delete this entry",
+    "effectBoli": "A boli holds no money itself — its payments are donation receipts. It can be deleted only after those receipts are deleted; the pledge then leaves the Boli register and every pending total."
   },
   "audit": {
     "entity": {

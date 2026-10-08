@@ -123,7 +123,10 @@ export function DeleteEntryProvider({ children }: { children: ReactNode }) {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{t('entries.willHappen')}</p>
               <ul className="space-y-1.5 text-sm text-slate-600">
                 <Effect icon={<IndianRupee size={14} />}>
-                  {hasMoney ? t('entries.effectMoney') : t('entries.effectExpense')}
+                  {/* A boli is a promise: its money is on its payment receipts,
+                      which must be deleted first (tenant migration 061). */}
+                  {target.kind === 'boli' ? t('entries.effectBoli')
+                    : hasMoney ? t('entries.effectMoney') : t('entries.effectExpense')}
                 </Effect>
                 {target.kind === 'prasad_sale' && <Effect icon={<Package size={14} />}>{t('entries.effectStock')}</Effect>}
                 {(target.kind === 'room_booking' || target.kind === 'hall_booking') && (
