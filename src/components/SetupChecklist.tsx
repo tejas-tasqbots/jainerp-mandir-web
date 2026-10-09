@@ -251,13 +251,18 @@ export function SetupChecklist({ onDismissed }: { onDismissed?: () => void }) {
                         {/* Only on the items the API will accept. A trust that
                             could tick "Trust PAN — not applicable" would be
                             handed a 100% meter and invalid 80G receipts. */}
-                        {it.optional && (
+                        {/* Not on a row that is already done - "we don't have
+                            a logo" beside the logo they uploaded is noise. The
+                            wording is the item's own ("Not registered under
+                            80G") where the locale has one. */}
+                        {it.optional && !it.done && (
                           <button
                             onClick={() => void toggleNotApplicable(it)}
                             className="mt-2 shrink-0 text-[11px] text-slate-400 hover:text-navy-700 whitespace-nowrap"
-                            title={it.not_applicable ? t('setup.weDoHaveIt') : t('setup.weDoNotHaveIt')}
                           >
-                            {it.not_applicable ? t('setup.weDoHaveIt') : t('setup.weDoNotHaveIt')}
+                            {it.not_applicable
+                              ? t('setup.weDoHaveIt')
+                              : t(`setup.items.${it.key}.na`, { defaultValue: t('setup.weDoNotHaveIt') })}
                           </button>
                         )}
                       </li>

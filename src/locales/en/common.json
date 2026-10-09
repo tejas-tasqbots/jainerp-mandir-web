@@ -2967,7 +2967,8 @@
       },
       "area": {
         "label": "Locality / area",
-        "why": "What devotees search accommodation by — “Palitana”, not just the city."
+        "why": "What devotees search accommodation by — “Palitana”, not just the city.",
+        "na": "No separate locality - the city is enough"
       },
       "bank_account_name": {
         "label": "Account holder name",
@@ -2983,19 +2984,21 @@
       },
       "cattle": {
         "label": "Add your cattle records",
-        "why": "The gaushala register starts empty."
+        "why": "The gaushala register starts empty.",
+        "na": "No cattle on the books"
       },
       "comms_templates": {
         "label": "Review your message templates",
         "why": "Check what goes out in your name before a donor reads it."
       },
       "contact": {
-        "label": "Phone and email",
+        "label": "Phone or email",
         "why": "How a donor reaches you about their receipt."
       },
       "darshan_timings": {
         "label": "Darshan timings",
-        "why": "Stops the phone calls asking when you open."
+        "why": "Stops the phone calls asking when you open.",
+        "na": "No darshan here"
       },
       "expense_heads": {
         "label": "Expense heads",
@@ -3003,7 +3006,8 @@
       },
       "gallery": {
         "label": "Photos of your temple",
-        "why": "A page with no photographs gets scrolled past."
+        "why": "A page with no photographs gets scrolled past.",
+        "na": "No photos"
       },
       "gstin": {
         "label": "GSTIN",
@@ -3011,19 +3015,23 @@
       },
       "links": {
         "label": "Website or social links",
-        "why": "Where a devotee goes to see more of your work."
+        "why": "Where a devotee goes to see more of your work.",
+        "na": "We have no website"
       },
       "logo": {
         "label": "Trust logo",
-        "why": "Makes a receipt recognisably yours. Optional but recommended."
+        "why": "Makes a receipt recognisably yours. Optional but recommended.",
+        "na": "We do not have a logo"
       },
       "main_deity": {
         "label": "Mulnayak / main deity",
-        "why": "The first thing a Jain devotee looks for when choosing a temple to visit."
+        "why": "The first thing a Jain devotee looks for when choosing a temple to visit.",
+        "na": "No main deity - not a temple"
       },
       "map_pin": {
         "label": "Map pin",
-        "why": "Puts a Directions button on your temple page in the devotee app."
+        "why": "Puts a Directions button on your temple page in the devotee app.",
+        "na": "No map pin needed"
       },
       "my_account": {
         "label": "Your own name on your account",
@@ -3039,11 +3047,13 @@
       },
       "opening_balances": {
         "label": "Opening balances on your accounts",
-        "why": "Without them your cash book starts at zero and never agrees with the tin."
+        "why": "Without them your cash book starts at zero and never agrees with the tin.",
+        "na": "We started from zero"
       },
       "pan": {
         "label": "Trust PAN",
-        "why": "Printed on 80G receipts and required for Form 10BD."
+        "why": "Printed on 80G receipts and required for Form 10BD.",
+        "na": "The trust has no PAN"
       },
       "payment_details": {
         "label": "UPI or bank details for donors",
@@ -3059,31 +3069,38 @@
       },
       "prasad_items": {
         "label": "Add prasad items and prices",
-        "why": "The counter cannot sell an empty catalogue."
+        "why": "The counter cannot sell an empty catalogue.",
+        "na": "We do not sell prasad"
       },
       "receipt_footer": {
         "label": "Receipt footer note",
-        "why": "Your thank-you line, or the declaration your auditor wants on every receipt."
+        "why": "Your thank-you line, or the declaration your auditor wants on every receipt.",
+        "na": "No footer note"
       },
       "reg_12a": {
         "label": "12A / 12AB registration",
-        "why": "Establishes the trust's exempt status."
+        "why": "Establishes the trust's exempt status.",
+        "na": "Not registered under 12A / 12AB"
       },
       "reg_80g": {
         "label": "80G registration number",
-        "why": "The number that lets a donor claim the deduction."
+        "why": "The number that lets a donor claim the deduction.",
+        "na": "Not registered under 80G"
       },
       "rooms": {
         "label": "Add rooms with tariffs",
-        "why": "No booking can be taken until at least one room exists."
+        "why": "No booking can be taken until at least one room exists.",
+        "na": "No rooms - hall only"
       },
       "seva_types": {
         "label": "Set up your seva list and rates",
-        "why": "Replace the samples with the sevas this trust actually offers."
+        "why": "Replace the samples with the sevas this trust actually offers.",
+        "na": "We offer no sevas"
       },
       "staff": {
         "label": "Invite at least one more user",
-        "why": "So the trust does not depend on a single person's phone."
+        "why": "So the trust does not depend on a single person's phone.",
+        "na": "It is only me"
       },
       "template": {
         "label": "Receipt template chosen",
@@ -3096,6 +3113,12 @@
       "upi_qr": {
         "label": "UPI QR code",
         "why": "A devotee scans instead of typing your UPI id — fewer wrong transfers."
+      },
+      "upi_id": {
+        "na": "We do not take UPI"
+      },
+      "donation_account": {
+        "na": "No bank transfers through the devotee app"
       }
     },
     "showAll": "Show everything",
@@ -3209,7 +3232,8 @@
       "moreHint": "Add more trustees and invite staff in Settings → Trustees and Users.",
       "title": "Your trustees"
     },
-    "title": "Set up your Mandir"
+    "title": "Set up your Mandir",
+    "naHint": "Leave out anything you do not have - or tick \"We don’t have …\" under it, and it counts as complete."
   },
   "seva": {
     "allDates": "All dates",

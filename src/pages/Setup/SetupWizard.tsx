@@ -165,6 +165,56 @@ export function SetupWizard() {
   const set = (patch: Partial<Form>) => setForm(f => ({ ...f, ...patch }))
   const stepIndex = STEPS.findIndex(s => s.key === step)
 
+  /**
+   * "We do not have one" - answered on the field, not only on the dashboard.
+   *
+   * A trust with no logo, no 80G and no website used to reach the end of this
+   * wizard at 71% with those three still listed as "to do", and nothing it
+   * could do would ever clear them. Not having a thing is an answer, and the
+   * checklist already stores it (tenant migration 048); the wizard just never
+   * asked. The API decides which items may be dismissed (`optional`), so a
+   * field without that flag never shows the tick-box - the PAN of an 80G
+   * trust cannot be ticked away.
+   */
+  const itemByKey = useMemo(() => {
+    const m: Record<string, SetupProgress['groups'][number]['items'][number]> = {}
+    for (const g of setup?.groups ?? []) for (const it of g.items) m[it.key] = it
+    return m
+  }, [setup])
+  const [naBusy, setNaBusy] = useState<string | null>(null)
+  async function markNA(key: string, value: boolean) {
+    setNaBusy(key); setError('')
+    try {
+      const { data } = await api.patch('/tenants/me/setup/not-applicable', { key, not_applicable: value })
+      setSetup((data?.data ?? data) as SetupProgress)
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message ?? t('setupWizard.saveFailed'))
+    } finally {
+      setNaBusy(null)
+    }
+  }
+  /** Said not to apply, and not since filled in. */
+  const isNA = (key: string) => !!itemByKey[key]?.not_applicable && !itemByKey[key]?.done
+  /**
+   * The tick-box, offered only while the field is empty: a trust that has typed
+   * its 80G number plainly has one, and offering "we don't" beside it would be
+   * an invitation to contradict itself.
+   */
+  const naToggle = (key: string, empty: boolean) => {
+    const it = itemByKey[key]
+    if (!it?.optional || it.done) return null
+    if (!empty && !it.not_applicable) return null
+    return (
+      <label className="mt-1.5 inline-flex items-center gap-2 text-xs text-slate-500 cursor-pointer select-none">
+        <input type="checkbox" className="w-3.5 h-3.5 accent-navy-900"
+          checked={!!it.not_applicable} disabled={naBusy === key}
+          onChange={e => void markNA(key, e.target.checked)} />
+        {t(`setup.items.${key}.na`, { defaultValue: t('setup.weDoNotHaveIt') })}
+        {naBusy === key && <Loader2 size={11} className="animate-spin" />}
+      </label>
+    )
+  }
+
   // What was saved when the wizard opened. The tax numbers are judged only
   // where they CHANGE — the API's rule — so a verified value the trust cannot
   // edit never blocks Next.
@@ -212,6 +262,12 @@ export function SetupWizard() {
         main_deity: String(pub.main_deity ?? ''),
         darshan_timings: String(pub.darshan_timings ?? ''),
       } as Form
+      // Settings -> Receipts writes `receipt_template`, so read it first; with
+      // neither set, show the design that prints anyway (Anumodana, the
+      // default since 2026-09-24) as chosen. A row of six unselected buttons
+      // read as a question with no answer, and Next then saved nothing.
+      onFile.donation_receipt_template =
+        String(p.receipt_template ?? '').trim() || onFile.donation_receipt_template || 'anumodana'
       setSaved(onFile)
       setForm(onFile)
       setTempleType((pub.temple_type as string) ?? null)
@@ -447,7 +503,7 @@ export function SetupWizard() {
 
   const percent = setup?.percent ?? 0
   const remaining = useMemo(
-    () => (setup?.groups ?? []).flatMap(g => g.items.filter(i => !i.done)).slice(0, 6),
+    () => (setup?.groups ?? []).flatMap(g => g.items.filter(i => !i.done && !i.not_applicable)).slice(0, 8),
     [setup],
   )
 
@@ -510,6 +566,10 @@ export function SetupWizard() {
           </div>
         )}
 
+        {step !== 'done' && (
+          <p className="mb-3 text-xs text-slate-500">{t('setupWizard.naHint')}</p>
+        )}
+
         <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
           {step === 'identity' && (
             <Section title={t('setupWizard.identity.title')} hint={t('setupWizard.identity.hint')}>
@@ -522,8 +582,10 @@ export function SetupWizard() {
               <Row>
                 <Field label={t('setup.items.pincode.label')} value={form.pincode} inputMode="numeric" maxLength={6}
                   onChange={v => set({ pincode: v.replace(/\D/g, '') })} />
-                <Field label={t('setup.items.area.label')} value={form.area} onChange={v => set({ area: v })}
-                  hint={t('setup.items.area.why')} />
+                <Answerable off={isNA('area')} toggle={naToggle('area', !form.area.trim())}>
+                  <Field label={t('setup.items.area.label')} value={form.area} onChange={v => set({ area: v })}
+                    hint={t('setup.items.area.why')} />
+                </Answerable>
               </Row>
               <Row>
                 <Field label={t('setupWizard.f.mobile')} value={form.mobile} inputMode="tel"
@@ -531,21 +593,32 @@ export function SetupWizard() {
                 <Field label={t('setupWizard.f.email')} value={form.email} type="email"
                   onChange={v => set({ email: v })} />
               </Row>
-              <Field label={t('setupWizard.f.website')} value={form.website} onChange={v => set({ website: v })} />
+              <Answerable off={isNA('links')} toggle={naToggle('links', !form.website.trim())}>
+                <Field label={t('setupWizard.f.website')} value={form.website} onChange={v => set({ website: v })} />
+              </Answerable>
             </Section>
           )}
 
           {step === 'tax' && (
             <Section title={t('setupWizard.tax.title')} hint={t('setupWizard.tax.hint')}>
-              <Field label={t('setup.items.pan.label')} value={form.pan} maxLength={10} uppercase
-                placeholder={STATUTORY_EXAMPLE.pan} error={taxError('pan')}
-                onChange={v => set({ pan: v.toUpperCase() })} hint={t('setup.items.pan.why')} />
-              <Field label={t('setup.items.reg_80g.label')} value={form.reg_80g_number} maxLength={20} uppercase
-                placeholder={STATUTORY_EXAMPLE.reg_80g_number} error={taxError('reg_80g_number')}
-                onChange={v => set({ reg_80g_number: v.toUpperCase() })} hint={t('setup.items.reg_80g.why')} />
-              <Field label={t('setup.items.reg_12a.label')} value={form.reg_12ab_number} maxLength={20} uppercase
-                placeholder={STATUTORY_EXAMPLE.reg_12ab_number} error={taxError('reg_12ab_number')}
-                onChange={v => set({ reg_12ab_number: v.toUpperCase() })} hint={t('setup.items.reg_12a.why')} />
+              {/* "No PAN" only while there is no 80G number - typing one makes
+                  the PAN required again, here as on the API. */}
+              <Answerable off={isNA('pan') && !form.reg_80g_number.trim()}
+                toggle={form.reg_80g_number.trim() ? null : naToggle('pan', !form.pan.trim())}>
+                <Field label={t('setup.items.pan.label')} value={form.pan} maxLength={10} uppercase
+                  placeholder={STATUTORY_EXAMPLE.pan} error={taxError('pan')}
+                  onChange={v => set({ pan: v.toUpperCase() })} hint={t('setup.items.pan.why')} />
+              </Answerable>
+              <Answerable off={isNA('reg_80g')} toggle={naToggle('reg_80g', !form.reg_80g_number.trim())}>
+                <Field label={t('setup.items.reg_80g.label')} value={form.reg_80g_number} maxLength={20} uppercase
+                  placeholder={STATUTORY_EXAMPLE.reg_80g_number} error={taxError('reg_80g_number')}
+                  onChange={v => set({ reg_80g_number: v.toUpperCase() })} hint={t('setup.items.reg_80g.why')} />
+              </Answerable>
+              <Answerable off={isNA('reg_12a')} toggle={naToggle('reg_12a', !form.reg_12ab_number.trim())}>
+                <Field label={t('setup.items.reg_12a.label')} value={form.reg_12ab_number} maxLength={20} uppercase
+                  placeholder={STATUTORY_EXAMPLE.reg_12ab_number} error={taxError('reg_12ab_number')}
+                  onChange={v => set({ reg_12ab_number: v.toUpperCase() })} hint={t('setup.items.reg_12a.why')} />
+              </Answerable>
               <label className="flex items-center gap-2 text-sm text-slate-700 pt-1">
                 <input type="checkbox" checked={form.is_gst_registered}
                   onChange={e => set({ is_gst_registered: e.target.checked })} />
@@ -567,6 +640,8 @@ export function SetupWizard() {
                   The devotee app now reads the nominated account, so the second
                   copy was collected and discarded: worse than never asking,
                   because the trust believed it had told us. */}
+              <Answerable off={isNA('donation_account')}
+                toggle={naToggle('donation_account', !pickedAccount && !account.account_no.trim())}>
               {needsAccount ? (
                 <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <p className="text-sm font-semibold text-slate-700">
@@ -616,10 +691,13 @@ export function SetupWizard() {
                   </p>
                 </div>
               )}
+              </Answerable>
 
               <div className="pt-2">
-                <Field label={t('setupWizard.f.upiId')} value={form.upi_id}
-                  onChange={v => set({ upi_id: v })} hint={t('setupWizard.money.upiHint')} />
+                <Answerable off={isNA('upi_id')} toggle={naToggle('upi_id', !form.upi_id.trim())}>
+                  <Field label={t('setupWizard.f.upiId')} value={form.upi_id}
+                    onChange={v => set({ upi_id: v })} hint={t('setupWizard.money.upiHint')} />
+                </Answerable>
               </div>
             </Section>
           )}
@@ -668,13 +746,17 @@ export function SetupWizard() {
                 </div>
                 <p className="mt-1.5 text-xs text-slate-400">{t('setupWizard.receipts.templateHint')}</p>
               </div>
-              <Field label={t('setup.items.receipt_footer.label')} value={form.custom_receipt_footer}
-                onChange={v => set({ custom_receipt_footer: v })} hint={t('setup.items.receipt_footer.why')} multiline />
+              <Answerable off={isNA('receipt_footer')}
+                toggle={naToggle('receipt_footer', !form.custom_receipt_footer.trim())}>
+                <Field label={t('setup.items.receipt_footer.label')} value={form.custom_receipt_footer}
+                  onChange={v => set({ custom_receipt_footer: v })} hint={t('setup.items.receipt_footer.why')} multiline />
+              </Answerable>
 
               {/* LOGO. The step used to say "upload your logo in Settings - it
                   needs a file, so it is not part of this flow". It can be:
                   compressImage() turns the file into a base64 data URI, which
                   is what Receipt Settings already stores in logo_base64. */}
+              <Answerable off={isNA('logo')} toggle={naToggle('logo', !form.logo_base64)}>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1.5">{t('settings.receipts.logo')}</label>
                 <div className="flex items-center gap-3">
@@ -701,6 +783,7 @@ export function SetupWizard() {
                     if (logoInputRef.current) logoInputRef.current.value = ''
                   }} />
               </div>
+              </Answerable>
 
               <Row>
                 <div>
@@ -751,18 +834,22 @@ export function SetupWizard() {
               <Field label={t('setup.items.about.label')} value={form.about} onChange={v => set({ about: v })}
                 hint={t('setup.items.about.why')} multiline />
               <Row>
-                <MulnayakPicker
-                  label={t('setup.items.main_deity.label')}
-                  value={form.main_deity}
-                  templeType={templeType}
-                  onChange={v => set({ main_deity: v })}
-                />
-                <DarshanTimings
-                  label={t('setup.items.darshan_timings.label')}
-                  value={form.darshan_timings}
-                  onChange={v => set({ darshan_timings: v })}
-                  hint={t('setup.items.darshan_timings.why')}
-                />
+                <Answerable off={isNA('main_deity')} toggle={naToggle('main_deity', !form.main_deity.trim())}>
+                  <MulnayakPicker
+                    label={t('setup.items.main_deity.label')}
+                    value={form.main_deity}
+                    templeType={templeType}
+                    onChange={v => set({ main_deity: v })}
+                  />
+                </Answerable>
+                <Answerable off={isNA('darshan_timings')} toggle={naToggle('darshan_timings', !form.darshan_timings.trim())}>
+                  <DarshanTimings
+                    label={t('setup.items.darshan_timings.label')}
+                    value={form.darshan_timings}
+                    onChange={v => set({ darshan_timings: v })}
+                    hint={t('setup.items.darshan_timings.why')}
+                  />
+                </Answerable>
               </Row>
             </Section>
           )}
@@ -850,6 +937,13 @@ export function SetupWizard() {
                             <ChevronRight size={15}
                               className={`text-slate-300 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
                           </button>
+                          {item.optional && (
+                            <button type="button" disabled={naBusy === item.key}
+                              onClick={() => void markNA(item.key, true)}
+                              className="ml-4 mb-2 -mt-1 text-xs text-slate-400 hover:text-navy-700 disabled:opacity-50">
+                              {t(`setup.items.${item.key}.na`, { defaultValue: t('setup.weDoNotHaveIt') })}
+                            </button>
+                          )}
                           {open && (
                             <QuickAdd itemKey={item.key} onDone={async () => {
                               // Re-read progress so the item disappears and the
@@ -903,6 +997,21 @@ function Section({ title, hint, children }: { title: string; hint: string; child
         <p className="text-sm text-slate-500 mt-0.5">{hint}</p>
       </div>
       {children}
+    </div>
+  )
+}
+
+/**
+ * A field the trust may answer with "we do not have one". While that answer
+ * stands the field is greyed and locked - typing into a field you have just
+ * said does not apply is a contradiction the screen should not allow. The
+ * tick-box sits outside the fieldset so it stays usable to undo it.
+ */
+function Answerable({ off, toggle, children }: { off: boolean; toggle: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <fieldset disabled={off} className={`min-w-0 ${off ? 'opacity-50' : ''}`}>{children}</fieldset>
+      {toggle}
     </div>
   )
 }
