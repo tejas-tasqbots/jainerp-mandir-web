@@ -6,7 +6,7 @@ import { api, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
 import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import { usePaymentModes } from '../../../lib/useDropdownOptions'
-import { recipientGstin } from '../../../lib/statutoryIds'
+import { isWellFormedGstin, recipientGstin } from '../../../lib/statutoryIds'
 import type { Hall, DevoteeSelection } from '../../../types'
 
 /**
@@ -73,7 +73,9 @@ export function AddHallBooking() {
     api.get('/rooms', { params: { limit: '500' } }).then(r => setAllRooms(r.data.data || [])).catch(() => {})
     api.get('/tenants/me').then(r => {
       const p = r.data?.data ?? r.data ?? {}
-      setGstRegistered(Boolean(p.is_gst_registered) && Boolean(String(p.gstin ?? '').trim()))
+      // Same test the API charges GST by (a well-formed GSTIN), so the form
+      // never hides the guest GSTIN on a bill that will carry tax, or the reverse.
+      setGstRegistered(isWellFormedGstin(p.gstin))
     }).catch(() => {})
   }, [])
 

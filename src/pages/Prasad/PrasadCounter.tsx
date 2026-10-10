@@ -10,6 +10,9 @@ import { useToast } from '../../components/kit/Toast'
 
 interface CartItem { item: PrasadItem; qty: number }
 
+/** The rate the sale will charge - the API's, so a non-GST trust previews no tax. */
+const rateOf = (i: PrasadItem) => Number(i.effective_gst_rate ?? i.gst_rate ?? 0)
+
 export function PrasadCounter() {
   const toast = useToast()
   const { t } = useTranslation()
@@ -42,7 +45,7 @@ export function PrasadCounter() {
   }
 
   const subtotal = cart.reduce((s, ci) => s + ci.item.price_paise * ci.qty, 0)
-  const gst = cart.reduce((s, ci) => s + Math.round(ci.item.price_paise * ci.qty * ci.item.gst_rate / 100), 0)
+  const gst = cart.reduce((s, ci) => s + Math.round(ci.item.price_paise * ci.qty * rateOf(ci.item) / 100), 0)
   const total = subtotal + gst
 
   async function checkout() {
@@ -160,8 +163,8 @@ export function PrasadCounter() {
                   >
                     <p className="font-semibold text-slate-800 text-sm group-hover:text-brand-red">{item.name}</p>
                     <p className="text-lg font-bold text-navy-900 mt-1">₹{fmtPaise(item.price_paise)}</p>
-                    {item.gst_rate > 0 && (
-                      <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: item.gst_rate })}</p>
+                    {rateOf(item) > 0 && (
+                      <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: rateOf(item) })}</p>
                     )}
                     {outOfStock ? (
                       <p className="text-xs font-medium text-brand-red mt-1">{t('prasad.outOfStock')}</p>

@@ -255,6 +255,10 @@ export interface RoomBooking {
   refunded_paise?: number
   /** Rooms booked together for one guest share this (tenant migration 057). */
   group_id?: string | null
+  /** A room of a hall package: its stay is billed on this hall booking (tenant migration 063). */
+  hall_booking_id?: string | null
+  hall_invoice_no?: string | null
+  hall_event_name?: string | null
   /** The live sum of the stay's extra charges, before tax (tenant migration 057). */
   charges_paise?: number
   /** Remarks entered at booking, check-in or checkout. */
@@ -341,6 +345,8 @@ export interface PrasadItem {
   unit?: string
   price_paise: number
   gst_rate: number
+  /** What a sale charges: 0 for a trust without a GSTIN, else the Prasad master or gst_rate (API). */
+  effective_gst_rate?: number
   stock_qty: number
   low_stock_threshold?: number
   is_available: boolean

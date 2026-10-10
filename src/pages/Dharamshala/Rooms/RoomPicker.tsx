@@ -39,6 +39,9 @@ export type PickerRoom = Omit<Room, 'floor'> & {
   occupied?: boolean
   /** Free for the window, but sold from this date. */
   next_booking_from?: string | null
+  /** Who holds it: the guest, or a hall package's event (rooms/availability). */
+  held_by_name?: string | null
+  held_event?: string | null
 }
 
 type State = 'free' | 'occupied' | 'held' | 'booked'
@@ -115,9 +118,12 @@ export function RoomPicker({ rooms, selected, onChange, persons, loading }: {
   const label = (r: PickerRoom) => (buildingOf(r) ? `${buildingOf(r)} · ${r.room_number}` : r.room_number)
   const reason = (r: PickerRoom) => {
     const s = stateOf(r)
-    if (s === 'occupied') return t('dharamshala.state.occupied')
+    // Who has it, when known: "Booked · Wedding (hall)" says why the room is
+    // gone; "Booked" alone sent the clerk to the register to find out.
+    const who = r.held_event ? t('dharamshala.heldByHall', { event: r.held_event }) : r.held_by_name
+    if (s === 'occupied') return [t('dharamshala.state.occupied'), who].filter(Boolean).join(' · ')
     if (s === 'held') return t(`housekeeping.status.${r.housekeeping_status}`)
-    if (s === 'booked') return t('dharamshala.state.booked')
+    if (s === 'booked') return [t('dharamshala.state.booked'), who].filter(Boolean).join(' · ')
     return ''
   }
   function groupLabel(g: RoomGroup<PickerRoom>): string {

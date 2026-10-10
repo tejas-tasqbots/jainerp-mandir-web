@@ -199,8 +199,9 @@ export function PrasadItems() {
                   </td>
                   <td className="text-xs text-slate-500">{item.unit || 'piece'}</td>
                   <td>₹{fmtPaise(item.price_paise)}</td>
-                  <td>{item.gst_rate}%</td>
-                  <td className="font-semibold">₹{fmtPaise(Math.round(item.price_paise * (1 + item.gst_rate / 100)))}</td>
+                  {/* What a sale charges (0 without a GSTIN), not the stored rate. */}
+                  <td>{item.effective_gst_rate ?? item.gst_rate}%</td>
+                  <td className="font-semibold">₹{fmtPaise(Math.round(item.price_paise * (1 + (item.effective_gst_rate ?? item.gst_rate) / 100)))}</td>
                   <td className={(item.stock_qty ?? 0) <= (item.low_stock_threshold ?? 10) ? 'text-red-600 font-semibold' : ''}>
                     {item.stock_qty ?? 0}
                   </td>

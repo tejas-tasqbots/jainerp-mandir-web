@@ -7,7 +7,7 @@ import { printDepositReceipt } from '../../../lib/printVoucher'
 import { Camera, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise, todayIst, istDayAfter } from '../../../lib/api'
 import { DevoteePicker } from '../../../components/DevoteePicker/DevoteePicker'
-import { recipientGstin } from '../../../lib/statutoryIds'
+import { isWellFormedGstin, recipientGstin } from '../../../lib/statutoryIds'
 import { compressIdImage } from '../../../lib/idImage'
 import type { Room, DevoteeSelection } from '../../../types'
 import { RoomPicker, type PickerRoom } from './RoomPicker'
@@ -100,10 +100,9 @@ export function AddRoomCheckin() {
   useEffect(() => {
     api.get('/tenants/me').then(r => {
       const p = r.data?.data ?? r.data ?? {}
-      // `is_gst_registered` is the flag; a GSTIN on file without it is a trust
-      // that entered the number and has not turned GST on, and its receipts
-      // carry no tax either way.
-      setGstRegistered(Boolean(p.is_gst_registered) && Boolean(String(p.gstin ?? '').trim()))
+      // Same test the API charges GST by (a well-formed GSTIN), so the form
+      // never hides the guest GSTIN on a bill that will carry tax, or the reverse.
+      setGstRegistered(isWellFormedGstin(p.gstin))
       setForm(f => ({
         ...f,
         check_in_time: String(p.default_checkin_time ?? f.check_in_time).slice(0, 5),

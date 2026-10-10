@@ -38,6 +38,12 @@ interface RoomRow {
   housekeeping_status: 'ready' | 'dirty' | 'cleaning' | 'maintenance'
   /** Free now but sold from this date - the gap the clerk is selling into. */
   next_booking_from: string | null
+  /** Who holds it for the window: the guest, and for a hall package its event + HB number. */
+  held_by_name?: string | null
+  held_event?: string | null
+  held_ref?: string | null
+  held_from?: string | null
+  held_to?: string | null
 }
 
 /**
@@ -72,11 +78,11 @@ function roomState(r: RoomRow): RoomState {
 
 const STATE_STYLE: Record<RoomState, { dot: string; text: string; card: string }> = {
   available:   { dot: 'bg-emerald-500', text: 'text-emerald-700', card: 'hover:border-brand-green hover:shadow-sm cursor-pointer' },
-  occupied:    { dot: 'bg-rose-500',    text: 'text-rose-700',    card: 'opacity-70 cursor-not-allowed bg-slate-50' },
+  occupied:    { dot: 'bg-rose-500',    text: 'text-rose-700',    card: 'bg-slate-50 hover:shadow-sm' },
   dirty:       { dot: 'bg-amber-500',   text: 'text-amber-700',   card: 'opacity-70 cursor-not-allowed bg-amber-50/60' },
   cleaning:    { dot: 'bg-amber-500',   text: 'text-amber-700',   card: 'opacity-70 cursor-not-allowed bg-amber-50/60' },
   maintenance: { dot: 'bg-slate-500',   text: 'text-slate-600',   card: 'opacity-70 cursor-not-allowed bg-slate-100' },
-  booked:      { dot: 'bg-sky-500',     text: 'text-sky-700',     card: 'opacity-70 cursor-not-allowed bg-sky-50/60' },
+  booked:      { dot: 'bg-sky-500',     text: 'text-sky-700',     card: 'bg-sky-50/60 hover:shadow-sm' },
 }
 
 /** "26 Sep" - short enough for a card, unambiguous enough to act on. */
@@ -178,12 +184,20 @@ export function RoomAvailability() {
   const card = (r: RoomRow) => {
     const st = roomState(r)
     const sty = STATE_STYLE[st]
+    // A taken room opens WHO has it - the booking in the register (by its
+    // number, or the hall booking's for a package room) - the way a hotel
+    // room rack does. It used to be a dead grey "Booked" with no name.
+    const holder = (st === 'booked' || st === 'occupied') && (r.held_ref || r.held_by_name)
+      ? (r.held_ref || r.held_by_name)!
+      : null
     return (
       <button
         key={r.id}
-        disabled={st !== 'available'}
-        onClick={() => navigate(`/rooms/checkin?room_id=${r.id}`)}
-        title={t(`dharamshala.stateHint.${st}`)}
+        disabled={st !== 'available' && !holder}
+        onClick={() => navigate(st === 'available'
+          ? `/rooms/checkin?room_id=${r.id}`
+          : `/rooms?q=${encodeURIComponent(holder ?? '')}`)}
+        title={holder ? t('dharamshala.openHolder') : t(`dharamshala.stateHint.${st}`)}
         className={`card p-3 text-left transition-all ${sty.card}`}
       >
         <div className="flex items-start justify-between gap-1">
@@ -200,6 +214,19 @@ export function RoomAvailability() {
         <p className={`text-[10px] font-semibold mt-1 ${sty.text}`}>
           {t(`dharamshala.state.${st}`)}
         </p>
+        {holder && (
+          <div className="mt-0.5 text-[10px] leading-tight text-slate-600" data-testid="room-holder">
+            {r.held_event && (
+              <span className="inline-block rounded bg-violet-100 text-violet-800 px-1 mr-1 font-semibold">
+                {t('dharamshala.hallPackageShort')}
+              </span>
+            )}
+            <span className="font-medium">{r.held_event || r.held_by_name}</span>
+            {r.held_from && r.held_to && (
+              <span className="block text-slate-400">{fmtDay(r.held_from)} → {fmtDay(r.held_to)}</span>
+            )}
+          </div>
+        )}
         {/* The gap being sold into. A free room with a booking on Friday
             is a room you can let until Friday - say the date, or the
             clerk has to open the bookings list to find it out. */}

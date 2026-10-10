@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck, PackagePlus, Files } from 'lucide-react'
+import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck, PackagePlus, Files, PartyPopper } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, apiErrorMessage, dayOf, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
 import { istInputOf, istInputToDate } from '../../../lib/istClock'
@@ -32,6 +32,7 @@ import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../li
 import { sourceColumn, sourceLabel } from '../../../lib/entrySource'
 import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
 import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
+import { depositHeldOf } from './deposit'
 import { GroupCheckinModal, GroupCheckoutModal } from './GroupStayDialogs'
 
 const PAGE_SIZE = 20
@@ -120,6 +121,15 @@ type StayRow = RoomBooking & {
   inGroup?: boolean
 }
 
+/**
+ * A room of a hall package (tenant migration 063) with nothing billed on the
+ * room itself: its stay is on the hall booking's bill, so the register says
+ * "In hall bill" instead of a ₹0 that reads like a free stay.
+ */
+function onHallBill(b: RoomBooking): boolean {
+  return !!b.hall_booking_id && (b.total_paise ?? 0) === 0
+}
+
 function groupStays(list: RoomBooking[]): StayRow[] {
   const byGroup = new Map<string, RoomBooking[]>()
   for (const b of list) {
@@ -188,8 +198,17 @@ export function RoomsList() {
   const [refundPayment, setRefundPayment] = useState<PaymentFieldsValue>(emptyPayment())
   const [keptReason, setKeptReason] = useState('')
   const depositModes = usePaymentModes()
-  function openDeposit(b: RoomBooking) {
-    setDepositModal(b); setForfeitAmt(''); setSettleError(''); setKeptReason(''); setRefundPayment(emptyPayment())
+  // Rooms whose deposits are settled one after another - a group's checkout
+  // can free more than one.
+  const [depositQueue, setDepositQueue] = useState<RoomBooking[]>([])
+  function openDeposit(b: RoomBooking, next: RoomBooking[] = []) {
+    setDepositModal(b); setDepositQueue(next)
+    setForfeitAmt(''); setSettleError(''); setKeptReason(''); setRefundPayment(emptyPayment())
+  }
+  function closeDeposit() {
+    const [next, ...rest] = depositQueue
+    if (next) openDeposit(next, rest)
+    else { setDepositModal(null); setDepositQueue([]) }
   }
   /** The stay-times dialog, and the four instants it is editing. */
   const [timesModal, setTimesModal] = useState<RoomBooking | null>(null)
@@ -260,6 +279,16 @@ export function RoomsList() {
         <div>
           <p className="font-medium">{b.guest_name}</p>
           <p className="text-xs text-slate-400">{b.guest_mobile}</p>
+          {b.hall_booking_id && !(b as StayRow).inGroup && (
+            <button
+              onClick={e => { e.stopPropagation(); navigate(`/hall?q=${encodeURIComponent(b.hall_invoice_no ?? b.hall_event_name ?? '')}`) }}
+              className="mt-1 mr-1 inline-flex items-center gap-1 rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 hover:bg-violet-200"
+              title={t('dharamshala.hallPackageHint')}
+              data-testid="hall-package-badge"
+            >
+              <PartyPopper size={11} /> {t('dharamshala.hallPackageOf', { event: b.hall_event_name ?? '' })}
+            </button>
+          )}
           {(b as StayRow).members && (
             <span className="badge-blue mt-1 whitespace-nowrap" data-testid="group-rooms">
               {t('dharamshala.roomsCount', { count: (b as StayRow).members!.length })}
@@ -322,7 +351,9 @@ export function RoomsList() {
       // Everything actually collected (advance + every tender at checkout),
       // summed from the payments ledger — not the stale advance_paise column.
       key: 'paid', label: t('dharamshala.paid'), align: 'right',
-      render: b => <>₹{fmtPaise(b.paid_paise ?? b.advance_paise)}</>,
+      render: b => onHallBill(b) && !(b.paid_paise ?? 0)
+        ? <span className="text-xs text-violet-700" title={t('dharamshala.hallPackageHint')}>{t('dharamshala.inHallBill')}</span>
+        : <>₹{fmtPaise(b.paid_paise ?? b.advance_paise)}</>,
     },
     {
       key: 'balance', label: t('dharamshala.balance'), align: 'right',
@@ -337,6 +368,7 @@ export function RoomsList() {
         // 057 refunds at checkout): a stay paid 1,200, billed 600 and refunded
         // 600 is settled, not "-600".
         const refunded = b.refunded_paise ?? 0
+        if (onHallBill(b) && !(b.paid_paise ?? 0)) return <span className="text-slate-400">&mdash;</span>
         // A room under its group entry: the money is the group's, so the room
         // shows its bill, not a balance of its own.
         if ((b as StayRow).inGroup) {
@@ -381,7 +413,7 @@ export function RoomsList() {
       },
     },
     enteredByColumn<RoomBooking>(t, enteredByOptions),
-    sourceColumn<RoomBooking>(t, 'counter'),
+    sourceColumn<RoomBooking>(t, 'counter', ['hall']),
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -408,6 +440,12 @@ export function RoomsList() {
    * side by side, which ran out of the table on an ordinary laptop screen and
    * left the clerk guessing what each icon was.
    */
+  /** A package room's way back to its hall booking (tenant migration 063). */
+  const openHall = (b: RoomBooking): RowAction => ({
+    label: t('dharamshala.openHallBooking'), icon: <PartyPopper size={14} />,
+    onClick: () => navigate(`/hall?q=${encodeURIComponent(b.hall_invoice_no ?? b.hall_event_name ?? '')}`),
+  })
+
   function rowActions(b: StayRow): RowAction[] {
     // A group's own entry: what applies to all its rooms at once. Each room's
     // own steps are on its row underneath.
@@ -426,7 +464,9 @@ export function RoomsList() {
       if (waiting.length && staying.length) {
         out.push({ label: t('dharamshala.checkOutGroup', { count: staying.length }), icon: <Undo2 size={14} />, onClick: () => setGroupCheckoutFor(ms) })
       }
-      if (ms.some(x => x.status !== 'cancelled')) {
+      if (b.hall_booking_id) out.push(openHall(b))
+      // A package's rooms are billed on the hall booking: no room bill to print.
+      if (!onHallBill(b) && ms.some(x => x.status !== 'cancelled')) {
         out.push({
           label: t('dharamshala.printGroupBill'), icon: <Files size={14} />,
           onClick: () => { printDonationReceipt(ms[0].id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed'))) },
@@ -443,6 +483,34 @@ export function RoomsList() {
       const groupOver = refundable(b)
       if (!waiting.length && !staying.length && groupOver > 0) {
         out.push({ label: t('dharamshala.refund'), icon: <Undo2 size={14} />, onClick: () => openRefund(ms[0], groupOver) })
+      }
+      // The deposit is taken on one room of the group (the first), and its
+      // actions used to live only on that room's row underneath - so after a
+      // group checkout the entry offered nothing but the bill, and the deposit
+      // looked forgotten. Brought up to the entry, naming the room when more
+      // than one holds a deposit.
+      const withDeposit = ms.filter(x => Number((x as unknown as Record<string, unknown>).deposit_paise ?? 0) > 0)
+      const roomTag = (x: RoomBooking) => withDeposit.length > 1 ? ` · ${t('dharamshala.room')} ${x.room_number ?? ''}` : ''
+      const toSettle = withDeposit.filter(x => x.status !== 'cancelled' && depositHeld(x) > 0)
+      for (const x of toSettle) {
+        out.push({
+          label: t('dharamshala.settleDeposit') + roomTag(x), icon: <ShieldCheck size={14} />,
+          // Every room out: settling it is the next step, so it shows with its words.
+          primary: !waiting.length && !staying.length && toSettle.length === 1,
+          onClick: () => openDeposit(x),
+        })
+      }
+      for (const x of withDeposit) {
+        out.push({
+          label: t('dharamshala.depositReceipt') + roomTag(x), icon: <Receipt size={14} />,
+          onClick: () => { printDepositReceipt(x.id).catch(() => toast.error(t('dharamshala.depositDocFailed'))) },
+        })
+        if ((x as unknown as Record<string, unknown>).deposit_settled_at) {
+          out.push({
+            label: t('dharamshala.depositRefundVoucher') + roomTag(x), icon: <Undo2 size={14} />,
+            onClick: () => { printDepositRefundVoucher(x.id).catch(() => toast.error(t('dharamshala.depositDocFailed'))) },
+          })
+        }
       }
       const noId = ms.find(x => x.has_id_document === false && x.status !== 'cancelled')
       if (noId) out.push({ label: t('guestId.title'), icon: <IdCard size={14} />, onClick: () => setIdDocsFor(noId) })
@@ -461,7 +529,8 @@ export function RoomsList() {
     if (open || b.status === 'checked_in') {
       out.push({ label: t('roomCharges.title'), icon: <PackagePlus size={14} />, onClick: () => setExtrasFor(b) })
     }
-    if (b.group_id && b.status !== 'cancelled') {
+    if (b.hall_booking_id && !(b as StayRow).inGroup) out.push(openHall(b))
+    if (b.group_id && b.status !== 'cancelled' && !onHallBill(b)) {
       out.push({
         label: t('dharamshala.printGroupBill'), icon: <Files size={14} />,
         onClick: () => { printDonationReceipt(b.id, '/room-bookings', 'group-receipt').catch(() => toast.error(t('dharamshala.printFailed'))) },
@@ -595,10 +664,7 @@ export function RoomsList() {
   /** Take the outstanding balance on a booking, including after checkout. */
   /** What is still held against a booking, in paise. */
   function depositHeld(b: RoomBooking): number {
-    const anyB = b as unknown as Record<string, unknown>
-    return Number(anyB.deposit_paise ?? 0)
-      - Number(anyB.deposit_refunded_paise ?? 0)
-      - Number(anyB.deposit_forfeited_paise ?? 0)
+    return depositHeldOf(b)
   }
 
   async function settleDeposit() {
@@ -631,7 +697,7 @@ export function RoomsList() {
         notes: keptReason.trim() || null,
       })
       toast.success(t('dharamshala.depositSettled'))
-      setDepositModal(null)
+      closeDeposit()
       load()
       // The guest signs this for the money back (and what was kept).
       printDepositRefundVoucher(id).catch(() => {})
@@ -907,6 +973,10 @@ export function RoomsList() {
             toast.success([t('dharamshala.checkedOutGroup', { count: res.invoices.length }), ...res.invoices,
               ...(res.refunded > 0 ? [t('dharamshala.refundedAmount', { amount: fmtPaise(res.refunded) })] : [])].join(' · '))
             load()
+            // As for one room: the deposits of the rooms that left come back at
+            // the same desk, one window per room holding one.
+            const owed = (groupCheckoutFor ?? []).filter(x => res.ids.includes(x.id) && depositHeld(x) > 0)
+            if (owed.length) openDeposit(owed[0], owed.slice(1))
           }} />
       )}
       {checkinFor && (
@@ -930,7 +1000,11 @@ export function RoomsList() {
             load()
             // The proper bill, straight away - a stay ends with the guest
             // holding it.
-            if (b) printDonationReceipt(b.id, '/room-bookings', b.group_id ? 'group-receipt' : 'receipt').catch(() => {})
+            // Not for a hall-package room with nothing billed on it: its bill
+            // is the hall booking's, and a ₹0 room receipt helps nobody.
+            if (b && (res?.invoice_no || !b.hall_booking_id)) {
+              printDonationReceipt(b.id, '/room-bookings', b.group_id && !b.hall_booking_id ? 'group-receipt' : 'receipt').catch(() => {})
+            }
             // ...and the deposit comes back at the same desk: return it now,
             // against the guest's signature (the client's dharamshala flow).
             if (b && depositHeld(b) > 0) openDeposit(b)
@@ -1102,7 +1176,7 @@ export function RoomsList() {
                   {depositModal.guest_name} · {t('dharamshala.room')} {depositModal.room_number}
                 </p>
               </div>
-              <button onClick={() => setDepositModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
+              <button onClick={() => closeDeposit()} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
                 <X size={18} />
               </button>
             </div>
@@ -1144,7 +1218,7 @@ export function RoomsList() {
             {settleError && <p className="text-sm text-red-600 mb-3">{settleError}</p>}
 
             <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={() => setDepositModal(null)}>{t('common.cancel')}</button>
+              <button className="btn-secondary" onClick={() => closeDeposit()}>{t('common.cancel')}</button>
               <button className="btn-primary" onClick={settleDeposit} disabled={settling}>
                 {settling ? t('common.saving') : t('dharamshala.settleAndRefund')}
               </button>

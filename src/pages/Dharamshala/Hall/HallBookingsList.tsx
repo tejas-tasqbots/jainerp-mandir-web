@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ban, FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
+import { Ban, BedDouble, FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, dayOf, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -13,7 +13,7 @@ import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
 import { trendByDay } from '../../../lib/chartData'
-import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
+import { makeRange, rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
   DataTable, filterStateToParams,
   type ColumnDef, type ColumnFilterState,
@@ -27,6 +27,12 @@ import type { HallBooking } from '../../../types'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 
 const PAGE_SIZE = 20
+
+/** What the list adds to a hall booking for its package (tenant migrations 061, 063). */
+type PackageRow = HallBooking & {
+  package_name?: string | null; venue_names?: string | null; rooms_held?: number
+  room_numbers?: string | null; rooms_in?: number; rooms_out?: number
+}
 const STATUSES = ['confirmed', 'completed', 'cancelled'] as const
 
 export function HallBookingsList() {
@@ -41,9 +47,12 @@ export function HallBookingsList() {
   const [bookings, setBookings] = useState<HallBooking[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  // ?q= opens the list on one booking: the Rooms register links a package
+  // room back to its hall booking this way (any date, or it is "not found").
+  const [searchParams] = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [page, setPage] = useState(1)
-  const [range, setRange] = useState<DateRange>(() => loadStoredRange('hall'))
+  const [range, setRange] = useState<DateRange>(() => (searchParams.get('q') ? makeRange('all') : loadStoredRange('hall')))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
   const { profile } = useProfileStore()
 
@@ -82,12 +91,25 @@ export function HallBookingsList() {
     {
       key: 'hall', label: t('dharamshala.hall'),
       render: b => {
-        const x = b as HallBooking & { package_name?: string | null; venue_names?: string | null; rooms_held?: number }
+        const x = b as PackageRow
         return (
           <span className="text-slate-600">
             {x.package_name && <b className="block text-navy-900">{x.package_name}</b>}
             {x.venue_names || b.hall_name || '—'}
-            {Number(x.rooms_held) > 0 && <span className="block text-xs text-slate-500">{t('hallPackages.roomsCount', { count: x.rooms_held })}</span>}
+            {/* The rooms by number, and where their guests are (tenant
+                migration 063) - "5 rooms" alone left the desk guessing. */}
+            {Number(x.rooms_held) > 0 && (
+              <span className="block text-xs text-slate-500" data-testid="hall-rooms">
+                {t('hallPackages.roomsCount', { count: x.rooms_held })}{x.room_numbers ? `: ${x.room_numbers}` : ''}
+                {(Number(x.rooms_in) > 0 || Number(x.rooms_out) > 0) && (
+                  <span className="block">
+                    {Number(x.rooms_in) > 0 && <span className="text-green-700 font-medium">{t('hallPackages.roomsIn', { count: x.rooms_in })}</span>}
+                    {Number(x.rooms_in) > 0 && Number(x.rooms_out) > 0 && ' · '}
+                    {Number(x.rooms_out) > 0 && <span>{t('hallPackages.roomsOut', { count: x.rooms_out })}</span>}
+                  </span>
+                )}
+              </span>
+            )}
           </span>
         )
       },
@@ -125,6 +147,18 @@ export function HallBookingsList() {
         const due = Math.max(0, (b.total_paise ?? 0) - (b.advance_paise ?? 0))
         return (
           <div className="flex items-center justify-end gap-1">
+            {/* The package's rooms are stays now (tenant migration 063):
+                checked in and out in the Rooms register, opened on them. */}
+            {Number((b as PackageRow).rooms_held) > 0 && b.status !== 'cancelled' && (
+              <button
+                onClick={e => { e.stopPropagation(); navigate(`/rooms?q=${encodeURIComponent(b.invoice_no ?? b.event_name ?? '')}`) }}
+                className="btn-secondary btn-sm whitespace-nowrap"
+                title={t('hallPackages.openRoomsHint')}
+                data-testid="hall-open-rooms"
+              >
+                <BedDouble size={14} /> {t('hallPackages.openRooms')}
+              </button>
+            )}
             {/* Collect balance — the whole point of a confirmed booking, and
                 previously unreachable from this screen. */}
             {open && due > 0 && (

@@ -733,6 +733,8 @@
     "depositNotTaken": "The booking was created, but the deposit was not taken. Collect it from the rooms list.",
     "settleDeposit": "Settle deposit",
     "depositHeld": "Deposit held",
+    "depositAtCheckout": "Security deposit held: ₹{{amount}}",
+    "depositAtCheckoutHint": "Not part of the bill - it is the guest's money. Once you check out, the Settle deposit window opens to return it (or keep part of it, with a reason) against the guest's signature.",
     "forfeitAmount": "Keep for damages",
     "settleAndRefund": "Settle & refund",
     "refundPreview": "₹{{amount}} will be refunded to the guest.",
@@ -884,7 +886,15 @@
     "keptReasonRequired": "Say why part of the deposit is kept — it is printed on the voucher the guest signs.",
     "refundHow": "How the deposit goes back",
     "refundVoucherHint": "A refund voucher prints for the guest to sign: deposit received, kept and returned.",
-    "depositReceiptHint": "The advance and the security deposit are paid this way. A separate deposit receipt prints for the guest to keep and return at checkout; the deposit is not on the room bill."
+    "depositReceiptHint": "The advance and the security deposit are paid this way. A separate deposit receipt prints for the guest to keep and return at checkout; the deposit is not on the room bill.",
+    "openHolder": "Open this booking",
+    "hallPackageShort": "Hall",
+    "hallPackageOf": "Hall package · {{event}}",
+    "hallPackageHint": "A room of a hall package: its nights are on the hall booking's bill. Click to open the hall booking.",
+    "inHallBill": "In hall bill",
+    "openHallBooking": "Open hall booking",
+    "hallPackageCheckoutNote": "This room is part of the hall package {{event}} ({{ref}}). Its nights are on the hall bill; only extras added here are billed to the room.",
+    "heldByHall": "{{event}} (hall)"
   },
   "donationRequests": {
     "addressLabel": "Address:",
@@ -4473,7 +4483,11 @@
     "overrideHint": "The list price is kept beside the agreed price.",
     "overrideReasonRequired": "Say why the price is changed.",
     "resolveClashes": "A hall or room is already booked for these dates.",
-    "bookingFailed": "Could not create the booking."
+    "bookingFailed": "Could not create the booking.",
+    "roomsIn": "{{count}} checked in",
+    "roomsOut": "{{count}} checked out",
+    "openRooms": "Rooms",
+    "openRoomsHint": "Check the package's rooms in and out in the Rooms register"
   },
   "bhojanshalaExtras": {
     "priceList": "Bhojanshala extra charges",
@@ -4491,7 +4505,8 @@
       "app": "Devotee app",
       "mobile": "Mobile app",
       "import": "Import",
-      "counter": "Counter"
+      "counter": "Counter",
+      "hall": "Hall package"
     },
     "rooms": {
       "type": "Room type",

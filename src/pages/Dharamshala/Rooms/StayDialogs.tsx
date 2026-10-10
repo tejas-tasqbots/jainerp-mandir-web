@@ -8,6 +8,7 @@ import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRo
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
 import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
 import type { RoomBooking } from '../../../types'
+import { depositHeldOf } from './deposit'
 
 /**
  * The three desk dialogs of a stay (tenant migration 057): check-in, extras
@@ -227,6 +228,38 @@ interface Preview {
 /** "Now", as the IST wall-clock value a datetime-local input takes. */
 const localNow = istInputNow
 
+/**
+ * The deposit, said at checkout. It is not on the bill - it is the guest's
+ * money - and the clerk settles it in its own window, which the register
+ * opens as soon as the checkout is saved. Without this line the checkout
+ * gave no hint a deposit was still owed back.
+ */
+export function DepositAtCheckout({ paise }: { paise: number }) {
+  const { t } = useTranslation()
+  if (paise <= 0) return null
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="checkout-deposit">
+      <p className="font-semibold">{t('dharamshala.depositAtCheckout', { amount: fmtPaise(paise) })}</p>
+      <p className="text-xs mt-1">{t('dharamshala.depositAtCheckoutHint')}</p>
+    </div>
+  )
+}
+
+/**
+ * A hall-package room (tenant migration 063): its nights are on the hall
+ * booking's bill, so the room shows ₹0 - said, or it reads as a free stay.
+ * Extras added here are the only thing billed on the room.
+ */
+export function HallPackageNote({ booking }: { booking: RoomBooking }) {
+  const { t } = useTranslation()
+  if (!booking.hall_booking_id) return null
+  return (
+    <p className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900" data-testid="hall-package-note">
+      {t('dharamshala.hallPackageCheckoutNote', { event: booking.hall_event_name ?? '', ref: booking.hall_invoice_no ?? '' })}
+    </p>
+  )
+}
+
 export function CheckoutModal({ booking, onClose, onDone }: {
   booking: RoomBooking; onClose: () => void
   onDone: (res: { invoice_no?: string; refunded_paise?: number }) => void
@@ -406,6 +439,9 @@ export function CheckoutModal({ booking, onClose, onDone }: {
           {!refundNow && <p className="text-xs text-blue-800">{t('dharamshala.refundLaterHint')}</p>}
         </div>
       )}
+
+      <DepositAtCheckout paise={depositHeldOf(booking)} />
+      <HallPackageNote booking={booking} />
 
       <div>
         <label className="form-label" htmlFor="co-remarks">{t('dharamshala.remarks')}</label>

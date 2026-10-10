@@ -11,13 +11,15 @@ import type { ColumnDef } from '../components/kit/DataTable'
  *
  * The API filters on `?source=` server-side, like every other column filter.
  */
-export type EntrySource = 'walk_in' | 'counter' | 'online' | 'website' | 'mobile' | 'bulk_import'
+export type EntrySource = 'walk_in' | 'counter' | 'online' | 'website' | 'mobile' | 'bulk_import' | 'hall'
 
 const BADGE: Record<string, string> = {
   website: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800',
   online: 'badge-blue',
   mobile: 'badge-blue',
   bulk_import: 'badge-gray',
+  // A room of a hall package (tenant migration 063).
+  hall: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800',
 }
 
 export function sourceLabel(t: TFunction, source?: string | null): string {
@@ -26,6 +28,7 @@ export function sourceLabel(t: TFunction, source?: string | null): string {
     case 'online': return t('website.source.app')
     case 'mobile': return t('website.source.mobile')
     case 'bulk_import': return t('website.source.import')
+    case 'hall': return t('website.source.hall')
     default: return t('website.source.counter')
   }
 }

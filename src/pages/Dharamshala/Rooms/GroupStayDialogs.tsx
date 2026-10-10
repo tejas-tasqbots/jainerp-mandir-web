@@ -5,7 +5,8 @@ import { api, apiErrorMessage, fmtPaise } from '../../../lib/api'
 import { istInputNow, istInputToDate } from '../../../lib/istClock'
 import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import type { RoomBooking } from '../../../types'
-import { Shell } from './StayDialogs'
+import { DepositAtCheckout, HallPackageNote, Shell } from './StayDialogs'
+import { depositHeldOf } from './deposit'
 
 /**
  * The desk's steps for a GROUP booking - several rooms for one guest, one
@@ -114,7 +115,7 @@ const localNow = istInputNow
  * still backing it.
  */
 export function GroupCheckoutModal({ rooms, onClose, onDone }: {
-  rooms: RoomBooking[]; onClose: () => void; onDone: (res: { invoices: string[]; refunded: number }) => void
+  rooms: RoomBooking[]; onClose: () => void; onDone: (res: { invoices: string[]; refunded: number; ids: string[] }) => void
 }) {
   const { t } = useTranslation()
   const staying = rooms.filter(r => r.status === 'checked_in')
@@ -168,6 +169,7 @@ export function GroupCheckoutModal({ rooms, onClose, onDone }: {
       onDone({
         invoices: (res?.rooms ?? []).map((r: { invoice_no?: string }) => r.invoice_no).filter(Boolean),
         refunded: owed > 0 && refundNow ? owed : 0,
+        ids: picked,
       })
     } catch (e) {
       setError(apiErrorMessage(e, t('dharamshala.checkoutFailed')))
@@ -250,6 +252,11 @@ export function GroupCheckoutModal({ rooms, onClose, onDone }: {
           )}
         </div>
       )}
+
+      {/* A group's deposit is taken on one of its rooms: said here when that
+          room is among those leaving, settled next (the register opens it). */}
+      <DepositAtCheckout paise={rooms.filter(r => picked.includes(r.id)).reduce((s, r) => s + Math.max(0, depositHeldOf(r)), 0)} />
+      {rooms[0] && <HallPackageNote booking={rooms[0]} />}
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
       <div className="flex gap-3 justify-end pt-2">
