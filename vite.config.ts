@@ -16,8 +16,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/onboarding/, ''),
       },
+      // VITE_API_PROXY points dev at another mandiradmin-api (a QA stack on a
+      // scratch database) without editing this file.
       '/api': {
-        target: 'http://localhost:3106',
+        target: process.env.VITE_API_PROXY ?? 'http://localhost:3106',
         changeOrigin: true,
       },
     },

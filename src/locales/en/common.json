@@ -444,7 +444,8 @@
     "yes": "Yes",
     "showLess": "Show less",
     "remove": "Remove",
-    "printReceipt": "Print receipt"
+    "printReceipt": "Print receipt",
+    "razorpay": "Razorpay (online)"
   },
   "creditors": {
     "actions": "Actions",
@@ -1578,7 +1579,8 @@
     "staffDirectory": "Directory",
     "attendance": "Attendance",
     "housekeeping": "Housekeeping",
-    "devices": "Devices"
+    "devices": "Devices",
+    "websiteRequests": "Website requests"
   },
   "palette": {
     "close": "Close",
@@ -2673,7 +2675,8 @@
       "subscription": "Subscription & Usage",
       "trustees": "Trustees",
       "users": "Users",
-      "receiptDesigns": "Your designs"
+      "receiptDesigns": "Your designs",
+      "website": "Website & payments"
     },
     "title": "Settings",
     "trustees": {
@@ -4128,7 +4131,7 @@
   },
   "enteredBy": {
     "column": "Entered by",
-    "online": "Online (devotee app)",
+    "online": "Online",
     "notRecorded": "Not recorded",
     "inactive": "inactive"
   },
@@ -4480,5 +4483,136 @@
     "add": "Extras:",
     "plateShort": "plate",
     "amountFor": "Amount for {{name}}"
+  },
+  "website": {
+    "source": {
+      "column": "Source",
+      "website": "Website",
+      "app": "Devotee app",
+      "mobile": "Mobile app",
+      "import": "Import",
+      "counter": "Counter"
+    },
+    "rooms": {
+      "type": "Room type",
+      "typeNone": "Not set",
+      "types": {
+        "ac": "AC Room",
+        "non_ac": "Non-AC Room",
+        "dormitory": "Dormitory",
+        "suite": "Suite",
+        "vip": "VIP Room"
+      },
+      "amenities": "Amenities",
+      "amenitiesPlaceholder": "AC, Geyser, Attached bath"
+    },
+    "settings": {
+      "loadFailed": "Could not load the website settings.",
+      "saved": "Website settings saved.",
+      "saveFailed": "Could not save the website settings.",
+      "testFailed": "Could not check the keys.",
+      "copied": "Copied",
+      "siteHeading": "Your own website",
+      "siteIntro": "Your trust's own website (not a JainERP page) can take donations and room bookings. Everything it takes comes here: gifts in Donations, rooms in Rooms → Website requests.",
+      "enabled": "Website is live",
+      "enabledHelp": "Off: the website cannot read anything from JainERP or send anything in.",
+      "siteUrl": "Website address",
+      "siteUrlHelp": "Pay links for confirmed room requests open on this site (https://…/pay/…).",
+      "apiFor": "For whoever builds the website — its JainERP address is",
+      "whatHeading": "What the website may do",
+      "donationMode": "Donations",
+      "donation": {
+        "off": "Off",
+        "gateway": "Online payment (Razorpay)",
+        "manual": "Bank transfer / UPI report",
+        "both": "Both"
+      },
+      "manualNeedsAccount": "Bank transfer reports need \"Accept UPI / bank-transfer donation requests\" on and a verified donation account (Bank & Cash Accounts).",
+      "minDonation": "Smallest online gift (₹)",
+      "roomMode": "Room booking",
+      "rooms": {
+        "off": "Off",
+        "request": "Request — the office confirms",
+        "instant": "Instant — pay and confirmed",
+        "offHelp": "The website shows rooms and rates only.",
+        "requestHelp": "The yatri sends dates and people; you pick the rooms in Website requests and send a pay link.",
+        "instantHelp": "The yatri sees free rooms, pays in full and is confirmed at once. Keep your Rooms master exact."
+      },
+      "noDharamshala": "Room booking needs the Dharamshala module.",
+      "advancePercent": "Advance to pay online (%)",
+      "advanceHelp": "Of the bill, when you confirm a request. 0 = pay at the desk.",
+      "gatewayHeading": "Your Razorpay account",
+      "gatewayIntro": "Money from the website goes straight to your trust's own Razorpay account. Copy the keys from Razorpay Dashboard → Account & Settings → API Keys.",
+      "keyId": "Key ID",
+      "keySecret": "Key Secret",
+      "secretOnFile": "Saved — type a new one to replace it",
+      "webhookSecret": "Webhook secret",
+      "settlement": "Settlement bank account",
+      "chooseBank": "— choose the bank Razorpay pays into —",
+      "settlementHelp": "Website money is booked to this account, so it shows in your day book and bank book.",
+      "webhookUrl": "Webhook URL (paste in Razorpay → Webhooks, event payment.captured)",
+      "copy": "Copy",
+      "webhookHelp": "Use the same secret here and in Razorpay. It records a payment even if the yatri closes the page.",
+      "test": "Test connection",
+      "testKeys": "These are TEST keys — no real money is taken. Switch to live keys before going live.",
+      "save": "Save website settings"
+    },
+    "requests": {
+      "title": "Website requests",
+      "subtitle": "Room requests from your website. Pick the rooms, confirm, and send the pay link.",
+      "loadFailed": "Could not load the request.",
+      "pickRoom": "Pick at least one room.",
+      "confirmedToast": "Request {{ref}} confirmed — the rooms are booked.",
+      "confirmFailed": "Could not confirm the request.",
+      "rejectFailed": "Could not decline the request.",
+      "payMessage": "Jai Jinendra {{name}}! Your stay ({{ref}}) from {{from}} to {{to}} is confirmed — room(s) {{rooms}}. Please pay the advance of ₹{{amount}} here: {{link}}",
+      "search": "Name, mobile or BR- number",
+      "tabs": {
+        "new": "New",
+        "confirmed": "Confirmed",
+        "paid": "Paid",
+        "rejected": "Declined"
+      },
+      "empty": {
+        "new": "No new requests.",
+        "confirmed": "No confirmed requests waiting for payment.",
+        "paid": "No paid requests yet.",
+        "rejected": "No declined requests."
+      },
+      "guest": "Yatri",
+      "stay": "Stay",
+      "wants": "Asked for",
+      "nights_one": "{{count}} night",
+      "nights_other": "{{count}} nights",
+      "roomsCount_one": "{{count}} room",
+      "roomsCount_other": "{{count}} rooms",
+      "persons_one": "{{count}} person",
+      "persons_other": "{{count}} people",
+      "rooms": "Rooms",
+      "due": "₹{{amount}} due online",
+      "payAtDesk": "Pays at the desk",
+      "assign": "Assign rooms",
+      "sendWhatsapp": "Send on WhatsApp",
+      "copyLink": "Copy the message with the pay link",
+      "noSiteUrl": "No pay link",
+      "noSiteUrlHelp": "Enter the website address in Settings → Website & payments.",
+      "openBooking": "Open booking",
+      "anyRoom": "Any room",
+      "freeRooms_one": "Free rooms — pick {{count}}",
+      "freeRooms_other": "Free rooms — pick {{count}}",
+      "noneFree": "No room is free for these dates. Decline the request, or free a room first.",
+      "sleeps_one": "sleeps {{count}}",
+      "sleeps_other": "sleeps {{count}}",
+      "night": "night",
+      "amountDue": "To pay online (₹)",
+      "amountDueAuto": "The trust's advance %",
+      "amountDueHelp": "Leave empty for the advance % in Settings. 0 = pays at the desk.",
+      "note": "Note (optional)",
+      "confirm_one": "Confirm {{count}} room",
+      "confirm_other": "Confirm {{count}} rooms",
+      "rejectTitle": "Decline this request",
+      "rejectHelp": "Say why — the yatri sees it when they check their request.",
+      "rejectPlaceholder": "e.g. Fully booked on those dates"
+    }
   }
 }

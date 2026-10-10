@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, X, Users } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
-import { api, fmtPaise, parsePaise } from '../../lib/api'
+import { api, dayOf, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
@@ -120,7 +120,7 @@ export function EmployeesPage() {
       name: emp.name, mobile: emp.mobile || '', email: emp.email || '',
       designation: emp.designation || '', department: emp.department || '',
       monthly_salary: emp.monthly_salary_paise ? String(emp.monthly_salary_paise / 100) : '',
-      joining_date: emp.joining_date?.slice(0, 10) || '',
+      joining_date: dayOf(emp.joining_date),
     })
     setShowForm(true)
   }

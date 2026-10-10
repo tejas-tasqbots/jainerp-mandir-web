@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Clock, Contact as IdCard, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, Undo2, X, ShieldCheck, PackagePlus, Files } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, apiErrorMessage, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
+import { api, apiErrorMessage, dayOf, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
+import { istInputOf, istInputToDate } from '../../../lib/istClock'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printDepositReceipt, printDepositRefundVoucher } from '../../../lib/printVoucher'
@@ -12,7 +13,7 @@ import { usePaymentModes } from '../../../lib/useDropdownOptions'
 import { printBillDoc } from '../../../lib/printBill'
 import { useProfileStore } from '../../../store/profileStore'
 import { trendByDay } from '../../../lib/chartData'
-import { rangeCaption, type DateRange } from '../../../lib/dateRanges'
+import { makeRange, rangeCaption, type DateRange } from '../../../lib/dateRanges'
 import {
   DataTable, filterStateToParams, type RowAction,
   type ColumnDef, type ColumnFilterState,
@@ -28,6 +29,7 @@ import {
   PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
+import { sourceColumn, sourceLabel } from '../../../lib/entrySource'
 import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
 import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
 import { GroupCheckinModal, GroupCheckoutModal } from './GroupStayDialogs'
@@ -166,9 +168,13 @@ export function RoomsList() {
   const [bookings, setBookings] = useState<RoomBooking[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  // ?q= opens the register on one booking — the Website requests inbox links
+  // a confirmed request to its booking this way.
+  const [searchParams] = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [page, setPage] = useState(1)
-  const [range, setRange] = useState<DateRange>(() => loadStoredRange('rooms'))
+  // Opened on one booking (?q=): any date, or a stay next month is "not found".
+  const [range, setRange] = useState<DateRange>(() => (searchParams.get('q') ? makeRange('all') : loadStoredRange('rooms')))
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
   const [billModal, setBillModal] = useState<Record<string, any> | null>(null)
@@ -375,6 +381,7 @@ export function RoomsList() {
       },
     },
     enteredByColumn<RoomBooking>(t, enteredByOptions),
+    sourceColumn<RoomBooking>(t, 'counter'),
     {
       key: 'status', label: t('common.status'),
       filter: { kind: 'enum', param: 'status', options: STATUSES.map(s => ({ value: s, label: statusLabel[s] })) },
@@ -563,19 +570,20 @@ export function RoomsList() {
           { header: t('dharamshala.balance'), type: 'money' },
           { header: t('common.status'), width: 13 },
           { header: t('enteredBy.column'), width: 18 },
+          { header: t('website.source.column'), width: 12 },
         ],
         rows: rows.map(b => [
           b.guest_name ?? '', b.guest_mobile ?? '', b.room_number || b.room_id,
           new Date(b.check_in_date).toLocaleDateString('en-IN'),
           new Date(b.check_out_date).toLocaleDateString('en-IN'),
           b.persons_count, b.advance_paise, b.balance_paise,
-          statusLabel[b.status] ?? b.status, enteredByText(b, t),
+          statusLabel[b.status] ?? b.status, enteredByText(b, t), sourceLabel(t, b.source),
         ]),
         totals: [
           t('kit.total'), '', '', '', '', '',
           rows.reduce((s, b) => s + b.advance_paise, 0),
           rows.reduce((s, b) => s + b.balance_paise, 0),
-          '', '',
+          '', '', '',
         ],
       })
       toast.success(t('kit.exportReady'))
@@ -644,14 +652,8 @@ export function RoomsList() {
    * blanks the field, because the element rejects anything with a zone on it.
    */
   function openTimes(b: RoomBooking) {
-    const forInput = (v?: string | null) => {
-      if (!v) return ''
-      const d = new Date(v)
-      if (Number.isNaN(d.getTime())) return ''
-      // Shifted into the browser's own offset so the box shows the wall clock
-      // the clerk is looking at, then shifted back on save.
-      return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-    }
+    // Shown and saved as IST wall-clock time, whatever zone the PC is set to.
+    const forInput = istInputOf
     setTimesModal(b)
     setTimesError('')
     setTimesForm({
@@ -670,19 +672,13 @@ export function RoomsList() {
       // Only what CHANGED is sent. The endpoint treats an absent key as "leave
       // it alone" and an explicit null as "clear it", so sending the whole form
       // every time would rewrite instants nobody touched.
-      const forInput = (v?: string | null) => {
-        if (!v) return ''
-        const d = new Date(v)
-        return Number.isNaN(d.getTime())
-          ? ''
-          : new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-      }
+      const forInput = istInputOf
       const body: Record<string, string | null> = {}
       for (const k of ['planned_check_in_at', 'planned_check_out_at', 'checked_in_at', 'checked_out_at'] as const) {
         const now = timesForm[k]
         const was = forInput(timesModal[k])
         if (now === was) continue
-        body[k] = now ? new Date(now).toISOString() : null
+        body[k] = now ? (istInputToDate(now)?.toISOString() ?? null) : null
       }
       if (!Object.keys(body).length) { setTimesModal(null); return }
       const { data } = await api.patch(`/room-bookings/${timesModal.id}/times`, body)
@@ -802,7 +798,7 @@ export function RoomsList() {
       ],
       paymentsLabel: L.paymentsReceived,
       payments: ((bill.payments ?? []) as Record<string, any>[]).map(p => ({
-        label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${String(p.paid_on).slice(0, 10)})`,
+        label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${dayOf(p.paid_on)})`,
         value: rs(p.amount_paise),
       })),
       noPaymentsLabel: L.noPaymentsRecorded,
@@ -1249,7 +1245,7 @@ export function RoomsList() {
                     <span className="text-slate-600">
                       {p.payment_mode}
                       {p.reference_no ? ` · ${p.reference_no}` : ''}
-                      <span className="text-slate-400 text-xs ml-1">{String(p.paid_on).slice(0, 10)}</span>
+                      <span className="text-slate-400 text-xs ml-1">{dayOf(p.paid_on)}</span>
                     </span>
                     <span>₹{fmtPaise(p.amount_paise)}</span>
                   </div>

@@ -13,7 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts'
-import { api, fmtPaise } from '../../lib/api'
+import { api, currentFY, fmtPaise } from '../../lib/api'
 import { useAuthStore } from '../../store/authStore'
 import type { DashboardOverview, DashboardTrend } from '../../types'
 
@@ -406,9 +406,7 @@ function DashboardCharts({ period }: { period: Period }) {
 
   // Top donors are this FY's whatever the period, so they load once.
   useEffect(() => {
-    const now = new Date()
-    const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
-    const fy = `${year}-${String(year + 1).slice(-2)}`
+    const fy = currentFY()
     api.get(`/reports/analytics/top-donors?fy=${fy}&limit=5`)
       .then(r => {
         const d = r.data.data

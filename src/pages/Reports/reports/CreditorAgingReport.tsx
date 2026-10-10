@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, fmtPaise } from '../../../lib/api'
+import { serverNow } from '../../../lib/istClock'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef, type ColumnFilterState } from '../../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
@@ -92,7 +93,7 @@ export function CreditorAgingReport() {
     }
   }
 
-  const today = Date.now()
+  const today = serverNow().getTime()
   const rows: AgingRow[] = useMemo(() => raw
     .map(r => {
       const outstanding = r.original_amount_paise - r.paid_amount_paise

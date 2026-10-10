@@ -3,6 +3,7 @@ import { DesktopPrintersCard } from './DesktopPrintersCard'
 import { useTranslation, Trans } from 'react-i18next'
 import { Save, RefreshCw, Upload, X, Eye, ShieldCheck, AlertTriangle, Printer, CheckCircle2, Check } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
+import { serverNow } from '../../../lib/istClock'
 import { buildPlateTokenDocuments, buildReceiptHtml, buildUpiQr, MAX_PLATE_TOKENS, printReceiptHtml, type ReceiptData } from '../../../lib/printReceipt'
 import { formatCalendarDate, isWellFormedGstin } from '../../../lib/statutoryIds'
 import { parseLabelOverrides, type LabelOverrides } from '../../../lib/receiptLabels'
@@ -697,7 +698,7 @@ export type PreviewMode = DocId | '80g'
  * and the counter slip, a year behind the date printed beside it.
  */
 function sampleNumber(mode: PreviewMode): string {
-  const now = new Date(Date.now() + 330 * 60_000)
+  const now = new Date(serverNow().getTime() + 330 * 60_000)
   const y = now.getUTCMonth() >= 3 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
   const series = ({ donation: 'DON', stay: 'ROOM', hall: 'HALL', bhojanshala: 'BHJ', prasad: 'PRS', seva: 'SEVA', '80g': 'DON' } as const)[mode]
   return `${series}/${y}-${String((y + 1) % 100).padStart(2, '0')}/000001`

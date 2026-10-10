@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, fmtPaise, parsePaise, todayIst } from '../../lib/api'
+import { serverNow } from '../../lib/istClock'
 import { exportXlsx } from '../../lib/exportXlsx'
 import {
   DataTable, filterStateToParams,
@@ -157,7 +158,7 @@ export function CreditorList() {
   const bankAccounts = accounts.filter(a => a.type !== 'cash')
   const totalOutstanding = creditors.reduce((s, c) => s + (c.original_amount_paise - c.paid_amount_paise), 0)
   const openEntries = creditors.filter(c => c.status !== 'paid').length
-  const ageDaysOf = (c: Creditor) => Math.max(0, Math.floor((Date.now() - new Date(c.due_date || c.created_at).getTime()) / 86_400_000))
+  const ageDaysOf = (c: Creditor) => Math.max(0, Math.floor((serverNow().getTime() - new Date(c.due_date || c.created_at).getTime()) / 86_400_000))
   const oldestAge = creditors.filter(c => c.status !== 'paid').reduce((max, c) => Math.max(max, ageDaysOf(c)), 0)
   const overdue60 = creditors
     .filter(c => c.status !== 'paid' && ageDaysOf(c) > 60)

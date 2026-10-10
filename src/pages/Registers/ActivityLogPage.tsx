@@ -6,7 +6,7 @@ import {
   ArchiveRestore, ArrowRight, Check, ChevronLeft, ChevronRight, Copy, FileSpreadsheet, Filter, History,
   Loader2, MessageSquareQuote, Printer, RotateCcw, Search, X,
 } from 'lucide-react'
-import { api, apiErrorMessage } from '../../lib/api'
+import { api, apiErrorMessage, istDate, istDayBefore, todayIst } from '../../lib/api'
 import { useApiGet } from '../../lib/useApiGet'
 import { printCurrentView } from '../../lib/downloadReport'
 import { exportXlsx } from '../../lib/exportXlsx'
@@ -62,17 +62,16 @@ const TILES: { key: keyof Counts | 'all'; actions: string }[] = [
   { key: 'restored', actions: 'restore' },
 ]
 
+/** The IST day an event happened on — not the PC's day. */
 function dayKey(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return istDate(iso)
 }
 
 function dayHeading(t: TFunction, key: string, lang: string): string {
-  const today = dayKey(new Date().toISOString())
-  const y = new Date(); y.setDate(y.getDate() - 1)
+  const today = todayIst()
   if (key === today) return t('activityLog.today')
-  if (key === dayKey(y.toISOString())) return t('activityLog.yesterday')
-  return new Date(`${key}T12:00:00`).toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, {
+  if (key === istDayBefore(today)) return t('activityLog.yesterday')
+  return new Date(`${key}T12:00:00+05:30`).toLocaleDateString(lang === 'en' ? 'en-IN' : `${lang}-IN`, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 }

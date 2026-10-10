@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Minus, Plus, Printer, RefreshCw, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
+import { istParts } from '../../lib/istClock'
 import { PhoneInput } from '../../components/PhoneInput'
 import { autoPrintSlip } from '../../lib/printReceipt'
 import { useToast } from '../../components/kit/Toast'
@@ -35,7 +36,9 @@ export function initialSession(): Session {
     const saved = localStorage.getItem(STORE_KEY)
     if (saved && (SESSIONS as readonly string[]).includes(saved)) return saved as Session
   } catch { /* private window, or storage blocked */ }
-  return sessionForHour(new Date().getHours())
+  // The IST hour by the server's clock: a PC set to the wrong zone opened
+  // the lunch counter on breakfast.
+  return sessionForHour(istParts().h)
 }
 
 /**

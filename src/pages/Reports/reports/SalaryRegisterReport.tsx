@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise } from '../../../lib/api'
+import { api, fmtPaise, todayIst } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef } from '../../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../../components/kit/SummaryStrip'
@@ -30,7 +30,7 @@ interface SalaryData {
   unpaid_paise: number
 }
 
-const thisMonth = () => new Date().toISOString().slice(0, 7)
+const thisMonth = () => todayIst().slice(0, 7)
 
 /**
  * The salary register for one month.

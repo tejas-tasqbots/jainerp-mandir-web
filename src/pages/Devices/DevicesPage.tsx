@@ -5,6 +5,7 @@ import {
   Laptop, LogOut, Monitor, RefreshCw, Shield, Smartphone, Globe, Loader2,
 } from 'lucide-react'
 import { api, apiErrorMessage } from '../../lib/api'
+import { serverNow } from '../../lib/istClock'
 import { useApiGet } from '../../lib/useApiGet'
 import { roleLabel } from '../../lib/auditLabels'
 import { useToast } from '../../components/kit/Toast'
@@ -72,7 +73,7 @@ function describeUserAgent(ua: string | null): string | null {
 /** "2 hours ago", from an ISO timestamp. Absolute date once it is older than a week. */
 function lastUsed(t: TFunction, iso: string | null): string {
   if (!iso) return t('devices.never')
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+  const mins = Math.round((serverNow().getTime() - new Date(iso).getTime()) / 60_000)
   if (mins < 2) return t('devices.justNow')
   if (mins < 60) return t('devices.minutesAgo', { count: mins })
   const hours = Math.round(mins / 60)

@@ -16,7 +16,11 @@ export interface MasterField {
   /** Column name sent to / read from the API. */
   key: string
   label: string
-  type?: 'text' | 'number' | 'money' | 'checkbox' | 'select' | 'images'
+  /**
+   * `list`: a TEXT[] column (a room's amenities), typed comma-separated and
+   * saved as an array; an empty box saves an empty list.
+   */
+  type?: 'text' | 'number' | 'money' | 'checkbox' | 'select' | 'images' | 'list'
   /** Options for a `select` field. Ignored for every other type. */
   options?: { value: string; label: string }[]
   /**
@@ -82,6 +86,14 @@ function toImageList(v: unknown): string[] {
   return []
 }
 
+/** A TEXT[] value for the comma-separated box, and back. */
+function listToText(v: unknown): string {
+  return Array.isArray(v) ? v.filter(x => typeof x === 'string').join(', ') : (typeof v === 'string' ? v : '')
+}
+function textToList(v: unknown): string[] {
+  return String(v ?? '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 30)
+}
+
 /** Money fields are stored in paise on the backend but edited in rupees. */
 function toPaise(rupees: string | number): number {
   return Math.round(Number(rupees) * 100)
@@ -135,7 +147,8 @@ export function MasterEditor({ resource, title, description, fields, listParams,
   const shown = !q ? rows : rows.filter(row => fields.some(f => {
     const v = row[f.key]
     if (v === null || v === undefined || f.type === 'images' || f.type === 'checkbox') return false
-    const label = f.type === 'select' ? optionsOf(f).find(o => o.value === v)?.label ?? '' : String(v)
+    const label = f.type === 'select' ? optionsOf(f).find(o => o.value === v)?.label ?? ''
+      : f.type === 'list' ? listToText(v) : String(v)
     return label.toLowerCase().includes(q)
   }))
 
@@ -174,6 +187,8 @@ export function MasterEditor({ resource, title, description, fields, listParams,
         // Always sent, including empty: removing the last photo has to reach
         // the database, and an omitted key would leave the old ones in place.
         payload[field.key] = toImageList(v)
+      } else if (field.type === 'list') {
+        payload[field.key] = textToList(v)
       } else if (field.type === 'checkbox') {
         payload[field.key] = Boolean(v)
       } else if (field.type === 'money') {
@@ -195,6 +210,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
       if (field.type === 'money') values[field.key] = fromPaise(row[field.key])
       else if (field.type === 'checkbox') values[field.key] = Boolean(row[field.key])
       else if (field.type === 'images') values[field.key] = toImageList(row[field.key])
+      else if (field.type === 'list') values[field.key] = listToText(row[field.key])
       else values[field.key] = (row[field.key] as string | number) ?? ''
     }
     setForm(values)
@@ -408,7 +424,9 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                               // fund type as "specific" rather than "Specific grant".
                               ? (optionsOf(f).find(o => o.value === row[f.key])?.label
                                   ?? (row[f.key] ? String(row[f.key]) : (f.emptyLabel ?? '—')))
-                              : String(row[f.key] ?? '—')}
+                              : f.type === 'list'
+                                ? (listToText(row[f.key]) || '—')
+                                : String(row[f.key] ?? '—')}
                         </td>
                       ))}
                       {fields.some(f => f.type === 'checkbox') && (

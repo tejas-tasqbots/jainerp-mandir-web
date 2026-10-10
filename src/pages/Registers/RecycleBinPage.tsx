@@ -158,7 +158,7 @@ export function RecycleBinPage() {
     {
       key: 'entry_date', label: t('recycleBin.entryDate'),
       render: r => r.entry_date
-        ? <span className="text-xs text-slate-500">{new Date(`${r.entry_date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        ? <span className="text-xs text-slate-500">{new Date(`${r.entry_date}T12:00:00+05:30`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         : <span className="text-slate-300">—</span>,
     },
     {

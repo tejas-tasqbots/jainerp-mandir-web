@@ -9,7 +9,8 @@ export interface TenantMembership {
 }
 
 // ─── Common ──────────────────────────────────────────────────────────────────
-export type PaymentMode = 'cash' | 'upi' | 'cheque' | 'netbanking' | 'online'
+// 'razorpay': taken online by the devotee app or the trust's own website.
+export type PaymentMode = 'cash' | 'upi' | 'cheque' | 'netbanking' | 'online' | 'razorpay'
 
 export interface PaginationMeta {
   page: number
@@ -282,6 +283,10 @@ export interface RoomBooking {
   invoice_no?: string | null
   invoice_date?: string | null
   status: BookingStatus
+  /** counter | online (devotee app) | website (the trust's own site, tenant migration 062). */
+  source?: string | null
+  /** JRB-XXXXXX — what an online guest shows at the desk. */
+  ticket_code?: string | null
   created_at: string
 }
 

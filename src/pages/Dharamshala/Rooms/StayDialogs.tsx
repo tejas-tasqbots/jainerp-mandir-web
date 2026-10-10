@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Trash2 } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../../lib/api'
+import { istInputNow, istInputToDate } from '../../../lib/istClock'
 import { useToast } from '../../../components/kit/Toast'
 import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
@@ -223,11 +224,8 @@ interface Preview {
   } | null
 }
 
-/** "Now", as the local wall-clock value a datetime-local input takes. */
-function localNow(): string {
-  const d = new Date()
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-}
+/** "Now", as the IST wall-clock value a datetime-local input takes. */
+const localNow = istInputNow
 
 export function CheckoutModal({ booking, onClose, onDone }: {
   booking: RoomBooking; onClose: () => void
@@ -250,7 +248,7 @@ export function CheckoutModal({ booking, onClose, onDone }: {
 
   const ratePaise = parsePaise(rate || '0')
   const rateChanged = ratePaise !== Number(booking.tariff_per_night_paise ?? 0)
-  const outAt = departure ? new Date(departure) : null
+  const outAt = istInputToDate(departure)
   const body = () => ({
     ...(outAt && !Number.isNaN(outAt.getTime()) ? { checked_out_at: outAt.toISOString(), check_out_date: departure.slice(0, 10) } : {}),
     ...(rateChanged ? { tariff_per_night_paise: ratePaise } : {}),

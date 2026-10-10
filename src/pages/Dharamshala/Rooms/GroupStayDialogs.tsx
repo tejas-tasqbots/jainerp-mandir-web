@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise } from '../../../lib/api'
+import { istInputNow, istInputToDate } from '../../../lib/istClock'
 import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
 import type { RoomBooking } from '../../../types'
 import { Shell } from './StayDialogs'
@@ -104,10 +105,7 @@ interface GroupPreview {
   carried_paise: number
 }
 
-function localNow(): string {
-  const d = new Date()
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
-}
+const localNow = istInputNow
 
 /**
  * "After 2 days check out 3": the rooms picked leave together - each its own
@@ -130,7 +128,7 @@ export function GroupCheckoutModal({ rooms, onClose, onDone }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const outAt = departure ? new Date(departure) : null
+  const outAt = istInputToDate(departure)
   const body = () => ({
     ids: picked,
     ...(outAt && !Number.isNaN(outAt.getTime()) ? { checked_out_at: outAt.toISOString() } : {}),

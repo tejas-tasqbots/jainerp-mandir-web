@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, RefreshCw, Save } from 'lucide-react'
-import { api } from '../../lib/api'
+import { api, todayIst } from '../../lib/api'
 import { useToast } from '../../components/kit/Toast'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 
@@ -55,7 +55,7 @@ const TONE: Record<Status, string> = {
   leave: 'bg-blue-100 text-blue-800',
 }
 
-const thisMonth = () => new Date().toISOString().slice(0, 7)
+const thisMonth = () => todayIst().slice(0, 7)
 const key = (t: string, id: string, d: string) => `${t}|${id}|${d}`
 
 export function AttendanceGrid() {
@@ -269,7 +269,7 @@ export function AttendanceGrid() {
               <tr>
                 <th className="sticky left-0 bg-white px-3 py-2 text-left border-r border-slate-200">{t('staff.person')}</th>
                 {Array.from({ length: days }, (_, i) => i + 1).map(day => {
-                  const dow = new Date(`${dateOf(day)}T00:00:00`).getDay()
+                  const dow = new Date(`${dateOf(day)}T00:00:00Z`).getUTCDay()
                   return (
                     <th key={day}
                       className={`w-7 text-xs font-medium ${dow === 0 ? 'text-red-500' : 'text-slate-500'}`}>

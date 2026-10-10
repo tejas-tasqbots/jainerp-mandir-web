@@ -12,11 +12,13 @@ import {
 import { useToast } from '../../components/kit/Toast'
 import { openRazorpayCheckout } from '../../lib/razorpay'
 import { useProfileStore } from '../../store/profileStore'
+import { useAuthStore } from '../../store/authStore'
 import { LocationPicker } from '../../components/LocationPicker'
 import { StateSelect, CitySelect } from '../../components/GeoSelect'
 import { MastersTab } from './MastersTab'
 import { BankAccountsTab } from './tabs/BankAccountsTab'
 import { DonorPaymentsTab } from './tabs/DonorPaymentsTab'
+import { WebsiteTab } from './tabs/WebsiteTab'
 import { ReceiptSettingsTab } from './tabs/ReceiptSettingsTab'
 import { NumberingTab } from './tabs/NumberingTab'
 import { MessagesTab } from './tabs/MessagesTab'
@@ -67,7 +69,7 @@ interface Requirement {
 const TAB_IDS = [
   'my-account', 'profile', 'public-profile', 'trustees', 'accounts',
   'receipts', 'numbering', 'messages', 'masters', 'users', 'backup',
-  'privacy', 'subscription',
+  'privacy', 'subscription', 'website',
 ] as const
 type TabId = (typeof TAB_IDS)[number]
 
@@ -102,7 +104,14 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requested = searchParams.get('tab') ?? ''
   const initialTab = (TAB_ALIASES[requested] ?? (TAB_IDS.includes(requested as TabId) ? requested : 'profile')) as TabId
-  const [tab, setTabState] = useState<TabId>(initialTab)
+  const [tabState, setTabState] = useState<TabId>(initialTab)
+  // "Website & payments" is the `website` module, which the super admin grants
+  // to some trusts only. Unknown modules (first paint) keep it visible, the same
+  // rule as the sidebar; the API refuses it regardless. A bookmark to
+  // ?tab=website at a trust without it simply shows Temple Profile.
+  const modules = useAuthStore(s => s.modules)
+  const hasWebsite = !modules || modules.includes('website')
+  const tab: TabId = tabState === 'website' && !hasWebsite ? 'profile' : tabState
 
   // Keep the URL in step, so a tab is shareable and Back works between tabs.
   const setTab = (next: TabId) => {
@@ -409,6 +418,8 @@ export function SettingsPage() {
           { id: 'public-profile', labelKey: 'settings.tabs.publicProfile' },
           { id: 'trustees', labelKey: 'settings.tabs.trustees' },
           { id: 'accounts', labelKey: 'settings.tabs.accounts' },
+          // The trust's own website and its own Razorpay keys (tenant migration 062).
+          ...(hasWebsite ? [{ id: 'website', labelKey: 'settings.tabs.website' }] : []),
           { id: 'receipts', labelKey: 'settings.tabs.receipts' },
           { id: 'numbering', labelKey: 'settings.tabs.numbering' },
           { id: 'messages', labelKey: 'settings.tabs.messages' },
@@ -528,6 +539,8 @@ export function SettingsPage() {
       )}
 
       {tab === 'trustees' && <TrusteesTab />}
+
+      {tab === 'website' && hasWebsite && <WebsiteTab />}
       {/* Donor-facing payment details sit WITH the accounts the money lands
           in, rather than on a tab of their own. They were previously editable
           from here, from Receipt Settings and from Temple Profile at once. */}

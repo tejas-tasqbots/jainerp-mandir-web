@@ -4,6 +4,8 @@
  * alongside the calendar ones.
  */
 
+import { IST_TZ, istParts, serverNow } from './istClock'
+
 export type RangePreset =
   | 'all'
   | 'today'
@@ -23,38 +25,35 @@ export interface DateRange {
   to: string
 }
 
-const iso = (d: Date) => {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+// Calendar dates live in UTC-midnight Date objects and are read with the UTC
+// getters, so no PC timezone can move a day. "Now" is the IST day by the
+// server's clock (lib/istClock) — a PC with a wrong zone or clock used to put
+// "Today" and "This Month" on the wrong day.
+const iso = (d: Date) => d.toISOString().slice(0, 10)
+const day = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d))
+const addDays = (d: Date, n: number) => { const c = new Date(d); c.setUTCDate(c.getUTCDate() + n); return c }
 
-export function resolvePreset(preset: RangePreset, now = new Date()): { from: string; to: string } {
-  const y = now.getFullYear()
-  const m = now.getMonth()
+export function resolvePreset(preset: RangePreset, now: Date = serverNow()): { from: string; to: string } {
+  const { y, m, d, dow } = istParts(now)
+  const today = day(y, m, d)
   const fyStartYear = m >= 3 ? y : y - 1
   switch (preset) {
     case 'today':
-      return { from: iso(now), to: iso(now) }
+      return { from: iso(today), to: iso(today) }
     case 'yesterday': {
-      const d = new Date(now); d.setDate(d.getDate() - 1)
-      return { from: iso(d), to: iso(d) }
+      const yd = addDays(today, -1)
+      return { from: iso(yd), to: iso(yd) }
     }
-    case 'thisWeek': {
+    case 'thisWeek':
       // Week starts Monday.
-      const d = new Date(now)
-      const dow = (d.getDay() + 6) % 7
-      d.setDate(d.getDate() - dow)
-      return { from: iso(d), to: iso(now) }
-    }
+      return { from: iso(addDays(today, -((dow + 6) % 7))), to: iso(today) }
     case 'thisMonth':
-      return { from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)) }
+      return { from: iso(day(y, m, 1)), to: iso(day(y, m + 1, 0)) }
     case 'lastMonth':
-      return { from: iso(new Date(y, m - 1, 1)), to: iso(new Date(y, m, 0)) }
+      return { from: iso(day(y, m - 1, 1)), to: iso(day(y, m, 0)) }
     case 'thisQuarter': {
       const qStart = Math.floor(m / 3) * 3
-      return { from: iso(new Date(y, qStart, 1)), to: iso(new Date(y, qStart + 3, 0)) }
+      return { from: iso(day(y, qStart, 1)), to: iso(day(y, qStart + 3, 0)) }
     }
     case 'thisFY':
       return { from: `${fyStartYear}-04-01`, to: `${fyStartYear + 1}-03-31` }
@@ -78,19 +77,19 @@ export function makeRange(preset: RangePreset): DateRange {
  */
 export function previousPeriod(from: string, to: string): { from: string; to: string } | null {
   if (!from || !to) return null
-  const f = new Date(from + 'T00:00:00')
-  const t = new Date(to + 'T00:00:00')
+  const f = new Date(from + 'T00:00:00Z')
+  const t = new Date(to + 'T00:00:00Z')
   const days = Math.round((t.getTime() - f.getTime()) / 86_400_000) + 1
   if (days <= 0) return null
-  const prevTo = new Date(f); prevTo.setDate(prevTo.getDate() - 1)
-  const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - days + 1)
+  const prevTo = addDays(f, -1)
+  const prevFrom = addDays(prevTo, -days + 1)
   return { from: iso(prevFrom), to: iso(prevTo) }
 }
 
 /** Human caption for print headers / export subtitles. */
 export function rangeCaption(range: DateRange, allLabel = 'All dates'): string {
   if (!range.from && !range.to) return allLabel
-  const f = range.from ? new Date(range.from + 'T00:00:00').toLocaleDateString('en-IN') : '…'
-  const t = range.to ? new Date(range.to + 'T00:00:00').toLocaleDateString('en-IN') : '…'
+  const f = range.from ? new Date(range.from + 'T00:00:00+05:30').toLocaleDateString('en-IN', { timeZone: IST_TZ }) : '…'
+  const t = range.to ? new Date(range.to + 'T00:00:00+05:30').toLocaleDateString('en-IN', { timeZone: IST_TZ }) : '…'
   return `${f} – ${t}`
 }

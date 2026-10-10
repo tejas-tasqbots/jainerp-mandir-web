@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise, currentFY } from '../../../lib/api'
+import { api, currentFY, dayOf, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { DataTable, type ColumnDef } from '../../../components/kit/DataTable'
 import { FySelect } from '../../../components/FySelect'
@@ -63,7 +63,7 @@ export function DonationTrendsReport() {
           { header: t('kit.receipts'), type: 'number' },
           { header: t('common.amount'), type: 'money' },
         ],
-        rows: points.map(p => [String(p.bucket).slice(0, 10), p.receipts, p.amount_paise]),
+        rows: points.map(p => [dayOf(p.bucket), p.receipts, p.amount_paise]),
         totals: [t('kit.total'), points.reduce((s, p) => s + p.receipts, 0), points.reduce((s, p) => s + p.amount_paise, 0)],
       })
       toast.success(t('kit.exportReady'))

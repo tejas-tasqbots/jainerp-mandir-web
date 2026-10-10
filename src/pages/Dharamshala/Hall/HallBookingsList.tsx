@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Ban, FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
-import { api, fmtPaise } from '../../../lib/api'
+import { api, dayOf, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
 import { printDonationReceipt } from '../../../lib/printReceipt'
 import { printBillDoc } from '../../../lib/printBill'
@@ -286,10 +286,39 @@ export function HallBookingsList() {
     }
   }
 
+  /**
+   * What the booking actually holds, for the bill view and the printed bill.
+   *
+   * Both used to show `hall_name` alone - the FIRST venue - so a wedding package
+   * of a hall, a lawn and two rooms over two days read as one hall on one day,
+   * with nothing to say which package, which rate or what the extras were. The
+   * bill endpoint has always returned all of it (tenant migration 061).
+   */
+  function hallDetails(bill: Record<string, any>) {
+    const day = (v: unknown) => { const d = dayOf(v); const [y, m, dd] = d.split('-'); return d ? `${Number(dd)}/${Number(m)}/${y}` : '' }
+    const venues = ((bill.venues ?? []) as Record<string, any>[]).map(v => v.name).filter(Boolean)
+    const rooms = ((bill.rooms ?? []) as Record<string, any>[]).map(r => r.room_number).filter(Boolean)
+    const from = day(bill.booking_date)
+    const to = bill.end_date && dayOf(bill.end_date) !== dayOf(bill.booking_date) ? day(bill.end_date) : ''
+    const rows: { label: string; value: string }[] = [
+      { label: venues.length > 1 ? t('hallPackages.venues') : t('hallPackages.venue.hall'), value: (venues.length ? venues : [bill.hall_name]).filter(Boolean).join(' + ') },
+    ]
+    if (bill.package_name) rows.push({ label: t('hallPackages.package'), value: `${bill.package_name}${bill.rate_category_name ? ` (${bill.rate_category_name})` : ''}` })
+    else if (bill.rate_category_name) rows.push({ label: t('hallPackages.rateCategory'), value: String(bill.rate_category_name) })
+    rows.push({ label: L.date, value: to ? `${from} – ${to}` : from })
+    if (rooms.length) rows.push({ label: t('hallPackages.roomsHeld'), value: rooms.join(', ') })
+    const extras = ((bill.charges ?? []) as Record<string, any>[]).map(c => ({
+      label: `${c.description}${Number(c.qty) > 1 ? ` × ${Number(c.qty)}` : ''}${Number(c.days) > 1 ? ` × ${t('hallPackages.daysLabel', { count: Number(c.days) })}` : ''}`,
+      paise: Number(c.amount_paise ?? 0),
+    }))
+    return { rows, extras, venues: (venues.length ? venues : [bill.hall_name]).filter(Boolean).join(' + ') }
+  }
+
   /** Print the bill as its own document (see lib/printBill.ts). */
   function printBill(bill: Record<string, any>) {
     const rs = (p: unknown) => `₹${fmtPaise(Number(p ?? 0))}`
     const due = Number(bill.due_paise ?? 0)
+    const d = hallDetails(bill)
     printBillDoc({
       templeName: profile?.name || 'Temple',
       templeAddress: [profile?.address, profile?.city, profile?.state].filter(Boolean).join(', '),
@@ -297,15 +326,15 @@ export function HallBookingsList() {
       invoiceNo: bill.invoice_no,
       meta: [
         { label: L.eventName, value: String(bill.event_name ?? '') },
-        { label: L.room, value: String(bill.hall_name ?? '') },
-        { label: L.date, value: new Date(bill.booking_date).toLocaleDateString('en-IN') },
+        ...d.rows,
       ],
       charges: [
+        ...d.extras.map(x => ({ label: `${t('hallPackages.extras')}: ${x.label}`, value: rs(x.paise) })),
         { label: L.total, value: rs(bill.total_paise), bold: true },
       ],
       paymentsLabel: L.paymentsReceived,
       payments: ((bill.payments ?? []) as Record<string, any>[]).map(p => ({
-        label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${String(p.paid_on).slice(0, 10)})`,
+        label: `${p.payment_mode}${p.reference_no ? ` · ${p.reference_no}` : ''} (${dayOf(p.paid_on)})`,
         value: rs(p.amount_paise),
       })),
       noPaymentsLabel: L.noPaymentsRecorded,
@@ -503,14 +532,28 @@ export function HallBookingsList() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-navy-900">{billModal.invoice_no || t('dharamshala.viewBill')}</h3>
-                <p className="text-sm text-slate-500">{billModal.event_name} · {billModal.hall_name}</p>
+                <p className="text-sm text-slate-500">{billModal.event_name} · {hallDetails(billModal).venues}</p>
               </div>
               <button onClick={() => setBillModal(null)} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}>
                 <X size={18} />
               </button>
             </div>
 
+            <dl className="space-y-1 text-sm mb-3" data-testid="hall-bill-details">
+              {hallDetails(billModal).rows.map(r => (
+                <div key={r.label} className="flex justify-between gap-4">
+                  <dt className="text-slate-500 shrink-0">{r.label}</dt>
+                  <dd className="text-right">{r.value}</dd>
+                </div>
+              ))}
+            </dl>
             <div className="space-y-1 text-sm border-t border-slate-100 pt-3">
+              {hallDetails(billModal).extras.map((x, i) => (
+                <div key={i} className="flex justify-between text-slate-600">
+                  <span>+ {x.label}</span>
+                  <span>₹{fmtPaise(x.paise)}</span>
+                </div>
+              ))}
               <div className="flex justify-between font-semibold">
                 <span>{t('dharamshala.total')}</span>
                 <span>₹{fmtPaise(billModal.total_paise ?? 0)}</span>
@@ -541,7 +584,7 @@ export function HallBookingsList() {
                     <span className="text-slate-600">
                       {p.payment_mode}
                       {p.reference_no ? ` · ${p.reference_no}` : ''}
-                      <span className="text-slate-400 text-xs ml-1">{String(p.paid_on).slice(0, 10)}</span>
+                      <span className="text-slate-400 text-xs ml-1">{dayOf(p.paid_on)}</span>
                     </span>
                     <span>₹{fmtPaise(p.amount_paise)}</span>
                   </div>

@@ -8,12 +8,16 @@ import { useConfirm } from '../../components/ConfirmDialog'
 import { useIsOnline } from '../../lib/useIsOnline'
 import { printDonationReceipt, shareReceiptPdf } from '../../lib/printReceipt'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { SourceBadge } from '../../lib/entrySource'
 
 type RequestStatus = 'pending' | 'approved' | 'rejected'
 
 interface DonationRequest {
   id: string
-  devotee_id: string
+  /** null for a request from the trust's own website (migration 090): no app account. */
+  devotee_id: string | null
+  /** 'app' (devotee app) | 'website' (the trust's own site). */
+  source?: string | null
   devotee_mobile: string
   devotee_verified: boolean
   amount_paise: number
@@ -107,7 +111,10 @@ export function DonationRequestsPage() {
       if (donationId) {
         const print = await confirm({
           title: `Receipt ${data.data?.receipt_number ?? ''} created`,
-          message: 'The devotee has been notified on WhatsApp and in the app. Print the receipt now?',
+          // A website donor has no app — only the WhatsApp receipt reaches them.
+          message: r.source === 'website'
+            ? 'The donor has been sent the receipt on WhatsApp. Print the receipt now?'
+            : 'The devotee has been notified on WhatsApp and in the app. Print the receipt now?',
           confirmLabel: 'Print receipt',
           cancelLabel: 'Later',
         })
@@ -278,6 +285,7 @@ export function DonationRequestsPage() {
                         <span title={t('ui.otpVerified')}><ShieldCheck size={14} className="text-green-600 flex-shrink-0" /></span>
                       )}
                       {r.is_80g && <span className="badge-green text-[10px]">80G</span>}
+                      {r.source === 'website' && <SourceBadge source="website" t={t} />}
                     </div>
                     <div className="text-xs text-slate-400 tabular-nums">{r.devotee_mobile}{donorLocation(r) ? ` · ${donorLocation(r)}` : ''}</div>
                   </td>

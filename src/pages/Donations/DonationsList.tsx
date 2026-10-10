@@ -23,8 +23,10 @@ import { useCanDeleteEntries, useDeleteEntry } from '../../components/deleteEntr
 import type { Donation, DonationCategory } from '../../types'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../lib/enteredBy'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
+import { sourceColumn } from '../../lib/entrySource'
 
-const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online']
+// 'razorpay' is what the devotee app and the trust's own website record.
+const PAYMENT_MODES = ['cash', 'upi', 'cheque', 'netbanking', 'online', 'razorpay']
 const PAGE_SIZE = 20
 
 interface ListMeta {
@@ -128,6 +130,7 @@ export function DonationsList() {
       render: d => <span className="text-slate-500 text-xs">{new Date(d.created_at).toLocaleDateString('en-IN')}</span>,
     },
     enteredByColumn<Donation>(t, enteredByOptions),
+    sourceColumn<Donation>(t, 'walk_in'),
     {
       key: 'status', label: t('common.status'),
       render: d => d.is_voided
@@ -223,7 +226,7 @@ export function DonationsList() {
     { label: t('common.cash'), value: `₹${fmtPaise(meta.mode_breakdown?.cash ?? 0)}` },
     {
       label: t('kit.digital'),
-      value: `₹${fmtPaise((meta.mode_breakdown?.upi ?? 0) + (meta.mode_breakdown?.online ?? 0) + (meta.mode_breakdown?.netbanking ?? 0))}`,
+      value: `₹${fmtPaise((meta.mode_breakdown?.upi ?? 0) + (meta.mode_breakdown?.online ?? 0) + (meta.mode_breakdown?.netbanking ?? 0) + (meta.mode_breakdown?.razorpay ?? 0))}`,
     },
   ] : []
 

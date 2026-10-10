@@ -228,6 +228,14 @@ export function MastersTab() {
           fields={[
             { key: 'room_number', label: t('settings.masters.fields.roomNo'), required: true, placeholder: t('settings.masters.fields.roomNoPlaceholder') as string },
             { key: 'name', label: t('settings.masters.fields.nameType'), placeholder: t('settings.masters.fields.nameTypePlaceholder') as string },
+            // The kind of room, as a yatri chooses it: the devotee app and the
+            // trust's own website group rooms by it and price each type "from"
+            // its cheapest room. The column existed; nothing could set it.
+            {
+              key: 'room_type', label: t('website.rooms.type'), type: 'select', emptyLabel: t('website.rooms.typeNone') as string,
+              options: ['ac', 'non_ac', 'dormitory', 'suite', 'vip'].map(v => ({ value: v, label: t(`website.rooms.types.${v}`) })),
+            },
+            { key: 'amenities', label: t('website.rooms.amenities'), type: 'list', placeholder: t('website.rooms.amenitiesPlaceholder') as string },
             // Where the room is, so the room board can show it building by
             // building and floor by floor (tenant migration 053). Both are
             // optional: a one-building trust leaves Building empty.

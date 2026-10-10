@@ -308,7 +308,7 @@ export function DailySummaryRuns() {
                 {runs.map(r => (
                   <tr key={r.summary_date}>
                     <td className="px-4 py-1.5 text-slate-600 whitespace-nowrap">
-                      {new Date(`${r.summary_date}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(`${r.summary_date}T12:00:00+05:30`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-3 py-1.5"><span className={RUN_BADGE[r.status] ?? 'badge-gray'}>{t(`dailySummary.status.${r.status}`, r.status)}</span></td>
                     <td className="px-3 py-1.5 text-slate-500">

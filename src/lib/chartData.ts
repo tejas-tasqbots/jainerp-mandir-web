@@ -1,3 +1,5 @@
+import { dayOf } from './api'
+
 /**
  * Build DataTable `graphData` from the rows already loaded on screen.
  *
@@ -18,7 +20,7 @@ export function trendByDay<T>(
   for (const r of rows) {
     const raw = r[dateKey] as unknown as string | undefined
     if (!raw) continue
-    const day = String(raw).slice(0, 10)
+    const day = dayOf(raw)
     const amt = Number(r[amountKey] ?? 0)
     byDay.set(day, (byDay.get(day) ?? 0) + amt)
   }

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
+import { istParts, noteServerDate, serverNow } from './istClock'
 
 // Support configurable API URL when running inside Electron desktop app.
 // The Electron main process injects window.__JAINERP_API_URL__ before the
@@ -25,8 +26,9 @@ api.interceptors.request.use(config => {
 })
 
 api.interceptors.response.use(
-  res => res,
+  res => { noteServerDate(res.headers?.date); return res },
   async err => {
+    noteServerDate(err.response?.headers?.date)
     const original = err.config
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true
@@ -103,7 +105,34 @@ export function istDate(value: string | Date): string {
  * is the UTC day, so between 00:00 and 05:29 IST a form defaulted to yesterday.
  */
 export function todayIst(): string {
-  return istDate(new Date())
+  // The server's clock, not the PC's: a counter PC with a wrong timezone and a
+  // hand-set clock defaulted every form to tomorrow (see lib/istClock).
+  return istDate(serverNow())
+}
+
+/**
+ * The IST calendar day of any API date value, as YYYY-MM-DD.
+ *
+ * Cutting `String(value).slice(0, 10)` is right only when the API host runs
+ * UTC: a DATE column comes back as that day's midnight in the HOST's zone, so an
+ * API on IST serialises 2026-10-10 as "2026-10-09T18:30:00.000Z" and the cut
+ * gives the 9th (a hall advance taken on the 10th read as the 9th; re-saving an
+ * employee moved the joining date back a day). Reading the instant in IST is
+ * right whichever zone the host runs; a plain YYYY-MM-DD passes through.
+ */
+export function dayOf(value: unknown): string {
+  if (value == null || value === '') return ''
+  const s = String(value)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? s.slice(0, 10) : istDate(d)
+}
+
+/** The calendar day before a YYYY-MM-DD date. */
+export function istDayBefore(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
 }
 
 /** The calendar day after a YYYY-MM-DD date (a default check-out). */
@@ -114,8 +143,8 @@ export function istDayAfter(day: string): string {
 }
 
 export function currentFY(): string {
-  const now = new Date()
-  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+  const { y, m } = istParts()
+  const year = m >= 3 ? y : y - 1
   return `${year}-${String(year + 1).slice(-2)}`
 }
 
@@ -130,8 +159,8 @@ export function fyLabel(startYear: number): string {
  * a specific FY (e.g. a value already in state) is present even if outside the window.
  */
 export function fyOptions({ back = 6, forward = 1, ensure }: { back?: number; forward?: number; ensure?: string } = {}): string[] {
-  const now = new Date()
-  const curStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+  const { y, m } = istParts()
+  const curStart = m >= 3 ? y : y - 1
   const years: string[] = []
   for (let y = curStart + forward; y >= curStart - back; y--) years.push(fyLabel(y))
   if (ensure && !years.includes(ensure)) {

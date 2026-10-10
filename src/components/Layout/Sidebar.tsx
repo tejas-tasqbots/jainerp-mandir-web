@@ -29,6 +29,8 @@ const navItems: NavItem[] = [
       { labelKey: 'nav.roomAvailability', to: '/rooms/availability' },
       { labelKey: 'nav.housekeeping', to: '/rooms/housekeeping' },
       { labelKey: 'nav.rooms', to: '/rooms' },
+      // Room requests from the trust's own website (tenant migration 062).
+      { labelKey: 'nav.websiteRequests', to: '/rooms/requests' },
       { labelKey: 'nav.hall', to: '/hall' },
     ],
   },
@@ -98,7 +100,17 @@ const navItems: NavItem[] = [
   { labelKey: 'nav.userGuide', icon: <HelpCircle size={18} />, to: '/help' },
 ]
 
-function NavGroup({ item }: { item: NavItem }) {
+/** A count on a nav entry: work waiting for someone. Amber, capped at 99+. */
+function Badge({ n }: { n: number }) {
+  if (n <= 0) return null
+  return (
+    <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+      {n > 99 ? '99+' : n}
+    </span>
+  )
+}
+
+function NavGroup({ item, badges }: { item: NavItem; badges: Record<string, number> }) {
   const { t } = useTranslation()
   const location = useLocation()
   const hasActiveChild = item.children?.some(c => location.pathname.startsWith(c.to)) ?? false
@@ -118,6 +130,8 @@ function NavGroup({ item }: { item: NavItem }) {
       >
         <span className="flex-shrink-0">{item.icon}</span>
         <span className="flex-1 text-left truncate">{t(item.labelKey)}</span>
+        {/* Collapsed, the group still says something inside it is waiting. */}
+        {!open && <Badge n={(item.children ?? []).reduce((s, c) => s + (badges[c.to] ?? 0), 0)} />}
         {open
           ? <ChevronDown size={13} className="flex-shrink-0" />
           : <ChevronRight size={13} className="flex-shrink-0" />}
@@ -128,6 +142,9 @@ function NavGroup({ item }: { item: NavItem }) {
             <NavLink
               key={child.to}
               to={child.to}
+              // Exact when a sibling lives under this path: on /rooms/requests
+              // only "Website requests" is lit, not "Rooms" as well.
+              end={item.children!.some(c => c.to !== child.to && c.to.startsWith(`${child.to}/`))}
               className={({ isActive }) =>
                 `block px-2 py-1.5 text-xs rounded-md transition-colors truncate ${
                   isActive
@@ -136,7 +153,10 @@ function NavGroup({ item }: { item: NavItem }) {
                 }`
               }
             >
-              {t(child.labelKey)}
+              <span className="flex items-center gap-1">
+                <span className="truncate flex-1">{t(child.labelKey)}</span>
+                <Badge n={badges[child.to] ?? 0} />
+              </span>
             </NavLink>
           ))}
         </div>
@@ -145,23 +165,27 @@ function NavGroup({ item }: { item: NavItem }) {
   )
 }
 
-/** Poll the pending devotee donation-request count for the sidebar badge. */
-function usePendingRequestCount(): number {
+/**
+ * Poll a pending count for a sidebar badge — devotee donation requests, or
+ * room requests from the trust's website. `enabled` false (the role cannot see
+ * that screen, or the module is off) never asks.
+ */
+function usePendingCount(path: string, enabled = true): number {
   const online = useIsOnline()
   const [count, setCount] = useState(0)
 
   useEffect(() => {
     // Central-server data — skip entirely while the desktop app is offline.
-    if (online === false) { setCount(0); return }
+    if (online === false || !enabled) { setCount(0); return }
     let cancelled = false
     const poll = () =>
-      api.get('/donation-requests/pending-count')
+      api.get(path)
         .then(r => { if (!cancelled) setCount(r.data.data?.pending ?? 0) })
         .catch(() => { if (!cancelled) setCount(0) })
     poll()
     const t = setInterval(poll, 60_000)
     return () => { cancelled = true; clearInterval(t) }
-  }, [online])
+  }, [online, path, enabled])
 
   return count
 }
@@ -170,7 +194,9 @@ export function Sidebar() {
   const { t } = useTranslation()
   const roles = useAuthStore(s => s.user?.roles)
   const modules = useAuthStore(s => s.modules)
-  const pendingRequests = usePendingRequestCount()
+  const pendingRequests = usePendingCount('/donation-requests/pending-count')
+  const pendingRooms = usePendingCount('/booking-requests/pending-count', canSee('/rooms/requests', roles, modules))
+  const badges: Record<string, number> = { '/rooms/requests': pendingRooms }
 
   // Hide modules the logged-in role can't work in (doc M1). The server
   // enforces real permissions — this only keeps the workspace uncluttered.
@@ -201,7 +227,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {visibleItems.map(item =>
           item.children ? (
-            <NavGroup key={item.labelKey} item={item} />
+            <NavGroup key={item.labelKey} item={item} badges={badges} />
           ) : (
             <NavLink
               key={item.to}
@@ -220,11 +246,7 @@ export function Sidebar() {
             >
               <span className="flex-shrink-0">{item.icon}</span>
               <span className="truncate flex-1">{t(item.labelKey)}</span>
-              {item.to === '/donations' && pendingRequests > 0 && (
-                <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {pendingRequests > 99 ? '99+' : pendingRequests}
-                </span>
-              )}
+              {item.to === '/donations' && <Badge n={pendingRequests} />}
             </NavLink>
           )
         )}

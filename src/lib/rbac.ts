@@ -84,6 +84,10 @@ const MODULE_ROLES: Record<string, Role[]> = {
  */
 const PATH_MODULE: Record<string, string> = {
   '/rooms': 'dharamshala',
+  // Room requests from a trust's OWN website. Sold to some trusts only, so it
+  // is its own module (public migration 091), granted by the super admin. The
+  // sidebar item, its badge poll and the route all read this line.
+  '/rooms/requests': 'website',
   '/hall': 'dharamshala',
   '/prasad': 'prasad',
   '/seva': 'seva',
