@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, fmtPaise, parsePaise, todayIst } from '../../../lib/api'
@@ -8,6 +8,9 @@ import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRo
 import { usePaymentModes } from '../../../lib/useDropdownOptions'
 import { isWellFormedGstin, recipientGstin } from '../../../lib/statutoryIds'
 import type { Hall, DevoteeSelection } from '../../../types'
+import { useFormDraft } from '../../../lib/formDraft'
+import { DraftBar } from '../../../components/kit/DraftBar'
+import { useToast } from '../../../components/kit/Toast'
 
 /**
  * A hall booking: one venue or a package, for one or more days, at the
@@ -35,9 +38,33 @@ interface Quote {
 
 let rowKey = 1
 
+const blankForm = () => ({
+  hall_id: '', package_id: '', rate_category_id: '',
+  event_name: '', booking_date: todayIst(), end_date: '', session_type: 'full_day', hours: '',
+  booker_gstin: '', notes: '',
+})
+
+/** What a draft keeps (lib/formDraft): the whole form, payments included. */
+interface HallDraft {
+  mode: 'venue' | 'package'
+  form: ReturnType<typeof blankForm>
+  extraVenues: string[]
+  roomIds: string[] | null
+  extras: ExtraRow[]
+  override: { on: boolean; amount: string; reason: string }
+  payRows: PaymentRow[]
+  booker: DevoteeSelection | null
+}
+
 export function AddHallBooking() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const toast = useToast()
+  // /hall/:id/edit changes a booking (2026-10-11); /hall/add makes one.
+  const { id: editId } = useParams()
+  const editing = !!editId
+  const [loaded, setLoaded] = useState<{ invoice_no: string | null; paid_paise: number; total_paise: number; status: string } | null>(null)
+  const [changeReason, setChangeReason] = useState('')
   const paymentModes = usePaymentModes()
   const [halls, setHalls] = useState<Hall[]>([])
   const [packages, setPackages] = useState<Pkg[]>([])
@@ -49,11 +76,7 @@ export function AddHallBooking() {
   const [booker, setBooker] = useState<DevoteeSelection | null>(null)
   const [gstRegistered, setGstRegistered] = useState(false)
   const [mode, setMode] = useState<'venue' | 'package'>('venue')
-  const [form, setForm] = useState({
-    hall_id: '', package_id: '', rate_category_id: '',
-    event_name: '', booking_date: todayIst(), end_date: '', session_type: 'full_day', hours: '',
-    booker_gstin: '', notes: '',
-  })
+  const [form, setForm] = useState(blankForm)
   const [extraVenues, setExtraVenues] = useState<string[]>([])
   const [roomIds, setRoomIds] = useState<string[] | null>(null)
   const [extras, setExtras] = useState<ExtraRow[]>([])
@@ -81,7 +104,58 @@ export function AddHallBooking() {
 
   const pkg = packages.find(p => p.id === form.package_id) ?? null
   // Choosing a package brings its rooms; the desk can still add or drop one.
-  useEffect(() => { setRoomIds(pkg ? pkg.rooms.map(r => r.id) : null) }, [form.package_id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Not when the package arrives with a draft or a booking being edited: their
+  // rooms are already the chosen ones.
+  const keepRooms = useRef(false)
+  useEffect(() => {
+    if (keepRooms.current) { keepRooms.current = false; return }
+    setRoomIds(pkg ? pkg.rooms.map(r => r.id) : null)
+  }, [form.package_id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Draft (new bookings only) ─────────────────────────────────────────
+  const draftValue: HallDraft = { mode, form, extraVenues, roomIds, extras, override, payRows, booker }
+  const draft = useFormDraft<HallDraft>('hall-booking', draftValue, d => {
+    keepRooms.current = !!d.form?.package_id
+    setMode(d.mode); setForm({ ...blankForm(), ...d.form }); setExtraVenues(d.extraVenues ?? [])
+    setRoomIds(d.roomIds ?? null); setExtras((d.extras ?? []).map(x => ({ ...x, key: rowKey++ })))
+    setOverride(d.override ?? { on: false, amount: '', reason: '' }); setPayRows(d.payRows?.length ? d.payRows : [emptyPaymentRow()])
+    setBooker(d.booker ?? null)
+  }, d => !d.form.hall_id && !d.form.package_id && !d.form.event_name.trim() && !d.booker && !d.extras.length && !d.form.notes.trim(),
+  !editing)
+  function resetForm() {
+    setMode('venue'); setForm(blankForm()); setExtraVenues([]); setRoomIds(null); setExtras([])
+    setOverride({ on: false, amount: '', reason: '' }); setPayRows([emptyPaymentRow()]); setBooker(null); setError('')
+  }
+
+  // ── Edit: the booking as it stands ───────────────────────────────────
+  useEffect(() => {
+    if (!editId) return
+    api.get(`/hall-bookings/${editId}/bill`).then(r => {
+      const b = r.data?.data ?? r.data
+      const venueIds: string[] = (b.venues ?? []).map((v: { id: string }) => v.id)
+      keepRooms.current = !!b.package_id
+      setMode(b.package_id ? 'package' : 'venue')
+      setForm({
+        hall_id: b.package_id ? '' : (b.hall_id ?? ''), package_id: b.package_id ?? '', rate_category_id: b.rate_category_id ?? '',
+        event_name: b.event_name ?? '', booking_date: String(b.booking_date).slice(0, 10),
+        end_date: b.end_date ? String(b.end_date).slice(0, 10) : '', session_type: b.session_type ?? 'full_day',
+        hours: b.hours ? String(b.hours) : '', booker_gstin: b.booker_gstin ?? '', notes: b.notes ?? '',
+      })
+      // Venues beyond the hall itself are the "also book" ones; a package's
+      // own venues come back from the server when it prices, so they are dropped.
+      setExtraVenues(venueIds.filter(v => v !== b.hall_id))
+      setRoomIds((b.rooms ?? []).map((x: { id: string }) => x.id))
+      setExtras((b.charges ?? []).map((c: { charge_item_id?: string | null; description: string; qty: number; days?: number; rate_paise: number }) => ({
+        key: rowKey++, charge_item_id: c.charge_item_id ?? '', description: c.description, qty: String(c.qty),
+        rate: String(Number(c.rate_paise) / 100), per_day: Number(c.days ?? 1) > 1,
+      })))
+      if (b.price_override_reason) {
+        setOverride({ on: true, amount: String((Number(b.subtotal_paise) - Number(b.charges_paise ?? 0)) / 100), reason: b.price_override_reason })
+      }
+      setBooker(b.booker_name ? ({ name: b.booker_name, mobile: b.booker_mobile ?? '' } as DevoteeSelection) : null)
+      setLoaded({ invoice_no: b.invoice_no ?? null, paid_paise: Number(b.paid_paise ?? 0), total_paise: Number(b.total_paise ?? 0), status: b.status ?? 'confirmed' })
+    }).catch(() => setError(t('hallEdit.loadFailed')))
+  }, [editId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const body = useMemo(() => ({
     ...(mode === 'package' ? { package_id: form.package_id || null } : { hall_id: form.hall_id || null }),
@@ -100,7 +174,9 @@ export function AddHallBooking() {
       per_day: e.per_day,
     })),
     ...(override.on ? { price_override_paise: override.amount === '' ? null : parsePaise(override.amount), price_override_reason: override.reason } : {}),
-  }), [mode, form, extraVenues, roomIds, extras, override])
+    // An edit is not a clash with itself.
+    ...(editId ? { exclude_booking_id: editId } : {}),
+  }), [mode, form, extraVenues, roomIds, extras, override, editId])
 
   // Live price: re-asked whenever anything that changes it changes.
   const seq = useRef(0)
@@ -134,6 +210,7 @@ export function AddHallBooking() {
     if (gstinError) { setError(gstinError); return }
     if (override.on && !override.reason.trim()) { setError(t('hallPackages.overrideReasonRequired')); return }
     if (quote?.conflicts.venues.length || quote?.conflicts.rooms.length) { setError(t('hallPackages.resolveClashes')); return }
+    if (editing) { await saveEdit(); return }
     if (payRows.some(r => Number(r.amount) > 0 && refNeeded(r.payment_mode) && !r.reference_no?.trim())) {
       setError(t('pledges.utrRequired')); return
     }
@@ -152,10 +229,40 @@ export function AddHallBooking() {
       if (booker?.global_user_id) payload.booker = { global_user_id: booker.global_user_id, name: booker.name, mobile: booker.mobile }
       else if (booker?.name) payload.booker = { name: booker.name, mobile: booker.mobile }
       await api.post('/hall-bookings', payload)
+      draft.clear()
       navigate('/hall')
     } catch (err: unknown) {
       const ex = err as { response?: { data?: { error?: { message?: string } } } }
       setError(ex.response?.data?.error?.message || t('hallPackages.bookingFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const closed = editing && loaded && loaded.status !== 'confirmed' ? loaded.status : null
+
+  async function saveEdit() {
+    if (!changeReason.trim()) { setError(t('hallEdit.reasonRequired')); return }
+    setSaving(true)
+    setError('')
+    try {
+      const { exclude_booking_id: _x, ...rest } = body as Record<string, unknown>
+      const { data } = await api.put(`/hall-bookings/${editId}`, {
+        ...rest,
+        event_name: form.event_name,
+        notes: form.notes || null,
+        booker_gstin: gstinCheck.gstin,
+        ...(booker?.name ? { booker: { name: booker.name, mobile: booker.mobile ?? '' } } : {}),
+        change_reason: changeReason.trim(),
+      })
+      const res = data?.data ?? data
+      const changes: string[] = res?.changes ?? []
+      toast.success(changes.length ? `${t('hallEdit.saved')} · ${changes.join(' · ')}` : t('hallEdit.savedNoChange'))
+      if (Number(res?.refund_due_paise) > 0) toast.info(t('hallEdit.refundDue', { amount: fmtPaise(res.refund_due_paise) }))
+      navigate(`/hall?q=${encodeURIComponent(res?.invoice_no ?? loaded?.invoice_no ?? '')}`)
+    } catch (err: unknown) {
+      const ex = err as { response?: { data?: { error?: { message?: string } } } }
+      setError(ex.response?.data?.error?.message || t('hallEdit.failed'))
     } finally {
       setSaving(false)
     }
@@ -166,8 +273,17 @@ export function AddHallBooking() {
 
   return (
     <div className="max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newHallBooking')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">
+            {editing ? t('hallEdit.title', { ref: loaded?.invoice_no ?? '' }) : t('dharamshala.newHallBooking')}
+          </h1>
+          {!editing && (
+            <div className="mt-1">
+              <DraftBar draft={draft} onDiscard={resetForm} leaveTo="/hall" />
+            </div>
+          )}
+        </div>
         <button onClick={() => navigate('/hall')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
@@ -330,10 +446,18 @@ export function AddHallBooking() {
 
             <DevoteePicker label={t('dharamshala.bookerContact')} noun="guest" value={booker} onChange={setBooker} showAnonymous={false} />
 
-            <div>
-              <p className="form-label">{t('dharamshala.advanceAmount')}</p>
-              <PaymentSplitInput rows={payRows} onChange={setPayRows} totalPaise={quote?.total_paise ?? 0} />
-            </div>
+            {editing ? (
+              // Money is not edited here: what was paid stays on the booking,
+              // and the balance is collected from the list as before.
+              <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600" data-testid="hall-edit-paid">
+                {t('hallEdit.paidSoFar', { amount: fmtPaise(loaded?.paid_paise ?? 0) })}
+              </div>
+            ) : (
+              <div>
+                <p className="form-label">{t('dharamshala.advanceAmount')}</p>
+                <PaymentSplitInput rows={payRows} onChange={setPayRows} totalPaise={quote?.total_paise ?? 0} />
+              </div>
+            )}
 
             <div>
               <label className="form-label" htmlFor="hall-notes">{t('dharamshala.remarks')}</label>
@@ -341,12 +465,27 @@ export function AddHallBooking() {
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
 
+            {editing && (
+              <div>
+                <label className="form-label" htmlFor="hall-change-reason">{t('hallEdit.reason')} *</label>
+                <input id="hall-change-reason" className="form-input" maxLength={300} value={changeReason}
+                  placeholder={t('hallEdit.reasonPlaceholder') as string} onChange={e => setChangeReason(e.target.value)} />
+              </div>
+            )}
+
+            {/* Only a confirmed booking changes: the API refuses the rest, so
+                the page says so before anything is typed. */}
+            {closed && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="hall-edit-closed">
+                {t('hallEdit.closed', { status: t(`dharamshala.status${closed === 'cancelled' ? 'Cancelled' : 'Completed'}`, { defaultValue: closed }) })}
+              </p>
+            )}
             {error && <p className="text-red-600 text-sm" data-testid="hall-error">{error}</p>}
           </div>
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
             <button type="button" onClick={() => navigate('/hall')} className="btn-secondary">{t('common.cancel')}</button>
-            <button type="submit" disabled={saving} className="btn-primary" data-testid="hall-confirm">
-              <Save size={16} /> {saving ? t('common.saving') : t('dharamshala.confirmBooking')}
+            <button type="submit" disabled={saving || !!closed} className="btn-primary" data-testid="hall-confirm">
+              <Save size={16} /> {saving ? t('common.saving') : editing ? t('hallEdit.save') : t('dharamshala.confirmBooking')}
             </button>
           </div>
         </div>
@@ -366,8 +505,24 @@ export function AddHallBooking() {
                 {quote.gst_paise > 0 && <div className="flex justify-between text-slate-600"><span>GST {quote.gst_rate}%</span><span>₹{fmtPaise(quote.gst_paise)}</span></div>}
                 {quote.exempt_reason && <p className="text-xs text-green-700">{t('hallPackages.gstExempt')}</p>}
                 <div className="flex justify-between border-t pt-2 font-bold text-base"><span>{t('dharamshala.total')}</span><span data-testid="hall-quote-total">₹{fmtPaise(quote.total_paise)}</span></div>
-                <div className="flex justify-between text-slate-600"><span>{t('hallPackages.advanceNow')}</span><span>₹{fmtPaise(sumPaise(payRows))}</span></div>
-                <div className="flex justify-between font-semibold"><span>{t('hallPackages.balanceLater')}</span><span>₹{fmtPaise(Math.max(0, quote.total_paise - sumPaise(payRows)))}</span></div>
+                {editing && loaded ? (
+                  <>
+                    {loaded.total_paise !== quote.total_paise && (
+                      <div className="flex justify-between text-slate-500" data-testid="hall-edit-was"><span>{t('hallEdit.wasTotal')}</span><span>₹{fmtPaise(loaded.total_paise)}</span></div>
+                    )}
+                    <div className="flex justify-between text-slate-600"><span>{t('hallEdit.paid')}</span><span>₹{fmtPaise(loaded.paid_paise)}</span></div>
+                    {loaded.paid_paise > quote.total_paise ? (
+                      <div className="flex justify-between font-semibold text-brand-blue" data-testid="hall-edit-refund"><span>{t('hallEdit.refundToBooker')}</span><span>₹{fmtPaise(loaded.paid_paise - quote.total_paise)}</span></div>
+                    ) : (
+                      <div className="flex justify-between font-semibold"><span>{t('hallPackages.balanceLater')}</span><span>₹{fmtPaise(quote.total_paise - loaded.paid_paise)}</span></div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-slate-600"><span>{t('hallPackages.advanceNow')}</span><span>₹{fmtPaise(sumPaise(payRows))}</span></div>
+                    <div className="flex justify-between font-semibold"><span>{t('hallPackages.balanceLater')}</span><span>₹{fmtPaise(Math.max(0, quote.total_paise - sumPaise(payRows)))}</span></div>
+                  </>
+                )}
                 <p className="text-xs text-slate-500">{quote.venues.map(v => v.name).join(' + ')}{quote.rooms.length ? ` · ${t('hallPackages.roomsCount', { count: quote.rooms.length })}` : ''}</p>
                 {(quote.conflicts.venues.length > 0 || quote.conflicts.rooms.length > 0) && (
                   <div className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-800" data-testid="hall-clash">

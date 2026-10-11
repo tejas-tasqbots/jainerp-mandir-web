@@ -6,6 +6,7 @@ import { PhoneInput } from '../../../components/PhoneInput'
 import { useAuthStore } from '../../../store/authStore'
 import { useConfirm } from '../../../components/ConfirmDialog'
 import { useToast } from '../../../components/kit/Toast'
+import { primaryRole } from '../../../lib/roleLabel'
 
 interface StaffUser {
   id: string
@@ -173,7 +174,7 @@ export function UsersTab() {
                       ) : (
                         <select
                           className="form-select text-sm py-1"
-                          value={u.roles?.[0] || 'viewer'}
+                          value={primaryRole(u.roles) || 'viewer'}
                           onChange={e => changeRole(u, e.target.value)}
                           disabled={!iAmAdmin}
                         >

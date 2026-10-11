@@ -21,17 +21,15 @@ const OTHER = '__other__'
 const SALARY_WORDS = /salary|salaries|wage|वेतन|तनख्वाह|पगार|मानधन/i
 import { itemsPayload, itemsTotals, newItemRow, type ItemRow, type VendorItem } from '../../components/Expenses/expenseItems'
 import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
+import { useFormDraft } from '../../lib/formDraft'
+import { DraftBar } from '../../components/kit/DraftBar'
 
-export function AddExpense() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+/** A scanned bill up to this size rides in the draft; a bigger one is taken again. */
+const DRAFT_PHOTO_MAX_CHARS = 1_500_000
 
-  const [funds, setFunds] = useState<{ id: string; name: string }[]>([])
-  // The vendor, picked from Vendors / Suppliers or added on the spot.
-  const [vendor, setVendor] = useState<VendorRef | null>(null)
-  const [form, setForm] = useState({
+/** An empty expense form. */
+function blankExpense() {
+  return {
     vendor_name: '',
     category: '',
     other_category: '',
@@ -53,7 +51,19 @@ export function AddExpense() {
     cheque_number: '',
     cheque_bank: '',
     cheque_date: todayIst(),
-  })
+  }
+}
+
+export function AddExpense() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const [funds, setFunds] = useState<{ id: string; name: string }[]>([])
+  // The vendor, picked from Vendors / Suppliers or added on the spot.
+  const [vendor, setVendor] = useState<VendorRef | null>(null)
+  const [form, setForm] = useState(() => blankExpense())
 
   const accounts = useAccounts()
   useEffect(() => {
@@ -104,6 +114,20 @@ export function AddExpense() {
   // "Other…" item, or a product with no head of its own.
   const needsBillCategory = !itemised || items.some(r => r.other || (!!r.vendor_item_id && !r.category))
   const totals = itemsTotals(items)
+
+  // A half-entered bill survives being left (lib/formDraft).
+  const draft = useFormDraft('expense', {
+    form, vendor, itemised, items,
+    bill: billPhoto && billPhoto.length <= DRAFT_PHOTO_MAX_CHARS ? { photo: billPhoto, name: billName } : null,
+  }, d => {
+    setForm({ ...blankExpense(), ...d.form }); setVendor(d.vendor ?? null); setItemised(!!d.itemised)
+    setItems(d.items?.length ? d.items : [newItemRow()])
+    if (d.bill) { setBillPhoto(d.bill.photo); setBillName(d.bill.name) }
+  }, d => !d.form.description.trim() && !d.form.amount && !d.vendor && !d.form.category && !d.form.bill_number && !d.bill
+    && !(d.itemised && d.items.some(r => r.description || r.rate)))
+  function resetForm() {
+    setForm(blankExpense()); setVendor(null); setItemised(false); setItems([newItemRow()]); setBillPhoto(''); setBillName(''); setError('')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -159,6 +183,7 @@ export function AddExpense() {
       if (billPhoto) payload.bill_photo_base64 = billPhoto
 
       await api.post('/expenses', payload)
+      draft.clear()
       navigate('/expenses')
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: { message?: string } } } }
@@ -171,7 +196,12 @@ export function AddExpense() {
   return (
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-navy-900">{t('expenses.newExpenseTitle')}</h1>
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{t('expenses.newExpenseTitle')}</h1>
+          <div className="mt-1">
+            <DraftBar draft={draft} onDiscard={resetForm} leaveTo="/expenses" />
+          </div>
+        </div>
         <button onClick={() => navigate('/expenses')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 

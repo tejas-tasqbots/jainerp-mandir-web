@@ -4002,7 +4002,8 @@
       "upload_donation_proof": "Payment proof uploaded",
       "revoke": "Signed out",
       "viewed": "Viewed",
-      "purged": "Deleted (retention period)"
+      "purged": "Deleted (retention period)",
+      "amend": "Changed (with reason)"
     },
     "group": {
       "donations": "Donations",
@@ -4629,5 +4630,32 @@
       "rejectHelp": "Say why — the yatri sees it when they check their request.",
       "rejectPlaceholder": "e.g. Fully booked on those dates"
     }
+  },
+  "drafts": {
+    "restored": "Draft from {{when}}",
+    "savedAt": "Draft saved {{when}}",
+    "saveDraft": "Save draft",
+    "discard": "Discard draft",
+    "savedToast": "Draft saved. It will be here when you come back.",
+    "idNotKept": "ID documents are not kept in a draft; add them again.",
+    "saveFailed": "This browser would not store the draft. Finish the entry, or note it down before leaving."
+  },
+  "hallEdit": {
+    "action": "Edit booking",
+    "title": "Edit hall booking {{ref}}",
+    "loadFailed": "Could not load this booking.",
+    "reasonRequired": "Say why the booking is being changed.",
+    "saved": "Booking updated",
+    "savedNoChange": "Booking saved; nothing changed.",
+    "refundDue": "Paid ₹{{amount}} more than the new total: refund it to the booker.",
+    "failed": "Could not save the changes.",
+    "paidSoFar": "Paid so far: ₹{{amount}}. Payments stay on the booking; collect any balance from the Hall list.",
+    "reason": "Reason for the change",
+    "reasonPlaceholder": "e.g. Date moved at the family's request",
+    "save": "Save changes",
+    "wasTotal": "Total before the change",
+    "paid": "Paid so far",
+    "refundToBooker": "To refund to the booker",
+    "closed": "This booking is {{status}} and can no longer be changed."
   }
 }

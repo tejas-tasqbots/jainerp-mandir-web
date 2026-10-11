@@ -136,8 +136,8 @@ export default function App() {
 
             {/* Donations hub — combines Donations, Requests, Pledges (was Boli) as tabs */}
             <Route path="/donations" element={<DonationsHub />} />
-            <Route path="/donations/add" element={<AddDonation />} />
-            <Route path="/donations/:id/edit" element={<AddDonation />} />
+            <Route path="/donations/add" element={<AddDonation key="new" />} />
+            <Route path="/donations/:id/edit" element={<AddDonation key="edit" />} />
             <Route path="/donation-requests" element={<Navigate to="/donations?tab=requests" replace />} />
 
             {/* Expenses */}
@@ -152,7 +152,8 @@ export default function App() {
             <Route path="/rooms/requests" element={<WebsiteRequests />} />
             <Route path="/rooms/checkin" element={<AddRoomCheckin />} />
             <Route path="/hall" element={<HallBookingsList />} />
-            <Route path="/hall/add" element={<AddHallBooking />} />
+            <Route path="/hall/add" element={<AddHallBooking key="new" />} />
+            <Route path="/hall/:id/edit" element={<AddHallBooking key="edit" />} />
 
             {/* Prasad */}
             <Route path="/prasad" element={<PrasadCounter />} />

@@ -72,7 +72,7 @@ export function actionTone(action: string): Tone {
   switch (action) {
     case 'create': case 'approve': case 'invite': case 'bulk_import':
       return 'green'
-    case 'update': case 'correct': case 'stay_times': case 'update_public_profile': case 'housekeeping':
+    case 'update': case 'correct': case 'amend': case 'stay_times': case 'update_public_profile': case 'housekeeping':
     case 'enable': case 'disable': case 'privacy': case 'set_primary_for_donations':
       return 'blue'
     case 'delete': case 'void': case 'cancel': case 'reject': case 'cheque_bounce': case 'reverse': case 'waive':

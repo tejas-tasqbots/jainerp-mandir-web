@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { useSessionRefresh } from '../../lib/useSessionRefresh'
 import { OfflineBanner } from '../OfflineBanner'
 import { RouteGuard } from '../RouteGuard'
 import { CommandPalette } from '../kit/CommandPalette'
@@ -20,6 +21,8 @@ import { KeyboardShortcuts } from '../kit/KeyboardShortcuts'
  */
 export function Layout() {
   const { t } = useTranslation()
+  // Name and roles stay current without signing out and in (see the hook).
+  useSessionRefresh()
   const location = useLocation()
   // The drawer is open FOR the route it was opened on. A tap on a menu item
   // navigates, and the drawer is then closed by construction — no effect

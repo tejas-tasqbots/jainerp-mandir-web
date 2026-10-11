@@ -7,7 +7,7 @@ import { api } from '../../lib/api'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { UpdateButton } from './UpdateButton'
 import { resetTour } from '../Walkthrough'
-import { roleLabel } from '../../lib/roleLabel'
+import { primaryRole, roleLabel } from '../../lib/roleLabel'
 
 export function TopBar({ onMenu }: { onMenu?: () => void }) {
   const { t } = useTranslation()
@@ -59,8 +59,9 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         <div className="hidden md:flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
           <User size={15} className="text-slate-400" />
           <span>{user?.name || user?.mobile}</span>
-          {user?.roles?.[0] && (
-            <span className="text-xs text-slate-400">({roleLabel(t, user.roles[0], true)})</span>
+          {/* The highest role held, not the first stored (lib/roleLabel). */}
+          {primaryRole(user?.roles) && (
+            <span className="text-xs text-slate-400" data-testid="topbar-role">({roleLabel(t, primaryRole(user?.roles)!, true)})</span>
           )}
         </div>
         {/* Where this account is signed in. A sign-in used to be invisible:

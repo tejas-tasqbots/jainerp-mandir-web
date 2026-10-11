@@ -11,6 +11,8 @@ import { SplitPaymentToggle } from '../../components/SplitPaymentToggle'
 import { useProfileStore, useTrustHas80g } from '../../store/profileStore'
 import type { DonationCategory, DevoteeSelection } from '../../types'
 import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
+import { useFormDraft } from '../../lib/formDraft'
+import { DraftBar } from '../../components/kit/DraftBar'
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
@@ -28,6 +30,24 @@ interface ExtraHead { key: string; category_id: string; other_name: string; amou
 /** The category dropdown's "Other…" choice: type a category the trust has not set up yet. */
 const OTHER = '__other__'
 const MAX_HEADS = 20
+/** An empty receipt form. */
+function blankDonation() {
+  return {
+    category_id: '',
+    // A new category typed after choosing "Other…" in the dropdown.
+    other_name: '',
+    amount: '',
+    payment_mode: 'cash',
+    payment_account_id: '',
+    utr_number: '',
+    cheque_number: '',
+    is_80g_eligible: true,
+    // Opt-in, never pre-ticked. A donation is not agreement to be added to a
+    // temple's mailing list — the counter has to ask, and the default is no.
+    wants_event_updates: false,
+    note: '',
+  }
+}
 const newHead = (): ExtraHead => ({ key: Math.random().toString(36).slice(2), category_id: '', other_name: '', amount: '' })
 
 // The "Donor wants updates about this mandir's events" tick is switched off
@@ -72,21 +92,18 @@ export function AddDonation() {
   // When correcting: what the original was filed under. The API keeps it
   // unless the category changes.
   const [original, setOriginal] = useState<{ category_id: string; fund_id: string | null; fund_type: string | null } | null>(null)
-  const [form, setForm] = useState({
-    category_id: '',
-    // A new category typed after choosing "Other…" in the dropdown.
-    other_name: '',
-    amount: '',
-    payment_mode: 'cash',
-    payment_account_id: '',
-    utr_number: '',
-    cheque_number: '',
-    is_80g_eligible: true,
-    // Opt-in, never pre-ticked. A donation is not agreement to be added to a
-    // temple's mailing list — the counter has to ask, and the default is no.
-    wants_event_updates: false,
-    note: '',
-  })
+  const [form, setForm] = useState(() => blankDonation())
+
+  // A half-filled receipt survives being left (lib/formDraft). New receipts
+  // only - a correction reloads the receipt itself. The PAN typed for a donor
+  // is not kept: it does not belong in browser storage.
+  const draft = useFormDraft('donation', { form, extraHeads, splitMode, payRows, devotee }, d => {
+    setForm({ ...blankDonation(), ...d.form }); setExtraHeads(d.extraHeads ?? []); setSplitMode(!!d.splitMode)
+    setPayRows(d.payRows?.length ? d.payRows : [emptyPaymentRow()]); setDevotee(d.devotee ?? null)
+  }, d => !d.form.category_id && !d.form.amount && !d.devotee && !d.extraHeads.length && !d.form.note.trim(), !isEdit)
+  function resetForm() {
+    setForm(blankDonation()); setExtraHeads([]); setSplitMode(false); setPayRows([emptyPaymentRow()]); setDevotee(null); setError('')
+  }
 
   useEffect(() => {
     api.get('/donation-categories', { params: { is_active: 'true' } }).then(r => setCategories(r.data.data || []))
@@ -257,6 +274,7 @@ export function AddDonation() {
       } else {
         const { data } = await api.post('/donations', payload)
         donationId = data.data?.id
+        draft.clear()
       }
       navigate('/donations')
       if (donationId) {
@@ -324,6 +342,11 @@ export function AddDonation() {
         <div>
           <h1 className="text-xl font-bold text-navy-900">{isEdit ? t('donations.editDonation') : t('donations.newDonationTitle')}</h1>
           {isEdit && <p className="text-xs text-amber-600 mt-0.5">{t('donations.editWarning')}</p>}
+          {!isEdit && (
+            <div className="mt-1">
+              <DraftBar draft={draft} onDiscard={resetForm} leaveTo="/donations" />
+            </div>
+          )}
         </div>
         <button type="button" onClick={() => navigate('/donations')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>

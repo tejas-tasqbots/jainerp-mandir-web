@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ban, BedDouble, FileText, IndianRupee, Plus, Receipt, Trash2, X } from 'lucide-react'
+import { Ban, BedDouble, FileText, IndianRupee, Pencil, Plus, Receipt, Trash2, X } from 'lucide-react'
 import { printCurrentView } from '../../../lib/downloadReport'
 import { api, dayOf, fmtPaise } from '../../../lib/api'
 import { exportXlsx } from '../../../lib/exportXlsx'
@@ -157,6 +157,17 @@ export function HallBookingsList() {
                 data-testid="hall-open-rooms"
               >
                 <BedDouble size={14} /> {t('hallPackages.openRooms')}
+              </button>
+            )}
+            {/* Change the booking (2026-10-11): dates, hall or package, rooms,
+                extras, price - re-priced and clash-checked, payments kept. */}
+            {open && (
+              <button
+                onClick={e => { e.stopPropagation(); navigate(`/hall/${b.id}/edit`) }}
+                className="p-1 text-slate-400 hover:text-navy-700 rounded"
+                title={t('hallEdit.action')} aria-label={t('hallEdit.action')} data-testid="hall-edit"
+              >
+                <Pencil size={14} />
               </button>
             )}
             {/* Collect balance — the whole point of a confirmed booking, and

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PaymentFields, emptyPayment, needsReference, type PaymentFieldsValue } from '../../../components/PaymentFields'
@@ -13,6 +13,8 @@ import type { Room, DevoteeSelection } from '../../../types'
 import { RoomPicker, type PickerRoom } from './RoomPicker'
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
 import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
+import { useFormDraft } from '../../../lib/formDraft'
+import { DraftBar } from '../../../components/kit/DraftBar'
 
 /** The night before `day` (YYYY-MM-DD), for the last night of a stay. */
 function dayBefore(day: string): string {
@@ -34,6 +36,35 @@ let idRowSeq = 0
 function newIdRow(): IdRow {
   idRowSeq += 1
   return { key: idRowSeq, holder_name: '', id_type: 'aadhaar', id_number: '', image: null }
+}
+
+/**
+ * A draft from an earlier day comes back starting today, for as many nights
+ * as it had: a stay cannot begin in the past, and a check-in date of
+ * yesterday would otherwise sit unnoticed until the API refused it.
+ */
+function freshDates<F extends { check_in_date: string; check_out_date: string }>(f: F): F {
+  const today = todayIst()
+  if (!f.check_in_date || f.check_in_date >= today) return f
+  const nights = Math.max(1, Math.round((Date.parse(`${f.check_out_date}T00:00:00Z`) - Date.parse(`${f.check_in_date}T00:00:00Z`)) / 86_400_000) || 1)
+  const out = new Date(Date.parse(`${today}T00:00:00Z`) + nights * 86_400_000).toISOString().slice(0, 10)
+  return { ...f, check_in_date: today, check_out_date: out }
+}
+
+/** An empty booking form. */
+function blankStay() {
+  return {
+    room_id: '',
+    remarks: '',
+    check_in_date: todayIst(),
+    check_out_date: istDayAfter(todayIst()),
+    check_in_time: '12:00',
+    check_out_time: '10:00',
+    persons_count: '1',
+    advance: '',
+    guest_gstin: '',
+    deposit: '',
+  }
 }
 
 export function AddRoomCheckin() {
@@ -71,21 +102,25 @@ export function AddRoomCheckin() {
   // was (2026-10-08).
   const [payment, setPayment] = useState<PaymentFieldsValue>(emptyPayment())
   const paymentModes = usePaymentModes()
-  const [form, setForm] = useState(() => ({
-    room_id: '',
-    remarks: '',
-    check_in_date: todayIst(),
-    check_out_date: istDayAfter(todayIst()),
-    // Pre-filled from the trust's policy below. A booking has always had two
-    // DATES and no times, so "rooms from 12, vacate by 10" lived on a board in
-    // the lobby and the bill could state neither (tenant migration 043).
-    check_in_time: '12:00',
-    check_out_time: '10:00',
-    persons_count: '1',
-    advance: '',
-    guest_gstin: '',
-    deposit: '',
-  }))
+  const [form, setForm] = useState(() => blankStay())
+
+  // A half-made booking survives being left (lib/formDraft). Identity
+  // documents are NOT kept: Aadhaar numbers and ID photos do not belong in
+  // browser storage, so they are taken again (the bar says so).
+  const restored = useRef(false)
+  const wantedTaken = useRef(false)
+  // The form as last rendered, for the rooms request that resolves after a
+  // draft was put back (its closure still holds the blank first form).
+  const formRef = useRef(form)
+  useEffect(() => { formRef.current = form })
+  const draft = useFormDraft('room-booking', { form, guest, moreRooms, charges, payment }, d => {
+    restored.current = true
+    setForm(freshDates({ ...blankStay(), ...d.form })); setGuest(d.guest ?? null); setMoreRooms(d.moreRooms ?? [])
+    setCharges(d.charges ?? []); setPayment(d.payment ?? emptyPayment())
+  }, d => !d.form.room_id && !d.guest && !d.form.advance && !d.form.deposit && !d.form.remarks.trim() && !d.charges.length && !d.moreRooms.length)
+  function resetForm() {
+    setForm(blankStay()); setGuest(null); setMoreRooms([]); setCharges([]); setPayment(emptyPayment()); setIdRows([newIdRow()]); setError('')
+  }
 
   // Validated as the counter types. The same rule the API applies on submit
   // (recipientGstin, shared), so the clerk is never told a number is fine and
@@ -103,6 +138,8 @@ export function AddRoomCheckin() {
       // Same test the API charges GST by (a well-formed GSTIN), so the form
       // never hides the guest GSTIN on a bill that will carry tax, or the reverse.
       setGstRegistered(isWellFormedGstin(p.gstin))
+      // Not over a restored draft: its times are the ones the clerk chose.
+      if (restored.current) return
       setForm(f => ({
         ...f,
         check_in_time: String(p.default_checkin_time ?? f.check_in_time).slice(0, 5),
@@ -127,8 +164,17 @@ export function AddRoomCheckin() {
       // Arriving from the availability board: ?room_id=… pre-selects it, so
       // the cashier doesn't have to find the number again.
       const wanted = new URLSearchParams(window.location.search).get('room_id')
-      if (wanted && list.some(rm => rm.id === wanted)) {
-        setForm(f => (f.room_id ? f : { ...f, room_id: wanted }))
+      if (wanted && !wantedTaken.current && list.some(rm => rm.id === wanted)) {
+        // Once: a room the clerk later takes off must not come back on a date change.
+        wantedTaken.current = true
+        // With a restored draft holding other rooms, the clicked one joins them
+        // rather than being ignored.
+        const current = formRef.current.room_id
+        if (current && current !== wanted) {
+          setMoreRooms(m => (m.includes(wanted) ? m : [...m, wanted]))
+        } else {
+          setForm(f => (f.room_id ? f : { ...f, room_id: wanted }))
+        }
       }
     }).catch(() => { /* the picker shows no rooms; the API still guards the booking */ })
       .finally(() => { if (live) setRoomsFor(`${form.check_in_date}|${lastNight}`) })
@@ -246,7 +292,12 @@ export function AddRoomCheckin() {
   return (
     <div className="max-w-4xl pb-24">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newRoomBooking')}</h1>
+        <div>
+          <h1 className="text-xl font-bold text-navy-900">{t('dharamshala.newRoomBooking')}</h1>
+          <div className="mt-1">
+            <DraftBar draft={draft} onDiscard={resetForm} note={t('drafts.idNotKept')} leaveTo="/rooms" />
+          </div>
+        </div>
         <button type="button" onClick={() => navigate('/rooms')} className="btn-secondary btn-sm"><X size={14} /> {t('common.cancel')}</button>
       </div>
 
