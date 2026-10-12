@@ -4557,6 +4557,7 @@
       "noDharamshala": "खोली बुकिंगसाठी धर्मशाळा मॉड्यूल हवे.",
       "advancePercent": "ऑनलाइन आगाऊ रक्कम (%)",
       "advanceHelp": "बिलाची, तुम्ही विनंतीची पुष्टी करता तेव्हा. 0 = काउंटरवर पेमेंट.",
+      "advanceNoGateway": "अजून Razorpay खाते नाही? हे 0 करा: विनंत्या तरीही येतील आणि यात्री काउंटरवर पैसे देईल.",
       "gatewayHeading": "तुमचे Razorpay खाते",
       "gatewayIntro": "वेबसाइटचे पैसे थेट तुमच्या ट्रस्टच्या स्वतःच्या Razorpay खात्यात जातात. की Razorpay Dashboard → Account & Settings → API Keys मधून कॉपी करा.",
       "keyId": "Key ID",

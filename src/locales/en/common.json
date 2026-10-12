@@ -4557,6 +4557,7 @@
       "noDharamshala": "Room booking needs the Dharamshala module.",
       "advancePercent": "Advance to pay online (%)",
       "advanceHelp": "Of the bill, when you confirm a request. 0 = pay at the desk.",
+      "advanceNoGateway": "No Razorpay account yet? Set this to 0: requests still come in and the yatri pays at the desk.",
       "gatewayHeading": "Your Razorpay account",
       "gatewayIntro": "Money from the website goes straight to your trust's own Razorpay account. Copy the keys from Razorpay Dashboard → Account & Settings → API Keys.",
       "keyId": "Key ID",

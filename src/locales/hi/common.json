@@ -4557,6 +4557,7 @@
       "noDharamshala": "कक्ष बुकिंग के लिए धर्मशाला मॉड्यूल चाहिए।",
       "advancePercent": "ऑनलाइन अग्रिम (%)",
       "advanceHelp": "बिल का, जब आप अनुरोध की पुष्टि करें। 0 = काउंटर पर भुगतान।",
+      "advanceNoGateway": "अभी Razorpay खाता नहीं है? इसे 0 करें: अनुरोध फिर भी आएँगे और यात्री काउंटर पर भुगतान करेगा।",
       "gatewayHeading": "आपका Razorpay खाता",
       "gatewayIntro": "वेबसाइट का पैसा सीधे आपके ट्रस्ट के अपने Razorpay खाते में जाता है। कुंजियाँ Razorpay Dashboard → Account & Settings → API Keys से कॉपी करें।",
       "keyId": "Key ID",

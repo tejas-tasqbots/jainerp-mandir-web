@@ -67,7 +67,10 @@ export function WebsiteTab() {
   }
 
   const banks = accounts.filter(a => a.type === 'bank' && a.is_active)
-  const takesGateway = s.donation_mode === 'gateway' || s.donation_mode === 'both' || s.room_mode !== 'off'
+  // Same rule as the API (siteTakesGateway): a room request with 0% advance is paid at the desk.
+  const takesGateway = s.donation_mode === 'gateway' || s.donation_mode === 'both' || s.room_mode === 'instant'
+    || (s.room_mode === 'request' && s.request_advance_percent > 0)
+  const hasGateway = !!s.razorpay_key_id && s.has_key_secret
   const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setS(prev => (prev ? { ...prev, [k]: v } : prev))
 
   async function save() {
@@ -183,6 +186,11 @@ export function WebsiteTab() {
               <input id="website-advance" type="number" min="0" max="100" className="form-input" value={s.request_advance_percent}
                 onChange={e => set('request_advance_percent', Math.max(0, Math.min(100, Number(e.target.value) || 0)))} />
               <p className="text-xs text-slate-400 mt-1">{t('website.settings.advanceHelp')}</p>
+              {s.request_advance_percent > 0 && !hasGateway && (
+                <p className="text-xs text-amber-600 mt-1 flex items-start gap-1">
+                  <ShieldAlert size={13} className="mt-0.5 flex-shrink-0" /> {t('website.settings.advanceNoGateway')}
+                </p>
+              )}
             </div>
           )}
         </div>
