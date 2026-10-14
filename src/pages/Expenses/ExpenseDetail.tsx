@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Paperclip, ExternalLink } from 'lucide-react'
+import { Paperclip } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import type { Expense } from '../../types'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
 import { PaymentVouchers } from '../../components/PaymentVouchers'
+import { AttachmentThumb } from '../../components/kit/AttachmentViewer'
 
 /** Row detail drawer for an expense — bill details plus the scanned attachment (plan §05). */
 export function ExpenseDetail({ expense }: { expense: Expense }) {
@@ -106,14 +107,9 @@ export function ExpenseDetail({ expense }: { expense: Expense }) {
           <div className="h-40 bg-slate-100 rounded animate-pulse" />
         ) : !photo ? (
           <p className="text-xs text-slate-400">{t('expenses.billLoadFailed')}</p>
-        ) : photo.startsWith('data:application/pdf') ? (
-          <a href={photo} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
-            <ExternalLink size={14} /> {t('expenses.openBillPdf')}
-          </a>
         ) : (
-          <a href={photo} target="_blank" rel="noreferrer" title={t('expenses.openFullSize')}>
-            <img src={photo} alt={t('expenses.billAttachment')} className="w-full rounded border border-slate-200" />
-          </a>
+          // Images zoom, PDFs open in the viewer (a data: link in a new tab is blocked by Chrome).
+          <AttachmentThumb src={photo} alt={t('expenses.billAttachment')} fileName={`expense-bill-${expense.id.slice(0, 8)}`} />
         )}
       </div>
     </div>

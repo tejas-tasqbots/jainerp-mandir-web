@@ -4658,5 +4658,18 @@
     "paid": "Paid so far",
     "refundToBooker": "To refund to the booker",
     "closed": "This booking is {{status}} and can no longer be changed."
+  },
+  "attachment": {
+    "pdf": "PDF document",
+    "clickToOpen": "Click to open",
+    "clickToZoom": "Click to zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit",
+    "rotate": "Rotate",
+    "openNewTab": "Open in new tab",
+    "download": "Download",
+    "cannotOpen": "This file could not be opened.",
+    "hint": "Scroll or pinch to zoom · drag to move · double-click to zoom · Esc to close"
   }
 }

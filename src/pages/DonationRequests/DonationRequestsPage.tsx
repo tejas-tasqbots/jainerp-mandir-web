@@ -9,6 +9,7 @@ import { useIsOnline } from '../../lib/useIsOnline'
 import { printDonationReceipt, shareReceiptPdf } from '../../lib/printReceipt'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
 import { SourceBadge } from '../../lib/entrySource'
+import { AttachmentThumb } from '../../components/kit/AttachmentViewer'
 
 type RequestStatus = 'pending' | 'approved' | 'rejected'
 
@@ -404,7 +405,7 @@ export function DonationRequestsPage() {
                 {detail.request.proof_image_base64 ? (
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{t('donationRequests.paymentScreenshot')}</p>
-                    <img src={detail.request.proof_image_base64} alt={t('ui.paymentProof')} className="w-full rounded-lg border border-slate-200" />
+                    <AttachmentThumb src={detail.request.proof_image_base64} alt={`${t('ui.paymentProof')} · ${detail.request.donor_name}`} fileName={`payment-proof-${detail.request.donor_name}`.replace(/[^\w.-]+/g, '-')} />
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400">{t('donationRequests.noScreenshot')}</p>
