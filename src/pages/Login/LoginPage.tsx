@@ -263,9 +263,7 @@ export function LoginPage() {
             Building2 glyph in a red plate that used to sit here is gone. The
             sidebar, the favicon and every app icon already read this way. */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">
-            <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
-          </h1>
+          <h1 className="m-0"><img src={`${import.meta.env.BASE_URL}logo.svg`} alt="JainERP" className="h-12 w-auto mx-auto" /></h1>
           <p className="text-slate-500 text-sm font-semibold mt-1">{t('brand.portal')}</p>
         </div>
 

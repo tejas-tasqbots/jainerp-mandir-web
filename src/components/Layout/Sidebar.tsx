@@ -216,9 +216,7 @@ export function Sidebar() {
         {/* The logo is the wordmark with the portal it belongs to underneath —
             the same lockup as the favicon and the mobile launcher icon. The
             temple's own name is in the TopBar, so it isn't repeated here. */}
-        <div className="text-2xl font-bold leading-none tracking-tight">
-          <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
-        </div>
+        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="JainERP" className="h-9 w-auto" />
         <p className="text-slate-500 text-xs font-semibold mt-1 truncate">
           {t('brand.portal')}
         </p>

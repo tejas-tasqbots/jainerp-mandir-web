@@ -476,9 +476,7 @@ export function RegisterPage() {
           {/* Wordmark only — see the note in LoginPage: the mark carries no badge. */}
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-lg font-bold tracking-tight leading-none">
-                <span className="text-navy-900">Jain</span><span className="text-brand-red">ERP</span>
-              </h1>
+              <h1 className="m-0 leading-none"><img src={`${import.meta.env.BASE_URL}logo.svg`} alt="JainERP" className="h-8 w-auto" /></h1>
               <p className="text-xs text-slate-500 mt-0.5">Register your Trust/Temple</p>
             </div>
           </div>

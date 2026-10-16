@@ -4,9 +4,9 @@
 
 /* ── CSS Custom Properties ─────────────────────────────────────────────────── */
 :root {
-  --color-brand-red:         #d62828;
-  --color-brand-red-light:   #f5b8b8;
-  --color-brand-red-dark:    #9e1c1c;
+  --color-brand-red:         #e8600c;
+  --color-brand-red-light:   #ffd9bf;
+  --color-brand-red-dark:    #b84a08;
   --color-brand-gold:        #f4c542;
   --color-brand-gold-light:  #fdf0bc;
   --color-brand-gold-dark:   #b89010;
@@ -27,8 +27,8 @@
   --color-navy-700: #1b2f4a;
   --color-navy-100: #d9e0ec;
   --color-navy-50:  #f0f3f8;
-  --color-cta:       #c2410c;
-  --color-cta-hover: #ea580c;
+  --color-cta:       #c4500a;
+  --color-cta-hover: #b84a08;
   --color-danger:    #d94f3d;
   --color-danger-bg: #fdf2f2;
   --color-selection: #fde9b7;
