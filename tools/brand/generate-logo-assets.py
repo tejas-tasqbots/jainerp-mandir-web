@@ -2,7 +2,7 @@
 JainERP logo assets — every web app and both desktops, from one source.
 
 The logo (2026-10-16) is the Devanagari जैन in Gotu (#ff751f) followed by ERP
-in Boston Angel Light (#00167a). Neither font ships with the apps: the glyphs
+in Boston Angel Light (#000000; navy #00167a until 2026-10-16). Neither font ships with the apps: the glyphs
 were outlined from the designer's PDF into jainerp-logo-outlines.json, so the
 logo renders identically everywhere without loading a font.
 
@@ -11,7 +11,9 @@ Writes, per web app (public/):
   logo-on-dark.svg    the same with ERP in white, for dark backgrounds
   favicon.svg         जैन on a white rounded tile (the full logo is unreadable at tab size)
   favicon-32.png, apple-touch-icon.png
-and per desktop: screens/logo.svg, plus assets/icon.png (512) and icon.ico with the portal label.
+and per desktop: screens/logo.svg, plus assets/icon.png (512) and icon.ico with the portal label;
+and per phone app: Android launcher icons (adaptive + monochrome + PNG), the cold-start
+image, the iOS icon set and launch image, and packages/ui/.../jainerp_logo_paths.dart.
 
 Run from the repo root:  py -3 apps/mandiradmin-web/tools/brand/generate-logo-assets.py
 Needs: pymupdf (renders the SVG), pillow, and Noto Sans Bold for the label.
@@ -133,6 +135,168 @@ def og_image():
     return img.convert('RGB')
 
 
+# ── Phone apps ───────────────────────────────────────────────────────────────
+# Local folder, portal label (the app's own brandPortal string).
+MOBILES = [(('mandiradmin-mobile', 'mandir-mobile'), 'Temple/Trust'),
+           (('devotee-mobile',), 'Bhakt'),
+           (('maharaj-mobile', 'sant-mobile'), 'Sant')]
+DENSITIES = (('mdpi', 1), ('hdpi', 1.5), ('xhdpi', 2), ('xxhdpi', 3), ('xxxhdpi', 4))
+LAUNCHER_DP = 48        # legacy launcher icon
+LAUNCH_IMAGE_DP = 200   # cold-start lockup width
+IOS_ICONS = [('Icon-App-20x20@1x.png', 20), ('Icon-App-20x20@2x.png', 40), ('Icon-App-20x20@3x.png', 60),
+             ('Icon-App-29x29@1x.png', 29), ('Icon-App-29x29@2x.png', 58), ('Icon-App-29x29@3x.png', 87),
+             ('Icon-App-40x40@1x.png', 40), ('Icon-App-40x40@2x.png', 80), ('Icon-App-40x40@3x.png', 120),
+             ('Icon-App-60x60@2x.png', 120), ('Icon-App-60x60@3x.png', 180), ('Icon-App-76x76@1x.png', 76),
+             ('Icon-App-76x76@2x.png', 152), ('Icon-App-83.5x83.5@2x.png', 167), ('Icon-App-1024x1024@1x.png', 1024)]
+LABEL_EM = 0.30 * H     # portal label size, in logo units
+LABEL_GAP = 0.10 * H    # logo ink to label ink
+
+
+def label_outline(text):
+    """The portal label as one path (Noto Sans Bold), ink box at (0, 0)."""
+    from fontTools.pens.boundsPen import BoundsPen
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.transformPen import TransformPen
+    from fontTools.ttLib import TTFont
+    path = next((f for f in LABEL_FONTS if os.path.exists(f)), None)
+    if not path:
+        sys.exit('Noto Sans Bold not found — install it for the portal label')
+    font = TTFont(path)
+    gs, cmap = font.getGlyphSet(), font.getBestCmap()
+    s = LABEL_EM / font['head'].unitsPerEm
+
+    def draw(pen, dx, dy):
+        x = 0.0
+        for ch in text:
+            g = cmap[ord(ch)]
+            gs[g].draw(TransformPen(pen, (s, 0, 0, -s, x + dx, dy)))
+            x += gs[g].width * s
+    b = BoundsPen(gs); draw(b, 0, 0)
+    x0, y0, x1, y1 = b.bounds
+    p = SVGPathPen(gs, ntos=lambda v: ('%.2f' % v).rstrip('0').rstrip('.')); draw(p, -x0, -y0)
+    return p.getCommands(), x1 - x0, y1 - y0
+
+
+def lockup(label, mono=None):
+    """Logo with the portal label centred beneath: (width, height, svg-inner)."""
+    d, lw, lh = label_outline(label)
+    width = max(W, lw)
+    lx, ly, ox = (width - lw) / 2, H + LABEL_GAP, (width - W) / 2
+    jain, erp, lab = (mono or SRC['jain']['color']), (mono or SRC['erp']['color']), (mono or LABEL_COLOUR)
+    inner = (f'<g transform="translate({ox:.2f} 0)"><path fill="{jain}" d="{SRC["jain"]["d"]}"/>'
+             f'<path fill="{erp}" d="{SRC["erp"]["d"]}"/></g>'
+             f'<g transform="translate({lx:.2f} {ly:.2f})"><path fill="{lab}" d="{d}"/></g>')
+    return width, ly + lh, inner, (ox, lx, ly, d, jain, erp, lab)
+
+
+def plate_svg(iw, ih, inner, size, pad, radius, plate=True):
+    s = size * (1 - 2 * pad) / max(iw, ih)
+    x, y = (size - iw * s) / 2, (size - ih * s) / 2
+    rect = f'<rect width="{size}" height="{size}" rx="{size * radius:g}" fill="#FFFFFF"/>' if plate else ''
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}">{rect}'
+            f'<g transform="translate({x:.3f} {y:.3f}) scale({s:.5f})">{inner}</g></svg>\n')
+
+
+def android_vector(label, mono=None, fit=56.0, note=''):
+    """Adaptive-icon layer on the 108dp canvas. The tightest launcher mask is a
+    66dp circle, so the whole block's diagonal — not just its width — must fit."""
+    lw, lh, _, (ox, lx, ly, d, jain, erp, lab) = lockup(label, mono)
+    s = fit / lw
+    if ((lw * s) ** 2 + (lh * s) ** 2) ** 0.5 / 2 > 33:
+        sys.exit('lockup escapes the 66dp mask circle — lower `fit`')
+    tx, ty = (108 - lw * s) / 2, (108 - lh * s) / 2
+    return ('<?xml version="1.0" encoding="utf-8"?>\n'
+            f'<!--\n  {note}\n\n  Generated by mandir-web/tools/brand/generate-logo-assets.py -\n'
+            '  edit the script, not this file.\n-->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            '    android:width="108dp" android:height="108dp"\n'
+            '    android:viewportWidth="108" android:viewportHeight="108">\n'
+            f'    <group android:translateX="{tx:.3f}" android:translateY="{ty:.3f}"'
+            f' android:scaleX="{s:.5f}" android:scaleY="{s:.5f}">\n'
+            f'        <group android:translateX="{ox:.2f}">\n'
+            f'            <path android:fillColor="{jain}" android:pathData="{SRC["jain"]["d"]}" />\n'
+            f'            <path android:fillColor="{erp}" android:pathData="{SRC["erp"]["d"]}" />\n'
+            '        </group>\n'
+            f'        <group android:translateX="{lx:.2f}" android:translateY="{ly:.2f}">\n'
+            f'            <path android:fillColor="{lab}" android:pathData="{d}" />\n'
+            '        </group>\n'
+            '    </group>\n'
+            '</vector>\n')
+
+
+def dart_path(d):
+    """SVG path data (absolute M/L/H/V/Q/C/Z, as fontTools writes it) as Dart."""
+    import re
+    toks = re.findall(r'[MLHVQCZ]|-?\d*\.?\d+(?:e-?\d+)?', d)
+    arity = {'M': 2, 'L': 2, 'H': 1, 'V': 1, 'Q': 4, 'C': 6, 'Z': 0}
+    out, i, cmd, cx, cy = [], 0, None, 0.0, 0.0
+    f = lambda v: ('%.2f' % v).rstrip('0').rstrip('.')
+    while i < len(toks):
+        if toks[i].isalpha():
+            cmd = toks[i]; i += 1
+            if cmd == 'Z':
+                out.append('..close()'); continue
+        n = arity[cmd]
+        a = [float(t) for t in toks[i:i + n]]; i += n
+        if cmd == 'M':
+            out.append(f'..moveTo({f(a[0])}, {f(a[1])})'); cx, cy = a; cmd = 'L'
+        elif cmd == 'L':
+            out.append(f'..lineTo({f(a[0])}, {f(a[1])})'); cx, cy = a
+        elif cmd == 'H':
+            cx = a[0]; out.append(f'..lineTo({f(cx)}, {f(cy)})')
+        elif cmd == 'V':
+            cy = a[0]; out.append(f'..lineTo({f(cx)}, {f(cy)})')
+        elif cmd == 'Q':
+            out.append(f'..quadraticBezierTo({", ".join(map(f, a))})'); cx, cy = a[2], a[3]
+        elif cmd == 'C':
+            out.append(f'..cubicTo({", ".join(map(f, a))})'); cx, cy = a[4], a[5]
+    return out
+
+
+def dart_file():
+    def fn(name, d):
+        body = '\n'.join('    ' + s for s in dart_path(d))
+        return f'Path {name}() => Path()\n{body};\n'
+    hexc = lambda c: '0xFF' + c.lstrip('#').upper()
+    return ('// GENERATED by mandir-web/tools/brand/generate-logo-assets.py from the\n'
+            "// designer's artwork (jainerp-logo-outlines.json). Edit the script, not this file.\n"
+            '//\n// Vendored identically into every phone app.\n'
+            "import 'dart:ui';\n\n"
+            f'const double kLogoWidth = {W};\nconst double kLogoHeight = {H};\n'
+            f'const Color kLogoJainColor = Color({hexc(SRC["jain"]["color"])});\n'
+            f'const Color kLogoErpColor = Color({hexc(SRC["erp"]["color"])});\n\n'
+            '/// जैन, in logo units (kLogoWidth x kLogoHeight, origin top-left).\n'
+            + fn('logoJainPath', SRC['jain']['d']) +
+            '\n/// ERP, in the same units.\n' + fn('logoErpPath', SRC['erp']['d']))
+
+
+def write_png(path, img):
+    img.save(path, optimize=True)
+    print('  wrote', os.path.relpath(path, ROOT))
+
+
+def mobile(d, label):
+    res = os.path.join(d, 'app', 'android', 'app', 'src', 'main', 'res')
+    lw, lh, inner, _ = lockup(label)
+    wide = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {lw:.2f} {lh:.2f}">{inner}</svg>\n'
+    legacy = plate_svg(lw, lh, inner, 512, 0.10, 0.18)
+    flat = plate_svg(lw, lh, inner, 1024, 0.10, 0)
+    for bucket, k in DENSITIES:
+        write_png(os.path.join(res, f'mipmap-{bucket}', 'ic_launcher.png'), render(legacy, round(LAUNCHER_DP * k)))
+        write_png(os.path.join(res, f'mipmap-{bucket}', 'launch_image.png'), render(wide, round(LAUNCH_IMAGE_DP * k)))
+    write(os.path.join(res, 'drawable', 'ic_launcher_foreground.xml'), android_vector(
+        label, note="Adaptive launcher icon, foreground layer: the JainERP logo over the\n  app's portal label. The white plate is the background layer."))
+    write(os.path.join(res, 'drawable', 'ic_launcher_monochrome.xml'), android_vector(
+        label, mono='#FFFFFF', note='Themed-icon layer (Android 13+). The launcher tints this, so it ships\n  as one flat colour.'))
+    xc = os.path.join(d, 'app', 'ios', 'Runner', 'Assets.xcassets')
+    for name, size in IOS_ICONS:  # iOS masks the corners itself and rejects alpha
+        bg = Image.new('RGBA', (size, size), (255, 255, 255, 255)); bg.alpha_composite(render(flat, size))
+        write_png(os.path.join(xc, 'AppIcon.appiconset', name), bg.convert('RGB'))
+    for suffix, k in (('', 1), ('@2x', 2), ('@3x', 3)):
+        write_png(os.path.join(xc, 'LaunchImage.imageset', f'LaunchImage{suffix}.png'), render(wide, LAUNCH_IMAGE_DP * k))
+    write(os.path.join(d, 'packages', 'ui', 'lib', 'src', 'brand', 'jainerp_logo_paths.dart'), dart_file())
+
+
 def write(path, data):
     mode = 'wb' if isinstance(data, bytes) else 'w'
     with open(path, mode, **({} if mode == 'wb' else {'encoding': 'utf-8', 'newline': '\n'})) as f:
@@ -166,6 +330,11 @@ def main():
         icon.save(os.path.join(d, 'assets', 'icon.png'))
         icon.save(os.path.join(d, 'assets', 'icon.ico'), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
         print('  wrote', names[0], 'icon.png + icon.ico')
+    for names, label in MOBILES:
+        d = app_dir(names)
+        if not d:
+            print('skip (not here):', names[0]); continue
+        mobile(d, label)
 
 
 if __name__ == '__main__':
