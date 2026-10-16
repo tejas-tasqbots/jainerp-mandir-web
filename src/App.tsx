@@ -6,6 +6,8 @@ import { DeleteEntryProvider } from './components/DeleteEntryDialog'
 import { ToastProvider } from './components/kit/Toast'
 import { Layout } from './components/Layout/Layout'
 import { LoginPage } from './pages/Login/LoginPage'
+import { OfflineSignedOut } from './components/OfflineSignedOut'
+import { isOfflineDesktop } from './lib/offlineDesktop'
 import { RegisterPage } from './pages/Register/RegisterPage'
 import { Dashboard } from './pages/Dashboard/Dashboard'
 import { DonationsHub } from './pages/Donations/DonationsHub'
@@ -128,7 +130,9 @@ export default function App() {
             user follows a registration link. */}
         <Route path="/register" element={<RegisterPage />} />
         {!isLoggedIn ? (
-          <Route path="*" element={<LoginPage />} />
+          // JainERP Offline signs in at its own PIN screen; the OTP screen
+          // cannot work there and is never shown.
+          <Route path="*" element={isOfflineDesktop() ? <OfflineSignedOut /> : <LoginPage />} />
         ) : (
           <Route element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />

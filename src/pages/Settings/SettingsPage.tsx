@@ -28,6 +28,9 @@ import { PublicProfileTab } from './tabs/PublicProfileTab'
 import { GalleryTab } from './tabs/GalleryTab'
 import { TrusteesTab } from './tabs/TrusteesTab'
 import { MyAccountTab } from './tabs/MyAccountTab'
+import { OfflineBackupTab } from './tabs/OfflineBackupTab'
+import { OfflineLicenceTab } from './tabs/OfflineLicenceTab'
+import { isOfflineDesktop } from '../../lib/offlineDesktop'
 import { SetupMeter } from '../../components/SetupChecklist'
 import { statusLabel } from '../../lib/statusLabel'
 
@@ -69,8 +72,16 @@ interface Requirement {
 const TAB_IDS = [
   'my-account', 'profile', 'public-profile', 'trustees', 'accounts',
   'receipts', 'numbering', 'messages', 'masters', 'users', 'backup',
-  'privacy', 'subscription', 'website',
+  'privacy', 'subscription', 'website', 'licence',
 ] as const
+
+/**
+ * JainERP Offline (lib/offlineDesktop.ts) runs with no internet, so these tabs
+ * describe things that cannot happen there: the devotee-app public page,
+ * WhatsApp messages, mirroring to the global platform and raising requests to
+ * Tasqbots, and the cloud subscription. Hidden there, never online.
+ */
+const OFFLINE_HIDDEN_TABS: TabId[] = ['public-profile', 'messages', 'privacy', 'subscription', 'website']
 type TabId = (typeof TAB_IDS)[number]
 
 /** Old ?tab= values kept working, so existing links and bookmarks still land. */
@@ -111,7 +122,10 @@ export function SettingsPage() {
   // ?tab=website at a trust without it simply shows Temple Profile.
   const modules = useAuthStore(s => s.modules)
   const hasWebsite = !modules || modules.includes('website')
-  const tab: TabId = tabState === 'website' && !hasWebsite ? 'profile' : tabState
+  const offline = isOfflineDesktop()
+  const tab: TabId = (tabState === 'website' && !hasWebsite) || (offline && OFFLINE_HIDDEN_TABS.includes(tabState))
+    ? 'profile'
+    : tabState === 'licence' && !offline ? 'subscription' : tabState
 
   // Keep the URL in step, so a tab is shareable and Back works between tabs.
   const setTab = (next: TabId) => {
@@ -428,7 +442,11 @@ export function SettingsPage() {
           { id: 'backup', labelKey: 'settings.tabs.backup' },
           { id: 'privacy', labelKey: 'settings.tabs.privacy' },
           { id: 'subscription', labelKey: 'settings.tabs.subscription' },
-        ].map(tabItem => (
+          { id: 'licence', labelKey: 'offline.licence.tab' },
+        ].filter(tabItem => offline
+          ? !OFFLINE_HIDDEN_TABS.includes(tabItem.id as TabId)
+          : tabItem.id !== 'licence'
+        ).map(tabItem => (
           <button key={tabItem.id} onClick={() => setTab(tabItem.id as TabId)}
             className={`px-4 py-1.5 text-sm rounded-md font-medium ${tab === tabItem.id ? 'bg-navy-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
             {t(tabItem.labelKey)}
@@ -560,7 +578,8 @@ export function SettingsPage() {
 
       {tab === 'messages' && <MessagesTab />}
       {tab === 'users' && <UsersTab />}
-      {tab === 'backup' && <BackupTab />}
+      {tab === 'backup' && (offline ? <OfflineBackupTab /> : <BackupTab />)}
+      {tab === 'licence' && offline && <OfflineLicenceTab />}
 
       {/* Photos are part of the public page, not a separate concern. */}
       {tab === 'public-profile' && (

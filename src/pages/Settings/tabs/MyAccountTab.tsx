@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Save } from 'lucide-react'
+import { Check, KeyRound, Save } from 'lucide-react'
 import { api } from '../../../lib/api'
 import { useAuthStore, type Language } from '../../../store/authStore'
+import { offlineBridge } from '../../../lib/offlineDesktop'
+import { OfflinePinDialog } from '../../../components/OfflinePinDialog'
 
 const LANGUAGES: { code: Language; nativeLabel: string }[] = [
   { code: 'en', nativeLabel: 'English' },
@@ -17,6 +19,9 @@ export function MyAccountTab() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const offline = offlineBridge()
+  const [changingPin, setChangingPin] = useState(false)
+  const [pinChanged, setPinChanged] = useState(false)
 
   async function save() {
     setSaving(true)
@@ -44,6 +49,24 @@ export function MyAccountTab() {
           <p>{tenant?.name}</p>
         </div>
       </div>
+
+      {offline && (
+        <div className="card">
+          <div className="card-header"><h3 className="font-semibold text-sm flex items-center gap-2"><KeyRound size={14} /> {t('offline.pin.cardTitle', 'Your sign-in PIN')}</h3></div>
+          <div className="card-body space-y-3">
+            <p className="text-sm text-slate-500">{t('offline.pin.cardHelp', 'You sign in on this computer by choosing your name and entering this PIN. Forgot it? Staff: ask the Temple Admin to reset it in Settings → Users. Temple Admin: use “Forgot PIN?” on the sign-in screen with the mandir’s licence.')}</p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => { setPinChanged(false); setChangingPin(true) }} className="btn-secondary btn-sm"><KeyRound size={14} /> {t('offline.pin.changeTitle', 'Change your PIN')}</button>
+              {pinChanged && <span className="text-sm text-green-600">{t('offline.pin.saved', 'PIN saved.')}</span>}
+            </div>
+          </div>
+          {changingPin && (
+            <OfflinePinDialog mode="change" userName={user?.name || ''}
+              onClose={() => setChangingPin(false)}
+              onDone={() => { setChangingPin(false); setPinChanged(true) }} />
+          )}
+        </div>
+      )}
 
       <div className="card">
         <div className="card-header"><h3 className="font-semibold text-sm">{t('settings.language')}</h3></div>
