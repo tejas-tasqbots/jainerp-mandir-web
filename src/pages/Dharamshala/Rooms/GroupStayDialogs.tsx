@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise } from '../../../lib/api'
 import { istInputNow, istInputToDate } from '../../../lib/istClock'
-import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
+import { PaymentSplitInput, emptyPaymentRow, rowsMissingReference, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
+import { usePaymentModes } from '../../../lib/useDropdownOptions'
 import type { RoomBooking } from '../../../types'
 import { DepositAtCheckout, HallPackageNote, Shell } from './StayDialogs'
 import { depositHeldOf } from './deposit'
@@ -118,6 +119,7 @@ export function GroupCheckoutModal({ rooms, onClose, onDone }: {
   rooms: RoomBooking[]; onClose: () => void; onDone: (res: { invoices: string[]; refunded: number; ids: string[] }) => void
 }) {
   const { t } = useTranslation()
+  const paymentModes = usePaymentModes()
   const staying = rooms.filter(r => r.status === 'checked_in')
   const [picked, setPicked] = useState<string[]>(staying.map(r => r.id))
   const [departure, setDeparture] = useState(localNow())
@@ -154,6 +156,9 @@ export function GroupCheckoutModal({ rooms, onClose, onDone }: {
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
+    if ((preview?.due_paise ?? 0) > 0 && rowsMissingReference(payRows, paymentModes)) {
+      setError(t('payroll.utrRequired')); return
+    }
     setBusy(true); setError('')
     try {
       const due = preview?.due_paise ?? 0

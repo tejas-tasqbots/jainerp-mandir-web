@@ -4,7 +4,8 @@ import { Loader2, Trash2 } from 'lucide-react'
 import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../../lib/api'
 import { istInputNow, istInputToDate } from '../../../lib/istClock'
 import { useToast } from '../../../components/kit/Toast'
-import { PaymentSplitInput, emptyPaymentRow, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
+import { PaymentSplitInput, emptyPaymentRow, rowsMissingReference, sumPaise, toPayload, type PaymentRow } from '../../../components/PaymentSplitInput'
+import { usePaymentModes } from '../../../lib/useDropdownOptions'
 import { ExtraChargesEditor } from '../../../components/RoomCharges/ExtraChargesEditor'
 import { chargesPayload, chargesTotalPaise, type ChargeRow } from '../../../components/RoomCharges/chargeRows'
 import type { RoomBooking } from '../../../types'
@@ -265,6 +266,7 @@ export function CheckoutModal({ booking, onClose, onDone }: {
   onDone: (res: { invoice_no?: string; refunded_paise?: number }) => void
 }) {
   const { t } = useTranslation()
+  const paymentModes = usePaymentModes()
   const { charges, reload } = useStayCharges(booking.id)
   const [departure, setDeparture] = useState(localNow)
   const [rate, setRate] = useState(String(Number(booking.tariff_per_night_paise ?? 0) / 100))
@@ -320,6 +322,10 @@ export function CheckoutModal({ booking, onClose, onDone }: {
   }
 
   async function submit() {
+    // A UPI / cheque part names its transaction, as at booking.
+    if ((preview?.due_paise ?? 0) > 0 && rowsMissingReference(payRows, paymentModes)) {
+      setError(t('payroll.utrRequired')); return
+    }
     setBusy(true); setError('')
     try {
       const due = preview?.due_paise ?? 0

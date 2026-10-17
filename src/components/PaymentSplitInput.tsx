@@ -40,6 +40,17 @@ export function toPayload(rows: PaymentRow[]) {
     .filter(p => p.amount_paise > 0)
 }
 
+/**
+ * A non-cash row with money on it and no UTR / cheque number. Without it the
+ * payment cannot be matched against the bank statement, so the forms that
+ * take money for a stay refuse it rather than saving a UPI with no reference.
+ */
+export function rowsMissingReference(rows: PaymentRow[], modes: { code: string; requires_reference?: boolean }[]): boolean {
+  return rows.some(r => Number(r.amount || 0) > 0
+    && (modes.find(m => m.code === r.payment_mode)?.requires_reference ?? r.payment_mode !== 'cash')
+    && !r.reference_no?.trim())
+}
+
 /** Sum of the rows, in paise. */
 export function sumPaise(rows: PaymentRow[]): number {
   return rows.reduce((s, r) => s + Math.round(Number(r.amount || 0) * 100), 0)

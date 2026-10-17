@@ -26,7 +26,7 @@ import { useReceiptLabels } from '../../../lib/useReceiptLabels'
 import type { RoomBooking } from '../../../types'
 import { useCanDeleteEntries, useDeleteEntry } from '../../../components/deleteEntry'
 import {
-  PaymentSplitInput, emptyPaymentRow, toPayload, sumPaise, type PaymentRow,
+  PaymentSplitInput, emptyPaymentRow, rowsMissingReference, toPayload, sumPaise, type PaymentRow,
 } from '../../../components/PaymentSplitInput'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 import { sourceColumn, sourceLabel } from '../../../lib/entrySource'
@@ -810,6 +810,7 @@ export function RoomsList() {
     const due = Number(collectModal.bill.due_paise ?? 0)
     if (entered <= 0) { toast.error(t('dharamshala.enterAmount')); return }
     if (entered > due) { toast.error(t('dharamshala.overpayment')); return }
+    if (rowsMissingReference(collectRows, depositModes)) { toast.error(t('payroll.utrRequired')); return }
     setCollecting(true)
     try {
       await api.post(`/room-bookings/${collectModal.booking.id}/payments`, { payments: toPayload(collectRows) })
