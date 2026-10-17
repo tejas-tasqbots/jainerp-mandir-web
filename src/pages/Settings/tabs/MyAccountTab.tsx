@@ -10,6 +10,7 @@ const LANGUAGES: { code: Language; nativeLabel: string }[] = [
   { code: 'en', nativeLabel: 'English' },
   { code: 'hi', nativeLabel: 'हिंदी (Hindi)' },
   { code: 'mr', nativeLabel: 'मराठी (Marathi)' },
+  { code: 'gu', nativeLabel: 'ગુજરાતી (Gujarati)' },
 ]
 
 export function MyAccountTab() {
@@ -34,7 +35,7 @@ export function MyAccountTab() {
       setTimeout(() => setSaved(false), 3000)
     } catch (e: unknown) {
       const e2 = e as { response?: { data?: { error?: { message?: string } } } }
-      setError(e2.response?.data?.error?.message || 'Could not save. Please try again.')
+      setError(e2.response?.data?.error?.message || t('common.saveFailed'))
     } finally {
       setSaving(false)
     }

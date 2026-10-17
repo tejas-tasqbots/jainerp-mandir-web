@@ -8,11 +8,12 @@ const LANGS: { code: Language; native: string; short: string }[] = [
   { code: 'en', native: 'English', short: 'EN' },
   { code: 'hi', native: 'हिंदी', short: 'हिं' },
   { code: 'mr', native: 'मराठी', short: 'मरा' },
+  { code: 'gu', native: 'ગુજરાતી', short: 'ગુ' },
 ]
 
-// Roughly the rendered menu height (heading + 3 rows). Used only to decide
+// Roughly the rendered menu height (heading + 4 rows). Used only to decide
 // whether there is room below the button, so an estimate is fine.
-const MENU_HEIGHT = 160
+const MENU_HEIGHT = 200
 
 /**
  * Language switcher. Persists the choice via PATCH /users/me/language and

@@ -405,11 +405,11 @@ export function DevoteePicker({
           {/* Inline OTP row — no separate screen */}
           {otpOpen && (
             <div className="border-t border-blue-200 pt-2 mt-1 space-y-2">
-              <p className="text-xs text-blue-700">{t('ui.otpSentTo')}<strong>{f.mobile}</strong> — ask the donor to read it out.
+              <p className="text-xs text-blue-700">{t('ui.otpSentTo')}<strong>{f.mobile}</strong> {t('ui.askDonorReadOtp')}
                 {devOtp && <span className="ml-1 font-bold text-orange-600">[Dev: {devOtp}]</span>}
               </p>
               <div className="flex items-center gap-2">
-                <input className="form-input text-base tracking-widest w-32" placeholder="6-digit OTP"
+                <input className="form-input text-base tracking-widest w-32" placeholder={t('login.otpPlaceholder')}
                   value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   maxLength={6} inputMode="numeric" />
                 <button type="button" onClick={verifyOtp} disabled={otpVerifying}
@@ -501,7 +501,7 @@ export function DevoteePicker({
         </div>
 
         {!isOnline && (
-          <p className="text-xs text-amber-600">Offline — new donors are saved on the receipt and link to the global profile on sync.</p>
+          <p className="text-xs text-amber-600">{t('ui.offlineNewDonors')}</p>
         )}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>

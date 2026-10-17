@@ -26,6 +26,7 @@ import { PrasadCounter } from './pages/Prasad/PrasadCounter'
 import { PrasadItems } from './pages/Prasad/PrasadItems'
 import { PrasadSales } from './pages/Prasad/PrasadSales'
 import { DevicesPage } from './pages/Devices/DevicesPage'
+import { MyAccountPage } from './pages/Settings/MyAccountPage'
 import { SevaBookingsList } from './pages/Seva/SevaBookingsList'
 import { AddSevaBooking } from './pages/Seva/AddSevaBooking'
 import { AnnadaanList } from './pages/Annadaan/AnnadaanList'
@@ -226,6 +227,7 @@ export default function App() {
             <Route path="/registers/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/registers/activity-log" element={<ActivityLogPage />} />
             <Route path="/my-devices" element={<DevicesPage />} />
+            <Route path="/my-account" element={<MyAccountPage />} />
 
             {/* Settings & Help */}
             <Route path="/sant" element={<SantPage />} />

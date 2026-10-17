@@ -96,7 +96,7 @@ export function BoliList() {
       filter: categories.length
         ? { kind: 'enum', param: 'category_id', options: categories.map(c => ({ value: c.id, label: c.name })) }
         : undefined,
-      render: b => <span className="text-xs font-medium text-slate-700">{(i18n.language !== 'en' && b.category_name_hindi) || b.category_name || '—'}</span>,
+      render: b => <span className="text-xs font-medium text-slate-700">{((i18n.language === 'hi' || i18n.language === 'mr') && b.category_name_hindi) || b.category_name || '—'}</span>,
     },
     {
       key: 'description', label: t('pledges.description'),

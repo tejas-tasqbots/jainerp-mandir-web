@@ -8,6 +8,7 @@ import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStri
 import { DataTable, filterStateToParams, type ColumnDef, type ColumnFilterState, type RowAction } from '../../components/kit/DataTable'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
 import { useToast } from '../../components/kit/Toast'
+import { PhoneInput, isValidPhone } from '../../components/PhoneInput'
 import type { LostFoundItem } from '../../types'
 
 const STATUSES = ['unclaimed', 'claimed', 'donated', 'disposed'] as const
@@ -122,17 +123,17 @@ export function LostFoundPage() {
 
   async function submitClaim(e: React.FormEvent) {
     e.preventDefault()
-    if (!claimModal || !claimForm.name.trim()) return
+    if (!claimModal || !claimForm.name.trim() || !isValidPhone(claimForm.mobile)) return
     try {
       await api.patch(`/lost-found/${claimModal.id}/claim`, {
         claimant_name: claimForm.name.trim(),
-        claimant_mobile: claimForm.mobile || undefined,
+        claimant_mobile: claimForm.mobile,
       })
       setClaimModal(null)
       toast.success(t('registers.claimRecorded'))
       load()
-    } catch {
-      toast.error(t('registers.claimFailed'))
+    } catch (e) {
+      toast.error(apiErrorMessage(e, t('registers.claimFailed')))
     }
   }
 
@@ -239,13 +240,16 @@ export function LostFoundPage() {
                   onChange={e => setClaimForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
-                <label className="form-label" htmlFor="lost-found-page-claimForm-2">{t('registers.claimantMobile')}</label>
-                <input id="lost-found-page-claimForm-2" type="tel" className="form-input" value={claimForm.mobile}
-                  onChange={e => setClaimForm(f => ({ ...f, mobile: e.target.value }))} />
+                <label className="form-label" htmlFor="lost-found-page-claimForm-2">{t('registers.claimantMobile')} *</label>
+                {/* Required: how the trust reaches whoever took the item if the real owner turns up. */}
+                <PhoneInput required value={claimForm.mobile} onChange={v => setClaimForm(f => ({ ...f, mobile: v }))} />
+                {claimForm.mobile && !isValidPhone(claimForm.mobile) && (
+                  <p className="text-xs text-brand-red mt-1">{t('msg.validMobile')}</p>
+                )}
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setClaimModal(null)} className="btn-secondary">{t('common.cancel')}</button>
-                <button type="submit" disabled={!claimForm.name.trim()} className="btn-success">{t('registers.markClaimed')}</button>
+                <button type="submit" disabled={!claimForm.name.trim() || !isValidPhone(claimForm.mobile)} className="btn-success">{t('registers.markClaimed')}</button>
               </div>
             </form>
           </div>

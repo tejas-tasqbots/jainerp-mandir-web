@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type Language = 'en' | 'hi' | 'mr'
+export type Language = 'en' | 'hi' | 'mr' | 'gu'
 
 export interface AuthedUser {
   id: string

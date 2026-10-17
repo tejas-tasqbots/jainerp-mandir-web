@@ -50,7 +50,7 @@
   }
 
   body {
-    font-family: 'Noto Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Noto Sans', 'Noto Sans Gujarati', system-ui, -apple-system, sans-serif;
     background-color: var(--color-bg);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;

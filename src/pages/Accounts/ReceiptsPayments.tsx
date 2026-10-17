@@ -9,6 +9,7 @@ import { FySelect } from '../../components/FySelect'
 import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { headLabel } from '../../lib/headLabel'
 import { useToast } from '../../components/kit/Toast'
 
 interface Section { head?: string; name?: string; amount_paise: number; entries?: number }
@@ -45,12 +46,12 @@ export function ReceiptsPayments() {
   const totalPayments = data?.totals?.payments_paise ?? data?.payments?.reduce((s, r) => s + r.amount_paise, 0) ?? 0
 
   const receiptCols: ColumnDef<Section>[] = [
-    { key: 'source', label: t('accounts.source'), render: r => r.head ?? r.name },
+    { key: 'source', label: t('accounts.source'), render: r => headLabel(t, r.head ?? r.name) },
     { key: 'entries', label: t('accounts.entries'), align: 'right', render: r => <span className="text-slate-400 text-xs">{r.entries ?? '—'}</span> },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => `₹${fmtPaise(r.amount_paise)}` },
   ]
   const paymentCols: ColumnDef<Section>[] = [
-    { key: 'category', label: t('accounts.category'), render: r => r.head ?? r.name },
+    { key: 'category', label: t('accounts.category'), render: r => headLabel(t, r.head ?? r.name) },
     { key: 'entries', label: t('accounts.entries'), align: 'right', render: r => <span className="text-slate-400 text-xs">{r.entries ?? '—'}</span> },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => `₹${fmtPaise(r.amount_paise)}` },
   ]
@@ -72,9 +73,9 @@ export function ReceiptsPayments() {
           { header: t('accounts.entries'), width: 8 }, { header: t('common.amount'), type: 'money' },
         ],
         rows: [
-          ...data.receipts.map(r => [t('accounts.receipts'), r.head ?? r.name ?? '', r.entries ?? '', r.amount_paise]),
+          ...data.receipts.map(r => [t('accounts.receipts'), headLabel(t, r.head ?? r.name), r.entries ?? '', r.amount_paise]),
           [t('accounts.receipts'), t('accounts.totalReceiptsRow'), '', totalReceipts],
-          ...data.payments.map(p => [t('accounts.payments'), p.head ?? p.name ?? '', p.entries ?? '', p.amount_paise]),
+          ...data.payments.map(p => [t('accounts.payments'), headLabel(t, p.head ?? p.name), p.entries ?? '', p.amount_paise]),
           [t('accounts.payments'), t('accounts.totalPaymentsRow'), '', totalPayments],
         ],
       })

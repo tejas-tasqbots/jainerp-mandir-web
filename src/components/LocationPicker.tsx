@@ -97,7 +97,7 @@ export function LocationPicker({
         mapRef.current?.setView([la, ln], 15)
         setPin(la, ln)
       },
-      (err) => { setLocating(false); setGeoErr(err.code === 1 ? 'Location permission denied' : 'Could not get your location') },
+      (err) => { setLocating(false); setGeoErr(err.code === 1 ? t('ui.locationDenied') : t('ui.locationFailed')) },
       { enableHighAccuracy: true, timeout: 10000 },
     )
   }
@@ -107,12 +107,12 @@ export function LocationPicker({
       <div className="flex items-center justify-between mb-1.5">
         <label className="form-label flex items-center gap-1 mb-0"><MapPin size={13} />{t('ui.locationOnMap')}</label>
         <button type="button" onClick={useMyLocation} disabled={locating} className="text-xs text-brand-red inline-flex items-center gap-1 hover:underline disabled:opacity-50">
-          {locating ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />} Use my current location
+          {locating ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />} {t('ui.useMyLocation')}
         </button>
       </div>
       <div ref={elRef} style={{ height }} className="rounded-lg overflow-hidden border border-slate-200 z-0" />
       <p className="text-[11px] text-slate-400 mt-1">
-        {hasCoords ? `Pinned at ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)} · tap the map or drag the pin to adjust` : 'Tap on the map to drop a pin, or use your current location'}
+        {hasCoords ? t('ui.mapPinnedAt', { lat: Number(lat).toFixed(5), lng: Number(lng).toFixed(5) }) : t('ui.mapTapToPin')}
       </p>
       {geoErr && <p className="text-[11px] text-amber-600 mt-0.5">{geoErr}</p>}
     </div>

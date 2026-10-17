@@ -504,7 +504,7 @@ export function SettingsPage() {
               <label className="form-label" htmlFor="settings-page-area">{t('settings.profile.area', 'Area / locality')}</label>
               <input id="settings-page-area"
                 className="form-input"
-                placeholder="e.g. Ghatkopar West, near Palitana taluka"
+                placeholder={t('settings.profile.areaPlaceholder')}
                 value={form.area}
                 onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
               />

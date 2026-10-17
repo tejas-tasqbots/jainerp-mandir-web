@@ -9,6 +9,7 @@ import { FySelect } from '../../components/FySelect'
 import { DataTable, type ColumnDef } from '../../components/kit/DataTable'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { headLabel } from '../../lib/headLabel'
 import { useToast } from '../../components/kit/Toast'
 
 interface Section { name: string; head?: string; amount_paise: number }
@@ -40,11 +41,11 @@ export function IncomeExpenditure() {
   const surplusPaise = data?.totals?.surplus_paise ?? (totalIncome - totalExpenditure)
 
   const incomeCols: ColumnDef<Section>[] = [
-    { key: 'source', label: t('accounts.source'), render: r => r.head ?? r.name },
+    { key: 'source', label: t('accounts.source'), render: r => headLabel(t, r.head ?? r.name) },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => `₹${fmtPaise(r.amount_paise)}` },
   ]
   const expCols: ColumnDef<Section>[] = [
-    { key: 'category', label: t('accounts.category'), render: r => r.head ?? r.name },
+    { key: 'category', label: t('accounts.category'), render: r => headLabel(t, r.head ?? r.name) },
     { key: 'amount', label: t('common.amount'), align: 'right', render: r => `₹${fmtPaise(r.amount_paise)}` },
   ]
 
@@ -66,9 +67,9 @@ export function IncomeExpenditure() {
           { header: t('common.amount'), type: 'money' },
         ],
         rows: [
-          ...data.income.map(r => [t('accounts.income'), r.head ?? r.name, r.amount_paise]),
+          ...data.income.map(r => [t('accounts.income'), headLabel(t, r.head ?? r.name), r.amount_paise]),
           [t('accounts.income'), t('accounts.totalIncome'), totalIncome],
-          ...data.expenditure.map(r => [t('accounts.expenditure'), r.head ?? r.name, r.amount_paise]),
+          ...data.expenditure.map(r => [t('accounts.expenditure'), headLabel(t, r.head ?? r.name), r.amount_paise]),
           [t('accounts.expenditure'), t('accounts.totalExpenditure'), totalExpenditure],
           ['', surplusPaise >= 0 ? t('accounts.surplus') : t('accounts.deficit'), Math.abs(surplusPaise)],
         ],

@@ -56,14 +56,20 @@ export function TopBar({ onMenu }: { onMenu?: () => void }) {
         <UpdateButton />
         {/* Who is signed in: from md up. Below that it pushed into the search
             box (it did at 711 px) and the tenant name above says enough. */}
-        <div className="hidden md:flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
+        {/* Opens My Account - their own language and offline PIN - for every role. */}
+        <button
+          type="button"
+          onClick={() => navigate('/my-account')}
+          title={t('settings.myAccount')}
+          className="hidden md:flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap hover:text-navy-900 transition-colors"
+        >
           <User size={15} className="text-slate-400" />
           <span>{user?.name || user?.mobile}</span>
           {/* The highest role held, not the first stored (lib/roleLabel). */}
           {primaryRole(user?.roles) && (
             <span className="text-xs text-slate-400" data-testid="topbar-role">({roleLabel(t, primaryRole(user?.roles)!, true)})</span>
           )}
-        </div>
+        </button>
         {/* Where this account is signed in. A sign-in used to be invisible:
             nothing said how many devices held a live session, or where. */}
         <button

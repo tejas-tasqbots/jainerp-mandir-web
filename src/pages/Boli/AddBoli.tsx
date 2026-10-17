@@ -41,7 +41,7 @@ export function AddBoli() {
       .catch(() => setCategories([]))
   }, [])
 
-  const label = (c: BoliCategory) => (i18n.language !== 'en' && c.name_hindi) ? c.name_hindi : c.name
+  const label = (c: BoliCategory) => ((i18n.language === 'hi' || i18n.language === 'mr') && c.name_hindi) ? c.name_hindi : c.name
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

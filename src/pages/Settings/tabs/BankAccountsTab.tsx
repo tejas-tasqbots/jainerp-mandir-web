@@ -84,14 +84,47 @@ export function BankAccountsTab() {
     return balances.find(b => b.account_id === accountId && b.fy === fy)
   }
 
-  async function saveBalance(accountId: string, value: string) {
-    const paise = parsePaise(value || '0')
+  // The opening balance used to be a bare input that wrote to the server on
+  // every blur: no Save, no Cancel, failures swallowed, and a stray click-away
+  // re-posted it. An opening balance moves every statement for the year, so it
+  // is now shown read-only and changed on purpose — pencil, then Save or Cancel —
+  // and a refusal (a closed year, say) is shown instead of disappearing.
+  const [balEdit, setBalEdit] = useState<{ accountId: string; value: string } | null>(null)
+  const [balSaving, setBalSaving] = useState(false)
+  const [balMsg, setBalMsg] = useState<{ accountId: string; ok: boolean; text: string } | null>(null)
+
+  function startBalanceEdit(accountId: string) {
+    const b = getBalance(accountId)
+    setBalMsg(null)
+    setBalEdit({ accountId, value: b ? (b.opening_balance_paise / 100).toFixed(2) : '' })
+  }
+
+  async function saveBalance() {
+    if (!balEdit) return
+    const { accountId, value } = balEdit
+    // A bank account can open overdrawn; cash in hand cannot be below zero.
+    const isBank = accounts.find(x => x.id === accountId)?.type === 'bank'
+    if (!(isBank ? /^-?\d+(\.\d{1,2})?$/ : /^\d+(\.\d{1,2})?$/).test(value.trim())) {
+      setBalMsg({ accountId, ok: false, text: t('settings.accounts.balanceInvalid') })
+      return
+    }
+    const paise = parsePaise(value.trim())
     const existing = getBalance(accountId)
+    // Nothing changed: close without writing, so the Activity Log only records real changes.
+    if ((existing?.opening_balance_paise ?? 0) === paise) { setBalEdit(null); return }
+    setBalSaving(true)
     try {
       if (existing) await api.patch(`/account-opening-balances/${existing.id}`, { opening_balance_paise: paise })
       else await api.post('/account-opening-balances', { account_id: accountId, fy, opening_balance_paise: paise })
+      setBalEdit(null)
+      setBalMsg({ accountId, ok: true, text: t('settings.accounts.balanceSaved') })
       load()
-    } catch { /* ignore */ }
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error?: { message?: string } } } }
+      setBalMsg({ accountId, ok: false, text: e2.response?.data?.error?.message || t('settings.accounts.balanceSaveFailed') })
+    } finally {
+      setBalSaving(false)
+    }
   }
 
   return (
@@ -165,12 +198,42 @@ export function BankAccountsTab() {
                     <td className="capitalize">{a.type === 'bank' ? t('settings.accounts.bank') : t('settings.accounts.cash')}</td>
                     <td className="text-xs text-slate-500">{a.type === 'bank' ? `${a.bank_name || '—'} · ${a.account_no || '—'}` : '—'}</td>
                     <td>
-                      <input
-                        type="number" step="0.01" className="form-input w-32 text-sm"
-                        defaultValue={getBalance(a.id) ? fmtPaise(getBalance(a.id)!.opening_balance_paise).replace(/,/g, '') : ''}
-                        placeholder="0.00"
-                        onBlur={e => saveBalance(a.id, e.target.value)}
-                      />
+                      {balEdit?.accountId === a.id ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text" inputMode="decimal" autoFocus
+                              className="form-input w-32 text-sm"
+                              aria-label={t('settings.accounts.changeBalance')}
+                              value={balEdit.value}
+                              placeholder="0.00"
+                              onChange={e => setBalEdit({ accountId: a.id, value: e.target.value })}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') { e.preventDefault(); saveBalance() }
+                                if (e.key === 'Escape') setBalEdit(null)
+                              }}
+                            />
+                            <button type="button" onClick={saveBalance} disabled={balSaving} className="btn-primary btn-sm">
+                              <Save size={13} /> {t('common.save')}
+                            </button>
+                            <button type="button" onClick={() => setBalEdit(null)} disabled={balSaving} className="btn-secondary btn-sm">
+                              {t('common.cancel')}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-amber-700">{t('settings.accounts.balanceEditHint', { fy })}</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="tabular-nums">₹{fmtPaise(getBalance(a.id)?.opening_balance_paise ?? 0)}</span>
+                          <button
+                            type="button" onClick={() => startBalanceEdit(a.id)} className="btn-icon"
+                            aria-label={t('settings.accounts.changeBalance')} title={t('settings.accounts.changeBalance')}
+                          ><Pencil size={13} /></button>
+                        </div>
+                      )}
+                      {balMsg?.accountId === a.id && (
+                        <p className={`text-[11px] mt-0.5 ${balMsg.ok ? 'text-green-700' : 'text-brand-red'}`} role="status">{balMsg.text}</p>
+                      )}
                     </td>
                     <td>
                       <button onClick={() => toggleActive(a)} className={a.is_active ? 'badge-green cursor-pointer' : 'badge-gray cursor-pointer'}>

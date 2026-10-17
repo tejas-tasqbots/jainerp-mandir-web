@@ -71,6 +71,8 @@ const MODULE_ROLES: Record<string, Role[]> = {
   // Everyone can see the devices THEIR OWN account is signed in on and end
   // one; the trust-wide half of that screen checks temple_admin itself.
   '/my-devices': ALL_STAFF,
+  // Their own language and (offline) sign-in PIN — every role's own business.
+  '/my-account': ALL_STAFF,
   '/help': ALL_STAFF,
 }
 

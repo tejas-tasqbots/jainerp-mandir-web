@@ -1426,7 +1426,8 @@
   "languages": {
     "en": "English",
     "hi": "हिंदी (Hindi)",
-    "mr": "मराठी (Marathi)"
+    "mr": "मराठी (Marathi)",
+    "gu": "ગુજરાતી (Gujarati)"
   },
   "ledger": {
     "account": "Account",
@@ -2074,7 +2075,7 @@
       "accountNo": "Account No.",
       "add": "Add",
       "addAccount": "Add Account",
-      "balanceHelp": "Opening balance is saved when you click away from the field. It applies to FY {{fy}}.",
+      "balanceHelp": "The money each account held at the start of FY {{fy}}. Change it with the pencil beside it; every statement for the year is recalculated, and the change is recorded in the Activity Log.",
       "bank": "Bank",
       "bankAcNoCol": "Bank / A/c No.",
       "bankName": "Bank Name",
@@ -2095,7 +2096,12 @@
       "typeCol": "Type",
       "update": "Update",
       "useAsDefaultBank": "Use as the default bank account",
-      "useAsDefaultCash": "Use as the default cash account"
+      "useAsDefaultCash": "Use as the default cash account",
+      "changeBalance": "Change opening balance",
+      "balanceEditHint": "Every statement for FY {{fy}} will be recalculated.",
+      "balanceSaved": "Opening balance saved",
+      "balanceSaveFailed": "Could not save the opening balance",
+      "balanceInvalid": "Enter an amount, e.g. 1000 or 1000.50"
     },
     "backup": {
       "downloadButton": "Download Backup (JSON)",
@@ -2414,7 +2420,8 @@
       "registrationNumber": "Registration No.",
       "registrationNumberHint": "From the trust, society or co-operative registration certificate",
       "darpanNumber": "Darpan Registration No.",
-      "darpanNumberHint": "NITI Aayog NGO-Darpan ID — needed for CSR and government grants"
+      "darpanNumberHint": "NITI Aayog NGO-Darpan ID — needed for CSR and government grants",
+      "areaPlaceholder": "e.g. Ghatkopar West, near Palitana taluka"
     },
     "receipts": {
       "accountNumber": "Account Number",
@@ -2914,7 +2921,12 @@
       "timingsHint": "Most mandirs close midday — set both sessions.",
       "languages": "Languages spoken",
       "links": "Website & social links",
-      "publications": "Books & publications"
+      "publications": "Books & publications",
+      "aboutPlaceholder": "A Digambar Jain trust serving pilgrims since 1893…",
+      "languagesPlaceholder": "Hindi, Gujarati, English",
+      "onePerPlatform": "One account per platform — adding a second replaces the first. Use “Other” for anything else.",
+      "saveFailed": "Could not save. Please try again.",
+      "imageReadFailed": "Could not read that image. Try a JPEG or PNG."
     }
   },
   "setup": {
@@ -3128,10 +3140,18 @@
         "why": "A devotee scans instead of typing your UPI id — fewer wrong transfers."
       },
       "upi_id": {
-        "na": "We do not take UPI"
+        "na": "We do not take UPI",
+        "label": "UPI ID",
+        "why": "Lets a devotee pay from a phone in one tap; the QR is drawn from it automatically."
       },
       "donation_account": {
-        "na": "No bank transfers through the devotee app"
+        "na": "No bank transfers through the devotee app",
+        "label": "The account devotees pay into",
+        "why": "Pick one of your bank accounts. Until you do, the devotee app offers no bank-transfer option at all."
+      },
+      "donation_account_proof": {
+        "label": "Passbook or statement page",
+        "why": "A photo of the passbook first page proves the account belongs to the trust. We check the digits against it before devotees see them."
       }
     },
     "showAll": "Show everything",
@@ -3473,7 +3493,13 @@
     "addNewGuest": "Add new guest",
     "searchOrAddGuest": "Search by name or mobile",
     "noDonorFound": "No donor found for \"{{query}}\"",
-    "noGuestFound": "No guest found for \"{{query}}\""
+    "noGuestFound": "No guest found for \"{{query}}\"",
+    "useMyLocation": "Use my current location",
+    "mapPinnedAt": "Pinned at {{lat}}, {{lng}} · tap the map or drag the pin to adjust",
+    "mapTapToPin": "Tap on the map to drop a pin, or use your current location",
+    "locationDenied": "Location permission denied",
+    "locationFailed": "Could not get your location",
+    "askDonorReadOtp": "— ask the donor to read it out."
   },
   "vendors": {
     "accountNoPlaceholder": "Account no",
@@ -4756,5 +4782,110 @@
       "restoreFile": "Restore from a file…"
     },
     "signedOut": "Returning to the sign-in screen…"
+  },
+  "systemHead": {
+    "donation": "Donation",
+    "seva_booking": "Seva booking",
+    "room_booking": "Room booking",
+    "hall_booking": "Hall booking",
+    "prasad_sale": "Prasad sale",
+    "bhojanshala": "Bhojanshala",
+    "event_registration": "Event registration",
+    "annadaan_sponsorship": "Annadaan sponsorship",
+    "contra_transfer": "Contra transfer",
+    "other_donations": "Other donations",
+    "other": "Other",
+    "salaries": "Salaries & honorarium",
+    "depreciation": "Depreciation"
+  },
+  "help": {
+    "devotees": {
+      "title": "Finding & Registering Devotees (Global Devotee Search)",
+      "s1": "On every form (Donation, Pledge, Seva Booking, Room, Hall, Prasad) the devotee field is a global search box",
+      "s2": "Type a mobile number or name — matches across ALL temples appear with Verified ✓ and Connected 🔗 badges",
+      "s3": "Select a match to attach the devotee; their PAN (if verified) flows onto the 80G receipt automatically",
+      "s4": "Not found? Click \"Register on-site\": enter name + optional PAN, then \"Send OTP\"",
+      "s5": "The devotee shares the 6-digit OTP from their phone; verifying links them to your temple and confirms identity",
+      "s6": "PAN tip: tick \"Don't share PAN\" to skip it — the receipt then prints with name + mobile only",
+      "s7": "Offline (desktop): the box becomes plain name + mobile inputs; the record auto-links by mobile when you reconnect"
+    },
+    "donation": {
+      "title": "Recording a Donation",
+      "s1": "Go to Donations → New Donation",
+      "s2": "Use the Donor search to find/register a devotee (see \"Global Devotee Search\" above)",
+      "s3": "For unnamed gifts choose \"Anonymous / Gupt Dan\", or \"Dan Peti (Donation Box)\" for collection-box cash",
+      "s4": "Select donation category and enter amount + payment mode",
+      "s5": "80G eligibility is auto-checked (disabled for cash > ₹2000, and for anonymous gifts)",
+      "s6": "Save — receipt available via the Receipt icon (📄) in the list",
+      "s7": "To void a donation: click the 🚫 icon and enter a reason (admin only)"
+    },
+    "boli": {
+      "title": "Pledge (Boli) Management",
+      "s1": "Go to Donations → Pledges tab → New Pledge — use the Devotee search to attach a global devotee (or mark anonymous)",
+      "s2": "Enter the pledged amount; status will be \"Pledged\" until payment is recorded",
+      "s3": "When devotee pays: click the \"Pay\" button on the pledge entry",
+      "s4": "Enter amount and payment mode in the modal, then confirm",
+      "s5": "To waive remaining balance: click ⚠️ icon and enter a reason (admin only)",
+      "s6": "View intimation details via the 🔔 icon on any boli row"
+    },
+    "certificates": {
+      "title": "80G Certificates & Form 10BD",
+      "s1": "Go to Certificates & TDS page",
+      "s2": "Select the Financial Year (e.g. 2025-26)",
+      "s3": "Click \"Load Eligible Donors\" to see 80G-eligible donations",
+      "s4": "Click \"Generate Form 10BD\" to create IT-format entries",
+      "s5": "Download compliance reports from the Download Compliance Files section",
+      "s6": "Switch to TDS tab to view/export TDS deducted at source"
+    },
+    "rooms": {
+      "title": "Room Booking",
+      "s1": "Go to Accommodation → Rooms → New Booking",
+      "s2": "Select available room and enter guest details and dates",
+      "s3": "Enter advance amount if applicable",
+      "s4": "Booking appears in the list with \"Booked\" status",
+      "s5": "On arrival: click \"Check-In\" button",
+      "s6": "On departure: click \"Check-Out\"; to cancel: click ✕ icon"
+    },
+    "prasad": {
+      "title": "Prasad POS Counter",
+      "s1": "Go to Prasad Counter — item grid shows all active items",
+      "s2": "Click items to add to cart; use +/- to adjust quantity",
+      "s3": "Cart shows subtotal, GST, and total automatically",
+      "s4": "Select payment mode and click Checkout to record the sale",
+      "s5": "Manage items via Prasad Counter → Manage Items (edit, adjust stock)"
+    },
+    "bhojanshala": {
+      "title": "Bhojanshala Tokens",
+      "s1": "Go to Bhojanshala page — select the date using the date picker",
+      "s2": "Click \"Record Sale\" to add a token sale (meal type, quantity, rate)",
+      "s3": "Summary cards show total tokens and collection for the day",
+      "s4": "To redeem tokens later: click \"Redeem\" on any sale row and enter quantity"
+    },
+    "seva": {
+      "title": "Seva (Pooja) Bookings",
+      "s1": "Go to Seva Booking → New Booking",
+      "s2": "Select seva type — amount fills automatically from the seva catalog",
+      "s3": "Use the Devotee search to attach a global devotee (or mark anonymous)",
+      "s4": "Enter gotra, sankalp names, and date (these stay separate from the devotee record)",
+      "s5": "Booking list shows status; mark \"Done\" after the pooja is completed"
+    },
+    "connectedDevotees": {
+      "title": "Connected Devotees",
+      "s1": "Go to People → Connected Devotees to manage every devotee linked to your temple",
+      "s2": "Three tabs: Connected (approved), Pending Requests (devotees who asked to join), Pending Invites (you invited)",
+      "s3": "Approve / Reject pending requests; cancel a pending invite or remove a connected devotee",
+      "s4": "Click \"Invite Devotee\", enter a 10-digit mobile — the devotee gets a notification in the JainERP™ Devotee app to accept",
+      "s5": "Connected devotees can receive temple notices and appear pre-verified in your forms"
+    },
+    "staff": {
+      "title": "Staff & User Management",
+      "s1": "Go to Settings → Users",
+      "s2": "To invite a new staff member: enter mobile, name, and role, then click \"Send Invite\"",
+      "s3": "Staff receives an OTP on their mobile to log in",
+      "s4": "To update role or deactivate: click \"Edit\" on the staff row",
+      "s5": "Roles: Admin > Accountant > Cashier > Priest > Volunteer > Viewer"
+    },
+    "rights": "All rights reserved",
+    "poweredBy": "Powered by Tasqbots Technologies Pvt. Ltd."
   }
 }

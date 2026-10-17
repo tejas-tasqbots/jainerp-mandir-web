@@ -86,7 +86,7 @@ export function PublicProfileTab() {
 
   /** The server's message is written for the trustee — show it, don't replace it. */
   function fail(e: any) {
-    setErr(e?.response?.data?.error?.message ?? 'Could not save. Please try again.')
+    setErr(e?.response?.data?.error?.message ?? t('settings.publicProfile.saveFailed'))
     setOk('')
   }
 
@@ -131,7 +131,7 @@ export function PublicProfileTab() {
       const dataUri = await compressImage(file, { maxDim: 600, maxBytes: 250_000 })
       setCover({ dataUri, name: file.name })
     } catch {
-      setErr('Could not read that image. Try a JPEG or PNG.')
+      setErr(t('settings.publicProfile.imageReadFailed'))
     }
   }
 
@@ -181,7 +181,7 @@ export function PublicProfileTab() {
           <div>
             <label className="form-label" htmlFor="public-profile-tab-about">{t('settings.publicProfile.about', 'About this trust')}</label>
             <textarea id="public-profile-tab-about" className="form-input" rows={5} value={form.about}
-              placeholder="A Digambar Jain trust serving pilgrims since 1893…"
+              placeholder={t('settings.publicProfile.aboutPlaceholder')}
               onChange={e => setForm(f => ({ ...f, about: e.target.value }))} />
           </div>
 
@@ -213,7 +213,7 @@ export function PublicProfileTab() {
           <div>
             <label className="form-label" htmlFor="public-profile-tab-languages">{t('settings.publicProfile.languages', 'Languages spoken')}</label>
             <input id="public-profile-tab-languages" className="form-input" value={form.languages}
-              placeholder="Hindi, Gujarati, English"
+              placeholder={t('settings.publicProfile.languagesPlaceholder')}
               onChange={e => setForm(f => ({ ...f, languages: e.target.value }))} />
           </div>
 
@@ -229,7 +229,7 @@ export function PublicProfileTab() {
           <Link2 size={16} /> {t('settings.publicProfile.links', 'Website & social links')}
         </h3>
         <p className="mt-1 text-xs text-slate-500">
-          One account per platform — adding a second replaces the first. Use “Other” for anything else.
+          {t('settings.publicProfile.onePerPlatform')}
         </p>
 
         <div className="mt-3 space-y-2">

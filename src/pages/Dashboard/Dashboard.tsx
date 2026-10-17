@@ -350,7 +350,7 @@ function bucketLabel(from: string, granularity: DashboardTrend['granularity'], l
   }
 }
 
-const LOCALE: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' }
+const LOCALE: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', gu: 'gu-IN' }
 
 interface TrendPoint {
   label: string

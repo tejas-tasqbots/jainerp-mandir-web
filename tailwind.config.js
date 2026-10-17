@@ -56,7 +56,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Noto Sans', 'system-ui', 'sans-serif'],
+        // Noto Sans Gujarati carries only Gujarati glyphs, so Latin text is unchanged.
+        sans: ['Noto Sans', 'Noto Sans Gujarati', 'system-ui', 'sans-serif'],
       },
     },
   },
