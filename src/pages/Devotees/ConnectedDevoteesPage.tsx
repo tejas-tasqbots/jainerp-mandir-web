@@ -164,7 +164,7 @@ export function ConnectedDevoteesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-1 border-b border-slate-200 no-print">
         {TABS.map(tabItem => (
           <button
             key={tabItem.key}

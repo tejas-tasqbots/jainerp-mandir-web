@@ -881,7 +881,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                 {visibleColumns.map(col => (
                   <th
                     key={col.key}
-                    className={`${col.align === 'right' ? '!text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                    className={`${col.align === 'right' ? '!text-right' : ''} ${col.sortable ? 'cursor-pointer select-none' : ''} ${col.key === 'actions' ? 'col-print-hide' : ''}`}
                     onClick={() => toggleSort(col)}
                     aria-sort={props.sort?.key === col.key ? (props.sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                   >
@@ -908,7 +908,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={`skeleton-${i}`}>
                     {visibleColumns.map(col => (
-                      <td key={col.key}>
+                      <td key={col.key} className={col.key === 'actions' ? 'col-print-hide' : undefined}>
                         <div className="h-3.5 bg-slate-100 rounded animate-pulse" style={{ width: `${55 + ((i * 17 + col.key.length * 7) % 40)}%` }} />
                       </td>
                     ))}
@@ -950,7 +950,8 @@ export function DataTable<T>(props: DataTableProps<T>) {
                       onClick={rowClickable ? () => handleRowClick(row) : hasSubs ? () => toggleExpanded(key) : undefined}
                     >
                       {visibleColumns.map((col, ci) => (
-                        <td key={col.key} className={col.align === 'right' ? 'text-right tabular-nums' : ''}>
+                        // A screen's own 'actions' column (Pay, delete...) is buttons, not data: kept off paper.
+                        <td key={col.key} className={`${col.align === 'right' ? 'text-right tabular-nums' : ''} ${col.key === 'actions' ? 'col-print-hide' : ''}`}>
                           {ci === 0 && hasSubs ? (
                             <div className="flex items-start gap-1.5">
                               <button type="button" data-testid="group-toggle"
@@ -975,7 +976,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                   return [parent, ...subs!.map((sub, j) => (
                     <tr key={`${key}/${props.rowKey(sub, j)}`} className="bg-slate-50/70" data-testid="sub-row">
                       {visibleColumns.map((col, ci) => (
-                        <td key={col.key} className={`${col.align === 'right' ? 'text-right tabular-nums' : ''} ${ci === 0 ? 'pl-10 border-l-2 border-l-brand-blue/40' : ''}`}>
+                        <td key={col.key} className={`${col.align === 'right' ? 'text-right tabular-nums' : ''} ${ci === 0 ? 'pl-10 border-l-2 border-l-brand-blue/40' : ''} ${col.key === 'actions' ? 'col-print-hide' : ''}`}>
                           {cell(sub, j, col)}
                         </td>
                       ))}

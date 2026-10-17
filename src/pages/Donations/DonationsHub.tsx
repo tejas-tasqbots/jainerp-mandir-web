@@ -73,7 +73,7 @@ export function DonationsHub() {
 
   return (
     <div>
-      <div className="flex items-center gap-1 border-b border-slate-200 mb-4 px-1">
+      <div className="flex items-center gap-1 border-b border-slate-200 mb-4 px-1 no-print">
         {visibleTabs.map(tab => (
           <button
             key={tab.key}

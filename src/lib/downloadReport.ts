@@ -58,6 +58,8 @@ export function printCurrentView() {
       ? undefined
       : (window as unknown as { electronAPI?: DesktopPagePrint }).electronAPI
 
+  const cleanup = setPageOrientation()
+
   if (bridge?.printPage) {
     void bridge
       .printPage()
@@ -67,10 +69,34 @@ export function printCurrentView() {
         if (!res?.success && res?.filePath) void bridge.openPath?.(res.filePath)
       })
       .catch(() => { /* the shell reports its own failures */ })
+      .finally(cleanup)
     return
   }
 
+  window.addEventListener('afterprint', cleanup, { once: true })
   window.print()
+}
+
+/**
+ * Landscape for a wide register, the same rule the PDF export uses (more than
+ * six columns). A portrait A4 page holds about six columns legibly; the Pledge
+ * Register's nine ran off the right edge and lost Date and Status. Returns the
+ * function that removes the rule again, so it never leaks into another print.
+ */
+function setPageOrientation(): () => void {
+  if (typeof document === 'undefined') return () => {}
+  const table = Array.from(document.querySelectorAll<HTMLTableElement>('main table.data-table'))
+    .find(t => t.offsetParent !== null)
+  const columns = table
+    ? Array.from(table.querySelectorAll('thead tr:first-child th')).filter(th => !th.classList.contains('col-actions') && !th.classList.contains('col-print-hide')).length
+    : 0
+  // A narrow list keeps the print dialog's own Layout choice.
+  if (columns <= 6) return () => {}
+  const style = document.createElement('style')
+  style.dataset.printOrientation = ''
+  style.textContent = '@page { size: A4 landscape; margin: 10mm; }'
+  document.head.appendChild(style)
+  return () => style.remove()
 }
 
 /** Export already-loaded rows to CSV (no extra fetch — matches what's on screen). */
