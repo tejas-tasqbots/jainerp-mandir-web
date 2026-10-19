@@ -149,8 +149,10 @@ function AddPrasad({ onDone }: { onDone: () => void }) {
         unit: 'piece',
         price_paise: parsePaise(price || '0'),
         gst_rate: 0,
-        stock_qty: 0,
-        low_stock_threshold: 0,
+        // No stock is asked here, so the item is not counted: with a count of
+        // 0 it opened the counter "Out of stock" (tenant migration 066).
+        // Manage Items can switch counting on.
+        unlimited_stock: true,
       }))}>
       <p className="text-xs text-slate-500">{t('setupWizard.quick.prasadHint')}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

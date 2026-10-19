@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, X } from 'lucide-react'
+import { Plus, Pencil, X, LogOut, UserCheck, Undo2 } from 'lucide-react'
+import { useConfirm } from '../../components/ConfirmDialog'
+import { cancelExit, ExitDialog, RejoinDialog, statusOf, StaffStatusBadge } from '../Staff/StaffLifecycle'
 import { printCurrentView } from '../../lib/downloadReport'
 import { api, apiErrorMessage, dayOf, fmtPaise, parsePaise } from '../../lib/api'
 import { exportXlsx } from '../../lib/exportXlsx'
@@ -15,9 +17,13 @@ interface Priest {
   mobile?: string
   email?: string
   specialization?: string
-  monthly_stipend_paise?: number
+  // The column is monthly_salary_paise; this screen used to send
+  // monthly_stipend_paise, which the generic save dropped, so no stipend saved.
+  monthly_salary_paise?: number
   joining_date?: string
   is_active: boolean
+  leaving_date?: string | null
+  exit_reason?: string | null
   created_at: string
 }
 
@@ -34,6 +40,9 @@ export function PriestsPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const confirm = useConfirm()
+  const [exitFor, setExitFor] = useState<Priest | null>(null)
+  const [rejoinFor, setRejoinFor] = useState<Priest | null>(null)
 
   const columns: ColumnDef<Priest>[] = useMemo(() => [
     { key: 'name', label: t('priests.name'), render: p => <span className="font-medium">{p.name}</span> },
@@ -41,7 +50,7 @@ export function PriestsPage() {
     { key: 'specialization', label: t('priests.specialization'), render: p => <span className="text-slate-600">{p.specialization || '—'}</span> },
     {
       key: 'stipend', label: t('priests.monthlyStipend'), align: 'right',
-      render: p => <>{p.monthly_stipend_paise ? `₹${fmtPaise(p.monthly_stipend_paise)}` : '—'}</>,
+      render: p => <>{p.monthly_salary_paise ? `₹${fmtPaise(p.monthly_salary_paise)}` : '—'}</>,
     },
     {
       key: 'joined', label: t('priests.joined'),
@@ -53,9 +62,7 @@ export function PriestsPage() {
         { value: 'true', label: t('priests.active') },
         { value: 'false', label: t('priests.inactive') },
       ] },
-      render: p => p.is_active
-        ? <span className="badge-green">{t('priests.active')}</span>
-        : <span className="badge-gray">{t('priests.inactive')}</span>,
+      render: p => <StaffStatusBadge isActive={p.is_active} leavingDate={dayOf(p.leaving_date) || null} reason={p.exit_reason} />,
     },
      
   ], [t])
@@ -92,7 +99,7 @@ export function PriestsPage() {
         ],
         rows: priests.map(p => [
           p.name, p.mobile ?? '', p.email ?? '', p.specialization ?? '',
-          p.monthly_stipend_paise ?? 0,
+          p.monthly_salary_paise ?? 0,
           p.joining_date ? new Date(p.joining_date).toLocaleDateString('en-IN') : '',
           p.is_active ? t('priests.active') : t('priests.inactive'),
         ]),
@@ -109,7 +116,7 @@ export function PriestsPage() {
     setForm({
       name: p.name, mobile: p.mobile || '', email: p.email || '',
       specialization: p.specialization || '',
-      monthly_stipend: p.monthly_stipend_paise ? String(p.monthly_stipend_paise / 100) : '',
+      monthly_stipend: p.monthly_salary_paise ? String(p.monthly_salary_paise / 100) : '',
       joining_date: dayOf(p.joining_date),
     })
     setShowForm(true)
@@ -124,7 +131,7 @@ export function PriestsPage() {
         mobile: form.mobile || undefined,
         email: form.email || undefined,
         specialization: form.specialization || undefined,
-        monthly_stipend_paise: form.monthly_stipend ? parsePaise(form.monthly_stipend) : undefined,
+        monthly_salary_paise: form.monthly_stipend ? parsePaise(form.monthly_stipend) : undefined,
         joining_date: form.joining_date || undefined,
       }
       if (editId) await api.patch(`/priests/${editId}`, body)
@@ -142,11 +149,30 @@ export function PriestsPage() {
   const stats: SummaryStat[] = [
     { label: t('priests.title'), value: String(priests.length) },
     { label: t('priests.active'), value: String(priests.filter(p => p.is_active).length) },
-    { label: t('priests.monthlyStipend'), value: `₹${fmtPaise(priests.reduce((s2, p) => s2 + (p.monthly_stipend_paise ?? 0), 0))}` },
+    { label: t('priests.monthlyStipend'), value: `₹${fmtPaise(priests.reduce((s2, p) => s2 + (p.monthly_salary_paise ?? 0), 0))}` },
   ]
 
+  // Leaving and re-joining, as for employees (tenant migration 066).
   function rowActions(p: Priest): RowAction[] {
-    return [{ label: t('priests.editPriest'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(p) }]
+    const actions: RowAction[] = [{ label: t('priests.editPriest'), icon: <Pencil size={14} />, primary: true, onClick: () => openEdit(p) }]
+    const status = statusOf(p.is_active, dayOf(p.leaving_date) || null)
+    if (status === 'active') {
+      actions.push({ label: t('staffExit.markLeft'), icon: <LogOut size={14} />, danger: true, onClick: () => setExitFor(p) })
+    } else if (status === 'leaving') {
+      actions.push({ label: t('staffExit.editExit'), icon: <LogOut size={14} />, onClick: () => setExitFor(p) })
+      actions.push({
+        label: t('staffExit.cancelExit'), icon: <Undo2 size={14} />,
+        onClick: async () => {
+          if (!(await confirm({ message: t('staffExit.cancelConfirm', { name: p.name }), confirmLabel: t('staffExit.cancelExit') }))) return
+          try { await cancelExit('priest', p.id); toast.success(t('staffExit.cancelled', { name: p.name })); load() } catch (err) {
+            toast.error(apiErrorMessage(err, t('staffExit.failed')))
+          }
+        },
+      })
+    } else {
+      actions.push({ label: t('staffExit.rejoin'), icon: <UserCheck size={14} />, onClick: () => setRejoinFor(p) })
+    }
+    return actions
   }
 
   return (
@@ -214,6 +240,16 @@ export function PriestsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {exitFor && (
+        <ExitDialog type="priest" id={exitFor.id} name={exitFor.name} onClose={() => setExitFor(null)}
+          onDone={() => { toast.success(t('staffExit.recorded', { name: exitFor.name })); setExitFor(null); load() }} />
+      )}
+      {rejoinFor && (
+        <RejoinDialog type="priest" id={rejoinFor.id} name={rejoinFor.name} leavingDate={dayOf(rejoinFor.leaving_date) || null}
+          onClose={() => setRejoinFor(null)}
+          onDone={() => { toast.success(t('staffExit.rejoined', { name: rejoinFor.name })); setRejoinFor(null); load() }} />
       )}
     </div>
   )

@@ -53,6 +53,9 @@ interface PreviewRow {
   rate_paise: number
   days_in_month: number
   days_not_joined: number
+  /** The month this person leaves in: days after the last working day (unpaid). */
+  days_after_leaving?: number
+  leaving_date?: string | null
   days_present: number
   days_half: number
   days_paid_leave: number
@@ -415,6 +418,11 @@ export function PayrollPage() {
                           <td>
                             <span className="font-medium">{r.employee_name}</span>
                             {r.designation && <span className="text-xs text-slate-500 block">{r.designation}</span>}
+                            {r.leaving_date && (
+                              <span className="text-[11px] text-amber-700 block" data-testid="payroll-leaver">
+                                {t('payroll.paidToLastDay', { date: new Date(`${r.leaving_date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
+                              </span>
+                            )}
                           </td>
                           <td className="text-right tabular-nums text-xs">
                             ₹{fmtPaise(r.rate_paise)}
@@ -459,6 +467,7 @@ export function PayrollPage() {
                                   unpaidLeave: r.days_unpaid_leave, absent: r.days_absent,
                                 })}
                                 {r.days_not_joined > 0 && ` · ${t('payroll.notJoined', { count: r.days_not_joined })}`}
+                                {(r.days_after_leaving ?? 0) > 0 && ` · ${t('payroll.afterLeaving', { count: r.days_after_leaving })}`}
                               </p>
                               {r.salary_type !== 'daily' && <p className="text-slate-500">{t('payroll.unmarkedNote')}</p>}
                               {r.recoveries.length > 0 ? (

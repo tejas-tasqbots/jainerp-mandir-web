@@ -55,6 +55,9 @@ export function DonationDetail({ donation, onChanged }: { donation: Donation; on
   const rows: [string, React.ReactNode][] = [
     [t('donations.invoiceNo'), <span className="font-mono text-brand-blue">{donation.invoice_no}</span>],
     [t('donations.donor'), donation.donor_name || t('donations.anonymousGuptDan')],
+    ...(donation.with_names?.length
+      ? [[t('receiptNames.alsoInNameOf'), donation.with_names.join(', ')] as [string, React.ReactNode]]
+      : []),
     [t('donors.mobile'), donation.donor_mobile || '—'],
     [t('donations.category'), donation.category_name || '—'],
     [t('common.amount'), <span className="font-semibold">₹{fmtPaise(donation.amount_paise)}</span>],

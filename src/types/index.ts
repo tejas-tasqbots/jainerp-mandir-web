@@ -77,6 +77,8 @@ export interface Donation {
   id: string
   donor_id?: string
   donor_name?: string
+  /** The other names the receipt was issued in, besides the donor (tenant migration 066). */
+  with_names?: string[]
   donor_mobile?: string
   donor_pan_masked?: string
   is_anonymous?: boolean
@@ -116,6 +118,8 @@ export interface Donor {
   created_at: string
   /** Free-form donor labels, e.g. "Trustee Family", "NRI" (tenant-migration 008). */
   tags?: string[]
+  /** Names that go on this donor's receipts with theirs (tenant migration 066). */
+  family_members?: { name: string; relation: string | null }[]
 }
 
 // ─── Boli ────────────────────────────────────────────────────────────────────
@@ -347,10 +351,13 @@ export interface PrasadItem {
   gst_rate: number
   /** What a sale charges: 0 for a trust without a GSTIN, else the Prasad master or gst_rate (API). */
   effective_gst_rate?: number
-  stock_qty: number
+  /** null on an unlimited item: it is never counted. */
+  stock_qty: number | null
   low_stock_threshold?: number
   is_available: boolean
   sort_order?: number
+  /** Made to order (bhata, sukhdi): never out of stock, no count (tenant migration 066). */
+  unlimited_stock?: boolean
 }
 
 export interface PrasadSaleItem {
@@ -572,6 +579,36 @@ export interface VisitorCount {
   peak_count?: number
   total_count: number
   notes?: string
+}
+
+/** One person named in a visitor's party. */
+export interface VisitorMember { name: string; kind: 'male' | 'female' | 'child' }
+
+/** A line in the visitor register: the visitor and their party (tenant migration 066). */
+export interface VisitorEntry {
+  id: string
+  visit_date: string
+  name: string
+  mobile?: string | null
+  city?: string | null
+  purpose?: string | null
+  male_count: number
+  female_count: number
+  child_count: number
+  party_size: number
+  members: VisitorMember[]
+  notes?: string | null
+  created_at: string
+}
+
+/** The visitor register's totals for one day. */
+export interface VisitorDay {
+  visit_date: string
+  parties: number
+  male: number
+  female: number
+  children: number
+  people: number
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────

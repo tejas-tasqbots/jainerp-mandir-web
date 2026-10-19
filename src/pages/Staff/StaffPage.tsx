@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarCheck, FileText, IndianRupee, Users } from 'lucide-react'
+import { CalendarCheck, FileText, IndianRupee, LogOut, UserCheck, Users } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
 import { SummaryStrip, type SummaryStat } from '../../components/kit/SummaryStrip'
 import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
+import { useToast } from '../../components/kit/Toast'
 import { AttendanceGrid } from './AttendanceGrid'
 import { PayrollPage } from '../Payroll/PayrollPage'
 import { printPayslip } from '../../lib/printVoucher'
+import { ExitDialog, fmtDay, RejoinDialog, StaffStatusBadge, type StaffStatus } from './StaffLifecycle'
 
 /**
  * Staff: everyone the trust manages, in one place.
@@ -34,6 +36,12 @@ interface RosterRow {
   is_paid: boolean
   salary_type: string | null
   monthly_salary_paise: number
+  // Tenant migration 066: dates and where the person stands.
+  is_active: boolean
+  status: StaffStatus
+  joining_date: string | null
+  leaving_date: string | null
+  exit_reason: string | null
 }
 
 const TYPE_TONE: Record<string, string> = {
@@ -81,28 +89,35 @@ function StaffDirectory({ onOpen }: { onOpen: (id: string) => void }) {
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [only, setOnly] = useState<'all' | 'employee' | 'priest' | 'volunteer'>('all')
+  // Who is listed: the people still working (the default), those who left,
+  // or everyone (tenant migration 066).
+  const [standing, setStanding] = useState<'working' | 'left' | 'everyone'>('working')
 
   useEffect(() => {
-    api.get('/payroll/roster')
+    api.get('/payroll/roster', { params: { include: 'all' } })
       .then(r => setRoster(r.data.data ?? r.data ?? []))
       .catch(() => setRoster([]))
       .finally(() => setLoading(false))
   }, [])
 
+  // Serving notice counts as working: they still come in.
+  const working = useMemo(() => roster.filter(r => r.status !== 'left'), [roster])
+
   const shown = useMemo(() => roster.filter(r =>
     (only === 'all' || r.staff_type === only)
+    && (standing === 'everyone' || (standing === 'left') === (r.status === 'left'))
     && (!q || r.name.toLowerCase().includes(q.toLowerCase())
         || (r.role ?? '').toLowerCase().includes(q.toLowerCase()))
-  ), [roster, q, only])
+  ), [roster, q, only, standing])
 
-  const paidMonthly = roster
+  const paidMonthly = working
     .filter(r => r.is_paid && r.salary_type === 'monthly')
     .reduce((n, r) => n + Number(r.monthly_salary_paise || 0), 0)
 
   const stats: SummaryStat[] = [
-    { label: t('staff.total'), value: String(roster.length) },
-    { label: t('staff.employees'), value: String(roster.filter(r => r.staff_type === 'employee').length) },
-    { label: t('staff.priests'), value: String(roster.filter(r => r.staff_type === 'priest').length) },
+    { label: t('staff.total'), value: String(working.length), sub: t('staff.leftSub', { count: roster.length - working.length }) },
+    { label: t('staff.employees'), value: String(working.filter(r => r.staff_type === 'employee').length) },
+    { label: t('staff.priests'), value: String(working.filter(r => r.staff_type === 'priest').length) },
     // Volunteers attend but are never paid, so the monthly wage bill excludes
     // them — showing a headcount total next to a salary total would imply they
     // cost something.
@@ -126,6 +141,12 @@ function StaffDirectory({ onOpen }: { onOpen: (id: string) => void }) {
             <option value="priest">{t('staff.priests')}</option>
             <option value="volunteer">{t('staff.volunteers')}</option>
           </select>
+          <select className="form-select w-auto" value={standing} aria-label={t('staff.standing')}
+            onChange={e => setStanding(e.target.value as typeof standing)} data-testid="staff-standing">
+            <option value="working">{t('staff.standingWorking')}</option>
+            <option value="left">{t('staff.standingLeft')}</option>
+            <option value="everyone">{t('staff.standingEveryone')}</option>
+          </select>
         </div>
       </div>
 
@@ -137,13 +158,14 @@ function StaffDirectory({ onOpen }: { onOpen: (id: string) => void }) {
                 <th>{t('staff.person')}</th>
                 <th>{t('staff.type')}</th>
                 <th>{t('staff.role')}</th>
+                <th>{t('common.status')}</th>
                 <th className="text-right">{t('staff.salary')}</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={4} className="text-center text-slate-400 py-6">{t('common.loading')}</td></tr>}
+              {loading && <tr><td colSpan={5} className="text-center text-slate-400 py-6">{t('common.loading')}</td></tr>}
               {!loading && !shown.length && (
-                <tr><td colSpan={4} className="text-center text-slate-400 py-6">{t('staff.noneMatch')}</td></tr>
+                <tr><td colSpan={5} className="text-center text-slate-400 py-6">{t('staff.noneMatch')}</td></tr>
               )}
               {!loading && shown.map(r => (
                 <tr key={`${r.staff_type}-${r.id}`}>
@@ -154,6 +176,7 @@ function StaffDirectory({ onOpen }: { onOpen: (id: string) => void }) {
                   </td>
                   <td><span className={TYPE_TONE[r.staff_type]}>{t('staff.' + r.staff_type)}</span></td>
                   <td className="text-slate-600">{r.role ?? '—'}</td>
+                  <td><StaffStatusBadge isActive={r.is_active} leavingDate={r.leaving_date} reason={r.exit_reason} /></td>
                   <td className="text-right tabular-nums">
                     {r.is_paid && Number(r.monthly_salary_paise) > 0
                       ? <>₹{fmtPaise(r.monthly_salary_paise)}
@@ -177,21 +200,41 @@ function StaffDirectory({ onOpen }: { onOpen: (id: string) => void }) {
  * The same idea as a donor profile — everything about one party on one page,
  * instead of the reader joining three screens in their head.
  */
+interface ServiceEvent {
+  id: string
+  event: 'left' | 'rejoined' | 'exit_updated' | 'exit_cancelled'
+  event_date: string
+  reason: string | null
+  notes: string | null
+  recorded_by_name: string | null
+}
+
 export function StaffProfile() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { id = '' } = useParams()
   const [person, setPerson] = useState<RosterRow | null>(null)
   const [advances, setAdvances] = useState<any[]>([])
   const [salaries, setSalaries] = useState<any[]>([])
+  const [events, setEvents] = useState<ServiceEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [dialog, setDialog] = useState<'exit' | 'rejoin' | null>(null)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     let live = true
     async function load() {
       try {
-        const roster = await api.get('/payroll/roster').then(r => r.data.data ?? r.data ?? [])
+        // Everyone, including those who have left: a profile is history too.
+        const roster = await api.get('/payroll/roster', { params: { include: 'all' } }).then(r => r.data.data ?? r.data ?? [])
         if (!live) return
-        setPerson(roster.find((r: RosterRow) => r.id === id) ?? null)
+        const found: RosterRow | null = roster.find((r: RosterRow) => r.id === id) ?? null
+        setPerson(found)
+        if (found) {
+          api.get(`/staff/${found.staff_type}/${id}/service`)
+            .then(r => { if (live) setEvents((r.data.data ?? r.data)?.events ?? []) })
+            .catch(() => { if (live) setEvents([]) })
+        }
         const [adv, sal] = await Promise.all([
           api.get('/payroll/advances', { params: { employee_id: id } })
             .then(r => r.data.data ?? r.data ?? []).catch(() => []),
@@ -210,7 +253,7 @@ export function StaffProfile() {
     }
     load()
     return () => { live = false }
-  }, [id])
+  }, [id, reload])
 
   const outstanding = advances
     .filter(a => a.status === 'active')
@@ -235,13 +278,36 @@ export function StaffProfile() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-navy-900">{person.name}</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 flex flex-wrap items-center gap-2">
             <span className={TYPE_TONE[person.staff_type]}>{t('staff.' + person.staff_type)}</span>
-            {person.role && <span className="ml-2">{person.role}</span>}
+            {person.role && <span>{person.role}</span>}
+            <StaffStatusBadge isActive={person.is_active} leavingDate={person.leaving_date} reason={person.exit_reason} />
           </p>
         </div>
-        <Link to="/staff" className="btn-secondary btn-sm no-print">{t('staff.backToStaff')}</Link>
+        <div className="flex gap-2 no-print">
+          {person.status === 'left'
+            ? (
+              <button className="btn-secondary btn-sm" onClick={() => setDialog('rejoin')}>
+                <UserCheck size={14} /> {t('staffExit.rejoin')}
+              </button>
+            ) : (
+              <button className="btn-secondary btn-sm" onClick={() => setDialog('exit')} data-testid="profile-mark-left">
+                <LogOut size={14} /> {person.status === 'leaving' ? t('staffExit.editExit') : t('staffExit.markLeft')}
+              </button>
+            )}
+          <Link to="/staff" className="btn-secondary btn-sm">{t('staff.backToStaff')}</Link>
+        </div>
       </div>
+
+      {dialog === 'exit' && (
+        <ExitDialog type={person.staff_type} id={person.id} name={person.name} onClose={() => setDialog(null)}
+          onDone={() => { toast.success(t('staffExit.recorded', { name: person.name })); setDialog(null); setReload(n => n + 1) }} />
+      )}
+      {dialog === 'rejoin' && (
+        <RejoinDialog type={person.staff_type} id={person.id} name={person.name} leavingDate={person.leaving_date}
+          onClose={() => setDialog(null)}
+          onDone={() => { toast.success(t('staffExit.rejoined', { name: person.name })); setDialog(null); setReload(n => n + 1) }} />
+      )}
 
       <SummaryStrip stats={[
         {
@@ -339,6 +405,27 @@ export function StaffProfile() {
                 </tbody>
               </table>
             )}
+        </div>
+      </div>
+
+      {/* Time on the rolls: joined, left, came back (tenant migration 066). */}
+      <div className="card" data-testid="staff-service-history">
+        <div className="card-header">{t('staffExit.serviceHistory')}</div>
+        <div className="card-body">
+          <ul className="space-y-2 text-sm">
+            {person.joining_date && !events.some(e => e.event === 'rejoined') && (
+              <li><span className="font-medium">{fmtDay(person.joining_date)}</span> — {t('staffExit.event_joined')}</li>
+            )}
+            {events.map(e => (
+              <li key={e.id}>
+                <span className="font-medium">{fmtDay(e.event_date)}</span> — {t(`staffExit.event_${e.event}`)}
+                {e.reason && <> · {t(`staffExit.reason_${e.reason}`)}</>}
+                {e.notes && <span className="block text-xs text-slate-500">{e.notes}</span>}
+                {e.recorded_by_name && <span className="block text-[11px] text-slate-400">{t('staffExit.recordedBy', { name: e.recorded_by_name })}</span>}
+              </li>
+            ))}
+            {!person.joining_date && !events.length && <li className="text-slate-400">{t('staffExit.noHistory')}</li>}
+          </ul>
         </div>
       </div>
     </div>

@@ -48,6 +48,10 @@ export function DonorList() {
         <div>
           <p className="font-medium">{d.name}</p>
           {d.gotra && <p className="text-xs text-slate-400">{t('donors.gotraLabel', { gotra: d.gotra })}</p>}
+          {/* The family on this donor's receipts (tenant migration 066). */}
+          {(d.family_members?.length ?? 0) > 0 && (
+            <p className="text-xs text-slate-500">{t('receiptNames.withFamily', { names: d.family_members!.map(m => m.name).join(', ') })}</p>
+          )}
         </div>
       ),
     },

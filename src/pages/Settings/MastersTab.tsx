@@ -210,6 +210,10 @@ export function MastersTab() {
             { key: 'price_paise', label: t('settings.masters.fields.priceRupees'), type: 'money', required: true, placeholder: '0.00' },
             { key: 'gst_rate', label: t('settings.masters.fields.gstPercentField'), type: 'number', placeholder: '0', default: 0 },
             { key: 'low_stock_threshold', label: t('settings.masters.fields.lowStockAlert'), type: 'number', placeholder: '10', default: 10 },
+            // Ticked by default HERE: this editor asks for no opening stock, so
+            // a counted item made here started at 0 and read "Out of stock"
+            // until someone found Manage Items. Untick to count it.
+            { key: 'unlimited_stock', label: t('prasad.unlimitedStock'), type: 'checkbox', default: true },
             { key: 'sort_order', label: t('settings.masters.fields.sortOrder'), type: 'number', placeholder: '0', default: 0 },
           ]}
         />

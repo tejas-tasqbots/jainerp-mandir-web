@@ -88,6 +88,10 @@ export function DonationsList() {
       render: d => (
         <div>
           <p className="font-medium">{d.donor_name || '—'}</p>
+          {/* The other names this receipt was issued in (tenant migration 066). */}
+          {Array.isArray(d.with_names) && d.with_names.length > 0 && (
+            <p className="text-xs text-slate-500">{t('receiptNames.withFamily', { names: d.with_names.join(', ') })}</p>
+          )}
           {d.donor_mobile && <p className="text-xs text-slate-400">{d.donor_mobile}</p>}
           {d.is_anonymous && (
             <p className="text-xs text-slate-400 italic">

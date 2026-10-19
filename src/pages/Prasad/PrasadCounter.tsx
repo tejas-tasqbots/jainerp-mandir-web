@@ -147,8 +147,9 @@ export function PrasadCounter() {
               {items.map(item => {
                 // The sale is rejected server-side when stock_qty < qty, so an
                 // out-of-stock item can only ever fail at checkout. Show that on
-                // the tile instead of letting it into the cart.
-                const outOfStock = Number(item.stock_qty ?? 0) <= 0
+                // the tile instead of letting it into the cart. An unlimited
+                // item (made to order) is never out of stock.
+                const outOfStock = !item.unlimited_stock && Number(item.stock_qty ?? 0) <= 0
                 return (
                   <button
                     key={item.id}
@@ -166,7 +167,7 @@ export function PrasadCounter() {
                     {rateOf(item) > 0 && (
                       <p className="text-xs text-slate-400">{t('prasad.gstSuffix', { rate: rateOf(item) })}</p>
                     )}
-                    {outOfStock ? (
+                    {item.unlimited_stock ? null : outOfStock ? (
                       <p className="text-xs font-medium text-brand-red mt-1">{t('prasad.outOfStock')}</p>
                     ) : (
                       <p className="text-xs text-slate-400 mt-1">{t('prasad.stock', { qty: item.stock_qty ?? 0 })}</p>

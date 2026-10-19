@@ -20,6 +20,7 @@ import type { Donor } from '../../types'
 import { DONOR_TAG_OPTIONS } from '../../lib/donorTags'
 import { paymentModeLabel } from '../../lib/paymentModeLabel'
 import { tPdf } from '../../lib/i18n'
+import { FAMILY_RELATIONS, type NameRow } from '../../components/ReceiptNames'
 
 interface LedgerRow {
   id: string
@@ -62,11 +63,15 @@ export function DonorProfile() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ name: '', mobile: '', email: '', gotra: '', country: 'India', city: '', state: '', address: '' })
+  // The family whose names go on this donor's receipts (tenant migration 066).
+  const [family, setFamily] = useState<NameRow[]>([])
   const [range, setRange] = useState<DateRange>(() => loadStoredRange('donor-statement', 'all'))
   const [search, setSearch] = useState('')
   const [filterState, setFilterState] = useState<Record<string, ColumnFilterState>>({})
 
   useEffect(() => { if (id) load() }, [id, range])
+  // Opening the form starts from what is saved, not from a cancelled edit.
+  useEffect(() => { if (editing && donor) setFamily(donor.family_members ?? []) }, [editing])
 
   async function load() {
     setLoading(true)
@@ -91,6 +96,7 @@ export function DonorProfile() {
           state: d.state || '',
           address: d.address_line1 || '',
         })
+        setFamily(Array.isArray(d.family_members) ? d.family_members : [])
       }
       if (ledgerResp.status === 'fulfilled') {
         const ld = ledgerResp.value.data.data
@@ -120,6 +126,9 @@ export function DonorProfile() {
         city: form.city || undefined,
         state: form.state || undefined,
         address_line1: form.address || undefined,
+        family_members: family
+          .map(m => ({ name: m.name.trim().replace(/\s+/g, ' '), relation: m.relation || null }))
+          .filter(m => m.name),
       })
       setEditing(false)
       load()
@@ -408,6 +417,36 @@ export function DonorProfile() {
                 <input id="donor-profile-address" className="form-input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </div>
             </div>
+
+            {/* Family: names that go on this donor's receipts with theirs. Also
+                where a name typed as several people ("Ankitji Ayushji
+                Dharmavat") is put right: the payer above, the rest here. */}
+            <div className="rounded-lg border border-slate-200 p-3 space-y-2" data-testid="donor-family-editor">
+              <div>
+                <span className="form-label mb-0">{t('receiptNames.familyTitle')}</span>
+                <p className="text-xs text-slate-500">{t('receiptNames.familyHint')}</p>
+              </div>
+              {family.map((m, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input className="form-input flex-1" value={m.name} maxLength={100} aria-label={t('receiptNames.namePlaceholder')}
+                    placeholder={t('receiptNames.namePlaceholder')}
+                    onChange={e => setFamily(fs => fs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                  <select className="form-select w-40" value={m.relation ?? ''} aria-label={t('receiptNames.relation')}
+                    onChange={e => setFamily(fs => fs.map((x, j) => j === i ? { ...x, relation: e.target.value || null } : x))}>
+                    <option value="">{t('receiptNames.relation')}</option>
+                    {FAMILY_RELATIONS.map(r => <option key={r} value={r}>{t(`receiptNames.relation_${r}`)}</option>)}
+                  </select>
+                  <button type="button" className="p-1.5 text-slate-400 hover:text-brand-red rounded"
+                    aria-label={t('receiptNames.remove', { name: m.name })} onClick={() => setFamily(fs => fs.filter((_, j) => j !== i))}>
+                    <X size={15} />
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-40" disabled={family.length >= 30}
+                onClick={() => setFamily(fs => [...fs, { name: '', relation: null }])}>
+                + {t('receiptNames.addFamily')}
+              </button>
+            </div>
             <div className="flex gap-3">
               <button type="submit" disabled={saving} className="btn-primary">
                 <Save size={14} /> {saving ? t('common.saving') : t('donors.saveChanges')}
@@ -443,6 +482,21 @@ export function DonorProfile() {
                   <span className="font-medium">{value}</span>
                 </div>
               ))}
+
+              {/* Family - the names ticked onto this donor's receipts. */}
+              {(donor.family_members?.length ?? 0) > 0 && (
+                <div className="pt-2 border-t border-slate-100" data-testid="donor-family">
+                  <p className="text-xs text-slate-400 mb-1.5">{t('receiptNames.familyTitle')}</p>
+                  <ul className="text-sm space-y-0.5">
+                    {donor.family_members!.map(m => (
+                      <li key={m.name}>
+                        {m.name}
+                        {m.relation && <span className="text-xs text-slate-500"> · {t(`receiptNames.relation_${m.relation}`)}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Tags */}
               <div className="pt-2 border-t border-slate-100">

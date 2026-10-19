@@ -13,6 +13,7 @@ import type { DonationCategory, DevoteeSelection } from '../../types'
 import { paymentModeOptionLabel } from '../../lib/paymentModeLabel'
 import { useFormDraft } from '../../lib/formDraft'
 import { DraftBar } from '../../components/kit/DraftBar'
+import { ReceiptNames, type NameRow } from '../../components/ReceiptNames'
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 
@@ -93,16 +94,22 @@ export function AddDonation() {
   // unless the category changes.
   const [original, setOriginal] = useState<{ category_id: string; fund_id: string | null; fund_type: string | null } | null>(null)
   const [form, setForm] = useState(() => blankDonation())
+  // The other names on this receipt (tenant migration 066): the donor pays,
+  // these are printed with them. Remembered on the donor unless unticked.
+  const [withNames, setWithNames] = useState<NameRow[]>([])
+  const [saveFamily, setSaveFamily] = useState(true)
 
   // A half-filled receipt survives being left (lib/formDraft). New receipts
   // only - a correction reloads the receipt itself. The PAN typed for a donor
   // is not kept: it does not belong in browser storage.
-  const draft = useFormDraft('donation', { form, extraHeads, splitMode, payRows, devotee }, d => {
+  const draft = useFormDraft('donation', { form, extraHeads, splitMode, payRows, devotee, withNames }, d => {
     setForm({ ...blankDonation(), ...d.form }); setExtraHeads(d.extraHeads ?? []); setSplitMode(!!d.splitMode)
     setPayRows(d.payRows?.length ? d.payRows : [emptyPaymentRow()]); setDevotee(d.devotee ?? null)
+    setWithNames(Array.isArray(d.withNames) ? d.withNames : [])
   }, d => !d.form.category_id && !d.form.amount && !d.devotee && !d.extraHeads.length && !d.form.note.trim(), !isEdit)
   function resetForm() {
     setForm(blankDonation()); setExtraHeads([]); setSplitMode(false); setPayRows([emptyPaymentRow()]); setDevotee(null); setError('')
+    setWithNames([]); setSaveFamily(true)
   }
 
   useEffect(() => {
@@ -158,6 +165,8 @@ export function AddDonation() {
       } else if (d.donor_id) {
         setDevotee({ name: d.donor_name, mobile: d.donor_mobile, pan_masked: d.donor_pan_masked ?? undefined, is_offline: true })
       }
+      // The corrected receipt keeps the names the original was issued in.
+      setWithNames((Array.isArray(d.with_names) ? d.with_names : []).map((n: string) => ({ name: n, relation: null })))
     }).catch(() => setError(t('msg.loadDonationFailed')))
   }, [editId])
 
@@ -240,6 +249,11 @@ export function AddDonation() {
         payload.donor = { global_user_id: devotee.global_user_id, name: devotee.name, mobile: devotee.mobile, ...pan }
       } else if (devotee?.name) {
         payload.donor = { name: devotee.name, mobile: devotee.mobile, ...pan }
+      }
+      // Sent on a correction even when empty, so names can be taken off too.
+      if (!devotee?.is_anonymous && (withNames.length || isEdit)) {
+        payload.with_names = withNames.map(n => ({ name: n.name, relation: n.relation }))
+        payload.save_family = saveFamily
       }
 
       if (splitMode) {
@@ -357,10 +371,21 @@ export function AddDonation() {
           <DevoteePicker
             label={t('donations.donorLabel')}
             value={devotee}
-            onChange={setDevotee}
+            onChange={next => {
+              // Another donor, another family: names ticked for the last one
+              // must not ride onto this one's receipt.
+              const same = (a: DevoteeSelection | null, b: DevoteeSelection | null) =>
+                !!a && !!b && (a.global_user_id ?? a.mobile ?? a.name) === (b.global_user_id ?? b.mobile ?? b.name)
+              if (!same(devotee, next)) { setWithNames([]); setSaveFamily(true) }
+              setDevotee(next)
+            }}
             showAnonymous
             showDanPeti
           />
+
+          {/* Everyone else the receipt is in the name of: wife, children ... */}
+          <ReceiptNames donor={devotee} value={withNames} onChange={setWithNames}
+            saveFamily={saveFamily} onSaveFamilyChange={setSaveFamily} />
 
           {/* WHAT THE GIFT IS FOR: one list of category + amount rows. One row is
               an ordinary donation; "Add another category" makes it a receipt

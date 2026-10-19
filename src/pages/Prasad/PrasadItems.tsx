@@ -5,6 +5,26 @@ import { api, apiErrorMessage, fmtPaise, parsePaise } from '../../lib/api'
 import type { PrasadItem } from '../../types'
 import { useToast } from '../../components/kit/Toast'
 
+const blankItem = { name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', initial_stock: '0', low_stock_threshold: '10', unlimited: false }
+
+/**
+ * "Unlimited stock" (tenant migration 066): an offering made to order - bhata,
+ * sukhdi - has no count. It is never out of stock, never low, and has no
+ * stock to adjust. Everything else is counted as before.
+ */
+function UnlimitedTick({ id, checked, onChange }: { id: string; checked: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-start gap-2.5 rounded-md border border-slate-200 bg-slate-50 p-3">
+      <input type="checkbox" id={id} checked={checked} onChange={e => onChange(e.target.checked)} className="mt-0.5 w-4 h-4" />
+      <label htmlFor={id} className="text-sm text-slate-700">
+        {t('prasad.unlimitedStock')}
+        <span className="block text-xs text-slate-500">{t('prasad.unlimitedStockHint')}</span>
+      </label>
+    </div>
+  )
+}
+
 export function PrasadItems() {
   const toast = useToast()
   const { t } = useTranslation()
@@ -12,9 +32,9 @@ export function PrasadItems() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', initial_stock: '0', low_stock_threshold: '10' })
+  const [form, setForm] = useState(blankItem)
   const [editItem, setEditItem] = useState<PrasadItem | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', is_available: true, sort_order: '0' })
+  const [editForm, setEditForm] = useState({ name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', is_available: true, sort_order: '0', unlimited_stock: false })
   const [stockModal, setStockModal] = useState<PrasadItem | null>(null)
   const [stockAdj, setStockAdj] = useState({ qty: '', note: '' })
 
@@ -40,10 +60,14 @@ export function PrasadItems() {
         unit: form.unit,
         price_paise: parsePaise(form.price),
         gst_rate: parseFloat(form.gst_rate),
-        stock_qty: parseInt(form.initial_stock),
-        low_stock_threshold: parseInt(form.low_stock_threshold),
+        ...(form.unlimited
+          ? { unlimited_stock: true }
+          : {
+              stock_qty: parseInt(form.initial_stock) || 0,
+              low_stock_threshold: parseInt(form.low_stock_threshold) || 0,
+            }),
       })
-      setForm({ name: '', name_hindi: '', unit: 'piece', price: '', gst_rate: '0', initial_stock: '0', low_stock_threshold: '10' })
+      setForm(blankItem)
       setShowAdd(false)
       load()
     } catch (e) {
@@ -63,6 +87,7 @@ export function PrasadItems() {
       gst_rate: String(item.gst_rate),
       is_available: item.is_available,
       sort_order: String(item.sort_order ?? 0),
+      unlimited_stock: !!item.unlimited_stock,
     })
   }
 
@@ -79,7 +104,11 @@ export function PrasadItems() {
         gst_rate: parseFloat(editForm.gst_rate),
         is_available: editForm.is_available,
         sort_order: parseInt(editForm.sort_order),
+        unlimited_stock: editForm.unlimited_stock,
       })
+      // Counted again: its count is whatever it was before it went unlimited,
+      // so say where to set it rather than leave a stale number unexplained.
+      if (editItem.unlimited_stock && !editForm.unlimited_stock) toast.info(t('prasad.nowCountedHint'))
       setEditItem(null)
       load()
     } catch (e) {
@@ -137,7 +166,8 @@ export function PrasadItems() {
                 <input id="prasad-items-unit" className="form-input" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder={t('prasad.unitPlaceholder')} />
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-3">
+            <UnlimitedTick id="prasad-items-unlimited" checked={form.unlimited} onChange={v => setForm(f => ({ ...f, unlimited: v }))} />
+            <div className={`grid gap-3 ${form.unlimited ? 'grid-cols-2' : 'grid-cols-4'}`}>
               <div>
                 <label className="form-label" htmlFor="prasad-items-price">{t('prasad.priceLabel')}</label>
                 <input id="prasad-items-price" type="number" min="0" step="0.01" className="form-input" value={form.price}
@@ -150,16 +180,21 @@ export function PrasadItems() {
                   <option value="12">12%</option><option value="18">18%</option>
                 </select>
               </div>
-              <div>
-                <label className="form-label" htmlFor="prasad-items-initial-stock">{t('prasad.openingStock')}</label>
-                <input id="prasad-items-initial-stock" type="number" min="0" className="form-input" value={form.initial_stock}
-                  onChange={e => setForm(f => ({ ...f, initial_stock: e.target.value }))} />
-              </div>
-              <div>
-                <label className="form-label" htmlFor="prasad-items-low-stock-threshold">{t('prasad.lowStockAlert')}</label>
-                <input id="prasad-items-low-stock-threshold" type="number" min="0" className="form-input" value={form.low_stock_threshold}
-                  onChange={e => setForm(f => ({ ...f, low_stock_threshold: e.target.value }))} />
-              </div>
+              {/* Nothing to count on an unlimited item, so nothing to ask. */}
+              {!form.unlimited && (
+                <>
+                  <div>
+                    <label className="form-label" htmlFor="prasad-items-initial-stock">{t('prasad.openingStock')}</label>
+                    <input id="prasad-items-initial-stock" type="number" min="0" className="form-input" value={form.initial_stock}
+                      onChange={e => setForm(f => ({ ...f, initial_stock: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="form-label" htmlFor="prasad-items-low-stock-threshold">{t('prasad.lowStockAlert')}</label>
+                    <input id="prasad-items-low-stock-threshold" type="number" min="0" className="form-input" value={form.low_stock_threshold}
+                      onChange={e => setForm(f => ({ ...f, low_stock_threshold: e.target.value }))} />
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex gap-3 pt-1">
               <button type="submit" disabled={saving} className="btn-primary btn-sm">
@@ -202,9 +237,13 @@ export function PrasadItems() {
                   {/* What a sale charges (0 without a GSTIN), not the stored rate. */}
                   <td>{item.effective_gst_rate ?? item.gst_rate}%</td>
                   <td className="font-semibold">₹{fmtPaise(Math.round(item.price_paise * (1 + (item.effective_gst_rate ?? item.gst_rate) / 100)))}</td>
-                  <td className={(item.stock_qty ?? 0) <= (item.low_stock_threshold ?? 10) ? 'text-red-600 font-semibold' : ''}>
-                    {item.stock_qty ?? 0}
-                  </td>
+                  {item.unlimited_stock ? (
+                    <td><span className="badge-blue" title={t('prasad.unlimitedStockHint')}>{t('prasad.unlimited')}</span></td>
+                  ) : (
+                    <td className={(item.stock_qty ?? 0) <= (item.low_stock_threshold ?? 10) ? 'text-red-600 font-semibold' : ''}>
+                      {item.stock_qty ?? 0}
+                    </td>
+                  )}
                   <td>
                     {item.is_available
                       ? <span className="badge-green">{t('prasad.available')}</span>
@@ -215,10 +254,13 @@ export function PrasadItems() {
                       <button onClick={() => openEdit(item)} className="p-1 text-slate-400 hover:text-brand-blue rounded" title={t('prasad.editItemTitle')}>
                         <Pencil size={14} />
                       </button>
-                      <button onClick={() => { setStockModal(item); setStockAdj({ qty: '', note: '' }) }}
-                        className="p-1 text-slate-400 hover:text-green-600 rounded" title={t('prasad.adjustStockTitle')}>
-                        <Package size={14} />
-                      </button>
+                      {!item.unlimited_stock && (
+                        <button onClick={() => { setStockModal(item); setStockAdj({ qty: '', note: '' }) }}
+                          className="p-1 text-slate-400 hover:text-green-600 rounded" title={t('prasad.adjustStockTitle')}
+                          aria-label={t('prasad.adjustStockTitle')}>
+                          <Package size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -273,6 +315,8 @@ export function PrasadItems() {
                   <label htmlFor="available" className="text-sm">{t('prasad.availableInPos')}</label>
                 </div>
               </div>
+              <UnlimitedTick id="prasad-items-edit-unlimited" checked={editForm.unlimited_stock}
+                onChange={v => setEditForm(f => ({ ...f, unlimited_stock: v }))} />
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setEditItem(null)} className="btn-secondary">{t('common.cancel')}</button>
                 <button type="submit" disabled={saving} className="btn-primary">{saving ? t('common.saving') : t('common.save')}</button>

@@ -32,6 +32,9 @@ interface RosterRow {
   role: string | null
   staff_type: 'employee' | 'priest' | 'volunteer'
   is_paid: boolean
+  joining_date?: string | null
+  /** Last working day, when an exit is recorded (tenant migration 066). */
+  leaving_date?: string | null
 }
 interface LeaveType { id: string; name: string; is_paid: boolean }
 interface Mark {
@@ -102,7 +105,18 @@ export function AttendanceGrid() {
 
   const dateOf = (day: number) => `${month}-${String(day).padStart(2, '0')}`
 
+  /**
+   * A day this person was not on the rolls: before joining, or after the last
+   * working day. Payroll neither pays nor docks it, so the register does not
+   * offer it — a person who left on the 15th has fifteen cells, not thirty.
+   */
+  function offRolls(row: RosterRow, day: number): boolean {
+    const d = dateOf(day)
+    return (!!row.joining_date && d < row.joining_date) || (!!row.leaving_date && d > row.leaving_date)
+  }
+
   function setCell(row: RosterRow, day: number, status: Status | null) {
+    if (offRolls(row, day)) return
     const k = key(row.staff_type, row.id, dateOf(day))
     setMarks(prev => {
       const next = { ...prev }
@@ -189,9 +203,22 @@ export function AttendanceGrid() {
           <th scope="row" className="sticky left-0 bg-white px-3 py-1.5 text-left font-medium whitespace-nowrap border-r border-slate-200">
             {row.name}
             {row.role && <span className="block text-xs font-normal text-slate-500">{row.role}</span>}
+            {row.leaving_date && (
+              <span className="block text-[11px] font-normal text-amber-700">
+                {t('staff.lastDay', { date: new Date(`${row.leaving_date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) })}
+              </span>
+            )}
           </th>
           {Array.from({ length: days }, (_, i) => i + 1).map(day => {
             const m = marks[key(row.staff_type, row.id, dateOf(day))]
+            if (offRolls(row, day)) {
+              return (
+                <td key={day} className="p-0 border border-slate-100 text-center bg-slate-100">
+                  <span className="inline-flex w-7 h-7 items-center justify-center text-[10px] text-slate-400"
+                    title={`${row.name} · ${dateOf(day)} · ${t('staff.notOnRolls')}`}>–</span>
+                </td>
+              )
+            }
             return (
               <td key={day} className="p-0 border border-slate-100 text-center">
                 <button
