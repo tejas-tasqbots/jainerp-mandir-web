@@ -55,7 +55,7 @@ jobs:
             echo "::error::Incorrect deployment password. Workflow stopped."
             exit 1
           fi
-          echo "Deployment password accepted."  >>$GITHUB_SUMMARY
+          echo "Deployment password accepted."  >>$GITHUB_STEP_SUMMARY
 
   # Run checks only after the password check succeeds.
   verify:
