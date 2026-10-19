@@ -132,6 +132,8 @@ export interface Boli {
   id: string
   donor_id?: string
   donor_name: string
+  /** The other names the pledge was made in (tenant migration 067). */
+  with_names?: string[]
   donor_mobile?: string
   event_id?: string
   event_name?: string

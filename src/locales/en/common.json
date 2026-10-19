@@ -5082,6 +5082,8 @@
     "familyHint": "These can be ticked onto this donor's receipts. If the name above holds several people, keep the person who pays there and add the others here.",
     "addFamily": "Add family member",
     "withFamily": "with {{names}}",
-    "alsoInNameOf": "Also in the name of"
+    "alsoInNameOf": "Also in the name of",
+    "saved": "Names saved",
+    "boliNote": "Receipts already issued keep their names; every payment collected from now on is receipted in all these names."
   }
 }

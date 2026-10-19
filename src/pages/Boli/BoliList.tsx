@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, AlertTriangle, Bell, Trash2, X } from 'lucide-react'
-import { api, fmtPaise } from '../../lib/api'
+import { Plus, AlertTriangle, Bell, Trash2, X, UserPlus, Save } from 'lucide-react'
+import { api, apiErrorMessage, fmtPaise } from '../../lib/api'
+import { ReceiptNames, receiptNameLine, type NameRow } from '../../components/ReceiptNames'
 import { printBoliIntimation } from '../../lib/printBoliIntimation'
 import { downloadReport, printCurrentView } from '../../lib/downloadReport'
 import { exportXlsx } from '../../lib/exportXlsx'
@@ -65,6 +66,29 @@ export function BoliList() {
   const [waiveReason, setWaiveReason] = useState('')
   const [waiving, setWaiving] = useState(false)
   const [intimating, setIntimating] = useState<string | null>(null)
+  // "Names on receipt" for a pledge already taken (tenant migration 067).
+  const [namesFor, setNamesFor] = useState<Boli | null>(null)
+  const [nameRows, setNameRows] = useState<NameRow[]>([])
+  const [namesSaveFamily, setNamesSaveFamily] = useState(true)
+  const [savingNames, setSavingNames] = useState(false)
+
+  async function saveNames() {
+    if (!namesFor) return
+    setSavingNames(true)
+    try {
+      await api.patch(`/bolis/${namesFor.id}`, {
+        with_names: nameRows.map(n => ({ name: n.name, relation: n.relation })),
+        save_family: namesSaveFamily,
+      })
+      toast.success(t('receiptNames.saved'))
+      setNamesFor(null)
+      load()
+    } catch (err) {
+      toast.error(apiErrorMessage(err, t('common.saveFailed')))
+    } finally {
+      setSavingNames(false)
+    }
+  }
 
   function statusBadge(s: string) {
     if (s === 'pledged') return <span className="badge-yellow">{t('pledges.statusPledged')}</span>
@@ -87,6 +111,10 @@ export function BoliList() {
       render: b => (
         <div>
           <p className="font-medium">{b.is_anonymous ? t('pledges.anonymous') : b.donor_name}</p>
+          {/* Everyone else the pledge was made in (tenant migration 067). */}
+          {!b.is_anonymous && (b.with_names?.length ?? 0) > 0 && (
+            <p className="text-xs text-slate-500">{t('receiptNames.withFamily', { names: b.with_names!.join(', ') })}</p>
+          )}
           {b.donor_mobile && <p className="text-xs text-slate-400">{b.donor_mobile}</p>}
         </div>
       ),
@@ -159,6 +187,19 @@ export function BoliList() {
                 <AlertTriangle size={14} />
               </button>
             </>
+          )}
+          {/* Names to print with the pledger's: added before (or between)
+              collections, so every receipt from then on carries them. */}
+          {!b.is_anonymous && b.status !== 'waived' && (
+            <button
+              type="button"
+              onClick={() => { setNamesFor(b); setNameRows((b.with_names ?? []).map(n => ({ name: n, relation: null }))); setNamesSaveFamily(true) }}
+              title={t('receiptNames.title')} aria-label={t('receiptNames.title')}
+              className="p-1 text-slate-400 hover:text-navy-900 rounded"
+              data-testid="boli-names"
+            >
+              <UserPlus size={14} />
+            </button>
           )}
           {canDelete && (
             <button
@@ -247,7 +288,7 @@ export function BoliList() {
         ],
         rows: rows.map(b => [
           b.boli_date ? new Date(b.boli_date).toLocaleDateString('en-IN') : '',
-          b.is_anonymous ? t('pledges.anonymous') : (b.donor_name ?? ''),
+          b.is_anonymous ? t('pledges.anonymous') : receiptNameLine(b.donor_name ?? '', (b.with_names ?? []).map(n => ({ name: n, relation: null }))),
           b.donor_mobile ?? '', b.seva_description ?? '', b.event_name ?? '',
           b.committed_amount_paise, b.paid_amount_paise, b.outstanding_paise,
           statusLabel[b.status] ?? b.status,
@@ -447,6 +488,31 @@ export function BoliList() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Names on the pledge's receipts (tenant migration 067). */}
+      {namesFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" data-testid="boli-names-dialog">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold text-navy-900">{t('receiptNames.title')}</h3>
+              <button type="button" onClick={() => setNamesFor(null)} aria-label={t('common.cancel')}><X size={18} className="text-slate-400" /></button>
+            </div>
+            <p className="text-sm text-slate-500 mb-3">{namesFor.seva_description} · ₹{fmtPaise(namesFor.committed_amount_paise)}</p>
+            <ReceiptNames
+              donor={{ name: namesFor.donor_name, mobile: namesFor.donor_mobile ?? undefined }}
+              value={nameRows} onChange={setNameRows}
+              saveFamily={namesSaveFamily} onSaveFamilyChange={setNamesSaveFamily}
+            />
+            <p className="text-xs text-slate-500 mt-2">{t('receiptNames.boliNote')}</p>
+            <div className="flex gap-3 justify-end mt-4">
+              <button type="button" onClick={() => setNamesFor(null)} className="btn-secondary">{t('common.cancel')}</button>
+              <button type="button" onClick={saveNames} disabled={savingNames} className="btn-primary">
+                <Save size={15} /> {savingNames ? t('common.saving') : t('common.save')}
+              </button>
+            </div>
           </div>
         </div>
       )}

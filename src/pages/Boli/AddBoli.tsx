@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Save, Settings2, X } from 'lucide-react'
 import { api, parsePaise, todayIst } from '../../lib/api'
 import { DevoteePicker } from '../../components/DevoteePicker/DevoteePicker'
+import { ReceiptNames, type NameRow } from '../../components/ReceiptNames'
 import type { DevoteeSelection } from '../../types'
 
 /** The type dropdown's "Other…": a type the trust has not added to its list yet. */
@@ -17,6 +18,10 @@ export function AddBoli() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [devotee, setDevotee] = useState<DevoteeSelection | null>(null)
+  // The other names the pledge is made in (tenant migration 067), printed on
+  // the intimation and on every collection's receipt, as on a donation.
+  const [withNames, setWithNames] = useState<NameRow[]>([])
+  const [saveFamily, setSaveFamily] = useState(true)
   // The trust's own boli types (Settings → Categories & Dropdowns → Boli
   // types, tenant migration 061). They were five words hardcoded here, so a
   // trust could not add "Shantidhara" or "Kalash" (2026-10-08).
@@ -69,6 +74,10 @@ export function AddBoli() {
       } else if (devotee?.name) {
         payload.donor = { name: devotee.name, mobile: devotee.mobile }
       }
+      if (!devotee?.is_anonymous && withNames.length) {
+        payload.with_names = withNames.map(n => ({ name: n.name, relation: n.relation }))
+        payload.save_family = saveFamily
+      }
 
       await api.post('/bolis', payload)
       navigate('/donations?tab=pledges')
@@ -92,9 +101,17 @@ export function AddBoli() {
           <DevoteePicker
             label={t('pledges.devotee')}
             value={devotee}
-            onChange={setDevotee}
+            onChange={next => {
+              // Another pledger, another family.
+              const key = (d: DevoteeSelection | null) => d ? (d.global_user_id ?? d.mobile ?? d.name) : null
+              if (key(devotee) !== key(next)) { setWithNames([]); setSaveFamily(true) }
+              setDevotee(next)
+            }}
             showAnonymous
           />
+
+          <ReceiptNames donor={devotee} value={withNames} onChange={setWithNames}
+            saveFamily={saveFamily} onSaveFamilyChange={setSaveFamily} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
