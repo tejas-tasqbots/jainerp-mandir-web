@@ -36,7 +36,7 @@ on:
       PASS:
         description: "Enter the deployment password"
         required: true
-        type: string
+        type: number
 
 concurrency:
   # Per service: two merges in quick succession must not race each other
@@ -72,7 +72,7 @@ jobs:
             echo "::error::Incorrect deployment password. Deployment cancelled."
             exit 1
           fi
-          echo "Deployment password accepted."
+          echo "Deployment password accepted."  >>$GITHUB_SUMMARY
 
       - name: Check the caller passed everything
         env:
