@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Camera, Contact as IdCard, Eye, Loader2, ShieldAlert, Trash2, X } from 'lucide-react'
-import { api, apiErrorMessage, fmtPaise, istDate, parsePaise } from '../../../lib/api'
+import { Camera, Contact as IdCard, Eye, Loader2, ShieldAlert, Trash2, Undo2, X } from 'lucide-react'
+import { api, apiErrorMessage, fmtPaise, istDate, parsePaise, todayIst } from '../../../lib/api'
 import { compressIdImage } from '../../../lib/idImage'
 import { useApiGet } from '../../../lib/useApiGet'
 import { useAuthStore } from '../../../store/authStore'
@@ -368,16 +368,111 @@ function IdViewer({ docId, onClose }: { docId: string; onClose: () => void }) {
   )
 }
 
+/** 'YYYY-MM-DD' plus n days. */
+function plusDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Where a no-show's stay moves when the guest is coming after all - what the
+ * Change dates and Reinstate forms open on, as OPERA reinstates a no-show:
+ * arrival today, the original departure kept while it is still ahead, else the
+ * same number of nights from today. (mandiradmin-api domain/room-charges.ts
+ * noShowMoveDates is the same rule.)
+ */
+export function noShowMoveDates(booking: Pick<RoomBooking, 'check_in_date' | 'check_out_date'>, today = todayIst()) {
+  const from = istDate(booking.check_in_date)
+  const to = istDate(booking.check_out_date)
+  const nights = Math.max(1, Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) || 1)
+  return { check_in_date: today, check_out_date: to > today ? to : plusDays(today, nights) }
+}
+
+/**
+ * Bring a cancelled booking back on new dates (POST /room-bookings/:id/reinstate,
+ * 2026-10-21) - a no-show whose guest is coming after all. Hotel systems call
+ * it reinstating: same booking and receipt number, arrival today or later, the
+ * room checked again, the bill worked out for the new nights; money still held
+ * counts toward it. Temple admin, like Edit.
+ */
+export function ReinstateBookingModal({ booking, onClose, onSaved }: {
+  booking: RoomBooking
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const start = noShowMoveDates(booking)
+  const [from, setFrom] = useState(start.check_in_date)
+  const [to, setTo] = useState(start.check_out_date)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function save() {
+    setBusy(true)
+    setError('')
+    try {
+      await api.post(`/room-bookings/${booking.id}/reinstate`, { check_in_date: from, check_out_date: to, reason: reason.trim() || undefined })
+      toast.success(t('dharamshala.reinstated', { from, to }))
+      onSaved()
+    } catch (e) {
+      setError(apiErrorMessage(e, t('dharamshala.reinstateFailed')))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 no-print" role="dialog" aria-modal="true" data-testid="reinstate-dialog">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="font-bold text-navy-900 flex items-center gap-2"><Undo2 size={16} /> {t('dharamshala.reinstateTitle')}</h3>
+            <p className="text-sm text-slate-500">{booking.guest_name} · {t('dharamshala.room')} {booking.room_number}{booking.invoice_no ? ` · ${booking.invoice_no}` : ''}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label={t('common.close')}><X size={18} /></button>
+        </div>
+        <p className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1.5 mb-3">{t('dharamshala.reinstateHint')}</p>
+        <div className="grid gap-3 grid-cols-2">
+          <div>
+            <label className="form-label" htmlFor="ri-in">{t('dharamshala.checkIn')}</label>
+            <input id="ri-in" className="form-input" type="date" value={from} min={todayIst()} onChange={e => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="ri-out">{t('dharamshala.checkOut')}</label>
+            <input id="ri-out" className="form-input" type="date" value={to} min={from} onChange={e => setTo(e.target.value)} />
+          </div>
+          <div className="col-span-2">
+            <label className="form-label" htmlFor="ri-reason">{t('dharamshala.reinstateReason')}</label>
+            <input id="ri-reason" className="form-input" value={reason} onChange={e => setReason(e.target.value)} />
+          </div>
+        </div>
+        {error && <p className="text-sm text-brand-red mt-3">{error}</p>}
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={onClose} className="btn-secondary btn-sm">{t('common.cancel')}</button>
+          <button onClick={() => void save()} disabled={busy || !from || !to || to <= from} className="btn-primary btn-sm" data-testid="reinstate-confirm">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : null} {t('dharamshala.reinstate')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * The temple admin's edit of a booking — the safe edits (founder, 2026-09-23):
  * guest details, persons and notes at any time; room, dates and rate only until
  * checkout, and the API recalculates the bill. After checkout the money fields
  * are locked and the form says how to correct one.
  */
-export function EditBookingModal({ booking, onClose, onSaved }: {
+export function EditBookingModal({ booking, onClose, onSaved, moveTo }: {
   booking: RoomBooking & { guest_email?: string | null; guest_address?: string | null; guest_gstin?: string | null; notes?: string | null }
   onClose: () => void
   onSaved: () => void
+  /** A no-show's Change dates: the form opens on these (noShowMoveDates). */
+  moveTo?: { check_in_date: string; check_out_date: string }
 }) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -394,8 +489,8 @@ export function EditBookingModal({ booking, onClose, onSaved }: {
     room_id: booking.room_id,
     // istDate, not .slice(0, 10): a Postgres DATE serialises as the UTC
     // instant of IST midnight, so slicing it shows (and would send) the day before.
-    check_in_date: istDate(booking.check_in_date),
-    check_out_date: istDate(booking.check_out_date),
+    check_in_date: moveTo?.check_in_date ?? istDate(booking.check_in_date),
+    check_out_date: moveTo?.check_out_date ?? istDate(booking.check_out_date),
     rate: fmtPaise(booking.tariff_per_night_paise ?? 0).replace(/,/g, ''),
   })
   const [busy, setBusy] = useState(false)
@@ -468,6 +563,7 @@ export function EditBookingModal({ booking, onClose, onSaved }: {
 
         <h4 className="text-sm font-semibold text-navy-900 mt-5 mb-2">{t('editBooking.stay')}</h4>
         {finalBill && <p className="text-xs bg-amber-50 text-amber-800 rounded px-2 py-1.5 mb-2">{t('editBooking.finalHint')}</p>}
+        {moveTo && <p className="text-xs bg-amber-50 text-amber-800 rounded px-2 py-1.5 mb-2" data-testid="move-note">{t('editBooking.noShowNote')}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="form-label" htmlFor="eb-room">{t('dharamshala.room')}</label>

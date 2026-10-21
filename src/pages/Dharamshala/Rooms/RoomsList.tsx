@@ -30,7 +30,7 @@ import {
 } from '../../../components/PaymentSplitInput'
 import { enteredByColumn, enteredByText, useEnteredByOptions } from '../../../lib/enteredBy'
 import { sourceColumn, sourceLabel } from '../../../lib/entrySource'
-import { EditBookingModal, IdDocumentsModal } from './GuestIdDocuments'
+import { EditBookingModal, IdDocumentsModal, noShowMoveDates, ReinstateBookingModal } from './GuestIdDocuments'
 import { CheckinModal, CheckoutModal, ExtrasModal } from './StayDialogs'
 import { depositHeldOf } from './deposit'
 import { GroupCheckinModal, GroupCheckoutModal } from './GroupStayDialogs'
@@ -234,6 +234,10 @@ export function RoomsList() {
   // admin alone views and removes) and the admin's edit (tenant migration 055).
   const [idDocsFor, setIdDocsFor] = useState<RoomBooking | null>(null)
   const [editFor, setEditFor] = useState<RoomBooking | null>(null)
+  // A no-show's Change dates opens the edit on new dates; a cancelled booking's
+  // Reinstate brings it back on new ones (2026-10-21).
+  const [editMove, setEditMove] = useState<{ check_in_date: string; check_out_date: string } | null>(null)
+  const [reinstateFor, setReinstateFor] = useState<RoomBooking | null>(null)
   // The desk dialogs (tenant migration 057): check-in with edits and extras,
   // extras during the stay, checkout with a live bill and the refund.
   const [checkinFor, setCheckinFor] = useState<RoomBooking | null>(null)
@@ -528,6 +532,12 @@ export function RoomsList() {
     // the menu for a guest who really is here, and a stay that is not
     // cancelled by hand goes at the end of the day if no money was taken.
     if (open && b.stay_ended) {
+      // The two ways a no-show ends (hotel practice): the guest is coming after
+      // all - move the stay (the edit is the temple admin's) - or is not.
+      // Both in words: they are the row's next step, not a familiar icon.
+      if (canDelete) {
+        out.push({ label: t('dharamshala.changeDates'), primary: true, onClick: () => { setEditMove(noShowMoveDates(b)); setEditFor(b) } })
+      }
       out.push({ label: t('dharamshala.cancelNoShow'), onClick: () => setCancelModal({ id: b.id, guestName: b.guest_name }), primary: true })
     } else if (open) {
       out.push({ label: t('dharamshala.checkInAction'), onClick: () => setCheckinFor(b), primary: true })
@@ -578,7 +588,12 @@ export function RoomsList() {
       out.push({ label: t('guestId.title'), icon: <IdCard size={14} />, onClick: () => setIdDocsFor(b) })
       out.push({ label: t('dharamshala.editTimes'), icon: <Clock size={14} />, onClick: () => openTimes(b) })
     }
-    if (canDelete && b.status !== 'cancelled') out.push({ label: t('editBooking.title'), icon: <Pencil size={14} />, onClick: () => setEditFor(b) })
+    if (canDelete && b.status !== 'cancelled') out.push({ label: t('editBooking.title'), icon: <Pencil size={14} />, onClick: () => { setEditMove(null); setEditFor(b) } })
+    // A cancelled booking comes back on new dates (OPERA's "Reinstate"), unless
+    // money was refunded or it is a hall package's room - the API says why.
+    if (canDelete && b.status === 'cancelled' && !b.hall_booking_id && !(b.refunded_paise ?? 0)) {
+      out.push({ label: t('dharamshala.reinstate'), icon: <Undo2 size={14} />, onClick: () => setReinstateFor(b) })
+    }
     if (open && !b.stay_ended) {
       out.push({ label: t('dharamshala.cancelBooking'), icon: <X size={14} />, onClick: () => setCancelModal({ id: b.id, guestName: b.guest_name }), danger: true })
     }
@@ -1025,7 +1040,13 @@ export function RoomsList() {
           }} />
       )}
       {editFor && (
-        <EditBookingModal booking={editFor} onClose={() => setEditFor(null)} onSaved={() => { setEditFor(null); void load() }} />
+        <EditBookingModal booking={editFor} moveTo={editMove ?? undefined}
+          onClose={() => { setEditFor(null); setEditMove(null) }}
+          onSaved={() => { setEditFor(null); setEditMove(null); void load() }} />
+      )}
+      {reinstateFor && (
+        <ReinstateBookingModal booking={reinstateFor} onClose={() => setReinstateFor(null)}
+          onSaved={() => { setReinstateFor(null); void load() }} />
       )}
 
       {timesModal && (
