@@ -5138,6 +5138,8 @@
     "pushResult": "Tally: {{created}} created, {{altered}} updated, {{errors}} errors.",
     "pushed": "Sent to Tally: {{created}} created, {{altered}} updated.",
     "pushedWithErrors": "Tally refused {{count}} item(s) - see below.",
+    "pushShort": "Tally took {{taken}} of the {{sent}} vouchers sent - see why below.",
+    "educationalHint": "This TallyPrime is in Educational mode (no licence): it takes vouchers dated only the 1st, 2nd and 31st of a month and drops the date of every other one. A licensed TallyPrime takes every date. Sending again later updates these vouchers - it never adds them twice.",
     "howTitle": "How to import the file in TallyPrime",
     "how1": "Open the company in TallyPrime (its books must begin on or before the first date sent).",
     "how2": "Gateway of Tally → Import → Masters: choose the downloaded file (ledgers first).",

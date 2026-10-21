@@ -34,7 +34,10 @@ interface ExportRes {
   counts: { groups: number; ledgers: number; vouchers: number; by_type: Record<string, number>; openings_skipped: number }
   masters_xml: string | null; vouchers_xml: string | null
 }
-interface PushRes { created: number; altered: number; errors: number; line_errors: string[] }
+interface PushRes {
+  created: number; altered: number; errors: number; line_errors: string[]
+  vouchers_sent?: number; vouchers_taken?: number; educational_dates?: boolean
+}
 interface LogRow {
   id: string; direction: string; what: string; fy: string | null; from_date: string | null; to_date: string | null
   masters: number; vouchers: number; created: number; altered: number; errors: number; created_at: string; actor_name: string | null
@@ -49,6 +52,9 @@ interface ImportPreview {
     rows: { key: string; date: string | null; type: string; number: string | null; narration: string; total_paise: number; status: string }[] }
   ledgers_created?: number; mapped?: number; vouchers_imported?: number
 }
+
+/** Tally took fewer vouchers than were sent - it can say ERRORS 0 and still drop them. */
+const pushShort = (p: PushRes) => (p.vouchers_sent ?? 0) > 0 && (p.vouchers_taken ?? 0) < (p.vouchers_sent ?? 0)
 
 function downloadXml(xml: string, filename: string) {
   const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' })
@@ -191,7 +197,7 @@ export function TallyPage() {
         masters: r.counts.groups + r.counts.ledgers, vouchers: r.counts.vouchers,
       })).data.data as PushRes
       setPush(res)
-      if (res.errors) toast.error(t('tally.pushedWithErrors', { count: res.errors }))
+      if (res.errors || pushShort(res)) toast.error(t('tally.pushedWithErrors', { count: res.errors || (res.vouchers_sent ?? 0) - (res.vouchers_taken ?? 0) }))
       else toast.success(t('tally.pushed', { created: res.created, altered: res.altered }))
     } catch (e) {
       setError(e instanceof Error && !('isAxiosError' in e) ? e.message : apiErrorMessage(e, t('tally.pushFailed')))
@@ -350,8 +356,14 @@ export function TallyPage() {
             </p>
           )}
           {push && (
-            <div className={`text-sm rounded px-3 py-2 ${push.errors ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'}`} data-testid="tally-push-result">
+            <div className={`text-sm rounded px-3 py-2 ${push.errors || pushShort(push) || push.line_errors.length ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'}`} data-testid="tally-push-result">
               {t('tally.pushResult', { created: push.created, altered: push.altered, errors: push.errors })}
+              {pushShort(push) && (
+                <p className="font-semibold mt-1" data-testid="tally-push-short">
+                  {t('tally.pushShort', { taken: push.vouchers_taken ?? 0, sent: push.vouchers_sent ?? 0 })}
+                </p>
+              )}
+              {push.educational_dates && <p className="mt-1" data-testid="tally-educational">{t('tally.educationalHint')}</p>}
               {push.line_errors.length > 0 && <ul className="list-disc ml-5 mt-1">{push.line_errors.slice(0, 10).map((l, i) => <li key={i}>{l}</li>)}</ul>}
             </div>
           )}
