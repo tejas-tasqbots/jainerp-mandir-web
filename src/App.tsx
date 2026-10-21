@@ -52,6 +52,7 @@ import { DayBook } from './pages/Accounts/DayBook'
 import { Ledger } from './pages/Accounts/Ledger'
 import { TrialBalance } from './pages/Accounts/TrialBalance'
 import { GeneralLedger } from './pages/Accounts/GeneralLedger'
+import { TallyPage } from './pages/Accounts/TallyPage'
 import { ReceiptsPayments } from './pages/Accounts/ReceiptsPayments'
 import { IncomeExpenditure } from './pages/Accounts/IncomeExpenditure'
 import { BalanceSheet } from './pages/Accounts/BalanceSheet'
@@ -212,6 +213,7 @@ export default function App() {
             <Route path="/accounts/ledger" element={<Ledger />} />
             <Route path="/accounts/trial-balance" element={<TrialBalance />} />
             <Route path="/accounts/general-ledger" element={<GeneralLedger />} />
+            <Route path="/accounts/tally" element={<TallyPage />} />
             <Route path="/accounts/receipts-payments" element={<ReceiptsPayments />} />
             <Route path="/accounts/income-expenditure" element={<IncomeExpenditure />} />
             <Route path="/accounts/balance-sheet" element={<BalanceSheet />} />

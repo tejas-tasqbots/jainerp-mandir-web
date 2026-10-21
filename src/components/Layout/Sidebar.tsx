@@ -83,6 +83,7 @@ const navItems: NavItem[] = [
       { labelKey: 'nav.receiptsPayments', to: '/accounts/receipts-payments' },
       { labelKey: 'nav.incomeExpenditure', to: '/accounts/income-expenditure' },
       { labelKey: 'nav.balanceSheet', to: '/accounts/balance-sheet' },
+      { labelKey: 'nav.tally', to: '/accounts/tally' },
     ],
   },
   { labelKey: 'nav.reports', icon: <BarChart2 size={18} />, to: '/reports' },
