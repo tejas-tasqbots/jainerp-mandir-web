@@ -257,7 +257,11 @@ export function RoomsList() {
     { label: t('dharamshala.summaryAdvances'), value: `₹${fmtPaise(advancesHeld)}`, tone: 'income' },
   ]
 
-  function statusBadge(s: string) {
+  function statusBadge(s: string, ended?: boolean) {
+    // Never checked in and the stay is over (tester report 2026-10-20).
+    if ((s === 'booked' || s === 'confirmed') && ended) {
+      return <span className="badge-yellow whitespace-nowrap" title={t('dharamshala.noShowHint')} data-testid="no-show">{t('dharamshala.statusNoShow')}</span>
+    }
     if (s === 'booked' || s === 'confirmed') return <span className="badge-blue whitespace-nowrap">{t('dharamshala.statusBooked')}</span>
     if (s === 'checked_in') return <span className="badge-green whitespace-nowrap">{t('dharamshala.statusCheckedIn')}</span>
     if (s === 'checked_out') return <span className="badge-gray whitespace-nowrap">{t('dharamshala.statusCheckedOut')}</span>
@@ -420,12 +424,12 @@ export function RoomsList() {
       render: b => {
         // Rooms of one booking at different stages: each stage with its count.
         const ms = (b as StayRow).members
-        if (!ms || (b.status as string) !== 'mixed') return statusBadge(b.status)
+        if (!ms || (b.status as string) !== 'mixed') return statusBadge(b.status, b.stay_ended)
         const counts = new Map<string, number>()
         for (const x of ms) counts.set(x.status, (counts.get(x.status) ?? 0) + 1)
         return (
           <div className="flex flex-col items-start gap-1">
-            {[...counts].map(([st, n]) => <span key={st} className="inline-flex items-center gap-1">{statusBadge(st)}<span className="text-xs text-slate-500">×{n}</span></span>)}
+            {[...counts].map(([st, n]) => <span key={st} className="inline-flex items-center gap-1">{statusBadge(st, ms.filter(x => x.status === st).every(x => x.stay_ended))}<span className="text-xs text-slate-500">×{n}</span></span>)}
           </div>
         )
       },
@@ -451,7 +455,8 @@ export function RoomsList() {
     // own steps are on its row underneath.
     if (b.members) {
       const ms = b.members
-      const waiting = ms.filter(x => x.status === 'confirmed' || x.status === 'booked')
+      // Rooms whose stay has ended are no-shows: cancelled on their own rows.
+      const waiting = ms.filter(x => (x.status === 'confirmed' || x.status === 'booked') && !x.stay_ended)
       const staying = ms.filter(x => x.status === 'checked_in')
       const out: RowAction[] = []
       // The next step for the group, with the rooms to pick: some arrive
@@ -518,7 +523,15 @@ export function RoomsList() {
     }
     const open = b.status === 'confirmed' || b.status === 'booked'
     const out: RowAction[] = []
-    if (open) out.push({ label: t('dharamshala.checkInAction'), onClick: () => setCheckinFor(b), primary: true })
+    // The booked checkout has passed and the guest never came: check-in is
+    // over (the API refuses it); cancelling is the next step. Edit stays in
+    // the menu for a guest who really is here, and a stay that is not
+    // cancelled by hand goes at the end of the day if no money was taken.
+    if (open && b.stay_ended) {
+      out.push({ label: t('dharamshala.cancelNoShow'), onClick: () => setCancelModal({ id: b.id, guestName: b.guest_name }), primary: true })
+    } else if (open) {
+      out.push({ label: t('dharamshala.checkInAction'), onClick: () => setCheckinFor(b), primary: true })
+    }
     if (b.status === 'checked_in') out.push({ label: t('dharamshala.checkOutAction'), onClick: () => setCheckoutFor(b), primary: true })
     if (b.status === 'checked_out' && b.invoice_no) {
       out.push({
@@ -526,7 +539,7 @@ export function RoomsList() {
         onClick: () => { printDonationReceipt(b.id, '/room-bookings').catch(() => {}) },
       })
     }
-    if (open || b.status === 'checked_in') {
+    if ((open && !b.stay_ended) || b.status === 'checked_in') {
       out.push({ label: t('roomCharges.title'), icon: <PackagePlus size={14} />, onClick: () => setExtrasFor(b) })
     }
     if (b.hall_booking_id && !(b as StayRow).inGroup) out.push(openHall(b))
@@ -566,7 +579,7 @@ export function RoomsList() {
       out.push({ label: t('dharamshala.editTimes'), icon: <Clock size={14} />, onClick: () => openTimes(b) })
     }
     if (canDelete && b.status !== 'cancelled') out.push({ label: t('editBooking.title'), icon: <Pencil size={14} />, onClick: () => setEditFor(b) })
-    if (open) {
+    if (open && !b.stay_ended) {
       out.push({ label: t('dharamshala.cancelBooking'), icon: <X size={14} />, onClick: () => setCancelModal({ id: b.id, guestName: b.guest_name }), danger: true })
     }
     if (canDelete) out.push({ label: t('entries.delete'), icon: <Trash2 size={14} />, onClick: () => removeBooking(b), danger: true })

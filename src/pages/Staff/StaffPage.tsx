@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CalendarCheck, FileText, IndianRupee, LogOut, UserCheck, Users } from 'lucide-react'
 import { api, fmtPaise } from '../../lib/api'
@@ -10,6 +10,8 @@ import { AttendanceGrid } from './AttendanceGrid'
 import { PayrollPage } from '../Payroll/PayrollPage'
 import { printPayslip } from '../../lib/printVoucher'
 import { ExitDialog, fmtDay, RejoinDialog, StaffStatusBadge, type StaffStatus } from './StaffLifecycle'
+import { useAuthStore } from '../../store/authStore'
+import { canSee } from '../../lib/rbac'
 
 /**
  * Staff: everyone the trust manages, in one place.
@@ -27,6 +29,21 @@ import { ExitDialog, fmtDay, RejoinDialog, StaffStatusBadge, type StaffStatus } 
  */
 
 type Tab = 'directory' | 'attendance' | 'payroll'
+
+/**
+ * Each tab is its own address, and the address is the only record of which
+ * tab is open (tester report 2026-10-20). The tab used to live in component
+ * state seeded once from the route: the sidebar's Directory / Attendance /
+ * Payroll links all render this same component, so React kept it and the
+ * state never changed - the URL said payroll while the page showed
+ * attendance - and the tab buttons changed the view without the URL, so a
+ * reload opened a different tab.
+ */
+const TAB_PATH: Record<Tab, string> = {
+  directory: '/staff', attendance: '/staff/attendance', payroll: '/staff/payroll',
+}
+const tabOf = (path: string): Tab =>
+  path.startsWith(TAB_PATH.payroll) ? 'payroll' : path.startsWith(TAB_PATH.attendance) ? 'attendance' : 'directory'
 
 interface RosterRow {
   id: string
@@ -48,16 +65,21 @@ const TYPE_TONE: Record<string, string> = {
   employee: 'badge-blue', priest: 'badge-yellow', volunteer: 'badge-gray',
 }
 
-export function StaffPage({ initialTab = 'directory' }: { initialTab?: Tab }) {
+export function StaffPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>(initialTab)
+  const { pathname } = useLocation()
+  const tab = tabOf(pathname)
+  const roles = useAuthStore(s => s.user?.roles)
+  const modules = useAuthStore(s => s.modules)
 
-  const tabs: { key: Tab; label: string; icon: JSX.Element }[] = [
+  // Only the tabs this person may open - the same rule as the sidebar, so a
+  // cashier is not offered Payroll and then refused it.
+  const tabs: { key: Tab; label: string; icon: JSX.Element }[] = ([
     { key: 'directory', label: t('staff.directory'), icon: <Users size={14} /> },
     { key: 'attendance', label: t('staff.attendance'), icon: <CalendarCheck size={14} /> },
     { key: 'payroll', label: t('staff.payroll'), icon: <IndianRupee size={14} /> },
-  ]
+  ] as { key: Tab; label: string; icon: JSX.Element }[]).filter(x => x.key === tab || canSee(TAB_PATH[x.key], roles, modules))
 
   return (
     <div className="space-y-4">
@@ -68,7 +90,8 @@ export function StaffPage({ initialTab = 'directory' }: { initialTab?: Tab }) {
             <button
               key={x.key}
               className={tab === x.key ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-              onClick={() => setTab(x.key)}
+              onClick={() => { if (x.key !== tab) navigate(TAB_PATH[x.key]) }}
+              aria-current={tab === x.key ? 'page' : undefined}
             >
               {x.icon} {x.label}
             </button>

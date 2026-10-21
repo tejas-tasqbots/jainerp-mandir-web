@@ -293,6 +293,12 @@ export interface RoomBooking {
   invoice_no?: string | null
   invoice_date?: string | null
   status: BookingStatus
+  /**
+   * Booked, never checked in, and the booked checkout has passed: a no-show.
+   * The API refuses check-in from then on and cancels it at the end of the
+   * checkout day when no money was taken (the server's clock decides).
+   */
+  stay_ended?: boolean
   /** counter | online (devotee app) | website (the trust's own site, tenant migration 062). */
   source?: string | null
   /** JRB-XXXXXX — what an online guest shows at the desk. */

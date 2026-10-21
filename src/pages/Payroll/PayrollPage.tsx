@@ -31,6 +31,19 @@ import { printAdvanceVoucher, printPayslip } from '../../lib/printVoucher'
  *     salary as an Expense, which knows nothing about advances. "Pay" records
  *     mode, account and UTR, issues a voucher and posts to the cash book;
  *   - there was no payslip. There is now, from the same record.
+ *
+ * Tester report 2026-10-20 (Temple Trust Portal):
+ *   - October was computed for all 31 days on the 20th. The current month is
+ *     now computed TO DATE (the API leaves out the days still to come);
+ *   - salary could be paid on any day. A month's salary falls due on its last
+ *     day - a leaver's on their last working day - and Pay waits until then;
+ *     money needed sooner is an advance;
+ *   - next month could be computed and paid. A month that has not begun
+ *     cannot be picked, and the API refuses it. An EARLIER month can still be
+ *     paid: last month's salary is normally paid early this month, and a
+ *     salary nobody paid is still owed - the screen asks to check it was not
+ *     paid another way first;
+ *   - priests were missing. They are paid here too, from their stipend.
  */
 
 type Tab = 'run' | 'advances'
@@ -46,7 +59,9 @@ interface Recovery {
 }
 
 interface PreviewRow {
+  /** The person's id - an employee's or a priest's. */
   employee_id: string
+  staff_type?: 'employee' | 'priest'
   employee_name: string
   designation: string | null
   salary_type: string
@@ -55,7 +70,14 @@ interface PreviewRow {
   days_not_joined: number
   /** The month this person leaves in: days after the last working day (unpaid). */
   days_after_leaving?: number
+  /** Days of the month still to come, not counted (the current month). */
+  days_not_yet?: number
   leaving_date?: string | null
+  /** When this salary may be paid: the month's last day, or a leaver's last working day. */
+  due_on?: string
+  payable_now?: boolean
+  /** Computed, but the register has changed since: compute again before paying. */
+  stale?: boolean
   days_present: number
   days_half: number
   days_paid_leave: number
@@ -80,6 +102,10 @@ interface PreviewRow {
 interface Preview {
   month: string
   days_in_month: number
+  month_state?: 'past' | 'current' | 'future'
+  today?: string
+  /** The figures are to today, not the whole month. */
+  to_date?: boolean
   employees: number
   gross_paise: number
   net_paise: number
@@ -307,6 +333,10 @@ export function PayrollPage() {
   )
 
   const unpaid = preview?.rows.filter(r => r.status !== 'paid') ?? []
+  // The server's day where it has answered; the month picker stops at its month.
+  const today = preview?.today ?? todayIst()
+  const maxMonth = today.slice(0, 7)
+  const future = preview?.month_state === 'future'
   const runStats: SummaryStat[] = preview ? [
     { label: t('payroll.staff'), value: String(preview.employees) },
     { label: t('payroll.gross'), value: `₹${fmtPaise(preview.gross_paise)}` },
@@ -355,8 +385,8 @@ export function PayrollPage() {
               <div>
                 <label className="form-label" htmlFor="payroll-month">{t('payroll.month')}</label>
                 <input
-                  id="payroll-month" type="month" className="form-input"
-                  value={month} onChange={e => setMonth(e.target.value)}
+                  id="payroll-month" type="month" className="form-input" max={maxMonth}
+                  value={month} onChange={e => { if (e.target.value && e.target.value <= maxMonth) setMonth(e.target.value) }}
                 />
               </div>
               <button className="btn-secondary" onClick={() => loadPreview(month)} disabled={loadingPreview}>
@@ -365,7 +395,7 @@ export function PayrollPage() {
               <button
                 className="btn-primary"
                 onClick={compute}
-                disabled={computing || loadingPreview || !unpaid.length}
+                disabled={computing || loadingPreview || !unpaid.length || future}
                 data-testid="payroll-compute"
               >
                 <Save size={15} /> {computing ? t('payroll.computing') : t('payroll.compute')}
@@ -374,7 +404,25 @@ export function PayrollPage() {
             </div>
           </div>
 
-          {runStats.length > 0 && <SummaryStrip stats={runStats} />}
+          {/* Where this month stands: not begun, to date, or an earlier month. */}
+          {future && (
+            <div className="card" data-testid="payroll-future"><div className="card-body text-sm text-slate-600">{t('payroll.futureMonth')}</div></div>
+          )}
+          {preview?.to_date && !future && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" data-testid="payroll-to-date">
+              {t('payroll.toDateNote', {
+                days: Number(today.slice(8, 10)), dim: preview.days_in_month,
+                date: fmtDay(`${preview.month}-${String(preview.days_in_month).padStart(2, '0')}`),
+              })}
+            </div>
+          )}
+          {preview?.month_state === 'past' && unpaid.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="payroll-past">
+              {t('payroll.pastMonthNote')}
+            </div>
+          )}
+
+          {runStats.length > 0 && !future && <SummaryStrip stats={runStats} />}
           {runError && <div className="card"><div className="card-body text-sm text-red-600">{runError}</div></div>}
 
           <div className="card">
@@ -383,7 +431,7 @@ export function PayrollPage() {
                 <thead>
                   <tr>
                     <th />
-                    <th>{t('payroll.employee')}</th>
+                    <th>{t('payroll.person')}</th>
                     <th className="text-right">{t('payroll.salary')}</th>
                     <th className="text-right">{t('payroll.lossOfPay')}</th>
                     <th className="text-right">{t('payroll.daysPaid')}</th>
@@ -417,7 +465,9 @@ export function PayrollPage() {
                           </td>
                           <td>
                             <span className="font-medium">{r.employee_name}</span>
-                            {r.designation && <span className="text-xs text-slate-500 block">{r.designation}</span>}
+                            {r.staff_type === 'priest'
+                              ? <span className="badge-yellow ml-1.5 align-middle" data-testid="payroll-priest">{t('staff.priest')}</span>
+                              : r.designation && <span className="text-xs text-slate-500 block">{r.designation}</span>}
                             {r.leaving_date && (
                               <span className="text-[11px] text-amber-700 block" data-testid="payroll-leaver">
                                 {t('payroll.paidToLastDay', { date: new Date(`${r.leaving_date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) })}
@@ -437,9 +487,16 @@ export function PayrollPage() {
                               : '—'}
                           </td>
                           <td className="text-right tabular-nums font-semibold">₹{fmtPaise(r.net_paise)}</td>
-                          <td>{statusBadge(r.status)}{r.voucher_no && <span className="block text-[11px] font-mono text-slate-500">{r.voucher_no}</span>}</td>
+                          <td>
+                            {r.stale ? <span className="badge-yellow" data-testid="payroll-stale" title={t('payroll.staleHint')}>{t('payroll.staleBadge')}</span> : statusBadge(r.status)}
+                            {r.voucher_no && <span className="block text-[11px] font-mono text-slate-500">{r.voucher_no}</span>}
+                            {r.status !== 'paid' && r.due_on && !r.payable_now && (
+                              <span className="block text-[11px] text-slate-500" data-testid="payroll-due">{t('payroll.dueOn', { date: fmtDay(r.due_on) })}</span>
+                            )}
+                          </td>
                           <td className="no-print text-right whitespace-nowrap">
-                            {r.status === 'computed' && (
+                            {/* Pay only what is on the screen, and only once it is due. */}
+                            {r.status === 'computed' && !r.stale && r.payable_now !== false && (
                               <button className="btn-success btn-sm" onClick={() => openPay(r)} data-testid="payroll-pay">
                                 <IndianRupee size={13} /> {t('payroll.pay')}
                               </button>
@@ -468,6 +525,7 @@ export function PayrollPage() {
                                 })}
                                 {r.days_not_joined > 0 && ` · ${t('payroll.notJoined', { count: r.days_not_joined })}`}
                                 {(r.days_after_leaving ?? 0) > 0 && ` · ${t('payroll.afterLeaving', { count: r.days_after_leaving })}`}
+                                {(r.days_not_yet ?? 0) > 0 && ` · ${t('payroll.notYet', { count: r.days_not_yet })}`}
                               </p>
                               {r.salary_type !== 'daily' && <p className="text-slate-500">{t('payroll.unmarkedNote')}</p>}
                               {r.recoveries.length > 0 ? (
@@ -702,7 +760,10 @@ export function PayrollPage() {
               <PaymentFields idPrefix="sal-pay" value={payment} onChange={setPayment} direction="out" />
               <div className="max-w-[12rem]">
                 <label className="form-label" htmlFor="sal-paid-on">{t('payroll.paidOn')}</label>
-                <input id="sal-paid-on" type="date" className="form-input" value={paidOn} onChange={e => setPaidOn(e.target.value)} />
+                {/* From the day it falls due to today: never before, never ahead. */}
+                <input id="sal-paid-on" type="date" className="form-input" value={paidOn}
+                  min={payFor.due_on} max={today} onChange={e => setPaidOn(e.target.value)} />
+                {payFor.due_on && <p className="text-xs text-slate-500 mt-1">{t('payroll.payFromHint', { date: fmtDay(payFor.due_on) })}</p>}
               </div>
               {payError && <p className="text-sm text-red-600">{payError}</p>}
               <div className="flex justify-end gap-2">

@@ -22,6 +22,16 @@ import { PrintLetterhead } from '../../components/kit/PrintLetterhead'
  * Nothing is written until Save. A register is corrected as the day goes on,
  * and a screen that saved every click would turn each correction into an audit
  * entry nobody asked for.
+ *
+ * Tester report 2026-10-20:
+ *  - "All Present" marked the days after today present, and payroll paid
+ *    them. A day that has not come cannot be marked - not by a cell, a row's
+ *    "All present" or a column - and the API skips one if sent.
+ *  - "Changing Leave Type has no effect." The type picker only ever applied
+ *    to the NEXT leave marked, and an L cell did not say which leave it was,
+ *    so a leave could not be seen or corrected. Each L now shows its type
+ *    (C, S, F...), and clicking an L while another type is picked changes that
+ *    day to the picked type instead of clearing it.
  */
 
 type Status = 'present' | 'absent' | 'half_day' | 'leave'
@@ -61,6 +71,22 @@ const TONE: Record<Status, string> = {
 const thisMonth = () => todayIst().slice(0, 7)
 const key = (t: string, id: string, d: string) => `${t}|${id}|${d}`
 
+/**
+ * A short code per leave type for the L cells: the first letter of its name,
+ * or the first two where two types share a letter (Sick / Special).
+ */
+function leaveCodes(types: LeaveType[]): Record<string, string> {
+  const first = (n: string) => Array.from(n.trim())[0]?.toUpperCase() ?? ''
+  const counts = new Map<string, number>()
+  for (const lt of types) counts.set(first(lt.name), (counts.get(first(lt.name)) ?? 0) + 1)
+  const out: Record<string, string> = {}
+  for (const lt of types) {
+    const f = first(lt.name)
+    out[lt.id] = (counts.get(f) ?? 0) > 1 ? Array.from(lt.name.trim()).slice(0, 2).join('') : f
+  }
+  return out
+}
+
 export function AttendanceGrid() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -76,6 +102,9 @@ export function AttendanceGrid() {
   // rather than a dropdown in every cell — a trust marking leave is almost
   // always marking the same kind on the same day.
   const [leaveTypeId, setLeaveTypeId] = useState('')
+  // The SERVER's IST day (the attendance response carries it): no day after
+  // it can be marked. todayIst() until the first load answers.
+  const [today, setToday] = useState(todayIst())
 
   const load = useCallback(async (m: string) => {
     setLoading(true)
@@ -85,6 +114,7 @@ export function AttendanceGrid() {
       setRoster(d.roster ?? [])
       setLeaveTypes(d.leave_types ?? [])
       setDays(d.days_in_month ?? 30)
+      if (d.today) setToday(d.today)
       const next: Record<string, { status: Status; leave_type_id: string | null }> = {}
       for (const mk of (d.marks ?? []) as Mark[]) {
         next[key(mk.staff_type, mk.staff_id, mk.attendance_date)] =
@@ -115,8 +145,11 @@ export function AttendanceGrid() {
     return (!!row.joining_date && d < row.joining_date) || (!!row.leaving_date && d > row.leaving_date)
   }
 
+  /** A day that has not come yet: nothing to mark. */
+  const isFuture = (day: number) => dateOf(day) > today
+
   function setCell(row: RosterRow, day: number, status: Status | null) {
-    if (offRolls(row, day)) return
+    if (offRolls(row, day) || isFuture(day)) return
     const k = key(row.staff_type, row.id, dateOf(day))
     setMarks(prev => {
       const next = { ...prev }
@@ -128,8 +161,15 @@ export function AttendanceGrid() {
   }
 
   function cycle(row: RosterRow, day: number) {
-    const current = marks[key(row.staff_type, row.id, dateOf(day))]?.status ?? null
-    const i = CYCLE.indexOf(current)
+    const current = marks[key(row.staff_type, row.id, dateOf(day))]
+    // A leave of another type than the one picked: the click changes its type
+    // (and the salary, when one is paid and the other is not). Clicking it
+    // again carries on round the cycle.
+    if (current?.status === 'leave' && leaveTypeId && current.leave_type_id !== leaveTypeId) {
+      setCell(row, day, 'leave')
+      return
+    }
+    const i = CYCLE.indexOf(current?.status ?? null)
     setCell(row, day, CYCLE[(i + 1) % CYCLE.length])
   }
 
@@ -156,7 +196,9 @@ export function AttendanceGrid() {
         .filter(Boolean)
       if (!entries.length) { setDirty(new Set()); setSaving(false); return }
       const { data } = await api.post('/payroll/attendance', { entries })
-      toast.success(t('staff.attendanceSaved', { count: (data.data ?? data)?.marked ?? entries.length }))
+      const res = data.data ?? data
+      toast.success(t('staff.attendanceSaved', { count: res?.marked ?? entries.length }))
+      if (res?.skipped_future) toast.info(t('staff.futureSkipped', { count: res.skipped_future }))
       await load(month)
     } catch (e: any) {
       toast.error(e?.response?.data?.error?.message ?? t('staff.attendanceSaveFailed'))
@@ -182,6 +224,12 @@ export function AttendanceGrid() {
     priest: roster.filter(r => r.staff_type === 'priest'),
     volunteer: roster.filter(r => r.staff_type === 'volunteer'),
   }), [roster])
+
+  const codes = useMemo(() => leaveCodes(leaveTypes), [leaveTypes])
+  const leaveName = (id: string | null) => {
+    const lt = leaveTypes.find(x => x.id === id)
+    return lt ? `${lt.name}${lt.is_paid ? '' : ` (${t('staff.unpaid')})`}` : t('staff.leaveTypeUnknown')
+  }
 
   const typeLabel: Record<string, string> = {
     employee: t('staff.employees'), priest: t('staff.priests'), volunteer: t('staff.volunteers'),
@@ -219,16 +267,30 @@ export function AttendanceGrid() {
                 </td>
               )
             }
+            if (isFuture(day)) {
+              return (
+                <td key={day} className="p-0 border border-slate-100 text-center bg-slate-50" data-testid="att-future">
+                  <span className="inline-flex w-7 h-7 items-center justify-center text-[10px] text-slate-300"
+                    title={`${row.name} · ${dateOf(day)} · ${t('staff.notYet')}`}>·</span>
+                </td>
+              )
+            }
+            const isLeave = m?.status === 'leave'
+            const what = m ? t('staff.status_' + m.status) + (isLeave ? ` · ${leaveName(m.leave_type_id)}` : '') : t('staff.notMarked')
             return (
               <td key={day} className="p-0 border border-slate-100 text-center">
                 <button
                   type="button"
                   onClick={() => cycle(row, day)}
                   className={`w-7 h-7 text-xs font-semibold ${m ? TONE[m.status] : 'text-slate-300 hover:bg-slate-100'}`}
-                  title={`${row.name} · ${dateOf(day)}`}
-                  aria-label={`${row.name} ${dateOf(day)} ${m ? t('staff.status_' + m.status) : t('staff.notMarked')}`}
+                  title={`${row.name} · ${dateOf(day)} · ${what}`}
+                  aria-label={`${row.name} ${dateOf(day)} ${what}`}
+                  data-testid={`att-${row.id}-${day}`}
                 >
                   {m ? LETTER[m.status] : '·'}
+                  {isLeave && m.leave_type_id && codes[m.leave_type_id] && (
+                    <sub className="text-[8px] font-bold">{codes[m.leave_type_id]}</sub>
+                  )}
                 </button>
               </td>
             )
@@ -238,7 +300,9 @@ export function AttendanceGrid() {
           <td className="px-2 text-center text-xs tabular-nums text-amber-700">{totals[row.id]?.half_day || '—'}</td>
           <td className="px-2 text-center text-xs tabular-nums text-blue-700">{totals[row.id]?.leave || '—'}</td>
           <td className="px-2 whitespace-nowrap no-print">
-            <button className="btn-secondary btn-sm" onClick={() => fillRow(row, 'present')}>
+            {/* Up to today only: setCell skips the days still ahead. */}
+            <button className="btn-secondary btn-sm" onClick={() => fillRow(row, 'present')}
+              disabled={isFuture(1)} title={t('staff.allPresentHint')}>
               <Check size={12} /> {t('staff.allPresent')}
             </button>
           </td>
@@ -255,16 +319,16 @@ export function AttendanceGrid() {
         <div className="card-body flex flex-wrap items-end gap-3">
           <div>
             <label className="form-label" htmlFor="att-month">{t('staff.month')}</label>
-            <input id="att-month" type="month" className="form-input" value={month}
-              onChange={e => setMonth(e.target.value)} />
+            <input id="att-month" type="month" className="form-input" value={month} max={today.slice(0, 7)}
+              onChange={e => { if (e.target.value && e.target.value <= today.slice(0, 7)) setMonth(e.target.value) }} />
           </div>
           <div>
             <label className="form-label" htmlFor="att-leave">{t('staff.leaveTypeForNew')}</label>
             <select id="att-leave" className="form-select" value={leaveTypeId}
-              onChange={e => setLeaveTypeId(e.target.value)}>
+              onChange={e => setLeaveTypeId(e.target.value)} aria-describedby="att-leave-hint">
               {leaveTypes.map(lt => (
                 <option key={lt.id} value={lt.id}>
-                  {lt.name}{lt.is_paid ? '' : ` — ${t('staff.unpaid')}`}
+                  {codes[lt.id]} · {lt.name}{lt.is_paid ? '' : ` — ${t('staff.unpaid')}`}
                 </option>
               ))}
             </select>
@@ -275,7 +339,11 @@ export function AttendanceGrid() {
           <button className="btn-primary" onClick={save} disabled={saving || !dirty.size}>
             <Save size={15} /> {saving ? t('common.saving') : t('staff.saveCount', { count: dirty.size })}
           </button>
-          <p className="text-xs text-slate-500 max-w-sm">{t('staff.cycleHint')}</p>
+          <div className="text-xs text-slate-500 max-w-sm space-y-0.5">
+            <p>{t('staff.cycleHint')}</p>
+            <p id="att-leave-hint">{t('staff.leaveTypeHint')}</p>
+            <p>{t('staff.futureHint')}</p>
+          </div>
         </div>
       </div>
 
@@ -287,6 +355,12 @@ export function AttendanceGrid() {
             {t('staff.status_' + s)}
           </span>
         ))}
+        {/* Which leave each L is - printed with the register. */}
+        {leaveTypes.length > 0 && (
+          <span className="text-slate-500" data-testid="att-leave-legend">
+            ({leaveTypes.map(lt => `${codes[lt.id]} ${lt.name}${lt.is_paid ? '' : ` · ${t('staff.unpaid')}`}`).join(', ')})
+          </span>
+        )}
       </div>
 
       <div className="card">
@@ -316,9 +390,11 @@ export function AttendanceGrid() {
                 </th>
                 {Array.from({ length: days }, (_, i) => i + 1).map(day => (
                   <th key={day} className="p-0">
-                    <button type="button" onClick={() => fillColumn(day, 'present')}
-                      className="w-7 h-5 text-[10px] text-slate-300 hover:bg-green-50 hover:text-green-700"
-                      title={t('staff.markDayPresent', { day })}>P</button>
+                    {!isFuture(day) && (
+                      <button type="button" onClick={() => fillColumn(day, 'present')}
+                        className="w-7 h-5 text-[10px] text-slate-300 hover:bg-green-50 hover:text-green-700"
+                        title={t('staff.markDayPresent', { day })}>P</button>
+                    )}
                   </th>
                 ))}
                 <th colSpan={5} />

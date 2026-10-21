@@ -194,8 +194,9 @@ export default function App() {
             <Route path="/masters/priests" element={<PriestsPage />} />
             <Route path="/masters/employees" element={<EmployeesPage />} />
             <Route path="/staff" element={<StaffPage />} />
-            <Route path="/staff/attendance" element={<StaffPage initialTab="attendance" />} />
-            <Route path="/staff/payroll" element={<StaffPage initialTab="payroll" />} />
+            {/* One page, three addresses: StaffPage reads its tab from the URL. */}
+            <Route path="/staff/attendance" element={<StaffPage />} />
+            <Route path="/staff/payroll" element={<StaffPage />} />
             <Route path="/staff/:id" element={<StaffProfile />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/masters/inventory" element={<InventoryPage />} />

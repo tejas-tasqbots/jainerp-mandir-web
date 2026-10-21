@@ -21,7 +21,8 @@ import { depositHeldOf } from './deposit'
  * once.
  */
 
-const isWaiting = (b: RoomBooking) => b.status === 'confirmed' || b.status === 'booked'
+// A room whose stay has already ended cannot be checked in (a no-show).
+const isWaiting = (b: RoomBooking) => (b.status === 'confirmed' || b.status === 'booked') && !b.stay_ended
 const roomOf = (b: RoomBooking) => b.room_number || b.room_id
 
 function RoomChecklist({ rooms, picked, onChange, detail }: {
