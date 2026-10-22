@@ -12,10 +12,21 @@ import { canSeeRoles } from '../../../lib/rbac'
 
 type Status = 'new' | 'confirmed' | 'paid' | 'rejected'
 
+/** One kind of room asked for: "2 AC rooms" (tenant migration 070). */
+interface RequestLine {
+  room_type: string
+  rooms: number
+  estimate_paise: number | null
+}
+
 interface BookingRequest {
   id: string
   ref: string
   room_type: string | null
+  /** Every kind of room asked for; an old one-kind request comes as one line, "any room" as none. */
+  lines: RequestLine[]
+  /** What the website showed the yatri for the rooms, priced by the server. */
+  estimate_paise: number | null
   check_in_date: string
   check_out_date: string
   nights: number
@@ -108,8 +119,14 @@ export function WebsiteRequests() {
     try {
       const { data } = await api.get(`/booking-requests/${r.id}`)
       setReview(data.data)
-      // Pre-pick as many matching rooms as were asked for, in board order.
-      const match = (data.data.free_rooms as FreeRoom[]).filter(f => f.matches_type).slice(0, r.rooms_wanted).map(f => f.id)
+      // Pre-pick as many rooms of each kind as were asked for, cheapest first
+      // (as the website priced them); "any room" takes the first free ones.
+      const free = data.data.free_rooms as FreeRoom[]
+      const lines: RequestLine[] = data.data.lines ?? []
+      const match = lines.length
+        ? lines.flatMap(l => free.filter(f => (f.room_type || 'standard') === l.room_type)
+            .sort((a, b) => a.tariff_paise - b.tariff_paise).slice(0, l.rooms).map(f => f.id))
+        : free.slice(0, r.rooms_wanted).map(f => f.id)
       setPicked(match)
     } catch (e) {
       toast.error(apiErrorMessage(e, t('website.requests.loadFailed')))
@@ -180,6 +197,10 @@ export function WebsiteRequests() {
   }
 
   const typeLabel = (v: string | null) => v ? t(`website.rooms.types.${v}`, { defaultValue: v }) : t('website.requests.anyRoom')
+  /** "2 × AC Room, 1 × Non-AC Room", or "Any room · 2 rooms". */
+  const wantsLabel = (r: BookingRequest) => r.lines?.length
+    ? r.lines.map(l => `${l.rooms} × ${typeLabel(l.room_type)}`).join(', ')
+    : `${typeLabel(null)} · ${t('website.requests.roomsCount', { count: r.rooms_wanted })}`
 
   return (
     <div className="space-y-5">
@@ -234,8 +255,11 @@ export function WebsiteRequests() {
                     <p className="text-xs text-slate-400">{t('website.requests.nights', { count: r.nights })}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <p>{typeLabel(r.room_type)} · {t('website.requests.roomsCount', { count: r.rooms_wanted })}</p>
-                    <p className="text-xs text-slate-400">{t('website.requests.persons', { count: r.persons_count })}</p>
+                    <p>{wantsLabel(r)}</p>
+                    <p className="text-xs text-slate-400">
+                      {t('website.requests.persons', { count: r.persons_count })}
+                      {r.estimate_paise != null && ` · ${t('website.requests.estimate', { amount: fmtPaise(r.estimate_paise) })}`}
+                    </p>
                     {r.notes && <p className="text-xs text-slate-500 italic max-w-[220px] truncate" title={r.notes}>“{r.notes}”</p>}
                   </td>
                   <td className="px-4 py-3">
@@ -306,7 +330,8 @@ export function WebsiteRequests() {
               <div>
                 <h2 className="text-base font-bold text-navy-900">{review.guest_name} · <span className="font-mono text-sm">{review.ref}</span></h2>
                 <p className="text-xs text-slate-500">
-                  {dayLabel(review.check_in_date)} → {dayLabel(review.check_out_date)} · {t('website.requests.nights', { count: review.nights })} · {t('website.requests.persons', { count: review.persons_count })} · {typeLabel(review.room_type)}
+                  {dayLabel(review.check_in_date)} → {dayLabel(review.check_out_date)} · {t('website.requests.nights', { count: review.nights })} · {t('website.requests.persons', { count: review.persons_count })} · {wantsLabel(review)}
+                  {review.estimate_paise != null && ` · ${t('website.requests.estimate', { amount: fmtPaise(review.estimate_paise) })}`}
                 </p>
               </div>
               <button onClick={() => setReview(null)} className="p-1 text-slate-400 hover:text-slate-700"><XCircle size={18} /></button>
@@ -319,7 +344,8 @@ export function WebsiteRequests() {
                 <p className="text-sm text-amber-700">{t('website.requests.noneFree')}</p>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                  {review.free_rooms.map(f => (
+                  {/* The kinds asked for first, so the pre-picked rooms are in view. */}
+                  {[...review.free_rooms].sort((a, b) => Number(b.matches_type) - Number(a.matches_type)).map(f => (
                     <label key={f.id} className={`flex items-start gap-2 border rounded-md p-2 cursor-pointer text-sm ${picked.includes(f.id) ? 'border-brand-red bg-red-50' : 'border-slate-200'} ${f.matches_type ? '' : 'opacity-70'}`}>
                       <input type="checkbox" className="mt-1" checked={picked.includes(f.id)}
                         onChange={e => setPicked(p => e.target.checked ? [...p, f.id] : p.filter(x => x !== f.id))} />

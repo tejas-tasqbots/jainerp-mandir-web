@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Copy, CreditCard, Globe, KeyRound, Loader2, Save, ShieldAlert, Wifi } from 'lucide-react'
 import { api, apiErrorMessage } from '../../../lib/api'
 import { useToast } from '../../../components/kit/Toast'
+import { WebsiteEvents } from './WebsiteEvents'
 
 interface SiteSettings {
   slug: string
@@ -263,6 +264,9 @@ export function WebsiteTab() {
       <button type="button" onClick={save} disabled={saving} className="btn-primary">
         {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} {saving ? t('settings.saving') : t('website.settings.save')}
       </button>
+
+      {/* Saved one by one, on their own: not part of the Save above. */}
+      <WebsiteEvents siteUrl={s.site_url} />
     </div>
   )
 }

@@ -36,6 +36,8 @@ export interface MasterField {
   emptyLabel?: string
   /** Optional placeholder for inputs. */
   placeholder?: string
+  /** A `checkbox`'s short tag in the list when ticked (the label is used otherwise). */
+  badge?: string
   /** Field is required when creating. */
   required?: boolean
   /** Default value for new rows. */
@@ -432,7 +434,7 @@ export function MasterEditor({ resource, title, description, fields, listParams,
                       {fields.some(f => f.type === 'checkbox') && (
                         <td>
                           {fields.filter(f => f.type === 'checkbox').map(f =>
-                            row[f.key] ? <span key={f.key} className="badge-blue mr-1">{f.label}</span> : null,
+                            row[f.key] ? <span key={f.key} className="badge-blue mr-1" title={f.label}>{f.badge ?? f.label}</span> : null,
                           )}
                         </td>
                       )}

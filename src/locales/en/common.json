@@ -4630,10 +4630,13 @@
         "non_ac": "Non-AC Room",
         "dormitory": "Dormitory",
         "suite": "Suite",
-        "vip": "VIP Room"
+        "vip": "VIP Room",
+        "standard": "Room"
       },
       "amenities": "Amenities",
-      "amenitiesPlaceholder": "AC, Geyser, Attached bath"
+      "amenitiesPlaceholder": "AC, Geyser, Attached bath",
+      "onlineBookable": "Show on website & devotee app",
+      "onlineBadge": "Online"
     },
     "settings": {
       "loadFailed": "Could not load the website settings.",
@@ -4742,7 +4745,59 @@
       "confirm_other": "Confirm {{count}} rooms",
       "rejectTitle": "Decline this request",
       "rejectHelp": "Say why — the yatri sees it when they check their request.",
-      "rejectPlaceholder": "e.g. Fully booked on those dates"
+      "rejectPlaceholder": "e.g. Fully booked on those dates",
+      "estimate": "est. ₹{{amount}}"
+    },
+    "events": {
+      "heading": "Events & pop-ups",
+      "add": "Add event",
+      "intro": "Programmes and notices for your website, with a pamphlet. They show on the website as soon as you save, only between the \"Show from\" and \"Show until\" days. Tick \"Open as a pop-up\" to show one over the page when someone visits.",
+      "manyPopups": "More than one event is set to pop up today. The website opens only one: \"{{title}}\".",
+      "empty": "No events yet. Add a programme, a mahotsav or a notice with its pamphlet.",
+      "state": {
+        "showing": "On the website",
+        "scheduled": "Scheduled",
+        "ended": "Over",
+        "hidden": "Hidden"
+      },
+      "popupBadge": "Pop-up",
+      "window": "Shown {{from}} → {{until}}",
+      "untilOver": "until it is over",
+      "viewSite": "Open the website",
+      "addTitle": "Add an event to the website",
+      "editTitle": "Edit event",
+      "pamphlet": "Pamphlet / poster",
+      "pickImage": "Click to add the pamphlet image",
+      "removeImage": "Remove image",
+      "imageHelp": "JPEG, PNG or WebP. Made smaller automatically.",
+      "imageType": "Choose a JPEG, PNG or WebP image.",
+      "imageFailed": "This image could not be read. Try another one.",
+      "title": "Title",
+      "titlePlaceholder": "Paryushan Mahaparva 2026",
+      "details": "Details",
+      "detailsPlaceholder": "Programme, pravachan, bhojan arrangements, who to contact…",
+      "eventFrom": "Event date",
+      "eventTo": "Last day (if more than one day)",
+      "time": "Time",
+      "timePlaceholder": "6:00 AM onwards",
+      "venue": "Place",
+      "link": "Link (optional)",
+      "linkLabel": "Button text",
+      "linkLabelPlaceholder": "Watch live",
+      "whenHeading": "When the website shows it",
+      "showFrom": "Show from",
+      "showUntil": "Show until",
+      "whenHelp": "Leave \"Show until\" empty to show it until the event is over (an undated notice stays until you hide or delete it).",
+      "published": "Show on the website",
+      "popup": "Open as a pop-up when someone visits the website",
+      "popupHelp": "Shown once per visit, over the page, with the pamphlet. The visitor can close it.",
+      "save": "Save event",
+      "saved": "Event saved - it is on the website now.",
+      "saveFailed": "The event could not be saved.",
+      "titleRequired": "Give the event a title.",
+      "deleteTitle": "Delete this event?",
+      "deleteMessage": "\"{{title}}\" will be taken off the website at once.",
+      "deleted": "Event deleted."
     }
   },
   "drafts": {

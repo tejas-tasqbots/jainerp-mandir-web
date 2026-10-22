@@ -235,8 +235,11 @@ export function MastersTab() {
             // The kind of room, as a yatri chooses it: the devotee app and the
             // trust's own website group rooms by it and price each type "from"
             // its cheapest room. The column existed; nothing could set it.
+            // Always a kind: rooms.room_type is NOT NULL (default non_ac), so
+            // the old "Not set" choice sent NULL and every save with it failed
+            // with "Invalid or missing field value".
             {
-              key: 'room_type', label: t('website.rooms.type'), type: 'select', emptyLabel: t('website.rooms.typeNone') as string,
+              key: 'room_type', label: t('website.rooms.type'), type: 'select', default: 'non_ac',
               options: ['ac', 'non_ac', 'dormitory', 'suite', 'vip'].map(v => ({ value: v, label: t(`website.rooms.types.${v}`) })),
             },
             { key: 'amenities', label: t('website.rooms.amenities'), type: 'list', placeholder: t('website.rooms.amenitiesPlaceholder') as string },
@@ -251,6 +254,10 @@ export function MastersTab() {
             // Shown to a devotee choosing a room in the Bhakt app and portal
             // (tenant-migration 040). The first photo is the one a search card uses.
             { key: 'images', label: t('settings.masters.fields.roomPhotos'), type: 'images' },
+            // Unticked: let at the counter only - the devotee app, the trust's
+            // own website and its live availability never list it (tenant
+            // migration 070). Ticked by default, as every room was before.
+            { key: 'online_bookable', label: t('website.rooms.onlineBookable'), badge: t('website.rooms.onlineBadge') as string, type: 'checkbox', default: true },
           ]}
         />
       ),
