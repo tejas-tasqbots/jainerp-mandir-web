@@ -15,6 +15,9 @@ type Status = 'new' | 'confirmed' | 'paid' | 'rejected'
 /** One kind of room asked for: "2 AC rooms" (tenant migration 070). */
 interface RequestLine {
   room_type: string
+  /** The website card it was asked from (type + tariff + beds) and that card's name. */
+  category?: string | null
+  label?: string | null
   rooms: number
   estimate_paise: number | null
 }
@@ -60,6 +63,7 @@ interface FreeRoom {
   room_type: string | null
   capacity_persons: number
   tariff_paise: number
+  category?: string
   matches_type: boolean
 }
 
@@ -124,7 +128,7 @@ export function WebsiteRequests() {
       const free = data.data.free_rooms as FreeRoom[]
       const lines: RequestLine[] = data.data.lines ?? []
       const match = lines.length
-        ? lines.flatMap(l => free.filter(f => (f.room_type || 'standard') === l.room_type)
+        ? lines.flatMap(l => free.filter(f => l.category ? f.category === l.category : (f.room_type || 'standard') === l.room_type)
             .sort((a, b) => a.tariff_paise - b.tariff_paise).slice(0, l.rooms).map(f => f.id))
         : free.slice(0, r.rooms_wanted).map(f => f.id)
       setPicked(match)
@@ -199,7 +203,7 @@ export function WebsiteRequests() {
   const typeLabel = (v: string | null) => v ? t(`website.rooms.types.${v}`, { defaultValue: v }) : t('website.requests.anyRoom')
   /** "2 × AC Room, 1 × Non-AC Room", or "Any room · 2 rooms". */
   const wantsLabel = (r: BookingRequest) => r.lines?.length
-    ? r.lines.map(l => `${l.rooms} × ${typeLabel(l.room_type)}`).join(', ')
+    ? r.lines.map(l => `${l.rooms} × ${l.label || typeLabel(l.room_type)}`).join(', ')
     : `${typeLabel(null)} · ${t('website.requests.roomsCount', { count: r.rooms_wanted })}`
 
   return (
