@@ -315,6 +315,9 @@ export function MastersTab() {
             // Shown to devotees deciding where to hold a function
             // (tenant-migration 040). The first is the one a listing uses.
             { key: 'images', label: t('settings.masters.fields.hallPhotos'), type: 'images' },
+            // Unticked: booked at the counter only - the trust's website and the
+            // devotee app never list it (tenant migration 071), as for rooms.
+            { key: 'online_bookable', label: t('website.rooms.onlineBookable'), badge: t('website.rooms.onlineBadge') as string, type: 'checkbox', default: true },
           ]}
         />
       ),
