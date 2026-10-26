@@ -103,6 +103,11 @@ export function AddRoomCheckin() {
   const [payment, setPayment] = useState<PaymentFieldsValue>(emptyPayment())
   const paymentModes = usePaymentModes()
   const [form, setForm] = useState(() => blankStay())
+  // A rate other than the Rooms master's, for every room of this booking, and
+  // why (tenant migration 072). Blank = the price list. The API enforces the
+  // trust's price control; the field is hidden where prices are fixed.
+  const [rateOverride, setRateOverride] = useState('')
+  const [rateReason, setRateReason] = useState('')
 
   // A half-made booking survives being left (lib/formDraft). Identity
   // documents are NOT kept: Aadhaar numbers and ID photos do not belong in
@@ -229,6 +234,7 @@ export function AddRoomCheckin() {
         payment_mode: payment.payment_mode,
         payment_account_id: payment.payment_account_id || null,
         utr_number: payment.reference_no.trim() || null,
+        ...(rateOverride.trim() ? { tariff_per_night_paise: parsePaise(rateOverride), rate_reason: rateReason.trim() || undefined } : {}),
       }
 
       // The IDs travel as `id_documents` above; only the GSTIN rides with the guest.
@@ -284,10 +290,27 @@ export function AddRoomCheckin() {
   const bookedRooms = selectedIds.map(id => rooms.find(r => r.id === id)).filter(Boolean) as Room[]
   const roomLabel = (r: Room) => `${r.building?.trim() ? `${r.building.trim()} · ` : ''}${r.room_number}`
   const stayNights = Math.max(0, Math.ceil((new Date(form.check_out_date).getTime() - new Date(form.check_in_date).getTime()) / 86400000))
-  const roomsPaise = bookedRooms.reduce((s, r) => s + stayNights * Number(r.tariff_paise), 0)
+  const roomsPaise = bookedRooms.reduce((s, r) => s + stayNights * (rateOverride.trim() ? parsePaise(rateOverride) : Number(r.tariff_paise)), 0)
   const extrasPaise = chargesTotalPaise(charges)
   const capacity = bookedRooms.reduce((s, r) => s + Number(r.capacity_persons || 0), 0)
   const hasAadhaar = idRows.some(r => r.id_type === 'aadhaar')
+
+  // How the trust's stay policy reads these dates and times (tenant migration
+  // 072), from the API's own calculator: an agreed late departure shows what
+  // it will add at checkout BEFORE the booking is confirmed.
+  const [quote, setQuote] = useState<{ mode: string; price_policy?: string; fees: { description: string; amount_paise: number }[]; explanation: string[] } | null>(null)
+  const quotable = !!form.room_id && !!form.check_in_date && !!form.check_out_date && form.check_out_date > form.check_in_date
+  useEffect(() => {
+    if (!quotable) return
+    const timer = setTimeout(() => {
+      api.post('/room-bookings/quote', {
+        room_id: form.room_id, from_date: form.check_in_date, to_date: form.check_out_date,
+        check_in_time: form.check_in_time, check_out_time: form.check_out_time,
+        ...(rateOverride.trim() ? { rate_paise: parsePaise(rateOverride) } : {}),
+      }).then(r => setQuote(r.data.data)).catch(() => setQuote(null))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [quotable, form.room_id, form.check_in_date, form.check_out_date, form.check_in_time, form.check_out_time, rateOverride])
 
   return (
     <div className="max-w-4xl pb-24">
@@ -342,6 +365,22 @@ export function AddRoomCheckin() {
                   value={form.check_out_time} onChange={e => setForm(f => ({ ...f, check_out_time: e.target.value }))} />
               </div>
             </div>
+            {quote?.price_policy !== 'fixed' && (
+              <div data-testid="booking-rate-override" className="sm:col-span-full grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-3">
+                <div>
+                  <label className="form-label" htmlFor="booking-rate">{t('stayCharge.bookingRate')}</label>
+                  <input id="booking-rate" className="form-input" inputMode="decimal" value={rateOverride}
+                    placeholder={t('stayCharge.bookingRatePlaceholder')} onChange={e => setRateOverride(e.target.value)} />
+                </div>
+                {rateOverride.trim() && (
+                  <div>
+                    <label className="form-label" htmlFor="booking-rate-reason">{t('stayCharge.reasonLabel')}</label>
+                    <input id="booking-rate-reason" className="form-input" maxLength={300} value={rateReason} data-testid="booking-rate-reason"
+                      placeholder={t('stayCharge.reasonPlaceholder')} onChange={e => setRateReason(e.target.value)} />
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <label className="form-label" htmlFor="booking-persons">{t('dharamshala.personsLabel')}</label>
               {/* Not capped at the rooms' capacity: a family of five in two
@@ -471,6 +510,16 @@ export function AddRoomCheckin() {
                   {extrasPaise > 0 && <span className="whitespace-nowrap">{t('roomCharges.extrasTotal', { amount: fmtPaise(extrasPaise) })}</span>}
                   <span className="whitespace-nowrap font-semibold text-navy-900">{t('dharamshala.beforeTaxTotal', { amount: fmtPaise(roomsPaise + extrasPaise) })}</span>
                 </span>
+                {quotable && quote && quote.mode !== 'calendar' && (
+                  <span className="block text-xs text-slate-500" data-testid="booking-stay-policy" title={quote.explanation.join(' ')}>
+                    {t(`stayCharge.mode.${quote.mode}`)}
+                    {quote.fees.map(f => (
+                      <span key={f.description} className="block text-amber-700" data-testid="booking-stay-fee">
+                        {t('stayCharge.atCheckout', { what: f.description, amount: fmtPaise(f.amount_paise) })}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </>
             )}
           </div>

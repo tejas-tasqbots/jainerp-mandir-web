@@ -5254,5 +5254,116 @@
     "exportFailed": "Could not make the Tally file.",
     "pushFailed": "Could not send to Tally.",
     "importFailed": "Could not read what Tally sent."
+  },
+  "stayCharge": {
+    "heading": "How a stay is charged",
+    "subheading": "Decides what a guest pays when they come early, leave late, or stay only a few hours.",
+    "defaultTag": "- as before",
+    "mode": {
+      "calendar": "By nights (calendar dates)",
+      "checkout_time": "By the check-out time",
+      "rolling_24h": "Per 24 hours from arrival"
+    },
+    "modeHint": {
+      "calendar": "One charge per night between the arrival and departure dates, at least one. The clock time does not change the charge.",
+      "checkout_time": "A day runs from the check-in time to the next check-out time, like a hotel. Arriving early or leaving late can add half or a full day.",
+      "rolling_24h": "One day for every 24 hours from the time the guest arrived. Extra hours can add half or a full day."
+    },
+    "early": "Arriving before check-in",
+    "late": "Leaving after check-out",
+    "over24": "Hours beyond the last 24 hours",
+    "grace": "Free for the first",
+    "minutes": "minutes",
+    "shortStay": "Charge short stays at a lower rate",
+    "shortStayHint": "For yatris who rest a few hours and leave the same day. Off: a short stay is one full day.",
+    "shortUpTo": "A stay of up to",
+    "shortHoursAt": "hours costs",
+    "examples": "What these settings charge for a ₹{{rate}} room",
+    "exSameDay": "Arrives {{from}}, leaves {{to}} the same day",
+    "exNight": "Arrives {{from}}, leaves next day {{to}}",
+    "exLate": "Arrives at check-in, leaves next day {{to}}",
+    "exEarly": "Arrives {{from}}, leaves next day at check-out",
+    "days_one": "{{days}} day",
+    "days_other": "{{days}} days",
+    "existingKeep": "Bookings already made keep the rule they were made under. A change applies to new bookings only.",
+    "priceHeading": "Changing the room price at the desk",
+    "price": {
+      "fixed": "Fixed prices",
+      "controlled": "Controlled",
+      "flexible": "Flexible"
+    },
+    "priceHint": {
+      "fixed": "Nobody can change the rate or waive a charge at the desk. Prices change only in the Rooms master.",
+      "controlled": "A cashier may lower the room charge up to a limit. Only the temple admin can give more.",
+      "flexible": "Anyone who takes payment may change the rate."
+    },
+    "limit": "Cashier may lower the room charge by up to",
+    "reasonAlways": "Every change needs a reason. The price-list amount, who changed it and when are kept with the booking.",
+    "fixedHint": "Fixed price - this trust does not allow the rate to be changed here.",
+    "roomDays_one": "Room · {{count}} day × ₹{{rate}}",
+    "roomDays_other": "Room · {{count}} days × ₹{{rate}}",
+    "waive": "Waive this charge",
+    "howCharged": "How this was worked out",
+    "priceList": "Price list ₹{{list}} · charged ₹{{charged}}",
+    "reasonLabel": "Reason for the change (required)",
+    "reasonPlaceholder": "e.g. Room was free, trustee approved",
+    "atCheckout": "+ ₹{{amount}} at check-out: {{what}}",
+    "charge": {
+      "free": "No charge",
+      "half": "Half a day",
+      "full": "A full day",
+      "percent": "A percentage of the day",
+      "fixed": "A fixed amount",
+      "hourly": "So much per hour"
+    },
+    "pctOfDay": "% of one day",
+    "perHour": "per hour after the free minutes",
+    "fullDayAfter": "More than",
+    "fullDayAfterHint": "hours early or late is a full day.",
+    "sameDay": "A stay that does not cover a night (in and out the same day)",
+    "sameDayOpt": {
+      "one_day": "Always one day",
+      "strict": "Charge early and late time on their own"
+    },
+    "sameDayHint": {
+      "one_day": "Recommended. 10:00 to 11:30 the same day is one day.",
+      "strict": "Like a strict hotel day: early and late time are both charged, never less than one day."
+    },
+    "shortKind": {
+      "percent": "a percentage of the day",
+      "fixed": "a fixed amount"
+    },
+    "exShort": "Arrives 2:00 PM, leaves 5:00 PM the same day",
+    "bookingRate": "Rate per night (₹, optional)",
+    "bookingRatePlaceholder": "The room's rate",
+    "dur": {
+      "d_one": "{{count}} day",
+      "d_other": "{{count}} days",
+      "h_one": "{{count}} h",
+      "h_other": "{{count}} h",
+      "m_one": "{{count}} min",
+      "m_other": "{{count}} min"
+    },
+    "step": {
+      "calendar_one": "Charged by calendar nights: {{count}} night. Arrival and departure times do not change the charge.",
+      "calendar_other": "Charged by calendar nights: {{count}} nights. Arrival and departure times do not change the charge.",
+      "short_stay": "Stayed {{duration}}, within the short-stay limit of {{hours}} h: charged {{amount}}.",
+      "rolling_one": "Charged per 24 hours from arrival: stayed {{duration}}, which is one day.",
+      "rolling": "Charged per 24 hours from arrival: stayed {{duration}} ({{days}} day(s) and {{rest}}).",
+      "over_charged": "The extra {{duration}} is charged {{amount}}.",
+      "over_grace": "The extra {{duration}} is within the {{grace}} grace period.",
+      "over_free": "Extra time beyond the last 24 hours is not charged.",
+      "same_day": "Arrived and left on the same day ({{duration}}) without staying a night: charged one day.",
+      "same_day_strict": "Arrived and left on the same day ({{duration}}): early and late time are charged on their own.",
+      "covers_one": "Check-in {{checkin}}, check-out {{checkout}}: the stay covers {{count}} night.",
+      "covers_other": "Check-in {{checkin}}, check-out {{checkout}}: the stay covers {{count}} nights.",
+      "early_charged": "Arrived {{duration}} before check-in: {{amount}} added.",
+      "early_grace": "Arrived {{duration}} before check-in: no charge (within the grace period).",
+      "early_free": "Arrived {{duration}} before check-in: no charge.",
+      "late_charged": "Left {{duration}} after check-out: {{amount}} added.",
+      "late_grace": "Left {{duration}} after check-out: no charge (within the grace period).",
+      "late_free": "Left {{duration}} after check-out: no charge.",
+      "minimum_day": "Never less than one day: charged one day."
+    }
   }
 }

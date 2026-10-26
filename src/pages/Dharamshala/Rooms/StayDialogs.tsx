@@ -1,3 +1,4 @@
+import { stayStepText, type StayStep } from '../../../lib/stayCharge'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Trash2 } from 'lucide-react'
@@ -219,6 +220,16 @@ interface Preview {
   existing_charges_paise: number; new_charges_paise: number
   subtotal_paise: number; gst_paise: number; gst_rate_pct: number; total_paise: number
   paid_paise: number; refunded_paise: number; due_paise: number; refund_owed_paise: number
+  /** How the stay was charged under the booking's own policy (tenant migration 072). */
+  policy_charges_paise?: number
+  stay?: {
+    mode: string; minutes: number; nights: number; explanation: string[]; steps?: StayStep[]
+    fees: { kind: 'early' | 'late' | 'short_stay'; description: string; amount_paise: number; waived: boolean }[]
+  }
+  list_rate_paise?: number; calculated_paise?: number; accommodation_paise?: number
+  price_policy?: 'fixed' | 'controlled' | 'flexible'; discount_limit_percent?: number
+  adjusted?: boolean; discount_paise?: number
+  adjustment_error?: { code: string; message: string } | null
   /** A room of a group booking: the group's account (the API settles against it). */
   group?: {
     rooms: number; others_open: number; held_paise: number
@@ -280,13 +291,20 @@ export function CheckoutModal({ booking, onClose, onDone }: {
   const [busy, setBusy] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
   const [error, setError] = useState('')
+  // Early/late lines the desk waives, and why the charge differs from the
+  // price list (tenant migration 072). The API decides whether it may.
+  const [waive, setWaive] = useState<{ early: boolean; late: boolean }>({ early: false, late: false })
+  const [reason, setReason] = useState('')
 
   const ratePaise = parsePaise(rate || '0')
   const rateChanged = ratePaise !== Number(booking.tariff_per_night_paise ?? 0)
   const outAt = istInputToDate(departure)
+  const waived = (['early', 'late'] as const).filter(k => waive[k])
   const body = () => ({
     ...(outAt && !Number.isNaN(outAt.getTime()) ? { checked_out_at: outAt.toISOString(), check_out_date: departure.slice(0, 10) } : {}),
     ...(rateChanged ? { tariff_per_night_paise: ratePaise } : {}),
+    ...(waived.length ? { waive: waived } : {}),
+    ...(reason.trim() ? { rate_reason: reason.trim() } : {}),
     charges: chargesPayload(rows),
   })
 
@@ -364,8 +382,11 @@ export function CheckoutModal({ booking, onClose, onDone }: {
         <div>
           <label className="form-label" htmlFor="co-rate">{t('editBooking.rate')}</label>
           <input id="co-rate" type="number" min="0" step="0.01" className="form-input" value={rate}
+            disabled={preview?.price_policy === 'fixed'} data-testid="co-rate"
             onChange={e => setRate(e.target.value)} />
-          {rateChanged && <p className="text-xs text-amber-700 mt-1">{t('dharamshala.rateChangedHint')}</p>}
+          {preview?.price_policy === 'fixed'
+            ? <p className="text-xs text-slate-500 mt-1">{t('stayCharge.fixedHint')}</p>
+            : rateChanged && <p className="text-xs text-amber-700 mt-1">{t('dharamshala.rateChangedHint')}</p>}
         </div>
       </div>
 
@@ -382,8 +403,23 @@ export function CheckoutModal({ booking, onClose, onDone }: {
         {previewError && <p className="text-red-600">{previewError}</p>}
         {p && (
           <>
-            {line(t('dharamshala.roomNights', { count: p.nights, rate: fmtPaise(p.tariff_per_night_paise) }), p.room_paise)}
-            {p.existing_charges_paise + p.new_charges_paise > 0 && line(t('roomCharges.heading'), p.existing_charges_paise + p.new_charges_paise)}
+            {p.nights > 0 && line(t(p.stay?.mode === 'rolling_24h' ? 'stayCharge.roomDays' : 'dharamshala.roomNights', { count: p.nights, rate: fmtPaise(p.tariff_per_night_paise) }), p.room_paise)}
+            {/* The stay policy's own lines, each waivable unless prices are fixed. */}
+            {(p.stay?.fees ?? []).map(f => (
+              <div key={f.kind} className={`flex justify-between gap-2 ${f.waived ? 'text-slate-400 line-through' : 'text-slate-600'}`} data-testid={`stay-fee-${f.kind}`}>
+                <span className="flex items-center gap-2">
+                  {f.kind !== 'short_stay' && p.price_policy !== 'fixed' && (
+                    <input type="checkbox" className="w-3.5 h-3.5" aria-label={t('stayCharge.waive')} title={t('stayCharge.waive')}
+                      data-testid={`waive-${f.kind}`} checked={waive[f.kind]}
+                      onChange={e => setWaive(w => ({ ...w, [f.kind]: e.target.checked }))} />
+                  )}
+                  {f.description}
+                </span>
+                <span>₹{fmtPaise(f.amount_paise)}</span>
+              </div>
+            ))}
+            {p.existing_charges_paise + p.new_charges_paise - (p.policy_charges_paise ?? 0) > 0
+              && line(t('roomCharges.heading'), p.existing_charges_paise + p.new_charges_paise - (p.policy_charges_paise ?? 0))}
             {p.gst_paise > 0 && line(`GST ${p.gst_rate_pct}%`, p.gst_paise)}
             {line(t('dharamshala.total'), p.total_paise, true, 'preview-total')}
             {/* A room of a group booking settles against the group's money,
@@ -419,6 +455,32 @@ export function CheckoutModal({ booking, onClose, onDone }: {
           </>
         )}
       </div>
+
+      {p?.stay && p.stay.explanation.length > 0 && (
+        <details className="text-xs text-slate-500" data-testid="stay-explanation">
+          <summary className="cursor-pointer">{t('stayCharge.howCharged')}</summary>
+          <ul className="list-disc pl-5 mt-1 space-y-0.5">
+            {(p.stay.steps?.length ? p.stay.steps : p.stay.explanation.map(x => ({ code: '', text: x })))
+              .map((x, i) => <li key={i}>{x.code ? stayStepText(t, x as StayStep, p.stay?.explanation[i]) : String((x as { text: string }).text)}</li>)}
+          </ul>
+        </details>
+      )}
+
+      {/* A charge that differs from the price list needs a reason, kept with
+          the booking; past a cashier's limit the API refuses it (072). */}
+      {p && (p.adjusted || p.adjustment_error) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2 text-sm" data-testid="rate-adjustment">
+          <p className="text-amber-900">
+            {t('stayCharge.priceList', { list: fmtPaise(p.calculated_paise ?? 0), charged: fmtPaise(p.accommodation_paise ?? 0) })}
+          </p>
+          <label className="form-label" htmlFor="co-rate-reason">{t('stayCharge.reasonLabel')}</label>
+          <input id="co-rate-reason" className="form-input" maxLength={300} value={reason} data-testid="co-rate-reason"
+            placeholder={t('stayCharge.reasonPlaceholder')} onChange={e => setReason(e.target.value)} />
+          {p.adjustment_error && p.adjustment_error.code !== 'REASON_REQUIRED' && (
+            <p className="text-red-700 text-xs" data-testid="rate-adjustment-error">{p.adjustment_error.message}</p>
+          )}
+        </div>
+      )}
 
       {p && p.due_paise > 0 && (
         <div>
@@ -458,7 +520,7 @@ export function CheckoutModal({ booking, onClose, onDone }: {
       {error && <p className="text-red-600 text-sm">{error}</p>}
       <div className="flex gap-3 justify-end pt-2">
         <button type="button" onClick={onClose} className="btn-secondary" disabled={busy}>{t('common.cancel')}</button>
-        <button type="button" onClick={submit} disabled={busy || !p} className="btn-primary" data-testid="checkout-confirm">
+        <button type="button" onClick={submit} disabled={busy || !p || !!p.adjustment_error} className="btn-primary" data-testid="checkout-confirm">
           {busy
             ? t('common.saving')
             : p && p.due_paise > 0 && sumPaise(payRows) === 0

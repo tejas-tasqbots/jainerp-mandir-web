@@ -12,6 +12,7 @@ import {
   type ThermalOptions,
 } from '../../../lib/thermalOptions'
 import { ReceiptWordingCard } from './ReceiptWordingCard'
+import { STAY_CHARGE_DEFAULTS, StayChargingSettings, stayChargeFromProfile, stayChargePayload, type StayChargeSettings } from './StayChargingSettings'
 import { ReceiptDesignerCard } from './ReceiptDesignerTab'
 import type { ReceiptDefinition } from '../../../lib/receiptDefinition'
 import { useToast } from '../../../components/kit/Toast'
@@ -476,6 +477,8 @@ const BLANK = {
   // trust's stay policy (tenant migration 043).
   room_invoice_template: '', hall_invoice_template: '', default_checkin_time: '12:00', default_checkout_time: '10:00',
   housekeeping_hold_on_checkout: true, stay_house_rules: '',
+  // How a stay is charged and who may change the price (tenant migration 072).
+  ...STAY_CHARGE_DEFAULTS,
   guest_id_retention_years: 3,
   receipt_terms: '', receipt_signature_image: '',
   // Counter slips (tenant-migration 032) — prasad, seva and bhojanshala print
@@ -1038,6 +1041,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: ((p.default_checkout_time as string) || '10:00').slice(0, 5),
         housekeeping_hold_on_checkout: p.housekeeping_hold_on_checkout !== false,
         stay_house_rules: (p.stay_house_rules as string) || '',
+        ...stayChargeFromProfile(p),
         guest_id_retention_years: Number(p.guest_id_retention_years ?? 3) || 3,
         receipt_terms: (p.receipt_terms as string) || '',
         receipt_signature_image: (p.receipt_signature_image as string) || '',
@@ -1232,6 +1236,7 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
         default_checkout_time: form.default_checkout_time,
         housekeeping_hold_on_checkout: form.housekeeping_hold_on_checkout,
         stay_house_rules: form.stay_house_rules,
+        ...stayChargePayload(form as StayChargeSettings),
         guest_id_retention_years: form.guest_id_retention_years,
         receipt_terms: form.receipt_terms,
         receipt_signature_image: form.receipt_signature_image,
@@ -1823,6 +1828,13 @@ export function ReceiptSettingsTab({ onGoToTab }: { onGoToTab?: (tab: 'accounts'
                 </div>
               </div>
               <p className="form-hint -mt-2">{t('settings.stay.timesHint')}</p>
+
+              <StayChargingSettings
+                value={form as StayChargeSettings}
+                onChange={(k, v) => set(k, v as never)}
+                checkin={form.default_checkin_time}
+                checkout={form.default_checkout_time}
+              />
 
               <label className="flex items-start gap-2 cursor-pointer">
                 <input

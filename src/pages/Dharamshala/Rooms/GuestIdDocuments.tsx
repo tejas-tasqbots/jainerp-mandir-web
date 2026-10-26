@@ -492,6 +492,8 @@ export function EditBookingModal({ booking, onClose, onSaved, moveTo }: {
     check_in_date: moveTo?.check_in_date ?? istDate(booking.check_in_date),
     check_out_date: moveTo?.check_out_date ?? istDate(booking.check_out_date),
     rate: fmtPaise(booking.tariff_per_night_paise ?? 0).replace(/,/g, ''),
+    // Why the rate differs from the price list (tenant migration 072).
+    rate_reason: '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -523,7 +525,10 @@ export function EditBookingModal({ booking, onClose, onSaved, moveTo }: {
       if (f.check_in_date !== istDate(booking.check_in_date)) body.check_in_date = f.check_in_date
       if (f.check_out_date !== istDate(booking.check_out_date)) body.check_out_date = f.check_out_date
       const ratePaise = parsePaise(f.rate)
-      if (ratePaise !== Number(booking.tariff_per_night_paise)) body.tariff_per_night_paise = ratePaise
+      if (ratePaise !== Number(booking.tariff_per_night_paise)) {
+        body.tariff_per_night_paise = ratePaise
+        if (f.rate_reason.trim()) body.rate_reason = f.rate_reason.trim()
+      }
     }
     if (!Object.keys(body).length) { setBusy(false); onClose(); return }
     try {
@@ -575,6 +580,10 @@ export function EditBookingModal({ booking, onClose, onSaved, moveTo }: {
           <div>
             <label className="form-label" htmlFor="eb-rate">{t('editBooking.rate')}</label>
             <input id="eb-rate" className="form-input" inputMode="decimal" value={f.rate} onChange={set('rate')} disabled={finalBill} />
+            {!finalBill && parsePaise(f.rate) !== Number(booking.tariff_per_night_paise) && (
+              <input className="form-input mt-1" maxLength={300} value={f.rate_reason} onChange={set('rate_reason')}
+                data-testid="eb-rate-reason" aria-label={t('stayCharge.reasonLabel')} placeholder={t('stayCharge.reasonLabel')} />
+            )}
           </div>
           <div>
             <label className="form-label" htmlFor="eb-in">{t('dharamshala.checkIn')}</label>
